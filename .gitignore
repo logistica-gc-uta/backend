@@ -1,0 +1,64 @@
+# ==========================================
+# Dependencias
+# ==========================================
+node_modules/
+.pnpm-store/
+
+# ==========================================
+# Compilación y Salidas de Build
+# ==========================================
+dist/
+*.tsbuildinfo
+
+# ==========================================
+# Variables de Entorno y Secretos
+# ==========================================
+.env
+.env.*
+.env.local
+# Permitir siempre subir la plantilla de ejemplo
+!.env.example
+
+# ==========================================
+# Pruebas y Reportes de Calidad (Jest, ESLint, JSCPD)
+# ==========================================
+coverage/
+.nyc_output/
+.jscpd/
+.jscpd
+eslint-report.json
+test-results/
+
+# ==========================================
+# Agentes de IA y Asistentes (Prisma 8 / IDEs)
+# ==========================================
+.agents/
+.claude/
+.cursor/
+.devin/
+
+# ==========================================
+# Configuración Local de IDEs y Editores
+# ==========================================
+.idea/
+*.swp
+*.swo
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# ==========================================
+# CI/CD y Herramientas Locales
+# ==========================================
+.yura-ci/
+
+# ==========================================
+# Logs y Archivos del Sistema Operativo
+# ==========================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.DS_Store
+Thumbs.db

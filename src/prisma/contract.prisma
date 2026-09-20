@@ -1,0 +1,96 @@
+// use prisma-8
+
+enum Role {
+  ADMIN
+  CLIENT
+  DRIVER
+}
+
+enum OrderStatus {
+  PENDING
+  ASSIGNED
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(CLIENT)
+  createdAt DateTime @default(now())
+
+  driver    Driver?
+  orders    Order[]
+}
+
+model Driver {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  vehicle     String
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  routes      Route[]
+}
+
+model Zone {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  code      String   @unique
+  createdAt DateTime @default(now())
+
+  routes    Route[]
+  orders    Order[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+  stock       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  orderItems  OrderItem[]
+}
+
+model Route {
+  id        String   @id @default(uuid())
+  driverId  String
+  driver    Driver   @relation(fields: [driverId], references: [id])
+  zoneId    String
+  zone      Zone     @relation(fields: [zoneId], references: [id])
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  orders    Order[]
+}
+
+model Order {
+  id        String      @id @default(uuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
+  zoneId    String
+  zone      Zone        @relation(fields: [zoneId], references: [id])
+  routeId   String?
+  route     Route?      @relation(fields: [routeId], references: [id])
+  status    OrderStatus @default(PENDING)
+  total     Float       @default(0)
+  createdAt DateTime    @default(now())
+
+  items     OrderItem[]
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int      @default(1)
+  price     Float
+}
