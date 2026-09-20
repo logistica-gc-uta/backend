@@ -65,8 +65,8 @@ src/
 ## 3. Requisitos Previos
 
 Asegúrate de tener instaladas las siguientes herramientas en tu entorno:
-- **Node.js:** Versión `>= 20.0.0` o `>= 22.0.0`.
-- **pnpm:** Versión `>= 10.0.0` o `>= 12.0.0`.
+- **Node.js:** Versión  `>= 22.0.0`.
+- **pnpm:** Versión  `>= 12.0.0`.
 - **Docker & Docker Compose:** Para ejecutar el contenedor de PostgreSQL.
 
 ---
