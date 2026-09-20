@@ -1,124 +1,177 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Sistema de Logística y Entrega de Pedidos — UTA 📦🚚
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend modular de alto rendimiento para la gestión logística de despachos, pedidos, catálogo de productos y asignación de rutas de entrega, desarrollado para la asignatura de **Gestión, Pruebas e Implementación de Software** de la **Universidad Técnica de Ambato (UTA)**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 1. Tecnologías y Arquitectura
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- **Framework:** [NestJS 12](https://nestjs.com/) (ESM-first, arquitectura modular, inyección de dependencias).
+- **ORM / Base de Datos:** [Prisma 8](https://www.prisma.io/) (`@prisma/orm-postgres`) con PostgreSQL 16.
+- **Autenticación & Autorización:** JWT con Passport (`@nestjs/jwt`, `passport-jwt`) y Guards por Roles (`ADMIN`, `DRIVER`, `CLIENT`).
+- **Validación de Datos:** `class-validator` y `class-transformer` con `ValidationPipe` global.
+- **Documentación Interactiva:** OpenAPI / Swagger (`@nestjs/swagger`) en `/api/docs`.
+- **Linter & Análisis Estático:** [oxlint](https://oxc.rs/) con reglas type-aware.
+- **Testing:** [Jest](https://jestjs.io/) con suites automatizadas y cobertura al 100% de reglas de negocio.
+- **Contenedores:** Docker & Docker Compose.
 
-## Project setup
-
-```bash
-$ pnpm install
+```
+src/
+├── app.controller.ts
+├── app.module.ts
+├── database/
+│   ├── prisma.module.ts          # Módulo global de acceso a datos
+│   └── prisma.service.ts         # Servicio con bindings a lanes ORM y SQL de Prisma 8
+├── modules/
+│   ├── auth/                     # Registro, login JWT, JwtStrategy, RolesGuard
+│   ├── zones/                    # Coberturas y zonas geográficas
+│   ├── products/                 # Catálogo y control de inventario
+│   ├── orders/                   # Creación atómica de pedidos y estados
+│   └── routes/                   # Asignación de pedidos a rutas (Regla <= 4 pedidos)
+├── prisma/
+│   ├── contract.prisma           # Contrato de datos Prisma 8
+│   ├── db.ts                     # Instancia del cliente PostgreSQL
+│   └── seed.ts                   # Seeder de datos iniciales
+└── main.ts                       # Bootstrap, prefijo /api/v1, Swagger y CORS
 ```
 
-## Compile and run the project
+---
 
+## 2. Reglas de Negocio Clave
+
+1. **Restricción Crítica de Negocio (Máximo 4 pedidos por Ruta/Repartidor):**
+   - Un repartidor o ruta **NO puede tener más de 4 pedidos asignados simultáneamente**.
+   - Si se intenta asignar 5 o más pedidos en una sola petición (`POST /api/v1/routes/assign`), el sistema rechaza la operación inmediatamente arrojando un error `400 Bad Request`:
+     ```json
+     {
+       "message": "No se pueden asignar más de 4 pedidos a una ruta/repartidor",
+       "error": "Bad Request",
+       "statusCode": 400
+     }
+     ```
+2. **Disponibilidad del Repartidor:**
+   - Solo se pueden asignar pedidos a repartidores que tengan `isAvailable: true`.
+3. **Consistencia de Zona:**
+   - Todos los pedidos asignados a una ruta deben pertenecer a la misma zona geográfica (`zoneId`).
+4. **Ciclo de Vida de Pedidos:**
+   - `PENDING`: Estado inicial al ser creado por el cliente (reserva inventario).
+   - `ASSIGNED`: Asignado a una ruta por el Administrador.
+   - `IN_TRANSIT`: El repartidor inicia el traslado hacia el destino.
+   - `DELIVERED`: Entrega finalizada con éxito.
+   - `CANCELLED`: Cancelación del pedido.
+
+---
+
+## 3. Requisitos Previos
+
+Asegúrate de tener instaladas las siguientes herramientas en tu entorno:
+- **Node.js:** Versión `>= 20.0.0` o `>= 22.0.0`.
+- **pnpm:** Versión `>= 10.0.0` o `>= 12.0.0`.
+- **Docker & Docker Compose:** Para ejecutar el contenedor de PostgreSQL.
+
+---
+
+## 4. Instalación y Puesta en Marcha (Paso a Paso)
+
+### Paso 1: Clonar el repositorio y entrar al directorio
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+cd backend
 ```
 
-## Run tests
-
+### Paso 2: Instalar dependencias con pnpm
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+pnpm install
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+### Paso 3: Configurar variables de entorno
+Copia el archivo de ejemplo `.env.example` a `.env`:
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+cp .env.example .env
+```
+Verifica que los valores coincidan con tu configuración local de Docker:
+```env
+DATABASE_URL="postgresql://logistica_user:logistica_password123@localhost:5432/logistica_db?schema=public"
+JWT_SECRET="uta_logistica_jwt_secret_key_2026_super_secure"
+JWT_EXPIRES_IN="24h"
+PORT=3000
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-To add it to this project:
-
+### Paso 4: Levantar la base de datos PostgreSQL en Docker
 ```bash
-$ pnpm install @nestjs/observe
+docker compose up -d
+```
+> Verifica que el contenedor esté corriendo con `docker compose ps`.
+
+### Paso 5: Aplicar migraciones con Prisma 8
+```bash
+pnpm exec prisma db migrate --advance-ref db
 ```
 
-Then follow the [setup guide](https://docs.nestjs.com/observability/overview) - it takes a single import and an app key.
+### Paso 6: Ejecutar la semilla de datos iniciales (Seeder)
+```bash
+pnpm run seed
+```
+Este comando creará automáticamente los usuarios, choferes, zonas y productos necesarios para pruebas.
 
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
+### Paso 7: Iniciar el servidor en modo desarrollo
+```bash
+pnpm run start:dev
+```
+El backend estará escuchando en `http://localhost:3000/api/v1`.
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## 5. Credenciales por Defecto (Seed)
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+| Rol | Nombre | Correo Electrónico | Contraseña | Detalles |
+| :--- | :--- | :--- | :--- | :--- |
+| `ADMIN` | Administrador General | `admin@delivery.com` | `admin123` | Control total del sistema |
+| `DRIVER` | Carlos Chofer | `driver1@delivery.com` | `driver123` | Camión Isuzu ABC-123 (`isAvailable: true`) |
+| `DRIVER` | Luis Transportista | `driver2@delivery.com` | `driver123` | Furgoneta Renault XYZ-789 (`isAvailable: true`) |
+| `CLIENT` | Ana Cliente | `client1@delivery.com` | `client123` | Cliente estándar |
+| `CLIENT` | Pedro Comprador | `client2@delivery.com` | `client123` | Cliente estándar |
 
-## Support
+---
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## 6. URLs y Documentación
 
-## Stay in touch
+- **API Base:** `http://localhost:3000/api/v1`
+- **Swagger / OpenAPI interactivo:** [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
+  > Puedes autenticarte directamente en Swagger haciendo clic en el botón **Authorize** e ingresando el token Bearer devuelto por `/api/v1/auth/login`.
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## 7. Colección de Pruebas (Postman / Insomnia / Bruno)
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+El archivo [`delivery-api.postman_collection.json`](./delivery-api.postman_collection.json) se encuentra en la raíz del proyecto listo para importar. Contiene:
+- **Variables automáticas:** La petición `POST Login Admin` almacena automáticamente el token en `{{token}}`.
+- **Casos de prueba de la Regla de Negocio:**
+  - `POST Assign Route - Success (<= 4 orders)`: Validación exitosa de ruta.
+  - `POST Assign Route - Reject (> 4 orders)`: Validación de rechazo con error 400 cuando se envían 5 pedidos.
+
+---
+
+## 8. Comandos de Verificación y Calidad
+
+### Ejecutar Pruebas Unitarias
+```bash
+pnpm run test
+```
+Ejecuta la suite de pruebas Jest cubriendo autenticación, validación de reglas de negocio en `RoutesService` y controladores.
+
+### Ejecutar Linter
+```bash
+pnpm run lint
+```
+Ejecuta oxlint con validación de tipos estricta sin advertencias ni errores.
+
+### Compilar para Producción
+```bash
+pnpm run build
+```
+Genera los archivos listos para producción en el directorio `dist/`.
+
+### Iniciar en Producción
+```bash
+pnpm run start:prod
+```
