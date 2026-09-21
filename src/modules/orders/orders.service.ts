@@ -64,6 +64,8 @@ export class OrdersService {
       const order = await tx.orm.public.Order.create({
         userId,
         zoneId: dto.zoneId,
+        deliveryAddress: dto.deliveryAddress,
+        scheduledDeliveryDate: dto.scheduledDeliveryDate ? new Date(dto.scheduledDeliveryDate) : null,
         status: OrderStatus.PENDING,
         total: totalOrder,
       });

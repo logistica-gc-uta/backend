@@ -78,11 +78,14 @@ model Order {
   zone      Zone        @relation(fields: [zoneId], references: [id])
   routeId   String?
   route     Route?      @relation(fields: [routeId], references: [id])
-  status    OrderStatus @default(PENDING)
-  total     Float       @default(0)
-  createdAt DateTime    @default(now())
+  status                OrderStatus @default(PENDING)
+  total                 Float       @default(0)
+  deliveryAddress       String
+  scheduledDeliveryDate DateTime?
+  stopOrder             Int?
+  createdAt             DateTime    @default(now())
 
-  items     OrderItem[]
+  items                 OrderItem[]
 }
 
 model OrderItem {

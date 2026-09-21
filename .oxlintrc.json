@@ -1,9 +1,18 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "ignorePatterns": ["src/prisma/contract.d.ts", "dist/**"],
   "rules": {
     "typescript/no-explicit-any": "off",
     "typescript/no-floating-promises": "error"
   },
+  "overrides": [
+    {
+      "files": ["src/prisma/contract.d.ts"],
+      "rules": {
+        "typescript/no-redundant-type-constituents": "off"
+      }
+    }
+  ],
   "env": {
     "node": true
   }

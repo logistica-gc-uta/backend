@@ -1,0 +1,207 @@
+[
+  {
+    "id": "column.public.order.scheduledDeliveryDate",
+    "label": "Add column \"scheduledDeliveryDate\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "scheduledDeliveryDate",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"scheduledDeliveryDate\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "scheduledDeliveryDate"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"scheduledDeliveryDate\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"scheduledDeliveryDate\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"scheduledDeliveryDate\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "scheduledDeliveryDate"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.stopOrder",
+    "label": "Add column \"stopOrder\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "stopOrder",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"stopOrder\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "stopOrder"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"stopOrder\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"stopOrder\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"stopOrder\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "stopOrder"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.deliveryAddress",
+    "label": "Add column \"deliveryAddress\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "deliveryAddress",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"deliveryAddress\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "deliveryAddress"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"deliveryAddress\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"deliveryAddress\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"deliveryAddress\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "deliveryAddress"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "data_migration.backfill-order-deliveryAddress",
+    "label": "Data transform: backfill-order-deliveryAddress",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres"
+    },
+    "precheck": [
+      {
+        "description": "Check backfill-order-deliveryAddress has work to do",
+        "sql": "SELECT EXISTS (SELECT \"id\" AS \"id\" FROM \"public\".\"order\" WHERE \"deliveryAddress\" IS NULL LIMIT 1) AS ok",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "Run backfill-order-deliveryAddress",
+        "sql": "UPDATE \"public\".\"order\" SET \"deliveryAddress\" = $1 WHERE \"deliveryAddress\" IS NULL",
+        "params": [
+          "Sin dirección registrada"
+        ]
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "Verify backfill-order-deliveryAddress resolved all violations",
+        "sql": "SELECT NOT EXISTS (SELECT \"id\" AS \"id\" FROM \"public\".\"order\" WHERE \"deliveryAddress\" IS NULL LIMIT 1) AS ok",
+        "params": []
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.setNotNull.order.deliveryAddress",
+    "label": "Set NOT NULL on \"order\".\"deliveryAddress\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "deliveryAddress",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"deliveryAddress\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "deliveryAddress"
+        ]
+      },
+      {
+        "description": "ensure no NULL values in \"deliveryAddress\"",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"public\".\"order\" WHERE \"deliveryAddress\" IS NULL) AS \"result\"",
+        "params": []
+      }
+    ],
+    "execute": [
+      {
+        "description": "set NOT NULL on \"deliveryAddress\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ALTER COLUMN \"deliveryAddress\" SET NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"deliveryAddress\" is NOT NULL",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "deliveryAddress",
+          "NO"
+        ]
+      }
+    ]
+  }
+]

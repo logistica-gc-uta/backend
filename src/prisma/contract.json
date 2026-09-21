@@ -183,6 +183,13 @@
                   "kind": "scalar"
                 }
               },
+              "deliveryAddress": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "id": {
                 "nullable": false,
                 "type": {
@@ -197,6 +204,13 @@
                   "kind": "scalar"
                 }
               },
+              "scheduledDeliveryDate": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
               "status": {
                 "nullable": false,
                 "type": {
@@ -208,6 +222,13 @@
                   "entityName": "OrderStatus",
                   "namespaceId": "public",
                   "plane": "domain"
+                }
+              },
+              "stopOrder": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
                 }
               },
               "total": {
@@ -302,14 +323,23 @@
                 "createdAt": {
                   "column": "createdAt"
                 },
+                "deliveryAddress": {
+                  "column": "deliveryAddress"
+                },
                 "id": {
                   "column": "id"
                 },
                 "routeId": {
                   "column": "routeId"
                 },
+                "scheduledDeliveryDate": {
+                  "column": "scheduledDeliveryDate"
+                },
                 "status": {
                   "column": "status"
+                },
+                "stopOrder": {
+                  "column": "stopOrder"
                 },
                 "total": {
                   "column": "total"
@@ -901,6 +931,11 @@
                   "nativeType": "timestamptz",
                   "nullable": false
                 },
+                "deliveryAddress": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
                 "id": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -909,6 +944,11 @@
                 "routeId": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
+                  "nullable": true
+                },
+                "scheduledDeliveryDate": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
                   "nullable": true
                 },
                 "status": {
@@ -925,6 +965,11 @@
                     "namespaceId": "public",
                     "plane": "storage"
                   }
+                },
+                "stopOrder": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
                 },
                 "total": {
                   "codecId": "pg/float8@1",
@@ -1407,7 +1452,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "d6f44c1bba6da74b308ffcb049cf2d87834547aeaf438b7e706ba21c4707bd47"
+    "storageHash": "ade716a5854bac9da24d9d458e813194b99fcacf7c156ace530749782dfead7f"
   },
   "execution": {
     "executionHash": "d6145f3e6e216e86f3c1ecdaecde35f0d1fe4626d9704e6e4963a6b3e9df628f",

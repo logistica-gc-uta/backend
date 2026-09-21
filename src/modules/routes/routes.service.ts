@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AssignRouteDto } from './dto/assign-route.dto.js';
 
@@ -34,7 +34,7 @@ export class RoutesService {
       throw new NotFoundException(`Zona con ID '${dto.zoneId}' no encontrada`);
     }
 
-    // 4. Validar que todas las órdenes pertenezcan a la zona y estén en estado PENDING
+    // 4. Validar que todas las órdenes pertenezcan a la zona y existan
     for (const orderId of dto.orderIds) {
       const order = await this.prisma.order.where({ id: orderId }).first();
       if (!order) {
@@ -56,16 +56,37 @@ export class RoutesService {
 
     // 5. Crear la ruta y asignar los pedidos de forma atómica en transacción
     return this.prisma.client.transaction(async (tx) => {
+      // a. Validar atómicamente disponibilidad del chofer y marcarlo como no disponible
+      const currentDriver = await tx.orm.public.Driver.where({ id: dto.driverId }).first();
+      if (!currentDriver || !currentDriver.isAvailable) {
+        throw new ConflictException('El repartidor ya no está disponible');
+      }
+
+      await tx.orm.public.Driver.where({ id: dto.driverId }).update({
+        isAvailable: false,
+      });
+
+      // b. Crear la ruta
       const route = await tx.orm.public.Route.create({
         driverId: dto.driverId,
         zoneId: dto.zoneId,
         date: new Date(),
       });
 
+      // c. Verificar atómicamente que cada pedido siga en estado PENDING y asignar stopOrder secuencial
+      let currentStop = 1;
       for (const orderId of dto.orderIds) {
+        const currentOrder = await tx.orm.public.Order.where({ id: orderId }).first();
+        if (!currentOrder || currentOrder.status !== 'PENDING') {
+          throw new ConflictException(
+            `El pedido con ID '${orderId}' ya no se encuentra en estado PENDING para ser asignado`,
+          );
+        }
+
         await tx.orm.public.Order.where({ id: orderId }).update({
           routeId: route.id,
           status: 'ASSIGNED',
+          stopOrder: currentStop++,
         });
       }
 
