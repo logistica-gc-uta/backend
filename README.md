@@ -64,16 +64,25 @@ src/
 
 ## 3. Requisitos Previos
 
-Asegúrate de tener instaladas las siguientes herramientas en tu entorno:
-- **Node.js:** Versión  `>= 22.0.0`.
-- **pnpm:** Versión  `>= 12.0.0`.
-- **Docker & Docker Compose:** Para ejecutar el contenedor de PostgreSQL.
+Asegúrate de tener instaladas estas herramientas en tu entorno:
+- **Node.js:** versión `>= 22.0.0` (recomendado: Node 22 LTS).
+- **pnpm:** versión `>= 12.0.0`.
+- **Docker & Docker Compose:** para levantar PostgreSQL localmente.
+- **Git:** para clonar el repositorio.
+
+> El proyecto ya incluye el archivo `docker-compose.yml` con la configuración de la base de datos local. La URL de conexión debe coincidir exactamente con esos valores para que el backend pueda arrancar correctamente.
 
 ---
 
 ## 4. Instalación y Puesta en Marcha (Paso a Paso)
 
-### Paso 1: Clonar el repositorio y entrar al directorio
+### Paso 1: Clonar el repositorio y entrar al directorio del backend
+```bash
+git clone <url-del-repositorio>
+cd backend
+```
+
+Si ya clonaste el proyecto y te encuentras en la carpeta raíz del repositorio, solo usa:
 ```bash
 cd backend
 ```
@@ -88,7 +97,7 @@ Copia el archivo de ejemplo `.env.example` a `.env`:
 ```bash
 cp .env.example .env
 ```
-Verifica que los valores coincidan con tu configuración local de Docker:
+Asegúrate de que el contenido del archivo sea exactamente este:
 ```env
 DATABASE_URL="postgresql://logistica_user:logistica_password123@localhost:5432/logistica_db?schema=public"
 JWT_SECRET="uta_logistica_jwt_secret_key_2026_super_secure"
@@ -96,15 +105,22 @@ JWT_EXPIRES_IN="24h"
 PORT=3000
 ```
 
+Estos valores coinciden con la configuración definida en `docker-compose.yml`:
+- Usuario: `logistica_user`
+- Contraseña: `logistica_password123`
+- Base de datos: `logistica_db`
+- Puerto local: `5432`
+
 ### Paso 4: Levantar la base de datos PostgreSQL en Docker
 ```bash
 docker compose up -d
 ```
 > Verifica que el contenedor esté corriendo con `docker compose ps`.
 
-### Paso 5: Aplicar migraciones con Prisma 8
+### Paso 5: Inicializar la base de datos con Prisma 8
+Este comando crea la estructura de datos según el contrato del proyecto y la marca como sincronizada:
 ```bash
-pnpm exec prisma db migrate --advance-ref db
+pnpm prisma db init
 ```
 
 ### Paso 6: Ejecutar la semilla de datos iniciales (Seeder)
@@ -119,6 +135,13 @@ pnpm run start:dev
 ```
 El backend estará escuchando en `http://localhost:3000/api/v1`.
 
+### Paso 8: Abrir la documentación Swagger
+Visita:
+```text
+http://localhost:3000/api/docs
+```
+
+---
 ---
 
 ## 5. Credenciales por Defecto (Seed)
