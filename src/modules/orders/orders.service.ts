@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { toInstant } from '../../common/temporal.util.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
@@ -65,7 +66,7 @@ export class OrdersService {
         userId,
         zoneId: dto.zoneId,
         deliveryAddress: dto.deliveryAddress,
-        scheduledDeliveryDate: dto.scheduledDeliveryDate ? new Date(dto.scheduledDeliveryDate) : null,
+        scheduledDeliveryDate: dto.scheduledDeliveryDate ? toInstant(dto.scheduledDeliveryDate) : null,
         status: OrderStatus.PENDING,
         total: totalOrder,
       });
