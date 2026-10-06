@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { nowInstant } from '../../common/temporal.util.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AssignRouteDto } from './dto/assign-route.dto.js';
 
@@ -70,7 +71,7 @@ export class RoutesService {
       const route = await tx.orm.public.Route.create({
         driverId: dto.driverId,
         zoneId: dto.zoneId,
-        date: new Date(),
+        date: nowInstant(),
       });
 
       // c. Verificar atómicamente que cada pedido siga en estado PENDING y asignar stopOrder secuencial

@@ -22,7 +22,10 @@
     "test:e2e": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-e2e.json",
     "postinstall": "prisma skills sync || exit 0",
     "contract:emit": "prisma contract emit",
-    "seed": "tsx src/prisma/seed.ts"
+    "seed": "tsx src/prisma/seed.ts",
+    "seed:reset-drivers": "tsx src/prisma/reset-drivers.ts",
+    "test:api": "newman run delivery-api.postman_collection.json -e test/postman/logistica_env.json",
+    "test:api:report": "pnpm run seed:reset-drivers && newman run delivery-api.postman_collection.json -e test/postman/logistica_env.json -r cli,htmlextra --reporter-htmlextra-export reports/newman/informe-api.html --reporter-htmlextra-title \"Pruebas de API - Logistica UTA\" --reporter-htmlextra-browserTitle \"Informe Newman\""
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
@@ -55,6 +58,8 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^7.0.0",
     "jest": "^30.0.0",
+    "newman": "^6.2.2",
+    "newman-reporter-htmlextra": "^1.23.1",
     "oxlint": "^1.58.0",
     "oxlint-tsgolint": "^7.0.2001",
     "prettier": "^3.4.2",

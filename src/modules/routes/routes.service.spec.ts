@@ -144,6 +144,19 @@ describe('RoutesService', () => {
       }
     });
 
+    it('Regresión: la fecha de la ruta se persiste como Temporal.Instant (no Date)', async () => {
+      prismaMock.driver.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validDriver) });
+      prismaMock.zone.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validZone) });
+      prismaMock.order.where.mockImplementation((filter: { id: string }) => ({
+        first: jest.fn().mockResolvedValue(mockPendingOrder(filter.id)),
+      }));
+
+      await service.assignRoute({ driverId: 'driver-1', zoneId: 'zone-1', orderIds: ['order-1'] });
+
+      const created = txMock.orm.public.Route.create.mock.calls[0][0];
+      expect(created.date).toBeInstanceOf(Temporal.Instant);
+    });
+
     it('Caso 2: debe lanzar BadRequestException si se intentan asignar 5 o más pedidos', async () => {
       const orderIds5 = ['ord-1', 'ord-2', 'ord-3', 'ord-4', 'ord-5'];
 

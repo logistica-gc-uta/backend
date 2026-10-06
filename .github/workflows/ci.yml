@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Prisma 8 usa la API global Temporal, disponible desde Node 26.
+  NODE_VERSION: '26'
+
+jobs:
+  quality:
+    name: Lint, build y pruebas unitarias
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Instalar pnpm
+        run: npm install -g pnpm@12
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (oxlint)
+        run: pnpm run lint
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Pruebas unitarias con cobertura mínima del 80 %
+        run: >
+          pnpm run test:cov
+          --coverageThreshold='{"global":{"statements":80,"branches":80,"functions":80,"lines":80}}'
+
+      - name: Subir reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura
+          path: coverage/
+          if-no-files-found: ignore
+
+  api-tests:
+    name: Pruebas de API (Newman)
+    runs-on: ubuntu-latest
+    needs: quality
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: logistica_user
+          POSTGRES_PASSWORD: logistica_password123
+          POSTGRES_DB: logistica_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U logistica_user -d logistica_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://logistica_user:logistica_password123@localhost:5432/logistica_db?schema=public
+      # Solo para el entorno efímero de CI; no es un secreto real.
+      JWT_SECRET: ci_only_jwt_secret
+      JWT_EXPIRES_IN: 1d
+      PORT: '3000'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Instalar pnpm
+        run: npm install -g pnpm@12
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Crear esquema y datos semilla
+        run: |
+          pnpm prisma db init
+          pnpm run seed
+
+      - name: Compilar y levantar el backend
+        run: |
+          pnpm run build
+          nohup pnpm run start:prod > server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/api/v1/zones > /dev/null && exit 0
+            sleep 2
+          done
+          echo "El backend no respondió a tiempo" && cat server.log && exit 1
+
+      - name: Ejecutar colección Newman
+        run: pnpm run test:api:report
+
+      - name: Subir reporte HTML de Newman
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-newman
+          path: reports/newman/
+          if-no-files-found: ignore
+
+      - name: Mostrar log del servidor si falló
+        if: failure()
+        run: cat server.log

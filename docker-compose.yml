@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U practicas"]
+      test: ["CMD-SHELL", "pg_isready -U logistica_user -d logistica_db"]
       interval: 5s
       timeout: 5s
       retries: 10

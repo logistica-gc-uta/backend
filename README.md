@@ -65,7 +65,7 @@ src/
 ## 3. Requisitos Previos
 
 Asegúrate de tener instaladas estas herramientas en tu entorno:
-- **Node.js:** versión `>= 22.0.0` (recomendado: Node 22 LTS).
+- **Node.js:** versión `>= 26` (el cliente Prisma 8 usa la API global `Temporal`, que solo viene incluida desde Node 26; con versiones anteriores el seed y las consultas con fechas fallan con `RUNTIME.TEMPORAL_UNAVAILABLE`).
 - **pnpm:** versión `>= 12.0.0`.
 - **Docker & Docker Compose:** para levantar PostgreSQL localmente.
 - **Git:** para clonar el repositorio.
@@ -164,15 +164,24 @@ http://localhost:3000/api/docs
 
 ---
 
-## 7. Colección de Pruebas (Postman / Insomnia / Bruno)
+## 7. Colección de Pruebas (Postman / Insomnia / Bruno / Newman)
 
-El archivo [`delivery-api.postman_collection.json`](./delivery-api.postman_collection.json) se encuentra en la raíz del proyecto listo para importar. Contiene:
-- **Variables automáticas:** La petición `POST Login Admin` almacena automáticamente el token en `{{token}}`.
-- **Casos de prueba de la Regla de Negocio:**
-  - `POST Assign Route - Success (<= 4 orders)`: Validación exitosa de ruta.
-  - `POST Assign Route - Reject (> 4 orders)`: Validación de rechazo con error 400 cuando se envían 5 pedidos.
+El archivo [`delivery-api.postman_collection.json`](./delivery-api.postman_collection.json) está en la raíz del proyecto, listo para importar. Es una colección **autocontenida y ejecutable de punta a punta**:
+- Crea sus propios datos (zona, producto y 4 pedidos con códigos únicos), por lo que no depende de IDs fijos de la base de datos.
+- Encadena variables entre requests (`adminToken`, `clientToken`, `driverToken`, `zoneId`, `productId`, `orderId1..4`, `driverId`, `routeId`).
+- Valida en cada request el código HTTP y el tiempo de respuesta (< 500 ms), y en los casos de negocio la estructura JSON: máximo 4 pedidos por ruta, zona única por ruta, repartidor no disponible, `stopOrder` secuencial, permisos por rol (401/403) y ciclo de vida del pedido.
+- Las credenciales y la URL base se definen en [`test/postman/logistica_env.json`](./test/postman/logistica_env.json) (cambie `baseUrl` para apuntar a otro ambiente).
 
----
+### Ejecutar con Newman (CLI)
+
+Con la base de datos levantada, el seed ejecutado y el backend corriendo (`pnpm run start:dev`):
+
+```bash
+pnpm run test:api          # resultado en consola
+pnpm run test:api:report   # consola + reporte HTML en reports/newman/informe-api.html
+```
+
+> Cada asignación de ruta deja al repartidor como no disponible. `test:api:report` ejecuta antes `pnpm run seed:reset-drivers` para liberarlos y poder repetir la corrida. Si usa `test:api` directamente varias veces, ejecute ese comando de reinicio entre corridas.
 
 ## 8. Comandos de Verificación y Calidad
 
