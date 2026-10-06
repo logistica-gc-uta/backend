@@ -96,6 +96,21 @@ describe('OrdersService', () => {
       ],
     };
 
+    it('Regresión: persiste scheduledDeliveryDate como Temporal.Instant (no Date) y null si se omite', async () => {
+      prismaMock.zone.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validZone) });
+      prismaMock.product.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validProduct) });
+
+      await service.createOrder('user-1', createDto);
+      const withDate = txMock.orm.public.Order.create.mock.calls[0][0];
+      expect(withDate.scheduledDeliveryDate).toBeInstanceOf(Temporal.Instant);
+      expect(withDate.scheduledDeliveryDate.toString()).toBe('2026-09-25T14:00:00Z');
+
+      const { scheduledDeliveryDate: _omit, ...dtoWithoutDate } = createDto;
+      await service.createOrder('user-1', dtoWithoutDate);
+      const withoutDate = txMock.orm.public.Order.create.mock.calls[1][0];
+      expect(withoutDate.scheduledDeliveryDate).toBeNull();
+    });
+
     it('Caso 1: Creación exitosa de orden con cálculo de total y descuento de stock', async () => {
       prismaMock.zone.where.mockReturnValue({
         first: jest.fn().mockResolvedValue(validZone),
