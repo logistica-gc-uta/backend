@@ -40,27 +40,33 @@ describe('ZonesService', () => {
   });
 
   describe('findAll', () => {
-    it('debe listar todas las zonas de entrega', async () => {
+    it('debe listar todas las zonas de entrega enriquecidas con depotLocation', async () => {
       const mockZones = [
-        { id: 'zone-1', name: 'Centro', code: 'CEN-01' },
-        { id: 'zone-2', name: 'Ficoa', code: 'FIC-02' },
+        { id: 'zone-1', name: 'Centro', code: 'CEN-01', depotLat: null, depotLng: null },
+        { id: 'zone-2', name: 'Ficoa', code: 'FIC-02', depotLat: -1.24, depotLng: -78.61 },
       ];
       prismaMock.zone.all.mockResolvedValue(mockZones);
 
       const result = await service.findAll();
-      expect(result).toEqual(mockZones);
+      expect(result).toEqual([
+        { id: 'zone-1', name: 'Centro', code: 'CEN-01', depotLat: null, depotLng: null, depotLocation: null },
+        { id: 'zone-2', name: 'Ficoa', code: 'FIC-02', depotLat: -1.24, depotLng: -78.61, depotLocation: { lat: -1.24, lng: -78.61 } },
+      ]);
     });
   });
 
   describe('findOne', () => {
-    it('debe encontrar y retornar una zona por su ID', async () => {
-      const mockZone = { id: 'zone-1', name: 'Centro', code: 'CEN-01' };
+    it('debe encontrar y retornar una zona por su ID enriquecida con depotLocation', async () => {
+      const mockZone = { id: 'zone-1', name: 'Centro', code: 'CEN-01', depotLat: -1.25, depotLng: -78.62 };
       prismaMock.zone.where.mockReturnValue({
         first: jest.fn().mockResolvedValue(mockZone),
       });
 
       const result = await service.findOne('zone-1');
-      expect(result).toEqual(mockZone);
+      expect(result).toEqual({
+        ...mockZone,
+        depotLocation: { lat: -1.25, lng: -78.62 },
+      });
     });
 
     it('debe lanzar NotFoundException si la zona no existe', async () => {
@@ -84,7 +90,51 @@ describe('ZonesService', () => {
       prismaMock.zone.create.mockResolvedValue(newZone);
 
       const result = await service.create({ name: 'Huachi', code: 'HUA-03' });
-      expect(result).toEqual(newZone);
+      expect(result).toEqual(expect.objectContaining(newZone));
+    });
+
+    it('debe persistir coordenadas válidas del depósito y retornar depotLocation', async () => {
+      prismaMock.zone.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(null),
+      });
+
+      const zoneWithCoords = {
+        id: 'zone-geo',
+        name: 'Ficoa Geo',
+        code: 'FIC-GEO',
+        depotLat: -1.249,
+        depotLng: -78.616,
+      };
+      prismaMock.zone.create.mockResolvedValue(zoneWithCoords);
+
+      const result = await service.create({
+        name: 'Ficoa Geo',
+        code: 'FIC-GEO',
+        depotLat: -1.249,
+        depotLng: -78.616,
+      });
+
+      expect(prismaMock.zone.create).toHaveBeenCalledWith({
+        name: 'Ficoa Geo',
+        code: 'FIC-GEO',
+        depotLat: -1.249,
+        depotLng: -78.616,
+      });
+      expect(result.depotLocation).toEqual({ lat: -1.249, lng: -78.616 });
+    });
+
+    it('debe rechazar par incompleto o nulo en creación a nivel de servicio', async () => {
+      prismaMock.zone.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(
+        service.create({ name: 'Z1', code: 'Z-01', depotLat: -1.2 } as any),
+      ).rejects.toThrow();
+
+      await expect(
+        service.create({ name: 'Z2', code: 'Z-02', depotLat: null, depotLng: null } as any),
+      ).rejects.toThrow();
     });
 
     it('debe lanzar ConflictException si el código ya está registrado', async () => {
@@ -118,9 +168,9 @@ describe('ZonesService', () => {
   });
 
   describe('update', () => {
-    const existingZone = { id: 'zone-1', name: 'Centro', code: 'CEN-01' };
+    const existingZone = { id: 'zone-1', name: 'Centro', code: 'CEN-01', depotLat: -1.25, depotLng: -78.62 };
 
-    it('debe actualizar exitosamente una zona', async () => {
+    it('debe actualizar exitosamente una zona preservando coordenadas existentes si se omiten', async () => {
       prismaMock.zone.where.mockImplementation((filter: { id?: string; code?: string; name?: string }) => {
         if (filter.id) {
           return {
@@ -133,6 +183,47 @@ describe('ZonesService', () => {
 
       const result = await service.update('zone-1', { name: 'Centro Histórico' });
       expect(result.name).toBe('Centro Histórico');
+      expect(result.depotLat).toBe(-1.25);
+      expect(result.depotLng).toBe(-78.62);
+      expect(result.depotLocation).toEqual({ lat: -1.25, lng: -78.62 });
+    });
+
+    it('debe actualizar coordenadas atómicamente cuando se proporciona un par válido', async () => {
+      const updateMock = jest.fn().mockResolvedValue({
+        ...existingZone,
+        depotLat: -1.3,
+        depotLng: -78.7,
+      });
+
+      prismaMock.zone.where.mockImplementation((filter: { id?: string }) => {
+        if (filter.id) {
+          return {
+            first: jest.fn().mockResolvedValue(existingZone),
+            update: updateMock,
+          };
+        }
+        return { first: jest.fn().mockResolvedValue(null) };
+      });
+
+      const result = await service.update('zone-1', { depotLat: -1.3, depotLng: -78.7 });
+      expect(updateMock).toHaveBeenCalledWith(
+        expect.objectContaining({ depotLat: -1.3, depotLng: -78.7 }),
+      );
+      expect(result.depotLocation).toEqual({ lat: -1.3, lng: -78.7 });
+    });
+
+    it('debe rechazar par incompleto o nulo en update a nivel de servicio (sin borrado parcial)', async () => {
+      prismaMock.zone.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(existingZone),
+      });
+
+      await expect(
+        service.update('zone-1', { depotLat: -1.3 } as any),
+      ).rejects.toThrow();
+
+      await expect(
+        service.update('zone-1', { depotLat: null, depotLng: null } as any),
+      ).rejects.toThrow();
     });
 
     it('debe lanzar ConflictException si el nuevo código ya pertenece a otra zona', async () => {
@@ -165,6 +256,22 @@ describe('ZonesService', () => {
       await expect(
         service.update('zone-1', { name: 'Ficoa' }),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('debe lanzar NotFoundException si la actualización no retorna registro tras el precheck', async () => {
+      prismaMock.zone.where.mockImplementation((filter: { id?: string }) => {
+        if (filter.id) {
+          return {
+            first: jest.fn().mockResolvedValue(existingZone),
+            update: jest.fn().mockResolvedValue(null),
+          };
+        }
+        return { first: jest.fn().mockResolvedValue(null) };
+      });
+
+      await expect(
+        service.update('zone-1', { name: 'Centro Actualizado' }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
