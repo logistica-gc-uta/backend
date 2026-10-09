@@ -36,7 +36,7 @@ La evidencia funcional local está disponible en el informe de entrega. La publi
 
 **Compatibilidad con otros componentes:** Endpoints ADMIN y escenarios de seguridad Newman previos preservados. Node 26/Temporal y dependencias existentes; sin instalaciones.
 
-**Limitaciones conocidas:** Optimización de rutas (#7), ciclo de vida de rutas (#10), despliegue y datos de geolocalización fuera de alcance. Shellcheck no disponible localmente; bash -n aprobado. CI remoto, revisión independiente y evaluación nativa pendientes; no se declara el Issue cerrado.
+**Limitaciones conocidas:** Optimización de rutas (#7), ciclo de vida de rutas (#10), despliegue y datos de geolocalización fuera de alcance. Local ShellCheck now passes after scoped trap-callback annotations (details below); bash -n passes. Native review is approved and acknowledged. Remote CI, external PR review and integration remain pending; the Issue is not declared closed.
 
 ## Checklist de entrega
 
@@ -52,4 +52,13 @@ La evidencia funcional local está disponible en el informe de entrega. La publi
 
 ## Observaciones para el revisor
 
+Local implementation commit: `26c3cbb9461a0485ce62f34ba2448df78d3c5416`, based on `main` at `c0f97a4`. Independent local verification passed 178 unit tests, 54 PostgreSQL E2E tests and Newman 67 requests / 270 assertions. Historical native high-risk review awaited candidate-specific consent; that review is now formally approved and acknowledged as recorded below. No published PR, Actions result or merge is claimed. The 1,091-line coherent unit needs explicit maintainer size acceptance before publication. Authenticated GitHub operations also await an explicitly selected credential/session; local auth status is active, but no session has been selected for authenticated repository operations.
+
 Revisar primero el acotamiento de identidad en DriversService y la proyección. Comprobar después el filtro de día local, orden NULL/ties y pruebas de aislamiento. Mantener código, pruebas y documentación en una unidad de trabajo coherente; el presupuesto orientativo de 400 líneas no justifica separar las pruebas de su comportamiento. No se asume una excepción de tamaño ni aprobación de entrega.
+
+
+**Current native closure:** `review-834be02c3c944914` formally approved and acknowledged target `sha256:84f128b4898a63ef8663a92f38bfa6b631fec30875b8aa000ef5d5414e0f35b3`, consumed revision `sha256:0069c0ac71bc3ad0b64072cf338f5243b7f45f19ebda557798dd363733c73519`, authority burned. Earlier pending-consent statements are historical. Do not restart this review or issue trailing STATUS. Non-blocking native `R3-001` (Docker inspect errors versus confirmed absence) remains later work; no runtime cleanup fix is included.
+
+**D4 local ShellCheck unit:** Delegated mechanical annotations extend only the two existing function-scoped `SC2317` directives with `SC2329`, citing indirect trap invocation and the [official rule guidance](https://www.shellcheck.net/wiki/SC2329). Verified ShellCheck 0.11.0 command `shellcheck test/run-newman-isolated.sh` (private verified binary) observed RED exit 1 with only two SC2329 trap-callback findings, then GREEN exit 0. `bash -n test/run-newman-isolated.sh` and `git diff --check` exit 0. Removing comment lines yields identical runtime code; flags, workflow and global lint settings are unchanged. Parent commit and native assessment remain pending. No full build/Jest/Newman/PostgreSQL rerun was necessary for comments-only changes; 178 unit tests, 54 E2E tests and 67 requests / 270 assertions remain previously executed proof, not fresh results.
+
+**Delivery remains pending:** Public [Issue #6](https://github.com/logistica-gc-uta/backend/issues/6) functional criteria have local passing evidence; remote CI, published PR/external review and integration are not complete. Maintainer size acceptance remains unresolved. Local GitHub auth status is active, but no credential/session is selected for authenticated repository operations; public protection lookup returned 401, so protections remain unknown. No remote operation is included. The branch remains main-based and independent of Issue #9 commits.
