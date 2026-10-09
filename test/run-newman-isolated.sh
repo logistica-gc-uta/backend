@@ -34,6 +34,7 @@ fi
 unset baseUrl
 unset BASE_URL
 
+OWNER_NONCE="$(node -e 'console.log(require("crypto").randomUUID())')"
 CONTAINER_ID=""
 BACKEND_PID=""
 BACKEND_LOG=""
@@ -49,7 +50,16 @@ cleanup() {
     wait "$BACKEND_PID" 2>/dev/null || true
   fi
   if [[ -n "${CONTAINER_ID:-}" ]]; then
-    docker rm -f "$CONTAINER_ID" >/dev/null 2>&1 || true
+    if [[ "$(docker inspect -f '{{ index .Config.Labels "delivery.issue6.owner" }}' "$CONTAINER_ID" 2>/dev/null)" == "$OWNER_NONCE" ]]; then
+      docker rm -f "$CONTAINER_ID" >/dev/null 2>&1 || true
+      if docker inspect "$CONTAINER_ID" >/dev/null 2>&1; then
+        echo "Error: Owned container cleanup was not confirmed." >&2
+        RUNNER_EXIT_CODE=1
+      fi
+    else
+      echo "Error: Refusing cleanup without exact container ownership." >&2
+      RUNNER_EXIT_CODE=1
+    fi
   fi
   if [[ -n "${BACKEND_LOG:-}" && -f "$BACKEND_LOG" ]]; then
     rm -f "$BACKEND_LOG" >/dev/null 2>&1 || true
@@ -80,7 +90,8 @@ PG_DB="isolated_delivery"
 CONTAINER_NAME="isolated-pg-${RANDOM}-$$"
 
 # 3. Spawn ephemeral PostgreSQL container (no volumes, loopback random port)
-CONTAINER_ID=$(docker run -d --rm \
+CONTAINER_ID=$(docker run -d --rm --pull=never \
+  --label "delivery.issue6.owner=$OWNER_NONCE" \
   --name "$CONTAINER_NAME" \
   -p 127.0.0.1::5432 \
   -e POSTGRES_USER="$PG_USER" \
