@@ -14,7 +14,7 @@ NEWMAN_ARGS=()
 for arg in "$@"; do
   if [[ "$arg" == "--report" ]]; then
     NEWMAN_ARGS=(
-      -r cli,htmlextra
+      -r 'cli,htmlextra'
       --reporter-htmlextra-export reports/newman/informe-api.html
       --reporter-htmlextra-title "Pruebas de API - Logistica UTA"
       --reporter-htmlextra-browserTitle "Informe Newman"
@@ -39,6 +39,8 @@ BACKEND_PID=""
 BACKEND_LOG=""
 RUNNER_EXIT_CODE=0
 
+# Invoked indirectly via EXIT trap
+# shellcheck disable=SC2317
 cleanup() {
   local status=$?
   set +e
@@ -58,6 +60,8 @@ cleanup() {
   exit "$status"
 }
 
+# Invoked indirectly via signal traps (INT, TERM, HUP)
+# shellcheck disable=SC2317
 handle_signal() {
   local sig_code=$1
   RUNNER_EXIT_CODE=$sig_code
@@ -98,7 +102,7 @@ ISOLATED_DB_URL="postgresql://${PG_USER}:${PG_PASS}@127.0.0.1:${PG_PORT}/${PG_DB
 
 # 4. Wait for PostgreSQL readiness (timeout 30s)
 READY=0
-for i in {1..30}; do
+for attempt in {1..30}; do
   if docker logs "$CONTAINER_ID" 2>&1 | grep -q "ready for start up"; then
     if docker exec "$CONTAINER_ID" pg_isready -U "$PG_USER" -d "$PG_DB" >/dev/null 2>&1; then
       READY=1
@@ -109,7 +113,7 @@ for i in {1..30}; do
 done
 
 if [[ $READY -eq 0 ]]; then
-  echo "Error: PostgreSQL readiness timeout in ephemeral container." >&2
+  echo "Error: PostgreSQL readiness timeout in ephemeral container after ${attempt} attempts." >&2
   RUNNER_EXIT_CODE=1
   exit 1
 fi
@@ -133,14 +137,14 @@ PORT="$APP_PORT" \
 DATABASE_URL="$ISOLATED_DB_URL" \
 JWT_SECRET="$JWT_SECRET" \
 JWT_EXPIRES_IN="$JWT_EXPIRES_IN" \
-node dist/main.js > "$BACKEND_LOG" 2>&1 &
+node dist/main.js > "$BACKEND_LOG" 2>&1 &\
 BACKEND_PID=$!
 
 # Wait for backend readiness on /api/v1/zones (timeout 30s) with liveness & timeout guard
 BACKEND_READY=0
-for i in {1..30}; do
+for attempt in {1..30}; do
   if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
-    echo "Error: Dedicated backend process died unexpectedly (PID $BACKEND_PID)." >&2
+    echo "Error: Dedicated backend process died unexpectedly (PID $BACKEND_PID) on attempt ${attempt}." >&2
     if [[ -f "$BACKEND_LOG" ]]; then
       cat "$BACKEND_LOG" >&2
     fi
@@ -155,7 +159,7 @@ for i in {1..30}; do
 done
 
 if [[ $BACKEND_READY -eq 0 ]]; then
-  echo "Error: Dedicated backend failed to start on port ${APP_PORT}." >&2
+  echo "Error: Dedicated backend failed to start on port ${APP_PORT} after ${attempt} attempts." >&2
   if [[ -f "$BACKEND_LOG" ]]; then
     cat "$BACKEND_LOG" >&2
   fi

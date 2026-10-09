@@ -112,6 +112,11 @@ exit ${newmanCode}
     expect(content).toMatch(/^#!\/usr\/bin\/env bash|^#!\/bin\/bash/);
     expect(content).toContain('set -euo pipefail');
     expect(content).toContain('trap');
+    expect(content).toMatch(/trap\s+cleanup\s+EXIT/);
+    expect(content).toMatch(/trap\s+['"]handle_signal\s+130['"]\s+INT/);
+    expect(content).toMatch(/trap\s+['"]handle_signal\s+143['"]\s+TERM/);
+    expect(content).toMatch(/trap\s+['"]handle_signal\s+129['"]\s+HUP/);
+    expect(content).toMatch(/-r\s+['"]cli,htmlextra['"]/);
     // Must NOT contain testing bypass flags
     expect(content).not.toContain('RUNNER_TEST_MODE');
     expect(content).not.toContain('ALLOW_UNSAFE_EXTERNAL_DB');
@@ -196,6 +201,30 @@ exit ${newmanCode}
     expect(calls.some((c) => c.includes('backend-started'))).toBe(true);
     expect(calls.some((c) => c.includes('backend-killed'))).toBe(true);
     expect(calls.some((c) => c.includes('docker rm') && c.includes('mock-pg-container-id-777'))).toBe(true);
+  });
+
+  it('passes single quoted reporter comma argument -r cli,htmlextra when --report flag is provided', () => {
+    setupStandardFakeBinaries();
+
+    const env = {
+      ...process.env,
+      PATH: `${fakeBinDir}:${process.env.PATH}`,
+    };
+    delete env.DATABASE_URL;
+
+    const res = spawnSync('bash', [runnerScriptPath, '--report'], {
+      env,
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+
+    expect(res.status).toBe(0);
+
+    const calls = readCallLog();
+    const newmanCall = calls.find((c) => c.startsWith('newman'));
+    expect(newmanCall).toBeDefined();
+    expect(newmanCall).toContain('-r cli,htmlextra');
+    expect(newmanCall).toContain('--reporter-htmlextra-export reports/newman/informe-api.html');
   });
 
   it('preserves failure exit code 42 from Newman and cleans up backend PID and container', () => {

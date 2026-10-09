@@ -21,17 +21,21 @@ Refs #8
 - **Grafo centralizado de ciclo de vida (`order-status.policy.ts`):** Definición formal de transiciones válidas (`PENDING` -> `ASSIGNED`/`CANCELLED`, `ASSIGNED` -> `IN_TRANSIT`/`CANCELLED`, `IN_TRANSIT` -> `DELIVERED`/`CANCELLED`), inmutabilidad de estados terminales (`DELIVERED`, `CANCELLED`) y rechazo con `400 Bad Request` ante transiciones inválidas para administradores.
 - **Escritura condicional atómica:** Implementación de filtro `.where({ id, status })` en la mutación para detectar colisiones de concurrencia y responder `409 Conflict`.
 - **Suite de pruebas de integración E2E con PostgreSQL real (`orders-security.e2e-spec.ts` y `orders-security.fixtures.ts`):** 30 casos de prueba de seguridad con JWT real, guards de producción, aislamiento estricto de fixtures por IDs creados y limpieza garantizada en `try/finally` sin reinicio de datos ni migraciones destructivas.
-- **Documentación de seguridad (`docs/order-security.md`):** Matriz de permisos, orden de evaluación, ciclo de vida, códigos de error HTTP y análisis de visibilidad de rutas.
+- **Ejecutor aislado y seguro de pruebas de API (`test/run-newman-isolated.sh` y `test/run-newman-isolated.spec.ts`):** Contenedor efímero dedicado en puerto dinámico loopback, inicialización y seed exclusivamente en BD propia, rechazo estricto de `DATABASE_URL` externa/heredada, backend dedicado, captura de señales (SIGINT 130, SIGTERM 143), preservación de códigos de error y limpieza atómica al salir.
+- **Integración y contrato en CI (`.github/workflows/ci.yml` y `test/ci-security.spec.ts`):** Verificación de sintaxis shell (`bash -n`) y `shellcheck`, ejecución de E2E (31 pruebas) contra servicio PostgreSQL temporal antes de Newman, e invocación segura `env -u DATABASE_URL pnpm run test:api:report` para preservar la autonomía del runner aislado sin colisiones.
+- **Documentación de seguridad (`docs/order-security.md`):** Matriz de permisos, orden de evaluación, ciclo de vida, códigos de error HTTP, arquitectura del runner y análisis de visibilidad de rutas.
 
 ## Pruebas realizadas
 
 | Prueba | Resultado | Evidencia |
 |---|---|---|
 | Análisis estático | APROBADO | `pnpm lint` (`oxlint --type-aware src/ test/`) ejecutado con 0 errores y 0 advertencias. |
-| Pruebas unitarias | APROBADO | `pnpm test --runInBand` ejecutado con 19 suites aprobadas y 141 pruebas unitarias aprobadas. |
-| Pruebas de integración | APROBADO | `pnpm test:e2e --runInBand` ejecutado contra PostgreSQL real con 2 suites aprobadas y 31 pruebas aprobadas (30 pruebas de seguridad en `test/orders-security.e2e-spec.ts`). |
+| Validación de scripts shell | APROBADO | `bash -n test/run-newman-isolated.sh` (exit 0) y validación estática con contenedor `docker run --rm -i koalaman/shellcheck:v0.10.0 - < test/run-newman-isolated.sh` (exit 0 sin advertencias). Configurado en CI como control obligatorio. |
 | Compilación | APROBADO | `pnpm build` (`nest build`) compiló exitosamente sin errores de compilación TypeScript. |
-| Pruebas funcionales | N/A | Las pruebas funcionales integrales de extremo a extremo con herramientas de API externas corresponden a etapas posteriores de despliegue y no forman parte del cambio de autorización en backend. |
+| Pruebas unitarias y contrato | APROBADO | `pnpm test --runInBand` ejecutado con 21 suites aprobadas y 156 pruebas aprobadas. |
+| Cobertura de código (CI >= 80 %) | APROBADO | `pnpm run test:cov` superó el umbral del 80 %: Statements 98.08 %, Branches 87.82 %, Functions 92.68 %, Lines 98.10 %. |
+| Pruebas de integración E2E | APROBADO | `pnpm test:e2e --runInBand` ejecutado contra PostgreSQL efímero con 2 suites aprobadas y 31 pruebas aprobadas. |
+| Pruebas de API (Newman aislado) | APROBADO | `env -u DATABASE_URL pnpm run test:api:report` con 59 requests y 242 aserciones aprobadas (0 fallos). |
 
 ## Evidencias
 
@@ -40,27 +44,60 @@ Refs #8
 $ oxlint --type-aware src/ test/
 ```
 
-### 2. Compilación (`pnpm build`)
+### 2. Validación de scripts shell
+```text
+$ bash -n test/run-newman-isolated.sh
+# exit 0
+$ docker run --rm -i koalaman/shellcheck:v0.10.0 - < test/run-newman-isolated.sh
+# exit 0
+```
+
+### 3. Compilación (`pnpm build`)
 ```text
 $ nest build
 ```
 
-### 3. Pruebas unitarias (`pnpm test --runInBand`)
+### 4. Pruebas unitarias y contratos (`pnpm test --runInBand`)
 ```text
-Test Suites: 19 passed, 19 total
-Tests:       141 passed, 141 total
+Test Suites: 21 passed, 21 total
+Tests:       156 passed, 156 total
 Snapshots:   0 total
-Time:        6.97 s
+Time:        17.601 s
 Ran all test suites.
 ```
 
-### 4. Pruebas de integración E2E (`pnpm test:e2e --runInBand`)
+### 5. Cobertura de código (`pnpm run test:cov`)
+```text
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   98.08 |    87.82 |   92.68 |    98.1 |
+-------------------|---------|----------|---------|---------|-------------------
+Test Suites: 21 passed, 21 total
+Tests:       156 passed, 156 total
+```
+
+### 6. Pruebas de integración E2E (`pnpm test:e2e --runInBand`)
 ```text
 Test Suites: 2 passed, 2 total
 Tests:       31 passed, 31 total
 Snapshots:   0 total
-Time:        2.461 s
+Time:        2.439 s
 Ran all test suites.
+```
+
+### 7. Pruebas de API Newman (`env -u DATABASE_URL pnpm run test:api:report`)
+```text
+┌─────────────────────────┬──────────────────┬──────────────────┐
+│                         │         executed │           failed │
+├─────────────────────────┼──────────────────┼──────────────────┤
+│              iterations │                1 │                0 │
+├─────────────────────────┼──────────────────┼──────────────────┤
+│                requests │               59 │                0 │
+├─────────────────────────┼──────────────────┼──────────────────┤
+│              assertions │              242 │                0 │
+└─────────────────────────┴──────────────────┴──────────────────┘
+Reporte HTML: reports/newman/informe-api.html
 ```
 
 ## Impacto técnico
@@ -85,8 +122,11 @@ Ran all test suites.
 - El servicio de rutas (`RoutesService.assignRoute`) continúa operando de forma compatible, asignando pedidos en estado `PENDING` a rutas y actualizándolos a `ASSIGNED` de forma atómica dentro de su transacción.
 
 **Limitaciones conocidas:**
-- *Aceptación parcial y dependencia de Issue #10:* Las actualizaciones de estado operativas por parte del repartidor (`IN_TRANSIT`, `DELIVERED`) están bloqueadas preventivamente (*fail-closed*) hasta que el Issue #10 provea la lógica de verificación de ruta en progreso (`Route.IN_PROGRESS`).
+- *Aceptación parcial y dependencia de Issue #10:* Las transiciones operativas del repartidor (`IN_TRANSIT`, `DELIVERED`) están configuradas de forma fail-closed con `403 Forbidden` tras resolver la pertenencia del pedido a la ruta. No se omiten estas pruebas en la colección de Newman ni en E2E; se ejecutan y validan como peticiones negativas con código 403. La progresión operativa positiva (`ASSIGNED` $\rightarrow$ `IN_TRANSIT` $\rightarrow$ `DELIVERED`) requiere la comprobación de `Route.IN_PROGRESS` y queda formalmente delegada al Issue #10.
+- *Validación DTO de esquemas:* Todo valor de estado inválido suministrado en la petición (ej. `VOLANDO`) es rechazado con `400 Bad Request` por `ValidationPipe` antes de procesar reglas de negocio.
+- *Aislamiento estricto del ejecutor y rechazo de variables externas:* `test/run-newman-isolated.sh` gestiona exclusivamente un contenedor PostgreSQL efímero y un proceso backend dedicado en loopback con puertos dinámicos. Rechaza incondicionalmente cualquier `DATABASE_URL` heredada en el entorno (exit 1). En CI y ejecución local se invoca con `env -u DATABASE_URL pnpm run test:api:report`.
 - *Visibilidad de rutas para repartidores:* Los repartidores no cuentan actualmente con un endpoint propio para consultar el listado de pedidos de su ruta asignada en `RoutesController`, dado que dichos endpoints están restringidos a `ADMIN`.
+- *Pipeline de CI remoto pendiente:* La integración automatizada en GitHub Actions está configurada en `.github/workflows/ci.yml` (con jobs de calidad y E2E + Newman aislado sin `continue-on-error`), pero su ejecución remota real queda sujeta a la publicación y ejecución del pipeline en GitHub.
 
 ## Checklist de entrega
 
