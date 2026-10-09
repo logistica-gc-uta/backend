@@ -481,6 +481,50 @@ describe('OrdersService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
+    it('DRIVER es rechazado con ForbiddenException ante transición inválida del grafo sobre pedido ajeno (autoriza pertenencia antes de validar grafo)', async () => {
+      prismaMock.order.first.mockResolvedValue(pendingOrder);
+      prismaMock.driver.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'driver-2', userId: 'foreign-driver-id' }),
+      });
+      prismaMock.route.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
+      });
+
+      // PENDING -> DELIVERED es una transición inválida en el grafo.
+      // Debe lanzar ForbiddenException (pertenencia), NO BadRequestException (grafo).
+      await expect(
+        service.updateStatus('order-1', { status: OrderStatus.DELIVERED }, foreignDriverUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('DRIVER es rechazado con ForbiddenException ante transición desde estado terminal sobre pedido de su ruta (fail-closed constante antes de validar grafo)', async () => {
+      prismaMock.order.first.mockResolvedValue(deliveredOrder);
+      prismaMock.driver.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'driver-1', userId: 'driver-id' }),
+      });
+      prismaMock.route.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
+      });
+
+      // DELIVERED es terminal. El chofer debe recibir ForbiddenException (fail-closed #10), NO BadRequestException.
+      await expect(
+        service.updateStatus('order-1', { status: OrderStatus.CANCELLED }, assignedDriverUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('CLIENT es rechazado con ForbiddenException ante transición inválida o estado terminal (rechaza por rol antes del grafo)', async () => {
+      prismaMock.order.first.mockResolvedValue(deliveredOrder);
+      const clientUser: AuthenticatedUser = {
+        userId: 'client-1',
+        email: 'c@c.com',
+        role: 'CLIENT',
+      };
+
+      await expect(
+        service.updateStatus('order-1', { status: OrderStatus.CANCELLED }, clientUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
     it('debe detectar y prevenir concurrencia stale si la actualización atómica condicional no afecta filas', async () => {
       prismaMock.order.first.mockResolvedValue(pendingOrder);
       // Simula que la actualización condicional devuelve null (carrera donde el estado cambió entre lectura y escritura)

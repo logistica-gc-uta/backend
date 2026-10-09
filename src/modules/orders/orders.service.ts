@@ -158,22 +158,12 @@ export class OrdersService {
       throw new NotFoundException(`Pedido con ID '${id}' no encontrado`);
     }
 
-    // 1. Validar transición de estado en el grafo centralizado de ciclo de vida
-    validateOrderTransition(order.status as OrderStatus, dto.status);
+    // 1. Control estricto de permisos y pertenencia (autorización precede al grafo)
+    if (user.role === 'CLIENT') {
+      throw new ForbiddenException('Rol no autorizado para modificar el estado del pedido');
+    }
 
-    // 2. Control estricto de permisos y roles en mutaciones
-    if (user.role === 'ADMIN') {
-      if (dto.status === OrderStatus.ASSIGNED) {
-        throw new BadRequestException(
-          'La asignación de pedidos solo puede realizarse a través del endpoint de rutas',
-        );
-      }
-      if (dto.status !== OrderStatus.CANCELLED) {
-        throw new BadRequestException(
-          'Los administradores solo pueden cancelar pedidos no terminales',
-        );
-      }
-    } else if (user.role === 'DRIVER') {
+    if (user.role === 'DRIVER') {
       // Resolución de identidad User -> Driver -> Route -> Order
       const driver = await this.prisma.driver.where({ userId: user.userId }).first();
       if (!driver) {
@@ -193,6 +183,22 @@ export class OrdersService {
       throw new ForbiddenException(
         'Las actualizaciones de estado por parte del repartidor están deshabilitadas hasta que se implemente la verificación de ruta en progreso (#10)',
       );
+    }
+
+    if (user.role === 'ADMIN') {
+      // 2. Validar transición de estado en el grafo centralizado (solo tras autorizar)
+      validateOrderTransition(order.status as OrderStatus, dto.status);
+
+      if (dto.status === OrderStatus.ASSIGNED) {
+        throw new BadRequestException(
+          'La asignación de pedidos solo puede realizarse a través del endpoint de rutas',
+        );
+      }
+      if (dto.status !== OrderStatus.CANCELLED) {
+        throw new BadRequestException(
+          'Los administradores solo pueden cancelar pedidos no terminales',
+        );
+      }
     } else {
       throw new ForbiddenException('Rol no autorizado para modificar el estado del pedido');
     }

@@ -161,6 +161,8 @@ http://localhost:3000/api/docs
 - **API Base:** `http://localhost:3000/api/v1`
 - **Swagger / OpenAPI interactivo:** [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
   > Puedes autenticarte directamente en Swagger haciendo clic en el botón **Authorize** e ingresando el token Bearer devuelto por `/api/v1/auth/login`.
+- **Seguridad y Ciclo de Vida de Pedidos (#8):** [`docs/order-security.md`](./docs/order-security.md) (Matriz de permisos, mitigación IDOR/BOLA, gobierno de estados y concurrencia).
+- **Diseño de Armado de Rutas (Clarke & Wright):** [`docs/clarke-wright.md`](./docs/clarke-wright.md).
 
 ---
 
@@ -190,6 +192,12 @@ pnpm run test:api:report   # consola + reporte HTML en reports/newman/informe-ap
 pnpm run test
 ```
 Ejecuta la suite de pruebas Jest cubriendo autenticación, validación de reglas de negocio en `RoutesService` y controladores.
+
+### Ejecutar Pruebas de Integración y Seguridad (E2E)
+```bash
+pnpm run test:e2e
+```
+Ejecuta las pruebas de integración E2E contra PostgreSQL real (`test/orders-security.e2e-spec.ts`), validando autorización JWT, matriz de roles, grafo de estados y aislamiento de fixtures.
 
 ### Ejecutar Linter
 ```bash

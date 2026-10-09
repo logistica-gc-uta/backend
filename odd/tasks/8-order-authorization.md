@@ -12,8 +12,8 @@ Fix order IDOR/BOLA using authenticated JWT identity and centralize order transi
 - Preserve contracts except insecure permissions. Handle stale/concurrent mutations where applicable.
 
 ## Tasks
-- [ ] T1 (in progress): Fix authenticated ownership and central lifecycle enforcement, test-first unit tests and API contract documentation. Verify focused tests, lint/build; review this work-unit candidate and commit locally.
-- [ ] T2 (pending): Add isolated PostgreSQL/JWT negative integration tests and final documentation/PR proposal from the repository template. Verify pnpm lint/build/test/test:e2e; review candidate and commit locally. Do not reset existing data.
+- [x] T1 (complete, commit 650e261): Fix authenticated ownership and central lifecycle enforcement, test-first unit tests and API contract documentation. Verify focused tests, lint/build; review this work-unit candidate and commit locally.
+- [ ] T2 (in progress): Add isolated PostgreSQL/JWT negative integration tests and final documentation/PR proposal from the repository template. Verify pnpm lint/build/test/test:e2e; review candidate and commit locally. Do not reset existing data.
 
 ## Acceptance and checks
 Cross-driver read/write rejection; own-client reads and foreign-client denial; ADMIN permission restrictions; invalid/missing JWT; terminal and invalid transitions; database unchanged after rejected requests. PostgreSQL integration and required scripts must have observed results, not inferred passes. Full #8 acceptance remains partial: route IN_PROGRESS depends on #10; CI, published/reviewed/integrated PR are not available locally.
@@ -22,4 +22,4 @@ Cross-driver read/write rejection; own-client reads and foreign-client denial; A
 Exploration found unauthenticated ownership in findOne and unrestricted updateStatus mutations. RDD on (global). Explorer reports healthy local PostgreSQL and initial tests/lint; independent execution evidence still required.
 
 ## Next step
-T1 bounded implementation with observed RED/GREEN. Commits and review outcomes pending.
+T1 commit 650e261 implemented with observed behavioral RED (12 service failures and controller identity forwarding failure) and GREEN (138 tests/19 suites, lint/build). Parent spot check: 27 service tests passed. Four native lenses approved review-8b211f52797540ff; exact acknowledgement completed, authority consumed. Subsequent ASSESS was unassessable due to untracked declaration and mandates independent verification; independent verifier passed lint/build and all 138 tests (19 suites), with no severe candidate defects. T1 closed. T2 added PostgreSQL integration (28 E2E cases passed) and docs; parent found transition validation before authorization leaks foreign order status and inaccurate PR acceptance checkbox. T2 includes a bounded correction: authorize before graph validation, negative cross-driver terminal tests, honest partial acceptance documentation. T1 commit remains valid foundation; final security outcome waits for this correction. Native review of the progress-only document also approved and acknowledged.
