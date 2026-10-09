@@ -11,9 +11,10 @@ export enum OrderStatus {
 
 export class UpdateOrderStatusDto {
   @ApiProperty({
-    description: 'Nuevo estado del pedido',
+    description:
+      'Nuevo estado del pedido según el grafo de ciclo de vida (ADMIN solo CANCELLED; DRIVER sujeto a ruta activa)',
     enum: OrderStatus,
-    example: OrderStatus.IN_TRANSIT,
+    example: OrderStatus.CANCELLED,
   })
   @IsNotEmpty({ message: 'El estado es obligatorio' })
   @IsEnum(OrderStatus, {
@@ -21,4 +22,3 @@ export class UpdateOrderStatusDto {
   })
   status!: OrderStatus;
 }
-

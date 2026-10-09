@@ -53,19 +53,20 @@ describe('OrdersController', () => {
     expect(result).toEqual(orders);
   });
 
-  it('findOne debe delegar al servicio', async () => {
+  it('findOne debe delegar al servicio con id y usuario autenticado', async () => {
     const order = { id: 'order-1' };
+    const user: AuthenticatedUser = { userId: 'client-1', email: 'c@c.com', role: 'CLIENT' };
     ordersServiceMock.findOne.mockResolvedValue(order);
 
-    const result = await controller.findOne('order-1');
-    expect(ordersServiceMock.findOne).toHaveBeenCalledWith('order-1');
+    const result = await controller.findOne('order-1', user);
+    expect(ordersServiceMock.findOne).toHaveBeenCalledWith('order-1', user);
     expect(result).toEqual(order);
   });
 
   it('updateStatus debe delegar con id, dto y user', async () => {
-    const dto = { status: OrderStatus.IN_TRANSIT };
-    const user: AuthenticatedUser = { userId: 'driver-1', email: 'd@d.com', role: 'DRIVER' };
-    const updated = { id: 'order-1', status: OrderStatus.IN_TRANSIT };
+    const dto = { status: OrderStatus.CANCELLED };
+    const user: AuthenticatedUser = { userId: 'admin-1', email: 'a@a.com', role: 'ADMIN' };
+    const updated = { id: 'order-1', status: OrderStatus.CANCELLED };
     ordersServiceMock.updateStatus.mockResolvedValue(updated);
 
     const result = await controller.updateStatus('order-1', dto, user);

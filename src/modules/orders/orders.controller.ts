@@ -46,18 +46,29 @@ export class OrdersController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Consultar detalle de un pedido por ID' })
+  @ApiOperation({
+    summary: 'Consultar detalle de un pedido por ID (CLIENT propio, DRIVER asignado a ruta, ADMIN global)',
+  })
   @ApiResponse({ status: 200, description: 'Detalle del pedido' })
+  @ApiResponse({ status: 403, description: 'Acceso denegado: no autorizado para consultar este pedido' })
   @ApiResponse({ status: 404, description: 'Pedido no encontrado' })
-  async findOne(@Param('id') id: string) {
-    return this.ordersService.findOne(id);
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.ordersService.findOne(id, user);
   }
 
   @Patch(':id/status')
   @Roles(Role.DRIVER, Role.ADMIN)
-  @ApiOperation({ summary: 'Actualizar estado del pedido (IN_TRANSIT, DELIVERED, CANCELLED) (DRIVER/ADMIN)' })
+  @ApiOperation({
+    summary: 'Actualizar estado del pedido (ADMIN cancelación no terminal; DRIVER bloqueado fail-closed hasta ruta en progreso)',
+  })
   @ApiResponse({ status: 200, description: 'Estado actualizado correctamente' })
-  @ApiResponse({ status: 400, description: 'El repartidor no puede modificar pedidos en estado PENDING' })
+  @ApiResponse({ status: 400, description: 'Transición inválida o asignación no permitida en este endpoint' })
+  @ApiResponse({ status: 403, description: 'Acceso denegado: rol o ruta no autorizada (DRIVER fail-closed hasta Issue #10)' })
+  @ApiResponse({ status: 404, description: 'Pedido no encontrado' })
+  @ApiResponse({ status: 409, description: 'Conflicto por modificación concurrente del pedido' })
   async updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdateOrderStatusDto,
