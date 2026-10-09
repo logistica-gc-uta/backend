@@ -131,3 +131,27 @@ Ejecución verificada en entorno local con PostgreSQL real:
 - **Compilación:** `pnpm build` $\rightarrow$ exitoso (`nest build`).
 - **Pruebas unitarias:** `pnpm test --runInBand` $\rightarrow$ 19 suites pasadas, 141 pruebas pasadas.
 - **Pruebas de integración E2E:** `pnpm test:e2e --runInBand` $\rightarrow$ 2 suites pasadas, 31 pruebas pasadas (30 pruebas de seguridad en `test/orders-security.e2e-spec.ts`).
+- **Contrato de seguridad del ejecutor:** `pnpm test test/run-newman-isolated.spec.ts --runInBand` $\rightarrow$ 1 suite pasada, 4 pruebas pasadas verificando spawn efímero, cleanup en éxito/fallo y rechazo estricto de base de datos compartida o externa.
+- **Suite de API Newman aislada:** `pnpm run test:api:isolated` / `pnpm run test:api:report` $\rightarrow$ 59 requests ejecutados, 242 aserciones pasadas (0 fallos) contra contenedor PostgreSQL efímero e independiente.
+
+---
+
+## 8. Arquitectura del ejecutor aislado de API (Newman) y pruebas de regresión
+
+Para garantizar la reproducibilidad y prevenir la corrupción o reinicio indiscriminado de la base de datos de desarrollo (`DATABASE_URL`), las pruebas de API se ejecutan mediante `test/run-newman-isolated.sh`:
+
+1. **Aislamiento absoluto de infraestructura:**
+   - Cada ejecución levanta un contenedor PostgreSQL 16 efímero dedicado (`--rm`, sin volúmenes persistentes montados en el host).
+   - El puerto es asignado dinámicamente por el kernel en loopback (`127.0.0.1::5432`), evitando colisiones con instancias existentes en el puerto 5432.
+   - Credenciales desechables (`isolated_test`), sin exponer secretos en logs.
+   - Se prohíbe terminantemente la reutilización o reseteo de bases de datos externas arbitrarias suministradas en el entorno (`DATABASE_URL`).
+2. **Ciclo de vida y limpieza garantizada (`trap`):**
+   - Una trampa POSIX (`trap cleanup EXIT INT TERM HUP`) asegura la terminación del proceso backend dedicado (`kill -TERM` al PID propio) y la eliminación forzada únicamente del contenedor propio (`docker rm -f $CONTAINER_ID`), tanto en caso de éxito como en fallo (`exit status` preservado).
+   - Se eliminó el comando `seed:reset-drivers` de los scripts de ejecución de pruebas de API (`test:api` y `test:api:report`), erradicando mutaciones destructivas sobre bases de datos compartidas.
+3. **Cobertura de seguridad en Newman (`delivery-api.postman_collection.json`):**
+   - **Progresión de chofer fail-closed:** Las transiciones `IN_TRANSIT` y `DELIVERED` ejecutadas por el repartidor se evalúan como negativas con `403 Forbidden` preservando invariancia en base de datos, documentando formalmente que la progresión positiva queda pendiente de la implementación de `Route.IN_PROGRESS` (Issue #10).
+   - **Autorización precede al grafo:** Intentos de mutación sobre pedidos `PENDING` por choferes sin asignación retornan `403 Forbidden` sin filtrar el estado del pedido.
+   - **Validación DTO:** Valores de enumeración inválidos (`VOLANDO`) retornan `400 Bad Request` disparados por `ValidationPipe`.
+   - **Validación cruzada de identidad (2 choferes / 2 clientes):** Pruebas cruzadas de lectura y escritura (`GET /orders/:id` y `PATCH /orders/:id/status`) verifican que el Cliente 2 y el Chofer 2 reciben `403 Forbidden` al intentar acceder o mutar pedidos del Cliente 1 o rutas del Chofer 1.
+   - **Operaciones de administrador:** Validación de que el administrador puede cancelar pedidos no terminales (`200 OK` $\rightarrow$ `CANCELLED`), pero se le deniega forzar `ASSIGNED` (`400 Bad Request`) o ejecutar transiciones operativas (`IN_TRANSIT`, `400 Bad Request`).
+   - **Protección de estados terminales e invariancia:** Intentos de mutación sobre pedidos cancelados retornan `400 Bad Request`, acompañados de consultas administrativas `GET` completas que verifican la invariancia de todos los campos estables (`id`, `userId`, `zoneId`, `routeId`, `total`, `deliveryAddress`, `items`).

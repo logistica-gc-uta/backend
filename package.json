@@ -24,8 +24,10 @@
     "contract:emit": "prisma contract emit",
     "seed": "tsx src/prisma/seed.ts",
     "seed:reset-drivers": "tsx src/prisma/reset-drivers.ts",
-    "test:api": "newman run delivery-api.postman_collection.json -e test/postman/logistica_env.json",
-    "test:api:report": "pnpm run seed:reset-drivers && newman run delivery-api.postman_collection.json -e test/postman/logistica_env.json -r cli,htmlextra --reporter-htmlextra-export reports/newman/informe-api.html --reporter-htmlextra-title \"Pruebas de API - Logistica UTA\" --reporter-htmlextra-browserTitle \"Informe Newman\""
+    "test:api": "./test/run-newman-isolated.sh",
+    "test:api:isolated": "./test/run-newman-isolated.sh",
+    "test:api:raw": "newman run delivery-api.postman_collection.json -e test/postman/logistica_env.json",
+    "test:api:report": "./test/run-newman-isolated.sh --report"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

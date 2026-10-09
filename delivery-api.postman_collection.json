@@ -112,6 +112,36 @@
       "key": "otherZoneId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "driver2Email",
+      "value": "driver2@delivery.com",
+      "type": "string"
+    },
+    {
+      "key": "driver2Password",
+      "value": "driver123",
+      "type": "string"
+    },
+    {
+      "key": "client2Email",
+      "value": "client2@delivery.com",
+      "type": "string"
+    },
+    {
+      "key": "client2Password",
+      "value": "client123",
+      "type": "string"
+    },
+    {
+      "key": "driver2Token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "client2Token",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -245,6 +275,92 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{clientEmail}}\",\n  \"password\": \"{{clientPassword}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Login Driver 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Devuelve access_token JWT', () => pm.expect(body.access_token).to.be.a('string').and.match(/^[\\w-]+\\.[\\w-]+\\.[\\w-]+$/));",
+                  "pm.test('El usuario tiene rol DRIVER', () => pm.expect(body.user.role).to.eql('DRIVER'));",
+                  "pm.test('No expone la contraseña', () => pm.expect(body.user).to.not.have.property('password'));",
+                  "pm.collectionVariables.set('driver2Token', body.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Autentica al segundo repartidor creado en el seed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{driver2Email}}\",\n  \"password\": \"{{driver2Password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Login Client 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Devuelve access_token JWT', () => pm.expect(body.access_token).to.be.a('string').and.match(/^[\\w-]+\\.[\\w-]+\\.[\\w-]+$/));",
+                  "pm.test('El usuario tiene rol CLIENT', () => pm.expect(body.user.role).to.eql('CLIENT'));",
+                  "pm.test('No expone la contraseña', () => pm.expect(body.user).to.not.have.property('password'));",
+                  "pm.collectionVariables.set('client2Token', body.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Autentica al segundo cliente creado en el seed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{client2Email}}\",\n  \"password\": \"{{client2Password}}\"\n}"
             }
           }
         },
@@ -1507,6 +1623,48 @@
           }
         },
         {
+          "name": "GET Order by id - Client 2 intento IDOR (prohibido 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('IDOR bloqueado: cliente no puede consultar pedido ajeno', () => {",
+                  "  const m = pm.response.json().message;",
+                  "  pm.expect(String(m)).to.include('No tiene permisos para consultar este pedido');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{client2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Verifica que un cliente no pueda leer pedidos de otro cliente (BOLA/IDOR mitigado con 403)."
+          }
+        },
+        {
           "name": "PATCH Order Status - DRIVER sobre pedido PENDING",
           "event": [
             {
@@ -1514,7 +1672,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Autorización precede a transición: pedido sin ruta', () => {",
+                  "  const m = pm.response.json().message;",
+                  "  pm.expect(String(m)).to.include('no está asignado a ninguna ruta');",
+                  "});"
                 ]
               }
             }
@@ -1553,6 +1715,55 @@
               "mode": "raw",
               "raw": "{\n  \"status\": \"IN_TRANSIT\"\n}"
             }
+          },
+          "description": "El repartidor no puede modificar un pedido no asignado a su ruta; la autorización precede al grafo retornando 403."
+        },
+        {
+          "name": "GET Order by id (ADMIN) - Invariancia tras intento DRIVER sobre PENDING",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Invariancia en BD: pedido permanece en PENDING con campos intactos', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.id).to.eql(pm.collectionVariables.get('orderId1'));",
+                  "  pm.expect(b.status).to.eql('PENDING');",
+                  "  pm.expect(b.routeId).to.be.null;",
+                  "  pm.expect(b.zoneId).to.eql(pm.collectionVariables.get('zoneId'));",
+                  "  pm.expect(b.total).to.eql(2 * 49.9);",
+                  "  pm.expect(b.deliveryAddress).to.include('Ambato');",
+                  "  pm.expect(b.items).to.have.lengthOf(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Verificación administrativa de invariancia en PostgreSQL demostrando que el intento denegado no mutó el pedido."
           }
         }
       ]
@@ -2021,6 +2232,101 @@
           }
         },
         {
+          "name": "GET Order by id - Driver 2 intento IDOR sobre pedido de Ruta 1 (prohibido 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('IDOR entre choferes bloqueado', () => {",
+                  "  const m = pm.response.json().message;",
+                  "  pm.expect(String(m)).to.include('pedidos de otra ruta');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{driver2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Verifica que el repartidor 2 no pueda consultar pedidos de una ruta asignada al repartidor 1."
+          }
+        },
+        {
+          "name": "PATCH Order Status - Driver 2 sobre pedido de Ruta 1 (prohibido 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Mutación cruzada entre choferes bloqueada', () => {",
+                  "  const m = pm.response.json().message;",
+                  "  pm.expect(String(m)).to.include('pedidos de otra ruta');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{driver2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_TRANSIT\"\n}"
+            },
+            "description": "Verifica que el repartidor 2 no pueda mutar el estado de pedidos asignados a otra ruta."
+          }
+        },
+        {
           "name": "PATCH Order Status - DRIVER a IN_TRANSIT",
           "event": [
             {
@@ -2028,8 +2334,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Estado IN_TRANSIT', () => pm.expect(pm.response.json().status).to.eql('IN_TRANSIT'));"
+                  "pm.test('Status 403 (Fail-closed pendiente #10)', () => pm.response.to.have.status(403));",
+                  "pm.test('Mensaje explicativo de restricción #10', () => {",
+                  "  const m = pm.response.json().message;",
+                  "  pm.expect(String(m)).to.include('deshabilitadas hasta que se implemente la verificación de ruta en progreso (#10)');",
+                  "});"
                 ]
               }
             }
@@ -2068,7 +2377,8 @@
               "mode": "raw",
               "raw": "{\n  \"status\": \"IN_TRANSIT\"\n}"
             }
-          }
+          },
+          "description": "El repartidor intenta avanzar a IN_TRANSIT. La API opera fail-closed con 403 Forbidden hasta que se implemente la verificación de ruta en progreso (Issue #10)."
         },
         {
           "name": "PATCH Order Status - DRIVER a DELIVERED",
@@ -2078,8 +2388,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Estado DELIVERED', () => pm.expect(pm.response.json().status).to.eql('DELIVERED'));"
+                  "pm.test('Status 403 (Fail-closed pendiente #10)', () => pm.response.to.have.status(403));",
+                  "pm.test('Mensaje explicativo de restricción #10', () => {",
+                  "  const m = pm.response.json().message;",
+                  "  pm.expect(String(m)).to.include('deshabilitadas hasta que se implemente la verificación de ruta en progreso (#10)');",
+                  "});"
                 ]
               }
             }
@@ -2118,7 +2431,8 @@
               "mode": "raw",
               "raw": "{\n  \"status\": \"DELIVERED\"\n}"
             }
-          }
+          },
+          "description": "El repartidor intenta avanzar a DELIVERED. La API opera fail-closed con 403 Forbidden hasta que se implemente la verificación de ruta en progreso (Issue #10)."
         },
         {
           "name": "PATCH Order Status - estado inválido",
@@ -2216,6 +2530,369 @@
               "mode": "raw",
               "raw": "{\n  \"status\": \"DELIVERED\"\n}"
             }
+          }
+        },
+        {
+          "name": "PATCH Order Status - Client 2 sobre pedido de Client 1 (prohibido 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Mutación por cliente ajeno bloqueada por rol', () => {",
+                  "  const m = pm.response.json().message;",
+                  "  pm.expect(String(m)).to.include('Acceso denegado');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{client2Token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CANCELLED\"\n}"
+            },
+            "description": "Verifica que un cliente ajeno no pueda cancelar ni mutar pedidos que no le pertenecen."
+          }
+        },
+        {
+          "name": "PATCH Order Status - ADMIN intenta transición no administrativa ASSIGNED (prohibido 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Asignación administrativa rechazada', () => {",
+                  "  const m = pm.response.json().message;",
+                  "  pm.expect(String(m)).to.match(/Transición de estado inválida|endpoint de rutas/);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ASSIGNED\"\n}"
+            },
+            "description": "El administrador no puede forzar estado ASSIGNED en el endpoint de orden; debe usar /routes/assign."
+          }
+        },
+        {
+          "name": "PATCH Order Status - ADMIN intenta transición operativa IN_TRANSIT (prohibido 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Administrador solo puede cancelar pedidos no terminales', () => {",
+                  "  const m = pm.response.json().message;",
+                  "  pm.expect(String(m)).to.include('solo pueden cancelar pedidos no terminales');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_TRANSIT\"\n}"
+            },
+            "description": "El administrador no puede realizar transiciones operativas reservadas al flujo de entrega."
+          }
+        },
+        {
+          "name": "GET Order by id (ADMIN) - Verificación invariancia de pedido tras intentos denegados",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Invariancia en BD: pedido permanece ASSIGNED con campos intactos', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.id).to.eql(pm.collectionVariables.get('orderId1'));",
+                  "  pm.expect(b.status).to.eql('ASSIGNED');",
+                  "  pm.expect(b.userId).to.be.a('string');",
+                  "  pm.expect(b.zoneId).to.eql(pm.collectionVariables.get('zoneId'));",
+                  "  pm.expect(b.routeId).to.eql(pm.collectionVariables.get('routeId'));",
+                  "  pm.expect(b.total).to.eql(2 * 49.9);",
+                  "  pm.expect(b.deliveryAddress).to.include('Ambato');",
+                  "  pm.expect(b.items).to.have.lengthOf(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Comprueba mediante lectura completa autenticada que los intentos denegados previos no mutaron la base de datos."
+          }
+        },
+        {
+          "name": "PATCH Order Status - ADMIN cancela pedido no terminal (permitido 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Estado CANCELLED confirmado', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.status).to.eql('CANCELLED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId4}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId4}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CANCELLED\"\n}"
+            },
+            "description": "El administrador cancela el pedido #4 en estado ASSIGNED, transición permitida por política."
+          }
+        },
+        {
+          "name": "PATCH Order Status - ADMIN intenta transición sobre pedido cancelado terminal (prohibido 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Rechazo por estado terminal CANCELLED', () => {",
+                  "  const m = pm.response.json().message;",
+                  "  pm.expect(String(m)).to.include('estado terminal');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId4}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId4}}",
+                "status"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_TRANSIT\"\n}"
+            },
+            "description": "Intento de transicionar un pedido en estado terminal CANCELLED rechazado con 400."
+          }
+        },
+        {
+          "name": "GET Order by id (ADMIN) - Verificación invariancia estado terminal CANCELLED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Invariancia en BD: permanece CANCELLED con campos estables intactos', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.id).to.eql(pm.collectionVariables.get('orderId4'));",
+                  "  pm.expect(b.status).to.eql('CANCELLED');",
+                  "  pm.expect(b.userId).to.be.a('string');",
+                  "  pm.expect(b.zoneId).to.eql(pm.collectionVariables.get('zoneId'));",
+                  "  pm.expect(b.routeId).to.eql(pm.collectionVariables.get('routeId'));",
+                  "  pm.expect(b.total).to.eql(2 * 49.9);",
+                  "  pm.expect(b.deliveryAddress).to.include('Ambato');",
+                  "  pm.expect(b.items).to.have.lengthOf(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId4}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId4}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Comprueba que la orden #4 cancelada no sufrió mutación tras el intento inválido de reactivación."
           }
         }
       ]
