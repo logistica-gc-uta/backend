@@ -1,0 +1,254 @@
+[
+  {
+    "id": "column.public.order.deliveryLat",
+    "label": "Add column \"deliveryLat\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "deliveryLat",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"deliveryLat\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "deliveryLat"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"deliveryLat\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"deliveryLat\" float8"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"deliveryLat\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "deliveryLat"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.deliveryLng",
+    "label": "Add column \"deliveryLng\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "deliveryLng",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"deliveryLng\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "deliveryLng"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"deliveryLng\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"deliveryLng\" float8"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"deliveryLng\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "deliveryLng"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.zone.depotLat",
+    "label": "Add column \"depotLat\" to \"zone\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "depotLat",
+        "table": "zone"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"depotLat\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "zone",
+          "depotLat"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"depotLat\"",
+        "sql": "ALTER TABLE \"public\".\"zone\" ADD COLUMN \"depotLat\" float8"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"depotLat\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "zone",
+          "depotLat"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.zone.depotLng",
+    "label": "Add column \"depotLng\" to \"zone\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "depotLng",
+        "table": "zone"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"depotLng\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "zone",
+          "depotLng"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"depotLng\"",
+        "sql": "ALTER TABLE \"public\".\"zone\" ADD COLUMN \"depotLng\" float8"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"depotLng\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "zone",
+          "depotLng"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.order.order_delivery_coordinates_valid_84ff84b6",
+    "label": "Add check constraint \"order_delivery_coordinates_valid_84ff84b6\" on \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "order_delivery_coordinates_valid_84ff84b6",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"order_delivery_coordinates_valid_84ff84b6\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_delivery_coordinates_valid_84ff84b6",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"order_delivery_coordinates_valid_84ff84b6\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD CONSTRAINT \"order_delivery_coordinates_valid_84ff84b6\" CHECK ((\"deliveryLat\" IS NULL AND \"deliveryLng\" IS NULL) OR (\"deliveryLat\" IS NOT NULL AND \"deliveryLng\" IS NOT NULL AND \"deliveryLat\" >= -90 AND \"deliveryLat\" <= 90 AND \"deliveryLng\" >= -180 AND \"deliveryLng\" <= 180))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"order_delivery_coordinates_valid_84ff84b6\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_delivery_coordinates_valid_84ff84b6",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.zone.zone_depot_coordinates_valid_5c13ee7e",
+    "label": "Add check constraint \"zone_depot_coordinates_valid_5c13ee7e\" on \"zone\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "zone_depot_coordinates_valid_5c13ee7e",
+        "table": "zone"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"zone_depot_coordinates_valid_5c13ee7e\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "zone_depot_coordinates_valid_5c13ee7e",
+          "public",
+          "\"public\".\"zone\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"zone_depot_coordinates_valid_5c13ee7e\"",
+        "sql": "ALTER TABLE \"public\".\"zone\" ADD CONSTRAINT \"zone_depot_coordinates_valid_5c13ee7e\" CHECK ((\"depotLat\" IS NULL AND \"depotLng\" IS NULL) OR (\"depotLat\" IS NOT NULL AND \"depotLng\" IS NOT NULL AND \"depotLat\" >= -90 AND \"depotLat\" <= 90 AND \"depotLng\" >= -180 AND \"depotLng\" <= 180))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"zone_depot_coordinates_valid_5c13ee7e\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "zone_depot_coordinates_valid_5c13ee7e",
+          "public",
+          "\"public\".\"zone\""
+        ]
+      }
+    ]
+  }
+]
