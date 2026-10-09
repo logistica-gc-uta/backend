@@ -8,7 +8,11 @@
     { "key": "driverEmail", "value": "driver1@delivery.com", "type": "default", "enabled": true },
     { "key": "driverPassword", "value": "driver123", "type": "secret", "enabled": true },
     { "key": "clientEmail", "value": "client1@delivery.com", "type": "default", "enabled": true },
-    { "key": "clientPassword", "value": "client123", "type": "secret", "enabled": true }
+    { "key": "clientPassword", "value": "client123", "type": "secret", "enabled": true },
+    { "key": "driver2Email", "value": "driver2@delivery.com", "type": "default", "enabled": true },
+    { "key": "driver2Password", "value": "driver123", "type": "secret", "enabled": true },
+    { "key": "client2Email", "value": "client2@delivery.com", "type": "default", "enabled": true },
+    { "key": "client2Password", "value": "client123", "type": "secret", "enabled": true }
   ],
   "_postman_variable_scope": "environment"
 }

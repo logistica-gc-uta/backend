@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
@@ -44,6 +44,12 @@ describe('OrdersService', () => {
         where: jest.fn(),
       },
       product: {
+        where: jest.fn(),
+      },
+      driver: {
+        where: jest.fn(),
+      },
+      route: {
         where: jest.fn(),
       },
       order: {
@@ -130,9 +136,7 @@ describe('OrdersService', () => {
       expect(result.total).toBe(1500.0); // 750 * 2
       expect(result.status).toBe(OrderStatus.PENDING);
 
-      // Descuento de stock en transacción
       expect(txMock.orm.public.Product.where).toHaveBeenCalledWith({ id: 'prod-1' });
-      // Items creados
       expect(txMock.orm.public.OrderItem.create).toHaveBeenCalledWith({
         orderId: 'order-uuid-1',
         productId: 'prod-1',
@@ -149,7 +153,7 @@ describe('OrdersService', () => {
       prismaMock.product.where.mockReturnValue({
         first: jest.fn().mockResolvedValue({
           ...validProduct,
-          stock: 1, // solo 1 disponible, pero se solicitan 2
+          stock: 1,
         }),
       });
 
@@ -183,13 +187,154 @@ describe('OrdersService', () => {
     });
   });
 
-  describe('updateStatus', () => {
-    const mockOrder = {
+  describe('findOne (Control de acceso IDOR/BOLA por rol e identidad JWT)', () => {
+    const sampleOrder = {
       id: 'order-1',
-      userId: 'user-1',
+      userId: 'client-1',
       zoneId: 'zone-1',
+      routeId: 'route-1',
       status: OrderStatus.PENDING,
       total: 1500,
+    };
+
+    const adminUser: AuthenticatedUser = {
+      userId: 'admin-1',
+      email: 'admin@delivery.com',
+      role: 'ADMIN',
+    };
+
+    const ownerClient: AuthenticatedUser = {
+      userId: 'client-1',
+      email: 'client1@delivery.com',
+      role: 'CLIENT',
+    };
+
+    const foreignClient: AuthenticatedUser = {
+      userId: 'client-foreign',
+      email: 'foreign@delivery.com',
+      role: 'CLIENT',
+    };
+
+    const assignedDriverUser: AuthenticatedUser = {
+      userId: 'user-driver-1',
+      email: 'driver1@delivery.com',
+      role: 'DRIVER',
+    };
+
+    const foreignDriverUser: AuthenticatedUser = {
+      userId: 'user-driver-2',
+      email: 'driver2@delivery.com',
+      role: 'DRIVER',
+    };
+
+    it('ADMIN debe poder leer cualquier pedido globalmente', async () => {
+      prismaMock.order.first.mockResolvedValue(sampleOrder);
+
+      const result = await service.findOne('order-1', adminUser);
+      expect(result).toEqual(sampleOrder);
+    });
+
+    it('CLIENT debe poder leer sus propios pedidos', async () => {
+      prismaMock.order.first.mockResolvedValue(sampleOrder);
+
+      const result = await service.findOne('order-1', ownerClient);
+      expect(result).toEqual(sampleOrder);
+    });
+
+    it('CLIENT debe ser rechazado con ForbiddenException si intenta leer pedidos ajenos (IDOR/BOLA)', async () => {
+      prismaMock.order.first.mockResolvedValue(sampleOrder);
+
+      await expect(service.findOne('order-1', foreignClient)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('DRIVER debe poder leer el pedido si está asignado a su ruta activa (User -> Driver -> Route -> Order)', async () => {
+      prismaMock.order.first.mockResolvedValue(sampleOrder);
+      prismaMock.driver.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'driver-1', userId: 'user-driver-1' }),
+      });
+      prismaMock.route.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
+      });
+
+      const result = await service.findOne('order-1', assignedDriverUser);
+      expect(result).toEqual(sampleOrder);
+    });
+
+    it('DRIVER debe ser rechazado con ForbiddenException si el pedido no está asignado a ninguna ruta', async () => {
+      prismaMock.order.first.mockResolvedValue({ ...sampleOrder, routeId: null });
+      prismaMock.driver.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'driver-1', userId: 'user-driver-1' }),
+      });
+
+      await expect(service.findOne('order-1', assignedDriverUser)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('DRIVER debe ser rechazado con ForbiddenException si el pedido pertenece a una ruta de otro repartidor', async () => {
+      prismaMock.order.first.mockResolvedValue(sampleOrder);
+      prismaMock.driver.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'driver-2', userId: 'user-driver-2' }),
+      });
+      prismaMock.route.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
+      });
+
+      await expect(service.findOne('order-1', foreignDriverUser)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('DRIVER debe ser rechazado con ForbiddenException si el usuario no tiene perfil de chofer', async () => {
+      prismaMock.order.first.mockResolvedValue(sampleOrder);
+      prismaMock.driver.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(null),
+      });
+
+      await expect(service.findOne('order-1', assignedDriverUser)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('debe lanzar NotFoundException si el pedido no existe', async () => {
+      prismaMock.order.first.mockResolvedValue(null);
+
+      await expect(service.findOne('order-none', adminUser)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('updateStatus (Ciclo de vida centralizado y permisos estrictos)', () => {
+    const pendingOrder = {
+      id: 'order-1',
+      userId: 'client-1',
+      zoneId: 'zone-1',
+      routeId: 'route-1',
+      status: OrderStatus.PENDING,
+      total: 1500,
+    };
+
+    const assignedOrder = {
+      ...pendingOrder,
+      status: OrderStatus.ASSIGNED,
+    };
+
+    const inTransitOrder = {
+      ...pendingOrder,
+      status: OrderStatus.IN_TRANSIT,
+    };
+
+    const deliveredOrder = {
+      ...pendingOrder,
+      status: OrderStatus.DELIVERED,
+    };
+
+    const cancelledOrder = {
+      ...pendingOrder,
+      status: OrderStatus.CANCELLED,
     };
 
     const adminUser: AuthenticatedUser = {
@@ -198,62 +343,203 @@ describe('OrdersService', () => {
       role: 'ADMIN',
     };
 
-    const driverUser: AuthenticatedUser = {
+    const assignedDriverUser: AuthenticatedUser = {
       userId: 'driver-id',
       email: 'driver@delivery.com',
       role: 'DRIVER',
     };
 
-    it('debe actualizar el estado del pedido válidamente por un ADMIN', async () => {
-      prismaMock.order.first.mockResolvedValue(mockOrder);
+    const foreignDriverUser: AuthenticatedUser = {
+      userId: 'foreign-driver-id',
+      email: 'foreigndriver@delivery.com',
+      role: 'DRIVER',
+    };
+
+    it('ADMIN puede cancelar pedidos no terminales (PENDING -> CANCELLED)', async () => {
+      prismaMock.order.first.mockResolvedValue(pendingOrder);
       prismaMock.order.update.mockResolvedValue({
-        ...mockOrder,
-        status: OrderStatus.ASSIGNED,
+        ...pendingOrder,
+        status: OrderStatus.CANCELLED,
       });
 
       const result = await service.updateStatus(
         'order-1',
-        { status: OrderStatus.ASSIGNED },
+        { status: OrderStatus.CANCELLED },
         adminUser,
       );
 
-      expect(result.status).toBe(OrderStatus.ASSIGNED);
+      expect(result.status).toBe(OrderStatus.CANCELLED);
     });
 
-    it('debe lanzar BadRequestException si un DRIVER intenta actualizar un pedido en estado PENDING', async () => {
-      prismaMock.order.first.mockResolvedValue(mockOrder);
+    it('ADMIN puede cancelar pedidos no terminales (ASSIGNED -> CANCELLED e IN_TRANSIT -> CANCELLED)', async () => {
+      prismaMock.order.first.mockResolvedValue(assignedOrder);
+      prismaMock.order.update.mockResolvedValue({
+        ...assignedOrder,
+        status: OrderStatus.CANCELLED,
+      });
+
+      const res1 = await service.updateStatus(
+        'order-1',
+        { status: OrderStatus.CANCELLED },
+        adminUser,
+      );
+      expect(res1.status).toBe(OrderStatus.CANCELLED);
+
+      prismaMock.order.first.mockResolvedValue(inTransitOrder);
+      prismaMock.order.update.mockResolvedValue({
+        ...inTransitOrder,
+        status: OrderStatus.CANCELLED,
+      });
+
+      const res2 = await service.updateStatus(
+        'order-1',
+        { status: OrderStatus.CANCELLED },
+        adminUser,
+      );
+      expect(res2.status).toBe(OrderStatus.CANCELLED);
+    });
+
+    it('ADMIN es rechazado con BadRequestException si intenta asignar pedidos vía updateStatus (asignación exclusiva en rutas)', async () => {
+      prismaMock.order.first.mockResolvedValue(pendingOrder);
 
       await expect(
-        service.updateStatus('order-1', { status: OrderStatus.IN_TRANSIT }, driverUser),
-      ).rejects.toThrow(
-        new BadRequestException('El pedido aún no ha sido asignado a una ruta por un administrador'),
-      );
+        service.updateStatus('order-1', { status: OrderStatus.ASSIGNED }, adminUser),
+      ).rejects.toThrow(BadRequestException);
     });
 
-    it('debe permitir a un DRIVER actualizar un pedido que ya está ASSIGNED a IN_TRANSIT', async () => {
-      prismaMock.order.first.mockResolvedValue({
-        ...mockOrder,
-        status: OrderStatus.ASSIGNED,
+    it('ADMIN es rechazado si intenta cambiar el pedido a estados distintos de CANCELLED (ej. IN_TRANSIT, DELIVERED)', async () => {
+      prismaMock.order.first.mockResolvedValue(assignedOrder);
+
+      await expect(
+        service.updateStatus('order-1', { status: OrderStatus.IN_TRANSIT }, adminUser),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('ADMIN es rechazado con BadRequestException si intenta cancelar un pedido en estado terminal (DELIVERED o CANCELLED)', async () => {
+      prismaMock.order.first.mockResolvedValue(deliveredOrder);
+
+      await expect(
+        service.updateStatus('order-1', { status: OrderStatus.CANCELLED }, adminUser),
+      ).rejects.toThrow(BadRequestException);
+
+      prismaMock.order.first.mockResolvedValue(cancelledOrder);
+
+      await expect(
+        service.updateStatus('order-1', { status: OrderStatus.CANCELLED }, adminUser),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('DRIVER escrituras fallan CLOSED con ForbiddenException (bloqueado hasta que exista Route.IN_PROGRESS en #10)', async () => {
+      prismaMock.order.first.mockResolvedValue(assignedOrder);
+      prismaMock.driver.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'driver-1', userId: 'driver-id' }),
       });
-      prismaMock.order.update.mockResolvedValue({
-        ...mockOrder,
-        status: OrderStatus.IN_TRANSIT,
+      prismaMock.route.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
       });
 
-      const result = await service.updateStatus(
-        'order-1',
-        { status: OrderStatus.IN_TRANSIT },
-        driverUser,
-      );
+      await expect(
+        service.updateStatus('order-1', { status: OrderStatus.IN_TRANSIT }, assignedDriverUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
 
-      expect(result.status).toBe(OrderStatus.IN_TRANSIT);
+    it('DRIVER rechazado con ForbiddenException si intenta modificar un pedido de otra ruta (cross-driver write)', async () => {
+      prismaMock.order.first.mockResolvedValue(assignedOrder);
+      prismaMock.driver.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'driver-2', userId: 'foreign-driver-id' }),
+      });
+      prismaMock.route.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
+      });
+
+      await expect(
+        service.updateStatus('order-1', { status: OrderStatus.IN_TRANSIT }, foreignDriverUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('DRIVER rechazado con ForbiddenException si el pedido no tiene ruta asignada', async () => {
+      prismaMock.order.first.mockResolvedValue({ ...assignedOrder, routeId: null });
+      prismaMock.driver.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'driver-1', userId: 'driver-id' }),
+      });
+
+      await expect(
+        service.updateStatus('order-1', { status: OrderStatus.IN_TRANSIT }, assignedDriverUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('CLIENT es rechazado con ForbiddenException al intentar modificar estado', async () => {
+      prismaMock.order.first.mockResolvedValue(assignedOrder);
+      const clientUser: AuthenticatedUser = {
+        userId: 'client-1',
+        email: 'c@c.com',
+        role: 'CLIENT',
+      };
+
+      await expect(
+        service.updateStatus('order-1', { status: OrderStatus.CANCELLED }, clientUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('DRIVER es rechazado con ForbiddenException ante transición inválida del grafo sobre pedido ajeno (autoriza pertenencia antes de validar grafo)', async () => {
+      prismaMock.order.first.mockResolvedValue(pendingOrder);
+      prismaMock.driver.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'driver-2', userId: 'foreign-driver-id' }),
+      });
+      prismaMock.route.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
+      });
+
+      // PENDING -> DELIVERED es una transición inválida en el grafo.
+      // Debe lanzar ForbiddenException (pertenencia), NO BadRequestException (grafo).
+      await expect(
+        service.updateStatus('order-1', { status: OrderStatus.DELIVERED }, foreignDriverUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('DRIVER es rechazado con ForbiddenException ante transición desde estado terminal sobre pedido de su ruta (fail-closed constante antes de validar grafo)', async () => {
+      prismaMock.order.first.mockResolvedValue(deliveredOrder);
+      prismaMock.driver.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'driver-1', userId: 'driver-id' }),
+      });
+      prismaMock.route.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
+      });
+
+      // DELIVERED es terminal. El chofer debe recibir ForbiddenException (fail-closed #10), NO BadRequestException.
+      await expect(
+        service.updateStatus('order-1', { status: OrderStatus.CANCELLED }, assignedDriverUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('CLIENT es rechazado con ForbiddenException ante transición inválida o estado terminal (rechaza por rol antes del grafo)', async () => {
+      prismaMock.order.first.mockResolvedValue(deliveredOrder);
+      const clientUser: AuthenticatedUser = {
+        userId: 'client-1',
+        email: 'c@c.com',
+        role: 'CLIENT',
+      };
+
+      await expect(
+        service.updateStatus('order-1', { status: OrderStatus.CANCELLED }, clientUser),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('debe detectar y prevenir concurrencia stale si la actualización atómica condicional no afecta filas', async () => {
+      prismaMock.order.first.mockResolvedValue(pendingOrder);
+      // Simula que la actualización condicional devuelve null (carrera donde el estado cambió entre lectura y escritura)
+      prismaMock.order.update.mockResolvedValue(null);
+
+      await expect(
+        service.updateStatus('order-1', { status: OrderStatus.CANCELLED }, adminUser),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('debe lanzar NotFoundException si el pedido no existe al actualizar estado', async () => {
       prismaMock.order.first.mockResolvedValue(null);
 
       await expect(
-        service.updateStatus('order-none', { status: OrderStatus.DELIVERED }, adminUser),
+        service.updateStatus('order-none', { status: OrderStatus.CANCELLED }, adminUser),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -275,22 +561,6 @@ describe('OrdersService', () => {
 
       const result = await service.findAll();
       expect(result).toEqual(orders);
-    });
-  });
-
-  describe('findOne', () => {
-    it('debe retornar un pedido si existe', async () => {
-      const order = { id: 'order-1' };
-      prismaMock.order.first.mockResolvedValue(order);
-
-      const result = await service.findOne('order-1');
-      expect(result).toEqual(order);
-    });
-
-    it('debe lanzar NotFoundException si el pedido no existe', async () => {
-      prismaMock.order.first.mockResolvedValue(null);
-
-      await expect(service.findOne('invalid-id')).rejects.toThrow(NotFoundException);
     });
   });
 });

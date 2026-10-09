@@ -1,9 +1,16 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { toInstant } from '../../common/temporal.util.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
 import { OrderStatus, UpdateOrderStatusDto } from './dto/update-order-status.dto.js';
+import { validateOrderTransition } from './order-status.policy.js';
 
 @Injectable()
 export class OrdersService {
@@ -102,7 +109,7 @@ export class OrdersService {
       .all();
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user: AuthenticatedUser) {
     const order = await this.prisma.order
       .where({ id })
       .include('items', (i) => i.include('product'))
@@ -112,7 +119,37 @@ export class OrdersService {
     if (!order) {
       throw new NotFoundException(`Pedido con ID '${id}' no encontrado`);
     }
-    return order;
+
+    if (user.role === 'ADMIN') {
+      return order;
+    }
+
+    if (user.role === 'CLIENT') {
+      if (order.userId !== user.userId) {
+        throw new ForbiddenException('No tiene permisos para consultar este pedido');
+      }
+      return order;
+    }
+
+    if (user.role === 'DRIVER') {
+      const driver = await this.prisma.driver.where({ userId: user.userId }).first();
+      if (!driver) {
+        throw new ForbiddenException('El usuario no tiene un perfil de repartidor asociado');
+      }
+
+      if (!order.routeId) {
+        throw new ForbiddenException('El pedido no está asignado a ninguna ruta');
+      }
+
+      const route = await this.prisma.route.where({ id: order.routeId }).first();
+      if (!route || route.driverId !== driver.id) {
+        throw new ForbiddenException('No tiene permisos para consultar pedidos de otra ruta');
+      }
+
+      return order;
+    }
+
+    throw new ForbiddenException('Rol no autorizado para consultar pedidos');
   }
 
   async updateStatus(id: string, dto: UpdateOrderStatusDto, user: AuthenticatedUser) {
@@ -121,15 +158,61 @@ export class OrdersService {
       throw new NotFoundException(`Pedido con ID '${id}' no encontrado`);
     }
 
-    if (user.role === 'DRIVER' && order.status === OrderStatus.PENDING) {
-      throw new BadRequestException(
-        'El pedido aún no ha sido asignado a una ruta por un administrador',
+    // 1. Control estricto de permisos y pertenencia (autorización precede al grafo)
+    if (user.role === 'CLIENT') {
+      throw new ForbiddenException('Rol no autorizado para modificar el estado del pedido');
+    }
+
+    if (user.role === 'DRIVER') {
+      // Resolución de identidad User -> Driver -> Route -> Order
+      const driver = await this.prisma.driver.where({ userId: user.userId }).first();
+      if (!driver) {
+        throw new ForbiddenException('El usuario no tiene un perfil de repartidor asociado');
+      }
+
+      if (!order.routeId) {
+        throw new ForbiddenException('El pedido no está asignado a ninguna ruta');
+      }
+
+      const route = await this.prisma.route.where({ id: order.routeId }).first();
+      if (!route || route.driverId !== driver.id) {
+        throw new ForbiddenException('No tiene permisos para modificar pedidos de otra ruta');
+      }
+
+      // Restricción explícita acordada: Fail closed hasta que exista Route.IN_PROGRESS (#10)
+      throw new ForbiddenException(
+        'Las actualizaciones de estado por parte del repartidor están deshabilitadas hasta que se implemente la verificación de ruta en progreso (#10)',
       );
     }
 
+    if (user.role === 'ADMIN') {
+      // 2. Validar transición de estado en el grafo centralizado (solo tras autorizar)
+      validateOrderTransition(order.status as OrderStatus, dto.status);
+
+      if (dto.status === OrderStatus.ASSIGNED) {
+        throw new BadRequestException(
+          'La asignación de pedidos solo puede realizarse a través del endpoint de rutas',
+        );
+      }
+      if (dto.status !== OrderStatus.CANCELLED) {
+        throw new BadRequestException(
+          'Los administradores solo pueden cancelar pedidos no terminales',
+        );
+      }
+    } else {
+      throw new ForbiddenException('Rol no autorizado para modificar el estado del pedido');
+    }
+
+    // 3. Mutación atómica condicional para mitigar carreras de estado stale
     const updated = await this.prisma.order
-      .where({ id })
+      .where({ id, status: order.status })
       .update({ status: dto.status });
+
+    if (!updated) {
+      throw new ConflictException(
+        'El pedido fue modificado concurrentemente y ya no se encuentra en el estado esperado',
+      );
+    }
 
     return updated;
   }

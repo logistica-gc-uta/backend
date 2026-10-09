@@ -1,6 +1,8 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { nowInstant } from '../../common/temporal.util.js';
 import { PrismaService } from '../../database/prisma.service.js';
+import { OrderStatus } from '../orders/dto/update-order-status.dto.js';
+import { canTransitionOrder } from '../orders/order-status.policy.js';
 import { AssignRouteDto } from './dto/assign-route.dto.js';
 
 @Injectable()
@@ -48,7 +50,7 @@ export class RoutesService {
         );
       }
 
-      if (order.status !== 'PENDING') {
+      if (!canTransitionOrder(order.status as OrderStatus, OrderStatus.ASSIGNED)) {
         throw new BadRequestException(
           `El pedido con ID '${orderId}' no está en estado PENDING`,
         );
@@ -74,11 +76,11 @@ export class RoutesService {
         date: nowInstant(),
       });
 
-      // c. Verificar atómicamente que cada pedido siga en estado PENDING y asignar stopOrder secuencial
+      // c. Verificar atómicamente que cada pedido siga siendo asignable según el ciclo de vida y asignar stopOrder secuencial
       let currentStop = 1;
       for (const orderId of dto.orderIds) {
         const currentOrder = await tx.orm.public.Order.where({ id: orderId }).first();
-        if (!currentOrder || currentOrder.status !== 'PENDING') {
+        if (!currentOrder || !canTransitionOrder(currentOrder.status as OrderStatus, OrderStatus.ASSIGNED)) {
           throw new ConflictException(
             `El pedido con ID '${orderId}' ya no se encuentra en estado PENDING para ser asignado`,
           );
@@ -86,7 +88,7 @@ export class RoutesService {
 
         await tx.orm.public.Order.where({ id: orderId }).update({
           routeId: route.id,
-          status: 'ASSIGNED',
+          status: OrderStatus.ASSIGNED,
           stopOrder: currentStop++,
         });
       }

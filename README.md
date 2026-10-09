@@ -161,6 +161,8 @@ http://localhost:3000/api/docs
 - **API Base:** `http://localhost:3000/api/v1`
 - **Swagger / OpenAPI interactivo:** [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
   > Puedes autenticarte directamente en Swagger haciendo clic en el botón **Authorize** e ingresando el token Bearer devuelto por `/api/v1/auth/login`.
+- **Seguridad y Ciclo de Vida de Pedidos (#8):** [`docs/order-security.md`](./docs/order-security.md) (Matriz de permisos, mitigación IDOR/BOLA, gobierno de estados y concurrencia).
+- **Diseño de Armado de Rutas (Clarke & Wright):** [`docs/clarke-wright.md`](./docs/clarke-wright.md).
 
 ---
 
@@ -172,38 +174,97 @@ El archivo [`delivery-api.postman_collection.json`](./delivery-api.postman_colle
 - Valida en cada request el código HTTP y el tiempo de respuesta (< 500 ms), y en los casos de negocio la estructura JSON: máximo 4 pedidos por ruta, zona única por ruta, repartidor no disponible, `stopOrder` secuencial, permisos por rol (401/403) y ciclo de vida del pedido.
 - Las credenciales y la URL base se definen en [`test/postman/logistica_env.json`](./test/postman/logistica_env.json) (cambie `baseUrl` para apuntar a otro ambiente).
 
-### Ejecutar con Newman (CLI)
+### Ejecutar con Newman (CLI y Ejecutor Aislado)
 
-Con la base de datos levantada, el seed ejecutado y el backend corriendo (`pnpm run start:dev`):
+Para garantizar aislamiento absoluto y proteger la base de datos de desarrollo, el proyecto incluye un ejecutor dedicado (`test/run-newman-isolated.sh`):
+
+- **Aprovisionamiento efímero:** Levanta automáticamente un contenedor PostgreSQL 16 dedicado en un puerto loopback aleatorio (`127.0.0.1::5432`), inicializa el esquema y datos semilla solo en esa base y levanta el backend en un puerto libre.
+- **Protección de base externa:** El script rechaza incondicionalmente cualquier variable `DATABASE_URL` heredada en el entorno (`exit 1`), garantizando que jamás se conecte ni mute bases de datos compartidas o locales.
+- **Limpieza atómica y señales:** Captura `EXIT`, `INT`, `TERM` y `HUP`, asegurando la detención del backend dedicado y la eliminación del contenedor efímero. Preserva códigos de salida no nulos (ej. 42 de Newman o 130 de SIGINT).
+- **Cobertura de seguridad (59 requests, 242 assertions):**
+  - Evalúa intentos de mutación de chofer a `IN_TRANSIT` y `DELIVERED` como pruebas negativas `403 Forbidden` (*fail-closed*, no omitidas); la progresión positiva `ASSIGNED -> IN_TRANSIT -> DELIVERED` con `Route.IN_PROGRESS` queda formalmente pendiente del Issue #10.
+  - Valores de estado no permitidos en el DTO son rechazados con `400 Bad Request`.
+  - Bloqueo de IDOR/BOLA entre choferes y clientes verificado con `403 Forbidden`.
+  - Invarianza de pedidos en base de datos tras intentos de mutación denegados.
+
+**Comandos seguros de ejecución:**
 
 ```bash
-pnpm run test:api          # resultado en consola
-pnpm run test:api:report   # consola + reporte HTML en reports/newman/informe-api.html
+# Ejecución en consola
+env -u DATABASE_URL pnpm run test:api
+
+# Ejecución con generación de reporte HTML (reports/newman/informe-api.html)
+env -u DATABASE_URL pnpm run test:api:report
 ```
 
-> Cada asignación de ruta deja al repartidor como no disponible. `test:api:report` ejecuta antes `pnpm run seed:reset-drivers` para liberarlos y poder repetir la corrida. Si usa `test:api` directamente varias veces, ejecute ese comando de reinicio entre corridas.
+---
 
 ## 8. Comandos de Verificación y Calidad
 
-### Ejecutar Pruebas Unitarias
+### Ejecutar Pruebas Unitarias y Contratos
 ```bash
-pnpm run test
+pnpm test --runInBand
 ```
-Ejecuta la suite de pruebas Jest cubriendo autenticación, validación de reglas de negocio en `RoutesService` y controladores.
+Ejecuta 156 pruebas automatizadas en 21 suites Jest, cubriendo autenticación, ciclo de vida de pedidos, políticas de autorización, algoritmo de rutas y contratos de CI.
+
+### Ejecutar Cobertura de Código (Umbral CI >= 80 %)
+```bash
+pnpm run test:cov --coverageThreshold='{"global":{"statements":80,"branches":80,"functions":80,"lines":80}}'
+```
+Métricas reales alcanzadas: Statements 98.08 %, Branches 87.82 %, Functions 92.68 %, Lines 98.10 %.
+
+### Ejecutar Pruebas de Integración y Seguridad (E2E)
+```bash
+pnpm run test:e2e --runInBand
+```
+Ejecuta 31 pruebas E2E contra PostgreSQL real (`test/orders-security.e2e-spec.ts` y `test/app.e2e-spec.ts`), validando autorización JWT, matriz de roles, prevención IDOR/BOLA, grafo de estados e invariancia de datos sin colisiones ni reseteos globales.
+
+### Validar Scripts Shell
+```bash
+# Validación sintáctica
+bash -n test/run-newman-isolated.sh
+
+# Análisis estático con ShellCheck (vía Docker)
+docker run --rm -i koalaman/shellcheck:v0.10.0 - < test/run-newman-isolated.sh
+```
 
 ### Ejecutar Linter
 ```bash
 pnpm run lint
 ```
-Ejecuta oxlint con validación de tipos estricta sin advertencias ni errores.
+Ejecuta oxlint (`oxlint --type-aware src/ test/`) sin advertencias ni errores.
 
 ### Compilar para Producción
 ```bash
 pnpm run build
 ```
-Genera los archivos listos para producción en el directorio `dist/`.
+Genera los archivos compilados en `dist/`.
 
 ### Iniciar en Producción
 ```bash
 pnpm run start:prod
 ```
+
+---
+
+## 9. Pipeline de Integración Continua (CI)
+
+El flujo de trabajo automatizado en [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) implementa una estrategia de dos etapas que garantiza que ningún cambio defectuoso o inseguro se integre:
+
+1. **Job `quality` (Lint, build y pruebas unitarias):**
+   - Checkout y configuración de Node.js 26.
+   - Validación sintáctica de scripts con `bash -n` y análisis estático de shell con `shellcheck` (con instalación automática vía apt si no está preinstalado en el runner).
+   - Análisis estático estricto con `oxlint`.
+   - Compilación con `nest build`.
+   - Pruebas unitarias con verificación estricta de cobertura $\ge 80\,\%$ en todas las métricas.
+   - Publicación del artefacto de cobertura (`cobertura`).
+
+2. **Job `api-tests` (Pruebas de integración E2E y API con PostgreSQL y Newman):**
+   - Servicio temporal PostgreSQL 16 (`postgres:16-alpine`) en puerto 5432 con health check.
+   - Creación de esquema relacional con `pnpm prisma db init`.
+   - Ejecución de la suite E2E (`pnpm run test:e2e --runInBand`, 31 pruebas) contra el servicio de PostgreSQL.
+   - Ejecución de la suite de API Newman mediante `env -u DATABASE_URL pnpm run test:api:report`, permitiendo al runner levantar de forma autónoma su propio entorno efímero y generar el reporte HTML.
+   - Publicación del reporte HTML de Newman (`informe-newman`).
+   - Propagación estricta de fallos: no se utiliza `continue-on-error`, por lo que cualquier fallo en pruebas o verificación detiene el pipeline.
+
+> *Nota de estado remoto:* La ejecución en los runners remotos de GitHub Actions se activará automáticamente al enviar el branch y abrir el Pull Request correspondiente (referenciando `Refs #8`).

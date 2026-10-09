@@ -289,6 +289,34 @@ describe('RoutesService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
+    it('Caso 4c: debe rechazar asignación de pedidos en estados terminales según el grafo de ciclo de vida', async () => {
+      prismaMock.driver.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(validDriver),
+      });
+      prismaMock.zone.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(validZone),
+      });
+      prismaMock.order.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue({
+          id: 'order-cancelled',
+          zoneId: 'zone-1',
+          status: 'CANCELLED',
+        }),
+      });
+
+      await expect(
+        service.assignRoute({
+          driverId: 'driver-1',
+          zoneId: 'zone-1',
+          orderIds: ['order-cancelled'],
+        }),
+      ).rejects.toThrow(
+        new BadRequestException(
+          "El pedido con ID 'order-cancelled' no está en estado PENDING",
+        ),
+      );
+    });
+
     it('Caso adicional: debe rechazar si la orden no pertenece a la zona especificada', async () => {
       prismaMock.driver.where.mockReturnValue({
         first: jest.fn().mockResolvedValue(validDriver),
