@@ -177,13 +177,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
             },
             "description": "",
             "body": {
@@ -220,13 +215,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
             },
             "description": "",
             "body": {
@@ -263,13 +253,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
             },
             "description": "",
             "body": {
@@ -306,13 +291,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
             },
             "description": "Autentica al segundo repartidor creado en el seed.",
             "body": {
@@ -349,13 +329,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
             },
             "description": "Autentica al segundo cliente creado en el seed.",
             "body": {
@@ -392,13 +367,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
             },
             "description": "",
             "body": {
@@ -430,13 +400,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
             },
             "description": "",
             "body": {
@@ -480,13 +445,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "register"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
             },
             "description": "",
             "body": {
@@ -518,13 +478,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "register"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
             },
             "description": "",
             "body": {
@@ -570,12 +525,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/zones",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "zones"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["zones"]
             },
             "description": ""
           }
@@ -618,12 +569,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/zones",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "zones"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["zones"]
             },
             "description": "DEMO/TEST depot coordinates; not a production depot.",
             "auth": {
@@ -665,12 +612,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/zones",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "zones"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["zones"]
             },
             "description": "",
             "auth": {
@@ -712,12 +655,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/zones",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "zones"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["zones"]
             },
             "description": "",
             "body": {
@@ -749,12 +688,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/zones",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "zones"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["zones"]
             },
             "description": "",
             "auth": {
@@ -793,13 +728,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/zones/{{zoneId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "zones",
-                "{{zoneId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["zones", "{{zoneId}}"]
             },
             "description": ""
           }
@@ -822,13 +752,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/zones/00000000-0000-0000-0000-000000000000",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "zones",
-                "00000000-0000-0000-0000-000000000000"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["zones", "00000000-0000-0000-0000-000000000000"]
             },
             "description": ""
           }
@@ -859,12 +784,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/products",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "products"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["products"]
             },
             "description": ""
           }
@@ -895,12 +816,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/products",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "products"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["products"]
             },
             "description": "",
             "auth": {
@@ -942,12 +859,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/products",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "products"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["products"]
             },
             "description": "",
             "auth": {
@@ -989,12 +902,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/products",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "products"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["products"]
             },
             "description": "",
             "auth": {
@@ -1037,14 +946,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/products/{{productId}}/stock",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "products",
-                "{{productId}}",
-                "stock"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["products", "{{productId}}", "stock"]
             },
             "description": "",
             "auth": {
@@ -1086,9 +989,7 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/products/00000000-0000-0000-0000-000000000000/stock",
-              "host": [
-                "{{baseUrl}}"
-              ],
+              "host": ["{{baseUrl}}"],
               "path": [
                 "products",
                 "00000000-0000-0000-0000-000000000000",
@@ -1147,12 +1048,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1200,12 +1097,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1253,12 +1146,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1306,12 +1195,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
             },
             "description": "Crea el pedido 4 de 4 que se agruparán en una ruta.",
             "auth": {
@@ -1353,12 +1238,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1400,12 +1281,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1447,12 +1324,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1494,12 +1367,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1541,12 +1410,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1593,12 +1458,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
             },
             "description": "",
             "auth": {
@@ -1640,12 +1501,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
             },
             "description": "",
             "auth": {
@@ -1687,12 +1544,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
             },
             "description": "",
             "auth": {
@@ -1736,13 +1589,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/orders/my-orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "my-orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "my-orders"]
             },
             "description": "",
             "auth": {
@@ -1777,12 +1625,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
             },
             "description": "",
             "auth": {
@@ -1815,12 +1659,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
             },
             "description": "",
             "auth": {
@@ -1855,13 +1695,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId1}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId1}}"]
             },
             "description": "",
             "auth": {
@@ -1897,13 +1732,8 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId1}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId1}}"]
             },
             "auth": {
               "type": "bearer",
@@ -1927,9 +1757,11 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 403', () => pm.response.to.have.status(403));",
-                  "pm.test('Autorización precede a transición: pedido sin ruta', () => {",
-                  "  const m = pm.response.json().message;",
-                  "  pm.expect(String(m)).to.include('no está asignado a ninguna ruta');",
+                  "pm.test('Ownership authorization rejects this actor', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.statusCode).to.eql(403);",
+                  "  pm.expect(b.error).to.eql('Forbidden');",
+                  "  pm.expect(b.message).to.be.a('string').and.not.empty;",
                   "});"
                 ]
               }
@@ -1945,14 +1777,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId1}}",
-                "status"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId1}}", "status"]
             },
             "description": "El repartidor no puede mover un pedido que aún no está asignado a una ruta.",
             "auth": {
@@ -1999,13 +1825,8 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId1}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId1}}"]
             },
             "auth": {
               "type": "bearer",
@@ -2049,12 +1870,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/drivers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "drivers"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["drivers"]
             },
             "description": "",
             "auth": {
@@ -2087,12 +1904,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/drivers",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "drivers"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["drivers"]
             },
             "description": "",
             "auth": {
@@ -2135,13 +1948,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/routes/assign",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "routes",
-                "assign"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["routes", "assign"]
             },
             "description": "Regla core: 5 pedidos deben ser rechazados con 400.",
             "auth": {
@@ -2183,13 +1991,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/routes/assign",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "routes",
-                "assign"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["routes", "assign"]
             },
             "description": "",
             "auth": {
@@ -2217,10 +2020,10 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 400', () => pm.response.to.have.status(400));",
-                  "pm.test('El mensaje de error es descriptivo', () => {",
-                  "  const m = pm.response.json().message;",
-                  "  const joined = Array.isArray(m) ? m.join(' ') : String(m);",
-                  "  pm.expect(joined).to.include(\"no pertenece a la zona\");",
+                  "pm.test('Wrong-zone input is rejected explicitly', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.statusCode).to.eql(400);",
+                  "  pm.expect(b.message).to.eql('Order does not belong to the requested zone');",
                   "});"
                 ]
               }
@@ -2236,13 +2039,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/routes/assign",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "routes",
-                "assign"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["routes", "assign"]
             },
             "description": "Todos los pedidos de una ruta deben pertenecer a la misma zona.",
             "auth": {
@@ -2317,13 +2115,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/routes/assign",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "routes",
-                "assign"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["routes", "assign"]
             },
             "description": "",
             "auth": {
@@ -2543,18 +2336,18 @@
           }
         },
         {
-          "name": "POST Assign Route - repartidor ya no disponible",
+          "name": "POST Assign Route - active order reservation conflict",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
-                  "pm.test('El mensaje de error es descriptivo', () => {",
-                  "  const m = pm.response.json().message;",
-                  "  const joined = Array.isArray(m) ? m.join(' ') : String(m);",
-                  "  pm.expect(joined).to.include(\"disponible\");",
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Existing active order claim prevents duplicate proposal', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.statusCode).to.eql(409);",
+                  "  pm.expect(b.message).to.eql('Order already reserved by another proposal');",
                   "});"
                 ]
               }
@@ -2570,13 +2363,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/routes/assign",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "routes",
-                "assign"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["routes", "assign"]
             },
             "description": "Tras la asignación el repartidor queda ocupado.",
             "auth": {
@@ -2617,13 +2405,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/routes/{{routeId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "routes",
-                "{{routeId}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["routes", "{{routeId}}"]
             },
             "description": "",
             "auth": {
@@ -2657,12 +2440,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/routes",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "routes"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["routes"]
             },
             "description": "",
             "auth": {
@@ -2695,12 +2474,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/routes",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "routes"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["routes"]
             },
             "description": "",
             "auth": {
@@ -2736,13 +2511,8 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId1}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId1}}"]
             },
             "auth": {
               "type": "bearer",
@@ -2766,9 +2536,11 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 403', () => pm.response.to.have.status(403));",
-                  "pm.test('Mutación cruzada entre choferes bloqueada', () => {",
-                  "  const m = pm.response.json().message;",
-                  "  pm.expect(String(m)).to.include('pedidos de otra ruta');",
+                  "pm.test('Ownership authorization rejects this actor', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.statusCode).to.eql(403);",
+                  "  pm.expect(b.error).to.eql('Forbidden');",
+                  "  pm.expect(b.message).to.be.a('string').and.not.empty;",
                   "});"
                 ]
               }
@@ -2784,14 +2556,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId1}}",
-                "status"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId1}}", "status"]
             },
             "auth": {
               "type": "bearer",
@@ -2818,10 +2584,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 403 (Fail-closed pendiente #10)', () => pm.response.to.have.status(403));",
-                  "pm.test('Mensaje explicativo de restricción #10', () => {",
-                  "  const m = pm.response.json().message;",
-                  "  pm.expect(String(m)).to.include('deshabilitadas hasta que se implemente la verificación de ruta en progreso (#10)');",
+                  "pm.test('Status 409 for premature route execution', () => pm.response.to.have.status(409));",
+                  "pm.test('Verified in-progress route is required', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.statusCode).to.eql(409);",
+                  "  pm.expect(b.message).to.eql('Verified route in progress required');",
                   "});"
                 ]
               }
@@ -2837,14 +2604,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId1}}",
-                "status"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId1}}", "status"]
             },
             "description": "",
             "auth": {
@@ -2872,10 +2633,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 403 (Fail-closed pendiente #10)', () => pm.response.to.have.status(403));",
-                  "pm.test('Mensaje explicativo de restricción #10', () => {",
-                  "  const m = pm.response.json().message;",
-                  "  pm.expect(String(m)).to.include('deshabilitadas hasta que se implemente la verificación de ruta en progreso (#10)');",
+                  "pm.test('Status 409 for premature route execution', () => pm.response.to.have.status(409));",
+                  "pm.test('Verified in-progress route is required', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.statusCode).to.eql(409);",
+                  "  pm.expect(b.message).to.eql('Verified route in progress required');",
                   "});"
                 ]
               }
@@ -2891,14 +2653,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId1}}",
-                "status"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId1}}", "status"]
             },
             "description": "",
             "auth": {
@@ -2941,14 +2697,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId1}}",
-                "status"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId1}}", "status"]
             },
             "description": "",
             "auth": {
@@ -2990,14 +2740,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId1}}",
-                "status"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId1}}", "status"]
             },
             "description": "",
             "auth": {
@@ -3043,14 +2787,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId1}}",
-                "status"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId1}}", "status"]
             },
             "auth": {
               "type": "bearer",
@@ -3096,14 +2834,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId1}}",
-                "status"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId1}}", "status"]
             },
             "auth": {
               "type": "bearer",
@@ -3149,14 +2881,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId1}}",
-                "status"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId1}}", "status"]
             },
             "auth": {
               "type": "bearer",
@@ -3203,13 +2929,8 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId1}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId1}}"]
             },
             "auth": {
               "type": "bearer",
@@ -3225,17 +2946,18 @@
           }
         },
         {
-          "name": "PATCH Order Status - ADMIN cancela pedido no terminal (permitido 200)",
+          "name": "PATCH Order Status - ADMIN cancellation blocked by active claim",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Estado CANCELLED confirmado', () => {",
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Active operational history prevents commercial cancellation', () => {",
                   "  const b = pm.response.json();",
-                  "  pm.expect(b.status).to.eql('CANCELLED');",
+                  "  pm.expect(b.statusCode).to.eql(409);",
+                  "  pm.expect(b.message).to.eql('Operational visit history requires administrative reconciliation');",
                   "});"
                 ]
               }
@@ -3251,14 +2973,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId4}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId4}}",
-                "status"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId4}}", "status"]
             },
             "auth": {
               "type": "bearer",
@@ -3278,7 +2994,7 @@
           }
         },
         {
-          "name": "PATCH Order Status - ADMIN intenta transición sobre pedido cancelado terminal (prohibido 400)",
+          "name": "PATCH Order Status - ADMIN non-cancellation transition rejected",
           "event": [
             {
               "listen": "test",
@@ -3286,9 +3002,10 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 400', () => pm.response.to.have.status(400));",
-                  "pm.test('Rechazo por estado terminal CANCELLED', () => {",
-                  "  const m = pm.response.json().message;",
-                  "  pm.expect(String(m)).to.include('estado terminal');",
+                  "pm.test('Administrator cannot perform a non-cancellation transition', () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b.statusCode).to.eql(400);",
+                  "  pm.expect(b.message).to.eql('Los administradores solo pueden cancelar pedidos no terminales');",
                   "});"
                 ]
               }
@@ -3304,14 +3021,8 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId4}}/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId4}}",
-                "status"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId4}}", "status"]
             },
             "auth": {
               "type": "bearer",
@@ -3331,7 +3042,7 @@
           }
         },
         {
-          "name": "GET Order by id (ADMIN) - Verificación invariancia estado terminal CANCELLED",
+          "name": "GET Order by id (ADMIN) - protected ASSIGNED state remains unchanged",
           "event": [
             {
               "listen": "test",
@@ -3339,10 +3050,10 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Invariancia en BD: permanece CANCELLED con campos estables intactos', () => {",
+                  "pm.test('Persisted invariance: remains ASSIGNED con campos estables intactos', () => {",
                   "  const b = pm.response.json();",
                   "  pm.expect(b.id).to.eql(pm.collectionVariables.get('orderId4'));",
-                  "  pm.expect(b.status).to.eql('CANCELLED');",
+                  "  pm.expect(b.status).to.eql('ASSIGNED');",
                   "  pm.expect(b.userId).to.be.a('string');",
                   "  pm.expect(b.zoneId).to.eql(pm.collectionVariables.get('zoneId'));",
                   "  pm.expect(b.routeId).to.eql(pm.collectionVariables.get('routeId'));",
@@ -3358,13 +3069,8 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId4}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "orders",
-                "{{orderId4}}"
-              ]
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId4}}"]
             },
             "auth": {
               "type": "bearer",

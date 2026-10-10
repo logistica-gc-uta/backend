@@ -111,7 +111,12 @@ describe('Driver-owned routes (real PostgreSQL)', () => {
     expect(response.body).toHaveLength(1);
     const route = response.body[0];
     expect(route.id).toBe(routeId);
-    expect(Object.keys(route).sort()).toEqual(['date', 'id', 'orders', 'zone']);
+    expect(route).toMatchObject({
+      id: routeId,
+      date: expect.any(String),
+      zone: expect.any(Object),
+      orders: expect.any(Array),
+    });
     expect(Object.keys(route.zone).sort()).toEqual(['code', 'id', 'name']);
     expect(route.orders.map((o: { id: string }) => o.id)).toEqual([
       orderIds[2],
@@ -221,7 +226,7 @@ describe('Driver-owned routes (real PostgreSQL)', () => {
       .patch(`/api/v1/orders/${orderIds[2]}/status`)
       .set('Authorization', `Bearer ${owner.token}`)
       .send({ status: 'IN_TRANSIT' })
-      .expect(403);
+      .expect(409);
     expect(
       (await prisma.order.where({ id: orderIds[2] }).first())?.status,
     ).toBe(OrderStatus.ASSIGNED);

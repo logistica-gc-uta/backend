@@ -1,10 +1,18 @@
+import { RouteHistoryService } from '../routes/route-history.service.js';
+import { NotFoundException } from '@nestjs/common';
+import { RouteAvailabilityService } from '../routes/route-availability.service.js';
+import { DriverAvailabilityResponseDto } from '../routes/dto/driver-availability-response.dto.js';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { driverRouteDay } from './driver-route-date.util.js';
 import { PrismaService } from '../../database/prisma.service.js';
 
 @Injectable()
 export class DriversService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly availability: RouteAvailabilityService,
+    private readonly history: RouteHistoryService,
+  ) {}
 
   async findMyRoutes(userId: string, date?: string) {
     const day = driverRouteDay(date);
@@ -19,34 +27,40 @@ export class DriversService {
         .where((route) => route.date.lt(day.end));
     }
     const routes = await query
-      .select('id', 'date')
+      .select(
+        'id',
+        'date',
+        'status',
+        'startedAt',
+        'startedById',
+        'completedAt',
+        'completedById',
+        'returnedAt',
+        'returnedById',
+      )
       .orderBy((route) => route.date.asc())
       .orderBy((route) => route.id.asc())
       .include('zone', (zone) => zone.select('id', 'name', 'code'))
-      .include('orders', (orders) =>
-        orders.select(
-          'id',
-          'deliveryAddress',
-          'status',
-          'scheduledDeliveryDate',
-          'stopOrder',
-        ),
-      )
       .all();
+    return this.history.project(routes);
+  }
 
-    return routes.map((route) => ({
-      id: route.id,
-      date: route.date,
-      zone: route.zone,
-      orders: [...route.orders].sort(
-        (a, b) =>
-          (a.stopOrder ?? Infinity) - (b.stopOrder ?? Infinity) ||
-          (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
-      ),
-    }));
+  async findMyAvailability(
+    userId: string,
+  ): Promise<DriverAvailabilityResponseDto> {
+    if (!userId) throw new UnauthorizedException('Authenticated user required');
+    const driver = await this.prisma.driver.where({ userId }).first();
+    if (!driver) throw new NotFoundException('Driver profile not found');
+    return this.availability.effective(driver.id);
   }
 
   async findAll() {
-    return this.prisma.driver.include('user').all();
+    const drivers = await this.prisma.driver.include('user').all();
+    return Promise.all(
+      drivers.map(async (driver) => ({
+        ...driver,
+        effectiveAvailability: await this.availability.effective(driver.id),
+      })),
+    );
   }
 }

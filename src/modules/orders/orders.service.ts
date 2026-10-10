@@ -1,6 +1,6 @@
+import { RouteProgressService } from '../routes/route-progress.service.js';
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -9,7 +9,10 @@ import { toInstant } from '../../common/temporal.util.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
-import { OrderStatus, UpdateOrderStatusDto } from './dto/update-order-status.dto.js';
+import {
+  OrderStatus,
+  UpdateOrderStatusDto,
+} from './dto/update-order-status.dto.js';
 import {
   enrichOrderWithGeography,
   validateCoordinatePair,
@@ -18,10 +21,17 @@ import { validateOrderTransition } from './order-status.policy.js';
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly progress: RouteProgressService,
+  ) {}
 
   async createOrder(userId: string, dto: CreateOrderDto) {
-    const coords = validateCoordinatePair(dto.deliveryLat, dto.deliveryLng, 'delivery');
+    const coords = validateCoordinatePair(
+      dto.deliveryLat,
+      dto.deliveryLng,
+      'delivery',
+    );
 
     // 1. Validar que la zona exista
     const zone = await this.prisma.zone.where({ id: dto.zoneId }).first();
@@ -46,9 +56,13 @@ export class OrdersService {
     let totalOrder = 0;
 
     for (const [productId, quantity] of productQuantities.entries()) {
-      const product = await this.prisma.product.where({ id: productId }).first();
+      const product = await this.prisma.product
+        .where({ id: productId })
+        .first();
       if (!product) {
-        throw new NotFoundException(`Producto con ID '${productId}' no encontrado`);
+        throw new NotFoundException(
+          `Producto con ID '${productId}' no encontrado`,
+        );
       }
       if (product.stock < quantity) {
         throw new BadRequestException(
@@ -81,7 +95,9 @@ export class OrdersService {
         deliveryAddress: dto.deliveryAddress,
         deliveryLat: coords.lat,
         deliveryLng: coords.lng,
-        scheduledDeliveryDate: dto.scheduledDeliveryDate ? toInstant(dto.scheduledDeliveryDate) : null,
+        scheduledDeliveryDate: dto.scheduledDeliveryDate
+          ? toInstant(dto.scheduledDeliveryDate)
+          : null,
         status: OrderStatus.PENDING,
         total: totalOrder,
       });
@@ -136,24 +152,36 @@ export class OrdersService {
 
     if (user.role === 'CLIENT') {
       if (order.userId !== user.userId) {
-        throw new ForbiddenException('No tiene permisos para consultar este pedido');
+        throw new ForbiddenException(
+          'No tiene permisos para consultar este pedido',
+        );
       }
       return enrichOrderWithGeography(order);
     }
 
     if (user.role === 'DRIVER') {
-      const driver = await this.prisma.driver.where({ userId: user.userId }).first();
+      const driver = await this.prisma.driver
+        .where({ userId: user.userId })
+        .first();
       if (!driver) {
-        throw new ForbiddenException('El usuario no tiene un perfil de repartidor asociado');
+        throw new ForbiddenException(
+          'El usuario no tiene un perfil de repartidor asociado',
+        );
       }
 
       if (!order.routeId) {
-        throw new ForbiddenException('El pedido no está asignado a ninguna ruta');
+        throw new ForbiddenException(
+          'El pedido no está asignado a ninguna ruta',
+        );
       }
 
-      const route = await this.prisma.route.where({ id: order.routeId }).first();
+      const route = await this.prisma.route
+        .where({ id: order.routeId })
+        .first();
       if (!route || route.driverId !== driver.id) {
-        throw new ForbiddenException('No tiene permisos para consultar pedidos de otra ruta');
+        throw new ForbiddenException(
+          'No tiene permisos para consultar pedidos de otra ruta',
+        );
       }
 
       return enrichOrderWithGeography(order);
@@ -162,7 +190,11 @@ export class OrdersService {
     throw new ForbiddenException('Rol no autorizado para consultar pedidos');
   }
 
-  async updateStatus(id: string, dto: UpdateOrderStatusDto, user: AuthenticatedUser) {
+  async updateStatus(
+    id: string,
+    dto: UpdateOrderStatusDto,
+    user: AuthenticatedUser,
+  ) {
     const order = await this.prisma.order.where({ id }).first();
     if (!order) {
       throw new NotFoundException(`Pedido con ID '${id}' no encontrado`);
@@ -170,30 +202,13 @@ export class OrdersService {
 
     // 1. Control estricto de permisos y pertenencia (autorización precede al grafo)
     if (user.role === 'CLIENT') {
-      throw new ForbiddenException('Rol no autorizado para modificar el estado del pedido');
-    }
-
-    if (user.role === 'DRIVER') {
-      // Resolución de identidad User -> Driver -> Route -> Order
-      const driver = await this.prisma.driver.where({ userId: user.userId }).first();
-      if (!driver) {
-        throw new ForbiddenException('El usuario no tiene un perfil de repartidor asociado');
-      }
-
-      if (!order.routeId) {
-        throw new ForbiddenException('El pedido no está asignado a ninguna ruta');
-      }
-
-      const route = await this.prisma.route.where({ id: order.routeId }).first();
-      if (!route || route.driverId !== driver.id) {
-        throw new ForbiddenException('No tiene permisos para modificar pedidos de otra ruta');
-      }
-
-      // Restricción explícita acordada: Fail closed hasta que exista Route.IN_PROGRESS (#10)
       throw new ForbiddenException(
-        'Las actualizaciones de estado por parte del repartidor están deshabilitadas hasta que se implemente la verificación de ruta en progreso (#10)',
+        'Rol no autorizado para modificar el estado del pedido',
       );
     }
+
+    if (user.role === 'DRIVER')
+      return this.progress.updateOrder(id, user.userId, dto.status);
 
     if (user.role === 'ADMIN') {
       // 2. Validar transición de estado en el grafo centralizado (solo tras autorizar)
@@ -210,20 +225,11 @@ export class OrdersService {
         );
       }
     } else {
-      throw new ForbiddenException('Rol no autorizado para modificar el estado del pedido');
-    }
-
-    // 3. Mutación atómica condicional para mitigar carreras de estado stale
-    const updated = await this.prisma.order
-      .where({ id, status: order.status })
-      .update({ status: dto.status });
-
-    if (!updated) {
-      throw new ConflictException(
-        'El pedido fue modificado concurrentemente y ya no se encuentra en el estado esperado',
+      throw new ForbiddenException(
+        'Rol no autorizado para modificar el estado del pedido',
       );
     }
 
-    return updated;
+    return this.progress.cancelOrder(id);
   }
 }

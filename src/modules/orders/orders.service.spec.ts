@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { RouteProgressService } from '../routes/route-progress.service.js';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
@@ -9,6 +15,7 @@ describe('OrdersService', () => {
   let service: OrdersService;
   let prismaMock: any;
   let txMock: any;
+  let progressMock: any;
 
   beforeEach(async () => {
     txMock = {
@@ -68,6 +75,24 @@ describe('OrdersService', () => {
       providers: [
         OrdersService,
         {
+          provide: RouteProgressService,
+          useValue: {
+            updateOrder: jest
+              .fn()
+              .mockRejectedValue(
+                new ForbiddenException('Operational authorization required'),
+              ),
+            cancelOrder: jest.fn(async (id) => {
+              const order = await prismaMock.order.first();
+              const updated = await prismaMock.order
+                .where({ id, status: order.status })
+                .update({ status: OrderStatus.CANCELLED });
+              if (!updated) throw new ConflictException();
+              return updated;
+            }),
+          },
+        },
+        {
           provide: PrismaService,
           useValue: prismaMock,
         },
@@ -75,6 +100,7 @@ describe('OrdersService', () => {
     }).compile();
 
     service = module.get<OrdersService>(OrdersService);
+    progressMock = module.get(RouteProgressService);
   });
 
   it('should be defined', () => {
@@ -103,13 +129,19 @@ describe('OrdersService', () => {
     };
 
     it('Regresión: persiste scheduledDeliveryDate como Temporal.Instant (no Date) y null si se omite', async () => {
-      prismaMock.zone.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validZone) });
-      prismaMock.product.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validProduct) });
+      prismaMock.zone.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(validZone),
+      });
+      prismaMock.product.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(validProduct),
+      });
 
       await service.createOrder('user-1', createDto);
       const withDate = txMock.orm.public.Order.create.mock.calls[0][0];
       expect(withDate.scheduledDeliveryDate).toBeInstanceOf(Temporal.Instant);
-      expect(withDate.scheduledDeliveryDate.toString()).toBe('2026-09-25T14:00:00Z');
+      expect(withDate.scheduledDeliveryDate.toString()).toBe(
+        '2026-09-25T14:00:00Z',
+      );
 
       const { scheduledDeliveryDate: _omit, ...dtoWithoutDate } = createDto;
       await service.createOrder('user-1', dtoWithoutDate);
@@ -118,8 +150,12 @@ describe('OrdersService', () => {
     });
 
     it('persiste deliveryLat y deliveryLng cuando se proporcionan coordenadas válidas', async () => {
-      prismaMock.zone.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validZone) });
-      prismaMock.product.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validProduct) });
+      prismaMock.zone.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(validZone),
+      });
+      prismaMock.product.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(validProduct),
+      });
 
       await service.createOrder('user-1', {
         ...createDto,
@@ -133,8 +169,12 @@ describe('OrdersService', () => {
     });
 
     it('persiste deliveryLat y deliveryLng como null cuando se omiten coordenadas', async () => {
-      prismaMock.zone.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validZone) });
-      prismaMock.product.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validProduct) });
+      prismaMock.zone.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(validZone),
+      });
+      prismaMock.product.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(validProduct),
+      });
 
       await service.createOrder('user-1', createDto);
 
@@ -144,23 +184,42 @@ describe('OrdersService', () => {
     });
 
     it('rechaza par incompleto, nulo o fuera de rango a nivel de servicio con BadRequestException', async () => {
-      prismaMock.zone.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validZone) });
-      prismaMock.product.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validProduct) });
+      prismaMock.zone.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(validZone),
+      });
+      prismaMock.product.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(validProduct),
+      });
 
       await expect(
-        service.createOrder('user-1', { ...createDto, deliveryLat: -1.2 } as any),
+        service.createOrder('user-1', {
+          ...createDto,
+          deliveryLat: -1.2,
+        } as any),
       ).rejects.toThrow(BadRequestException);
 
       await expect(
-        service.createOrder('user-1', { ...createDto, deliveryLat: null, deliveryLng: null } as any),
+        service.createOrder('user-1', {
+          ...createDto,
+          deliveryLat: null,
+          deliveryLng: null,
+        } as any),
       ).rejects.toThrow(BadRequestException);
 
       await expect(
-        service.createOrder('user-1', { ...createDto, deliveryLat: 95, deliveryLng: 0 } as any),
+        service.createOrder('user-1', {
+          ...createDto,
+          deliveryLat: 95,
+          deliveryLng: 0,
+        } as any),
       ).rejects.toThrow(BadRequestException);
 
       await expect(
-        service.createOrder('user-1', { ...createDto, deliveryLat: NaN, deliveryLng: 0 } as any),
+        service.createOrder('user-1', {
+          ...createDto,
+          deliveryLat: NaN,
+          deliveryLng: 0,
+        } as any),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -183,7 +242,9 @@ describe('OrdersService', () => {
       expect(result.total).toBe(1500.0); // 750 * 2
       expect(result.status).toBe(OrderStatus.PENDING);
 
-      expect(txMock.orm.public.Product.where).toHaveBeenCalledWith({ id: 'prod-1' });
+      expect(txMock.orm.public.Product.where).toHaveBeenCalledWith({
+        id: 'prod-1',
+      });
       expect(txMock.orm.public.OrderItem.create).toHaveBeenCalledWith({
         orderId: 'order-uuid-1',
         productId: 'prod-1',
@@ -316,10 +377,14 @@ describe('OrdersService', () => {
     it('DRIVER debe poder leer el pedido si está asignado a su ruta activa (User -> Driver -> Route -> Order)', async () => {
       prismaMock.order.first.mockResolvedValue(sampleOrder);
       prismaMock.driver.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue({ id: 'driver-1', userId: 'user-driver-1' }),
+        first: jest
+          .fn()
+          .mockResolvedValue({ id: 'driver-1', userId: 'user-driver-1' }),
       });
       prismaMock.route.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
+        first: jest
+          .fn()
+          .mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
       });
 
       const result = await service.findOne('order-1', assignedDriverUser);
@@ -327,28 +392,37 @@ describe('OrdersService', () => {
     });
 
     it('DRIVER debe ser rechazado con ForbiddenException si el pedido no está asignado a ninguna ruta', async () => {
-      prismaMock.order.first.mockResolvedValue({ ...sampleOrder, routeId: null });
+      prismaMock.order.first.mockResolvedValue({
+        ...sampleOrder,
+        routeId: null,
+      });
       prismaMock.driver.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue({ id: 'driver-1', userId: 'user-driver-1' }),
+        first: jest
+          .fn()
+          .mockResolvedValue({ id: 'driver-1', userId: 'user-driver-1' }),
       });
 
-      await expect(service.findOne('order-1', assignedDriverUser)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.findOne('order-1', assignedDriverUser),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('DRIVER debe ser rechazado con ForbiddenException si el pedido pertenece a una ruta de otro repartidor', async () => {
       prismaMock.order.first.mockResolvedValue(sampleOrder);
       prismaMock.driver.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue({ id: 'driver-2', userId: 'user-driver-2' }),
+        first: jest
+          .fn()
+          .mockResolvedValue({ id: 'driver-2', userId: 'user-driver-2' }),
       });
       prismaMock.route.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
+        first: jest
+          .fn()
+          .mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
       });
 
-      await expect(service.findOne('order-1', foreignDriverUser)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.findOne('order-1', foreignDriverUser),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('DRIVER debe ser rechazado con ForbiddenException si el usuario no tiene perfil de chofer', async () => {
@@ -357,9 +431,9 @@ describe('OrdersService', () => {
         first: jest.fn().mockResolvedValue(null),
       });
 
-      await expect(service.findOne('order-1', assignedDriverUser)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.findOne('order-1', assignedDriverUser),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('debe lanzar NotFoundException si el pedido no existe', async () => {
@@ -467,7 +541,11 @@ describe('OrdersService', () => {
       prismaMock.order.first.mockResolvedValue(pendingOrder);
 
       await expect(
-        service.updateStatus('order-1', { status: OrderStatus.ASSIGNED }, adminUser),
+        service.updateStatus(
+          'order-1',
+          { status: OrderStatus.ASSIGNED },
+          adminUser,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -475,7 +553,11 @@ describe('OrdersService', () => {
       prismaMock.order.first.mockResolvedValue(assignedOrder);
 
       await expect(
-        service.updateStatus('order-1', { status: OrderStatus.IN_TRANSIT }, adminUser),
+        service.updateStatus(
+          'order-1',
+          { status: OrderStatus.IN_TRANSIT },
+          adminUser,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -483,52 +565,106 @@ describe('OrdersService', () => {
       prismaMock.order.first.mockResolvedValue(deliveredOrder);
 
       await expect(
-        service.updateStatus('order-1', { status: OrderStatus.CANCELLED }, adminUser),
+        service.updateStatus(
+          'order-1',
+          { status: OrderStatus.CANCELLED },
+          adminUser,
+        ),
       ).rejects.toThrow(BadRequestException);
 
       prismaMock.order.first.mockResolvedValue(cancelledOrder);
 
       await expect(
-        service.updateStatus('order-1', { status: OrderStatus.CANCELLED }, adminUser),
+        service.updateStatus(
+          'order-1',
+          { status: OrderStatus.CANCELLED },
+          adminUser,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('DRIVER escrituras fallan CLOSED con ForbiddenException (bloqueado hasta que exista Route.IN_PROGRESS en #10)', async () => {
+    it('delegates authorized DRIVER progress to the shared transaction service', async () => {
+      prismaMock.order.first.mockResolvedValue(assignedOrder);
+      progressMock.updateOrder.mockResolvedValue({
+        ...assignedOrder,
+        status: OrderStatus.IN_TRANSIT,
+      });
+      await expect(
+        service.updateStatus(
+          'order-1',
+          { status: OrderStatus.IN_TRANSIT },
+          assignedDriverUser,
+        ),
+      ).resolves.toMatchObject({ status: OrderStatus.IN_TRANSIT });
+      expect(progressMock.updateOrder).toHaveBeenCalledWith(
+        'order-1',
+        assignedDriverUser.userId,
+        OrderStatus.IN_TRANSIT,
+      );
+      expect(prismaMock.order.update).not.toHaveBeenCalled();
+    });
+
+    it('DRIVER delegates operational authorization before commercial mutation', async () => {
       prismaMock.order.first.mockResolvedValue(assignedOrder);
       prismaMock.driver.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue({ id: 'driver-1', userId: 'driver-id' }),
+        first: jest
+          .fn()
+          .mockResolvedValue({ id: 'driver-1', userId: 'driver-id' }),
       });
       prismaMock.route.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
+        first: jest
+          .fn()
+          .mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
       });
 
       await expect(
-        service.updateStatus('order-1', { status: OrderStatus.IN_TRANSIT }, assignedDriverUser),
+        service.updateStatus(
+          'order-1',
+          { status: OrderStatus.IN_TRANSIT },
+          assignedDriverUser,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('DRIVER rechazado con ForbiddenException si intenta modificar un pedido de otra ruta (cross-driver write)', async () => {
       prismaMock.order.first.mockResolvedValue(assignedOrder);
       prismaMock.driver.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue({ id: 'driver-2', userId: 'foreign-driver-id' }),
+        first: jest
+          .fn()
+          .mockResolvedValue({ id: 'driver-2', userId: 'foreign-driver-id' }),
       });
       prismaMock.route.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
+        first: jest
+          .fn()
+          .mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
       });
 
       await expect(
-        service.updateStatus('order-1', { status: OrderStatus.IN_TRANSIT }, foreignDriverUser),
+        service.updateStatus(
+          'order-1',
+          { status: OrderStatus.IN_TRANSIT },
+          foreignDriverUser,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('DRIVER rechazado con ForbiddenException si el pedido no tiene ruta asignada', async () => {
-      prismaMock.order.first.mockResolvedValue({ ...assignedOrder, routeId: null });
+      prismaMock.order.first.mockResolvedValue({
+        ...assignedOrder,
+        routeId: null,
+      });
       prismaMock.driver.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue({ id: 'driver-1', userId: 'driver-id' }),
+        first: jest
+          .fn()
+          .mockResolvedValue({ id: 'driver-1', userId: 'driver-id' }),
       });
 
       await expect(
-        service.updateStatus('order-1', { status: OrderStatus.IN_TRANSIT }, assignedDriverUser),
+        service.updateStatus(
+          'order-1',
+          { status: OrderStatus.IN_TRANSIT },
+          assignedDriverUser,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -541,38 +677,58 @@ describe('OrdersService', () => {
       };
 
       await expect(
-        service.updateStatus('order-1', { status: OrderStatus.CANCELLED }, clientUser),
+        service.updateStatus(
+          'order-1',
+          { status: OrderStatus.CANCELLED },
+          clientUser,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('DRIVER es rechazado con ForbiddenException ante transición inválida del grafo sobre pedido ajeno (autoriza pertenencia antes de validar grafo)', async () => {
       prismaMock.order.first.mockResolvedValue(pendingOrder);
       prismaMock.driver.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue({ id: 'driver-2', userId: 'foreign-driver-id' }),
+        first: jest
+          .fn()
+          .mockResolvedValue({ id: 'driver-2', userId: 'foreign-driver-id' }),
       });
       prismaMock.route.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
+        first: jest
+          .fn()
+          .mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
       });
 
       // PENDING -> DELIVERED es una transición inválida en el grafo.
       // Debe lanzar ForbiddenException (pertenencia), NO BadRequestException (grafo).
       await expect(
-        service.updateStatus('order-1', { status: OrderStatus.DELIVERED }, foreignDriverUser),
+        service.updateStatus(
+          'order-1',
+          { status: OrderStatus.DELIVERED },
+          foreignDriverUser,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('DRIVER es rechazado con ForbiddenException ante transición desde estado terminal sobre pedido de su ruta (fail-closed constante antes de validar grafo)', async () => {
       prismaMock.order.first.mockResolvedValue(deliveredOrder);
       prismaMock.driver.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue({ id: 'driver-1', userId: 'driver-id' }),
+        first: jest
+          .fn()
+          .mockResolvedValue({ id: 'driver-1', userId: 'driver-id' }),
       });
       prismaMock.route.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
+        first: jest
+          .fn()
+          .mockResolvedValue({ id: 'route-1', driverId: 'driver-1' }),
       });
 
       // DELIVERED es terminal. El chofer debe recibir ForbiddenException (fail-closed #10), NO BadRequestException.
       await expect(
-        service.updateStatus('order-1', { status: OrderStatus.CANCELLED }, assignedDriverUser),
+        service.updateStatus(
+          'order-1',
+          { status: OrderStatus.CANCELLED },
+          assignedDriverUser,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -585,7 +741,11 @@ describe('OrdersService', () => {
       };
 
       await expect(
-        service.updateStatus('order-1', { status: OrderStatus.CANCELLED }, clientUser),
+        service.updateStatus(
+          'order-1',
+          { status: OrderStatus.CANCELLED },
+          clientUser,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -595,7 +755,11 @@ describe('OrdersService', () => {
       prismaMock.order.update.mockResolvedValue(null);
 
       await expect(
-        service.updateStatus('order-1', { status: OrderStatus.CANCELLED }, adminUser),
+        service.updateStatus(
+          'order-1',
+          { status: OrderStatus.CANCELLED },
+          adminUser,
+        ),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -603,7 +767,11 @@ describe('OrdersService', () => {
       prismaMock.order.first.mockResolvedValue(null);
 
       await expect(
-        service.updateStatus('order-none', { status: OrderStatus.CANCELLED }, adminUser),
+        service.updateStatus(
+          'order-none',
+          { status: OrderStatus.CANCELLED },
+          adminUser,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
   });

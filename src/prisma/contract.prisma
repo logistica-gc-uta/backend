@@ -14,6 +14,29 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum RouteStatus {
+  DRAFT
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum VisitOutcome {
+  PENDING
+  SUCCESSFUL
+  FAILED
+}
+
+enum AttemptOutcome {
+  SUCCESSFUL
+  FAILED
+}
+
+enum VisitFailureReason {
+  RECIPIENT_ABSENT
+  RECIPIENT_REFUSED
+}
+
 model User {
   id        String   @id @default(uuid())
   name      String
@@ -64,14 +87,32 @@ model Product {
 
 model Route {
   id        String   @id @default(uuid())
-  driverId  String
-  driver    Driver   @relation(fields: [driverId], references: [id])
+  driverId  String?
+  driver    Driver?  @relation(fields: [driverId], references: [id])
   zoneId    String
   zone      Zone     @relation(fields: [zoneId], references: [id])
   date      DateTime @default(now())
   createdAt DateTime @default(now())
 
+  // NULL preserves unverified legacy execution; callers explicitly create DRAFT.
+  status        RouteStatus?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  returnedAt    DateTime?
+  startedById   String?
+  startedBy     User? @relation("RouteStartedBy", fields: [startedById], references: [id])
+  completedById String?
+  completedBy   User? @relation("RouteCompletedBy", fields: [completedById], references: [id])
+  returnedById  String?
+  returnedBy    User? @relation("RouteReturnedBy", fields: [returnedById], references: [id])
+
   orders    Order[]
+
+  @@index([driverId])
+  @@index([driverId], unique: true, where: "(status = 'IN_PROGRESS')", name: "one_in_progress_route_per_driver")
+  @@index([startedById])
+  @@index([completedById])
+  @@index([returnedById])
 }
 
 model Order {
@@ -91,6 +132,8 @@ model Order {
   deliveryLng           Float?
   createdAt             DateTime    @default(now())
 
+  requiresAdministrativeReview Boolean @default(false)
+
   items                 OrderItem[]
 
   @@check(expression: "(\"deliveryLat\" IS NULL AND \"deliveryLng\" IS NULL) OR (\"deliveryLat\" IS NOT NULL AND \"deliveryLng\" IS NOT NULL AND \"deliveryLat\" >= -90 AND \"deliveryLat\" <= 90 AND \"deliveryLng\" >= -180 AND \"deliveryLng\" <= 180)", name: "order_delivery_coordinates_valid")
@@ -104,4 +147,86 @@ model OrderItem {
   product   Product  @relation(fields: [productId], references: [id])
   quantity  Int      @default(1)
   price     Float
+}
+
+
+// Historical positions may be NULL, duplicate or out of range. Never guess them.
+model RouteStop {
+  id        String @id @default(uuid())
+  routeId   String
+  route     Route @relation(fields: [routeId], references: [id])
+  orderId   String
+  order     Order @relation(fields: [orderId], references: [id])
+  sequence  Int?
+  outcome   VisitOutcome?
+  isLegacy  Boolean @default(false)
+  createdAt DateTime?
+
+  @@unique([routeId, orderId])
+  @@index([orderId])
+  @@index([routeId, sequence], unique: true, where: "(NOT \"isLegacy\" AND sequence IS NOT NULL)", name: "verified_route_stop_sequence")
+}
+
+// Append-only enforcement and actor authorization are introduced in T1c/T3.
+model DeliveryAttempt {
+  id             String @id @default(uuid())
+  stopId         String
+  stop           RouteStop @relation(fields: [stopId], references: [id])
+  driverId       String
+  driver         Driver @relation(fields: [driverId], references: [id])
+  recordedAt     DateTime @default(now())
+  outcome        AttemptOutcome
+  failureReason  VisitFailureReason?
+  context        Json
+  idempotencyKey String
+  requestPayload Json
+
+  @@unique([stopId, idempotencyKey])
+  @@index([driverId])
+  @@check(expression: "(outcome = 'FAILED' AND \"failureReason\" IS NOT NULL) OR (outcome = 'SUCCESSFUL' AND \"failureReason\" IS NULL)", name: "delivery_attempt_failure_reason_pairing")
+}
+
+// Legacy associations remain on unverified routes, not manufactured claims.
+model OrderClaim {
+  id         String @id @default(uuid())
+  orderId    String
+  order      Order @relation(fields: [orderId], references: [id])
+  routeId    String
+  route      Route @relation(fields: [routeId], references: [id])
+  claimedAt  DateTime?
+  releasedAt DateTime?
+
+  @@index([orderId], unique: true, where: "(\"releasedAt\" IS NULL)", name: "active_order_claim")
+  @@index([routeId])
+}
+
+model DriverReservation {
+  id         String @id @default(uuid())
+  driverId   String
+  driver     Driver @relation(fields: [driverId], references: [id])
+  routeId    String
+  route      Route @relation(fields: [routeId], references: [id])
+  reservedAt DateTime?
+  releasedAt DateTime?
+
+  @@index([driverId], unique: true, where: "(\"releasedAt\" IS NULL)", name: "active_driver_reservation")
+  @@index([routeId])
+  @@index([routeId], unique: true, where: "(\"releasedAt\" IS NULL)", name: "one_active_reservation_per_route")
+}
+
+// Audited regularization is distinct from completion and physical return events.
+model LegacyRouteReconciliation {
+  id                String @id @default(uuid())
+  routeId           String
+  route             Route @relation(fields: [routeId], references: [id])
+  administratorId   String
+  administrator     User @relation(fields: [administratorId], references: [id])
+  recordedAt        DateTime @default(now())
+  reason            String
+  evidence          Json
+  releaseDriverHold Boolean @default(false)
+
+  @@index([routeId])
+  @@index([routeId], unique: true, name: "one_reconciliation_per_route")
+  @@index([administratorId])
 }

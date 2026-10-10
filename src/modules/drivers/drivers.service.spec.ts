@@ -1,3 +1,11 @@
+import { RouteHistoryService } from '../routes/route-history.service.js';
+const historyMock = { project: jest.fn(async (routes: any[]) => routes) };
+import { RouteAvailabilityService } from '../routes/route-availability.service.js';
+const availabilityMock = {
+  effective: jest
+    .fn()
+    .mockResolvedValue({ isAvailable: true, blockingRouteIds: [] }),
+};
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../database/prisma.service.js';
 import { DriversService } from './drivers.service.js';
@@ -16,6 +24,8 @@ describe('DriversService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DriversService,
+        { provide: RouteAvailabilityService, useValue: availabilityMock },
+        { provide: RouteHistoryService, useValue: historyMock },
         { provide: PrismaService, useValue: prismaMock },
       ],
     }).compile();
@@ -33,7 +43,12 @@ describe('DriversService', () => {
     const result = await service.findAll();
 
     expect(prismaMock.driver.include).toHaveBeenCalledWith('user');
-    expect(result).toEqual(drivers);
+    expect(result).toEqual(
+      drivers.map((driver) => ({
+        ...driver,
+        effectiveAvailability: { isAvailable: true, blockingRouteIds: [] },
+      })),
+    );
   });
 });
 
@@ -43,9 +58,13 @@ describe('DriversService ownership query', () => {
     const prisma: any = {
       driver: { where: jest.fn().mockReturnValue({ first }) },
     };
-    expect(await new DriversService(prisma).findMyRoutes('jwt-user')).toEqual(
-      [],
-    );
+    expect(
+      await new DriversService(
+        prisma,
+        availabilityMock as unknown as RouteAvailabilityService,
+        historyMock as unknown as RouteHistoryService,
+      ).findMyRoutes('jwt-user'),
+    ).toEqual([]);
     expect(prisma.driver.where).toHaveBeenCalledWith({ userId: 'jwt-user' });
   });
 });
@@ -58,58 +77,43 @@ describe('DriversService route projection and ordering', () => {
     query.all = jest.fn().mockResolvedValue(rows);
     const prisma: any = {
       driver: {
-        where: jest
-          .fn()
-          .mockReturnValue({
-            first: jest.fn().mockResolvedValue({ id: 'owned-driver' }),
-          }),
+        where: jest.fn().mockReturnValue({
+          first: jest.fn().mockResolvedValue({ id: 'owned-driver' }),
+        }),
       },
       route: query,
     };
-    return { query, prisma, service: new DriversService(prisma) };
+    return {
+      query,
+      prisma,
+      service: new DriversService(
+        prisma,
+        availabilityMock as unknown as RouteAvailabilityService,
+        historyMock as unknown as RouteHistoryService,
+      ),
+    };
   }
-  it('scopes routes to the resolved driver and sorts stops, ties and nulls deterministically', async () => {
-    const { service, query } = setup([
-      {
-        id: 'r',
-        date: 'date',
-        zone: { id: 'z' },
-        orders: [
-          { id: 'z', stopOrder: null },
-          { id: 'b', stopOrder: 2 },
-          { id: 'a', stopOrder: 2 },
-          { id: 'x', stopOrder: 1 },
-          { id: 'c', stopOrder: null },
-        ],
-      },
-    ]);
-    const result = await service.findMyRoutes('jwt-user');
+  it('scopes routes to JWT driver and delegates the stable history projection', async () => {
+    const rows = [{ id: 'r', date: 'date', zone: { id: 'z' }, status: null }];
+    const { service, query } = setup(rows);
+    expect(await service.findMyRoutes('jwt-user')).toEqual(rows);
     expect(query.where).toHaveBeenCalledWith({ driverId: 'owned-driver' });
-    expect(result[0].orders.map((o) => o.id)).toEqual([
-      'x',
-      'a',
-      'b',
-      'c',
-      'z',
-    ]);
-    expect(Object.keys(result[0])).toEqual(['id', 'date', 'zone', 'orders']);
-    expect(query.select).toHaveBeenCalledWith('id', 'date');
-    const zone = { select: jest.fn() };
-    const orders = { select: jest.fn() };
-    query.include.mock.calls[0][1](zone);
-    query.include.mock.calls[1][1](orders);
-    expect(zone.select).toHaveBeenCalledWith('id', 'name', 'code');
-    expect(orders.select).toHaveBeenCalledWith(
+    expect(historyMock.project).toHaveBeenCalledWith(rows);
+    expect(query.select).toHaveBeenCalledWith(
       'id',
-      'deliveryAddress',
+      'date',
       'status',
-      'scheduledDeliveryDate',
-      'stopOrder',
+      'startedAt',
+      'startedById',
+      'completedAt',
+      'completedById',
+      'returnedAt',
+      'returnedById',
     );
-    const asc = jest.fn();
-    query.orderBy.mock.calls[0][0]({ date: { asc } });
-    query.orderBy.mock.calls[1][0]({ id: { asc } });
-    expect(asc).toHaveBeenCalledTimes(2);
+    expect(query.include).toHaveBeenCalledTimes(1);
+    const zone = { select: jest.fn() };
+    query.include.mock.calls[0][1](zone);
+    expect(zone.select).toHaveBeenCalledWith('id', 'name', 'code');
   });
   it('adds inclusive/exclusive Route.date predicates without dropping ownership', async () => {
     const { service, query } = setup([]);

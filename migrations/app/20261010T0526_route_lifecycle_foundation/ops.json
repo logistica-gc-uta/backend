@@ -1,0 +1,1824 @@
+[
+  {
+    "id": "table.deliveryAttempt",
+    "label": "Create table \"deliveryAttempt\"",
+    "summary": "Creates table \"deliveryAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "deliveryAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"deliveryAttempt\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"deliveryAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"deliveryAttempt\"",
+        "sql": "CREATE TABLE \"public\".\"deliveryAttempt\" (\n  \"context\" json NOT NULL,\n  \"driverId\" text NOT NULL,\n  \"failureReason\" text,\n  \"id\" text NOT NULL,\n  \"idempotencyKey\" text NOT NULL,\n  \"outcome\" text NOT NULL,\n  \"recordedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"requestPayload\" json NOT NULL,\n  \"stopId\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"deliveryAttempt_failureReason_check_847d09ed\" CHECK (\"failureReason\" IN ('RECIPIENT_ABSENT', 'RECIPIENT_REFUSED')),\n  CONSTRAINT \"deliveryAttempt_outcome_check_abbc2848\" CHECK (\"outcome\" IN ('SUCCESSFUL', 'FAILED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"deliveryAttempt\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"deliveryAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.driverReservation",
+    "label": "Create table \"driverReservation\"",
+    "summary": "Creates table \"driverReservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "driverReservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"driverReservation\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"driverReservation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"driverReservation\"",
+        "sql": "CREATE TABLE \"public\".\"driverReservation\" (\n  \"driverId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"releasedAt\" timestamptz,\n  \"reservedAt\" timestamptz,\n  \"routeId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"driverReservation\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"driverReservation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.legacyRouteReconciliation",
+    "label": "Create table \"legacyRouteReconciliation\"",
+    "summary": "Creates table \"legacyRouteReconciliation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "legacyRouteReconciliation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"legacyRouteReconciliation\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"legacyRouteReconciliation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"legacyRouteReconciliation\"",
+        "sql": "CREATE TABLE \"public\".\"legacyRouteReconciliation\" (\n  \"administratorId\" text NOT NULL,\n  \"evidence\" json NOT NULL,\n  \"id\" text NOT NULL,\n  \"reason\" text NOT NULL,\n  \"recordedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"releaseDriverHold\" bool DEFAULT false NOT NULL,\n  \"routeId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"legacyRouteReconciliation\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"legacyRouteReconciliation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.orderClaim",
+    "label": "Create table \"orderClaim\"",
+    "summary": "Creates table \"orderClaim\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "orderClaim"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"orderClaim\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderClaim\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"orderClaim\"",
+        "sql": "CREATE TABLE \"public\".\"orderClaim\" (\n  \"claimedAt\" timestamptz,\n  \"id\" text NOT NULL,\n  \"orderId\" text NOT NULL,\n  \"releasedAt\" timestamptz,\n  \"routeId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"orderClaim\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderClaim\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.routeStop",
+    "label": "Create table \"routeStop\"",
+    "summary": "Creates table \"routeStop\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "routeStop"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"routeStop\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeStop\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"routeStop\"",
+        "sql": "CREATE TABLE \"public\".\"routeStop\" (\n  \"createdAt\" timestamptz,\n  \"id\" text NOT NULL,\n  \"isLegacy\" bool DEFAULT false NOT NULL,\n  \"orderId\" text NOT NULL,\n  \"outcome\" text,\n  \"routeId\" text NOT NULL,\n  \"sequence\" int4,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"routeStop_outcome_check_a6b9dae5\" CHECK (\"outcome\" IN ('PENDING', 'SUCCESSFUL', 'FAILED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"routeStop\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeStop\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.requiresAdministrativeReview",
+    "label": "Add column \"requiresAdministrativeReview\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "requiresAdministrativeReview",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"requiresAdministrativeReview\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "requiresAdministrativeReview"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"requiresAdministrativeReview\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"requiresAdministrativeReview\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"requiresAdministrativeReview\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "requiresAdministrativeReview"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.route.completedAt",
+    "label": "Add column \"completedAt\" to \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "completedAt",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"completedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "completedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"completedAt\"",
+        "sql": "ALTER TABLE \"public\".\"route\" ADD COLUMN \"completedAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"completedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "completedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.route.completedById",
+    "label": "Add column \"completedById\" to \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "completedById",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"completedById\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "completedById"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"completedById\"",
+        "sql": "ALTER TABLE \"public\".\"route\" ADD COLUMN \"completedById\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"completedById\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "completedById"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.route.returnedAt",
+    "label": "Add column \"returnedAt\" to \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "returnedAt",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"returnedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "returnedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"returnedAt\"",
+        "sql": "ALTER TABLE \"public\".\"route\" ADD COLUMN \"returnedAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"returnedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "returnedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.route.returnedById",
+    "label": "Add column \"returnedById\" to \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "returnedById",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"returnedById\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "returnedById"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"returnedById\"",
+        "sql": "ALTER TABLE \"public\".\"route\" ADD COLUMN \"returnedById\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"returnedById\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "returnedById"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.route.startedAt",
+    "label": "Add column \"startedAt\" to \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "startedAt",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"startedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "startedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"startedAt\"",
+        "sql": "ALTER TABLE \"public\".\"route\" ADD COLUMN \"startedAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"startedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "startedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.route.startedById",
+    "label": "Add column \"startedById\" to \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "startedById",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"startedById\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "startedById"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"startedById\"",
+        "sql": "ALTER TABLE \"public\".\"route\" ADD COLUMN \"startedById\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"startedById\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "startedById"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.route.status",
+    "label": "Add column \"status\" to \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "status",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"status\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "status"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"status\"",
+        "sql": "ALTER TABLE \"public\".\"route\" ADD COLUMN \"status\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"status\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "status"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.dropNotNull.route.driverId",
+    "label": "Drop NOT NULL on \"route\".\"driverId\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "driverId",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"driverId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "driverId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop NOT NULL on \"driverId\"",
+        "sql": "ALTER TABLE \"public\".\"route\" ALTER COLUMN \"driverId\" DROP NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"driverId\" is nullable",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "driverId",
+          "YES"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.deliveryAttempt.deliveryAttempt_stopId_idempotencyKey_key",
+    "label": "Add unique constraint on \"deliveryAttempt\" (stopId, idempotencyKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "deliveryAttempt_stopId_idempotencyKey_key",
+        "table": "deliveryAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"deliveryAttempt_stopId_idempotencyKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "deliveryAttempt_stopId_idempotencyKey_key",
+          "public",
+          "\"public\".\"deliveryAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"deliveryAttempt_stopId_idempotencyKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"deliveryAttempt\" ADD CONSTRAINT \"deliveryAttempt_stopId_idempotencyKey_key\" UNIQUE (\"stopId\", \"idempotencyKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"deliveryAttempt_stopId_idempotencyKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "deliveryAttempt_stopId_idempotencyKey_key",
+          "public",
+          "\"public\".\"deliveryAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.route.route_status_check_16cb52d8",
+    "label": "Add check constraint \"route_status_check_16cb52d8\" on \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "route_status_check_16cb52d8",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"route_status_check_16cb52d8\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "route_status_check_16cb52d8",
+          "public",
+          "\"public\".\"route\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"route_status_check_16cb52d8\"",
+        "sql": "ALTER TABLE \"public\".\"route\" ADD CONSTRAINT \"route_status_check_16cb52d8\" CHECK (\"status\" IN ('DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"route_status_check_16cb52d8\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "route_status_check_16cb52d8",
+          "public",
+          "\"public\".\"route\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.routeStop.routeStop_routeId_orderId_key",
+    "label": "Add unique constraint on \"routeStop\" (routeId, orderId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "routeStop_routeId_orderId_key",
+        "table": "routeStop"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"routeStop_routeId_orderId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeStop_routeId_orderId_key",
+          "public",
+          "\"public\".\"routeStop\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"routeStop_routeId_orderId_key\"",
+        "sql": "ALTER TABLE \"public\".\"routeStop\" ADD CONSTRAINT \"routeStop_routeId_orderId_key\" UNIQUE (\"routeId\", \"orderId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"routeStop_routeId_orderId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeStop_routeId_orderId_key",
+          "public",
+          "\"public\".\"routeStop\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.deliveryAttempt.deliveryAttempt_driverId_idx_8eed3317",
+    "label": "Create index \"deliveryAttempt_driverId_idx_8eed3317\" on \"deliveryAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "deliveryAttempt_driverId_idx_8eed3317",
+        "table": "deliveryAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"deliveryAttempt_driverId_idx_8eed3317\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"deliveryAttempt_driverId_idx_8eed3317\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"deliveryAttempt_driverId_idx_8eed3317\"",
+        "sql": "CREATE INDEX \"deliveryAttempt_driverId_idx_8eed3317\" ON \"public\".\"deliveryAttempt\" (\"driverId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"deliveryAttempt_driverId_idx_8eed3317\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"deliveryAttempt_driverId_idx_8eed3317\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.deliveryAttempt.deliveryAttempt_stopId_idx_8804d4e7",
+    "label": "Create index \"deliveryAttempt_stopId_idx_8804d4e7\" on \"deliveryAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "deliveryAttempt_stopId_idx_8804d4e7",
+        "table": "deliveryAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"deliveryAttempt_stopId_idx_8804d4e7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"deliveryAttempt_stopId_idx_8804d4e7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"deliveryAttempt_stopId_idx_8804d4e7\"",
+        "sql": "CREATE INDEX \"deliveryAttempt_stopId_idx_8804d4e7\" ON \"public\".\"deliveryAttempt\" (\"stopId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"deliveryAttempt_stopId_idx_8804d4e7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"deliveryAttempt_stopId_idx_8804d4e7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.driverReservation.active_driver_reservation_4f166943",
+    "label": "Create index \"active_driver_reservation_4f166943\" on \"driverReservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "active_driver_reservation_4f166943",
+        "table": "driverReservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"active_driver_reservation_4f166943\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"active_driver_reservation_4f166943\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"active_driver_reservation_4f166943\"",
+        "sql": "CREATE UNIQUE INDEX \"active_driver_reservation_4f166943\" ON \"public\".\"driverReservation\" (\"driverId\") WHERE ((\"releasedAt\" IS NULL))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"active_driver_reservation_4f166943\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"active_driver_reservation_4f166943\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.driverReservation.driverReservation_routeId_idx_91ae2fd6",
+    "label": "Create index \"driverReservation_routeId_idx_91ae2fd6\" on \"driverReservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "driverReservation_routeId_idx_91ae2fd6",
+        "table": "driverReservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"driverReservation_routeId_idx_91ae2fd6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"driverReservation_routeId_idx_91ae2fd6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"driverReservation_routeId_idx_91ae2fd6\"",
+        "sql": "CREATE INDEX \"driverReservation_routeId_idx_91ae2fd6\" ON \"public\".\"driverReservation\" (\"routeId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"driverReservation_routeId_idx_91ae2fd6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"driverReservation_routeId_idx_91ae2fd6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.legacyRouteReconciliation.legacyRouteReconciliation_administratorId_idx_8bd4a5de",
+    "label": "Create index \"legacyRouteReconciliation_administratorId_idx_8bd4a5de\" on \"legacyRouteReconciliation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "legacyRouteReconciliation_administratorId_idx_8bd4a5de",
+        "table": "legacyRouteReconciliation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"legacyRouteReconciliation_administratorId_idx_8bd4a5de\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"legacyRouteReconciliation_administratorId_idx_8bd4a5de\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"legacyRouteReconciliation_administratorId_idx_8bd4a5de\"",
+        "sql": "CREATE INDEX \"legacyRouteReconciliation_administratorId_idx_8bd4a5de\" ON \"public\".\"legacyRouteReconciliation\" (\"administratorId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"legacyRouteReconciliation_administratorId_idx_8bd4a5de\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"legacyRouteReconciliation_administratorId_idx_8bd4a5de\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.legacyRouteReconciliation.legacyRouteReconciliation_routeId_idx_91ae2fd6",
+    "label": "Create index \"legacyRouteReconciliation_routeId_idx_91ae2fd6\" on \"legacyRouteReconciliation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "legacyRouteReconciliation_routeId_idx_91ae2fd6",
+        "table": "legacyRouteReconciliation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"legacyRouteReconciliation_routeId_idx_91ae2fd6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"legacyRouteReconciliation_routeId_idx_91ae2fd6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"legacyRouteReconciliation_routeId_idx_91ae2fd6\"",
+        "sql": "CREATE INDEX \"legacyRouteReconciliation_routeId_idx_91ae2fd6\" ON \"public\".\"legacyRouteReconciliation\" (\"routeId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"legacyRouteReconciliation_routeId_idx_91ae2fd6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"legacyRouteReconciliation_routeId_idx_91ae2fd6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orderClaim.active_order_claim_d230b8a8",
+    "label": "Create index \"active_order_claim_d230b8a8\" on \"orderClaim\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "active_order_claim_d230b8a8",
+        "table": "orderClaim"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"active_order_claim_d230b8a8\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"active_order_claim_d230b8a8\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"active_order_claim_d230b8a8\"",
+        "sql": "CREATE UNIQUE INDEX \"active_order_claim_d230b8a8\" ON \"public\".\"orderClaim\" (\"orderId\") WHERE ((\"releasedAt\" IS NULL))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"active_order_claim_d230b8a8\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"active_order_claim_d230b8a8\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orderClaim.orderClaim_routeId_idx_91ae2fd6",
+    "label": "Create index \"orderClaim_routeId_idx_91ae2fd6\" on \"orderClaim\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "orderClaim_routeId_idx_91ae2fd6",
+        "table": "orderClaim"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"orderClaim_routeId_idx_91ae2fd6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderClaim_routeId_idx_91ae2fd6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"orderClaim_routeId_idx_91ae2fd6\"",
+        "sql": "CREATE INDEX \"orderClaim_routeId_idx_91ae2fd6\" ON \"public\".\"orderClaim\" (\"routeId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"orderClaim_routeId_idx_91ae2fd6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderClaim_routeId_idx_91ae2fd6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.route.route_completedById_idx_47fde12d",
+    "label": "Create index \"route_completedById_idx_47fde12d\" on \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "route_completedById_idx_47fde12d",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"route_completedById_idx_47fde12d\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"route_completedById_idx_47fde12d\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"route_completedById_idx_47fde12d\"",
+        "sql": "CREATE INDEX \"route_completedById_idx_47fde12d\" ON \"public\".\"route\" (\"completedById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"route_completedById_idx_47fde12d\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"route_completedById_idx_47fde12d\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.route.route_returnedById_idx_c7b1121b",
+    "label": "Create index \"route_returnedById_idx_c7b1121b\" on \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "route_returnedById_idx_c7b1121b",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"route_returnedById_idx_c7b1121b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"route_returnedById_idx_c7b1121b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"route_returnedById_idx_c7b1121b\"",
+        "sql": "CREATE INDEX \"route_returnedById_idx_c7b1121b\" ON \"public\".\"route\" (\"returnedById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"route_returnedById_idx_c7b1121b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"route_returnedById_idx_c7b1121b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.route.route_startedById_idx_a8358300",
+    "label": "Create index \"route_startedById_idx_a8358300\" on \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "route_startedById_idx_a8358300",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"route_startedById_idx_a8358300\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"route_startedById_idx_a8358300\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"route_startedById_idx_a8358300\"",
+        "sql": "CREATE INDEX \"route_startedById_idx_a8358300\" ON \"public\".\"route\" (\"startedById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"route_startedById_idx_a8358300\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"route_startedById_idx_a8358300\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.routeStop.routeStop_orderId_idx_d284871b",
+    "label": "Create index \"routeStop_orderId_idx_d284871b\" on \"routeStop\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "routeStop_orderId_idx_d284871b",
+        "table": "routeStop"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"routeStop_orderId_idx_d284871b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeStop_orderId_idx_d284871b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"routeStop_orderId_idx_d284871b\"",
+        "sql": "CREATE INDEX \"routeStop_orderId_idx_d284871b\" ON \"public\".\"routeStop\" (\"orderId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"routeStop_orderId_idx_d284871b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeStop_orderId_idx_d284871b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.routeStop.routeStop_routeId_idx_91ae2fd6",
+    "label": "Create index \"routeStop_routeId_idx_91ae2fd6\" on \"routeStop\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "routeStop_routeId_idx_91ae2fd6",
+        "table": "routeStop"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"routeStop_routeId_idx_91ae2fd6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeStop_routeId_idx_91ae2fd6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"routeStop_routeId_idx_91ae2fd6\"",
+        "sql": "CREATE INDEX \"routeStop_routeId_idx_91ae2fd6\" ON \"public\".\"routeStop\" (\"routeId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"routeStop_routeId_idx_91ae2fd6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeStop_routeId_idx_91ae2fd6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.routeStop.verified_route_stop_sequence_6a9c128a",
+    "label": "Create index \"verified_route_stop_sequence_6a9c128a\" on \"routeStop\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "verified_route_stop_sequence_6a9c128a",
+        "table": "routeStop"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"verified_route_stop_sequence_6a9c128a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"verified_route_stop_sequence_6a9c128a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"verified_route_stop_sequence_6a9c128a\"",
+        "sql": "CREATE UNIQUE INDEX \"verified_route_stop_sequence_6a9c128a\" ON \"public\".\"routeStop\" (\"routeId\", \"sequence\") WHERE ((NOT \"isLegacy\" AND sequence IS NOT NULL))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"verified_route_stop_sequence_6a9c128a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"verified_route_stop_sequence_6a9c128a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.deliveryAttempt.deliveryAttempt_stopId_fkey",
+    "label": "Add foreign key \"deliveryAttempt_stopId_fkey\" on \"deliveryAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "deliveryAttempt_stopId_fkey",
+        "table": "deliveryAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"deliveryAttempt_stopId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "deliveryAttempt_stopId_fkey",
+          "public",
+          "\"public\".\"deliveryAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"deliveryAttempt_stopId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"deliveryAttempt\"\nADD CONSTRAINT \"deliveryAttempt_stopId_fkey\"\nFOREIGN KEY (\"stopId\")\nREFERENCES \"public\".\"routeStop\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"deliveryAttempt_stopId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "deliveryAttempt_stopId_fkey",
+          "public",
+          "\"public\".\"deliveryAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.deliveryAttempt.deliveryAttempt_driverId_fkey",
+    "label": "Add foreign key \"deliveryAttempt_driverId_fkey\" on \"deliveryAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "deliveryAttempt_driverId_fkey",
+        "table": "deliveryAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"deliveryAttempt_driverId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "deliveryAttempt_driverId_fkey",
+          "public",
+          "\"public\".\"deliveryAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"deliveryAttempt_driverId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"deliveryAttempt\"\nADD CONSTRAINT \"deliveryAttempt_driverId_fkey\"\nFOREIGN KEY (\"driverId\")\nREFERENCES \"public\".\"driver\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"deliveryAttempt_driverId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "deliveryAttempt_driverId_fkey",
+          "public",
+          "\"public\".\"deliveryAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.driverReservation.driverReservation_driverId_fkey",
+    "label": "Add foreign key \"driverReservation_driverId_fkey\" on \"driverReservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "driverReservation_driverId_fkey",
+        "table": "driverReservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"driverReservation_driverId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "driverReservation_driverId_fkey",
+          "public",
+          "\"public\".\"driverReservation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"driverReservation_driverId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"driverReservation\"\nADD CONSTRAINT \"driverReservation_driverId_fkey\"\nFOREIGN KEY (\"driverId\")\nREFERENCES \"public\".\"driver\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"driverReservation_driverId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "driverReservation_driverId_fkey",
+          "public",
+          "\"public\".\"driverReservation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.driverReservation.driverReservation_routeId_fkey",
+    "label": "Add foreign key \"driverReservation_routeId_fkey\" on \"driverReservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "driverReservation_routeId_fkey",
+        "table": "driverReservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"driverReservation_routeId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "driverReservation_routeId_fkey",
+          "public",
+          "\"public\".\"driverReservation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"driverReservation_routeId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"driverReservation\"\nADD CONSTRAINT \"driverReservation_routeId_fkey\"\nFOREIGN KEY (\"routeId\")\nREFERENCES \"public\".\"route\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"driverReservation_routeId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "driverReservation_routeId_fkey",
+          "public",
+          "\"public\".\"driverReservation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.legacyRouteReconciliation.legacyRouteReconciliation_routeId_fkey",
+    "label": "Add foreign key \"legacyRouteReconciliation_routeId_fkey\" on \"legacyRouteReconciliation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "legacyRouteReconciliation_routeId_fkey",
+        "table": "legacyRouteReconciliation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"legacyRouteReconciliation_routeId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "legacyRouteReconciliation_routeId_fkey",
+          "public",
+          "\"public\".\"legacyRouteReconciliation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"legacyRouteReconciliation_routeId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"legacyRouteReconciliation\"\nADD CONSTRAINT \"legacyRouteReconciliation_routeId_fkey\"\nFOREIGN KEY (\"routeId\")\nREFERENCES \"public\".\"route\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"legacyRouteReconciliation_routeId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "legacyRouteReconciliation_routeId_fkey",
+          "public",
+          "\"public\".\"legacyRouteReconciliation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.legacyRouteReconciliation.legacyRouteReconciliation_administratorId_fkey",
+    "label": "Add foreign key \"legacyRouteReconciliation_administratorId_fkey\" on \"legacyRouteReconciliation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "legacyRouteReconciliation_administratorId_fkey",
+        "table": "legacyRouteReconciliation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"legacyRouteReconciliation_administratorId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "legacyRouteReconciliation_administratorId_fkey",
+          "public",
+          "\"public\".\"legacyRouteReconciliation\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"legacyRouteReconciliation_administratorId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"legacyRouteReconciliation\"\nADD CONSTRAINT \"legacyRouteReconciliation_administratorId_fkey\"\nFOREIGN KEY (\"administratorId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"legacyRouteReconciliation_administratorId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "legacyRouteReconciliation_administratorId_fkey",
+          "public",
+          "\"public\".\"legacyRouteReconciliation\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.orderClaim.orderClaim_orderId_fkey",
+    "label": "Add foreign key \"orderClaim_orderId_fkey\" on \"orderClaim\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "orderClaim_orderId_fkey",
+        "table": "orderClaim"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"orderClaim_orderId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderClaim_orderId_fkey",
+          "public",
+          "\"public\".\"orderClaim\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"orderClaim_orderId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"orderClaim\"\nADD CONSTRAINT \"orderClaim_orderId_fkey\"\nFOREIGN KEY (\"orderId\")\nREFERENCES \"public\".\"order\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"orderClaim_orderId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderClaim_orderId_fkey",
+          "public",
+          "\"public\".\"orderClaim\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.orderClaim.orderClaim_routeId_fkey",
+    "label": "Add foreign key \"orderClaim_routeId_fkey\" on \"orderClaim\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "orderClaim_routeId_fkey",
+        "table": "orderClaim"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"orderClaim_routeId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderClaim_routeId_fkey",
+          "public",
+          "\"public\".\"orderClaim\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"orderClaim_routeId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"orderClaim\"\nADD CONSTRAINT \"orderClaim_routeId_fkey\"\nFOREIGN KEY (\"routeId\")\nREFERENCES \"public\".\"route\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"orderClaim_routeId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderClaim_routeId_fkey",
+          "public",
+          "\"public\".\"orderClaim\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.route.route_completedById_fkey",
+    "label": "Add foreign key \"route_completedById_fkey\" on \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "route_completedById_fkey",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"route_completedById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "route_completedById_fkey",
+          "public",
+          "\"public\".\"route\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"route_completedById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"route\"\nADD CONSTRAINT \"route_completedById_fkey\"\nFOREIGN KEY (\"completedById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"route_completedById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "route_completedById_fkey",
+          "public",
+          "\"public\".\"route\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.route.route_returnedById_fkey",
+    "label": "Add foreign key \"route_returnedById_fkey\" on \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "route_returnedById_fkey",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"route_returnedById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "route_returnedById_fkey",
+          "public",
+          "\"public\".\"route\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"route_returnedById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"route\"\nADD CONSTRAINT \"route_returnedById_fkey\"\nFOREIGN KEY (\"returnedById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"route_returnedById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "route_returnedById_fkey",
+          "public",
+          "\"public\".\"route\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.route.route_startedById_fkey",
+    "label": "Add foreign key \"route_startedById_fkey\" on \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "route_startedById_fkey",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"route_startedById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "route_startedById_fkey",
+          "public",
+          "\"public\".\"route\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"route_startedById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"route\"\nADD CONSTRAINT \"route_startedById_fkey\"\nFOREIGN KEY (\"startedById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"route_startedById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "route_startedById_fkey",
+          "public",
+          "\"public\".\"route\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.routeStop.routeStop_routeId_fkey",
+    "label": "Add foreign key \"routeStop_routeId_fkey\" on \"routeStop\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "routeStop_routeId_fkey",
+        "table": "routeStop"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"routeStop_routeId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeStop_routeId_fkey",
+          "public",
+          "\"public\".\"routeStop\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"routeStop_routeId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"routeStop\"\nADD CONSTRAINT \"routeStop_routeId_fkey\"\nFOREIGN KEY (\"routeId\")\nREFERENCES \"public\".\"route\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"routeStop_routeId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeStop_routeId_fkey",
+          "public",
+          "\"public\".\"routeStop\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.routeStop.routeStop_orderId_fkey",
+    "label": "Add foreign key \"routeStop_orderId_fkey\" on \"routeStop\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "routeStop_orderId_fkey",
+        "table": "routeStop"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"routeStop_orderId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeStop_orderId_fkey",
+          "public",
+          "\"public\".\"routeStop\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"routeStop_orderId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"routeStop\"\nADD CONSTRAINT \"routeStop_orderId_fkey\"\nFOREIGN KEY (\"orderId\")\nREFERENCES \"public\".\"order\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"routeStop_orderId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeStop_orderId_fkey",
+          "public",
+          "\"public\".\"routeStop\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "backfill.legacy-route-stops",
+    "label": "Preserve legacy route/order associations",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "name": "routeStop"
+      }
+    },
+    "precheck": [
+      {
+        "description": "allow empty and populated legacy databases",
+        "sql": "SELECT true AS result"
+      }
+    ],
+    "execute": [
+      {
+        "description": "copy exact legacy associations without guessed order or times",
+        "sql": "INSERT INTO public.\"routeStop\" (id, \"routeId\", \"orderId\", sequence, \"isLegacy\")\n            SELECT 'legacy:' || o.id, o.\"routeId\", o.id, o.\"stopOrder\", true\n            FROM public.\"order\" o WHERE o.\"routeId\" IS NOT NULL\n            AND NOT EXISTS (SELECT 1 FROM public.\"routeStop\" s WHERE s.\"routeId\" = o.\"routeId\" AND s.\"orderId\" = o.id)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify all original links and positions were retained as unverified",
+        "sql": "SELECT NOT EXISTS (SELECT 1 FROM public.\"order\" o WHERE o.\"routeId\" IS NOT NULL\n            AND NOT EXISTS (SELECT 1 FROM public.\"routeStop\" s WHERE s.\"routeId\" = o.\"routeId\" AND s.\"orderId\" = o.id\n            AND s.sequence IS NOT DISTINCT FROM o.\"stopOrder\" AND s.outcome IS NULL AND s.\"isLegacy\")) AS result"
+      }
+    ]
+  }
+]
