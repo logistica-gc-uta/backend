@@ -93,6 +93,7 @@ CONTAINER_NAME="isolated-pg-${RANDOM}-$$"
 CONTAINER_ID=$(docker run -d --rm --pull=never \
   --label "delivery.issue6.owner=$OWNER_NONCE" \
   --name "$CONTAINER_NAME" \
+  --pull=never \
   -p 127.0.0.1::5432 \
   -e POSTGRES_USER="$PG_USER" \
   -e POSTGRES_PASSWORD="$PG_PASS" \
@@ -130,8 +131,18 @@ if [[ $READY -eq 0 ]]; then
 fi
 
 # 5. Initialize schema and seed data ONLY in owned ephemeral database
-DATABASE_URL="$ISOLATED_DB_URL" pnpm prisma db init --db "$ISOLATED_DB_URL" >/dev/null
+DATABASE_URL="$ISOLATED_DB_URL" pnpm prisma db migrate --db "$ISOLATED_DB_URL" >/dev/null
+DATABASE_URL="$ISOLATED_DB_URL" pnpm prisma db verify --db "$ISOLATED_DB_URL" >/dev/null
 DATABASE_URL="$ISOLATED_DB_URL" pnpm tsx src/prisma/seed.ts >/dev/null
+# Seed twice: identity and coordinate values must remain unchanged, including NULLs.
+SEED_SNAPSHOT_SQL='SELECT row_to_json(z) FROM (SELECT id, code, "depotLat", "depotLng" FROM "zone" ORDER BY code) z;'
+SEED_BEFORE=$(docker exec "$CONTAINER_ID" psql -U "$PG_USER" -d "$PG_DB" -At -c "$SEED_SNAPSHOT_SQL")
+DATABASE_URL="$ISOLATED_DB_URL" pnpm tsx src/prisma/seed.ts >/dev/null
+SEED_AFTER=$(docker exec "$CONTAINER_ID" psql -U "$PG_USER" -d "$PG_DB" -At -c "$SEED_SNAPSHOT_SQL")
+if [[ "$SEED_BEFORE" != "$SEED_AFTER" ]]; then
+  echo "Error: Seed changed existing zone identities or depot coordinates." >&2
+  exit 1
+fi
 
 # 6. Allocate free local port for dedicated backend
 APP_PORT=$(node -e 'const net = require("net"); const s = net.createServer(); s.listen(0, "127.0.0.1", () => { console.log(s.address().port); s.close(); });')

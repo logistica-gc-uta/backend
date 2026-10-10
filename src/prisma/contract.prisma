@@ -41,10 +41,14 @@ model Zone {
   id        String   @id @default(uuid())
   name      String   @unique
   code      String   @unique
+  depotLat  Float?
+  depotLng  Float?
   createdAt DateTime @default(now())
 
   routes    Route[]
   orders    Order[]
+
+  @@check(expression: "(\"depotLat\" IS NULL AND \"depotLng\" IS NULL) OR (\"depotLat\" IS NOT NULL AND \"depotLng\" IS NOT NULL AND \"depotLat\" >= -90 AND \"depotLat\" <= 90 AND \"depotLng\" >= -180 AND \"depotLng\" <= 180)", name: "zone_depot_coordinates_valid")
 }
 
 model Product {
@@ -71,21 +75,25 @@ model Route {
 }
 
 model Order {
-  id        String      @id @default(uuid())
-  userId    String
-  user      User        @relation(fields: [userId], references: [id])
-  zoneId    String
-  zone      Zone        @relation(fields: [zoneId], references: [id])
-  routeId   String?
-  route     Route?      @relation(fields: [routeId], references: [id])
+  id                    String      @id @default(uuid())
+  userId                String
+  user                  User        @relation(fields: [userId], references: [id])
+  zoneId                String
+  zone                  Zone        @relation(fields: [zoneId], references: [id])
+  routeId               String?
+  route                 Route?      @relation(fields: [routeId], references: [id])
   status                OrderStatus @default(PENDING)
   total                 Float       @default(0)
   deliveryAddress       String
   scheduledDeliveryDate DateTime?
   stopOrder             Int?
+  deliveryLat           Float?
+  deliveryLng           Float?
   createdAt             DateTime    @default(now())
 
   items                 OrderItem[]
+
+  @@check(expression: "(\"deliveryLat\" IS NULL AND \"deliveryLng\" IS NULL) OR (\"deliveryLat\" IS NOT NULL AND \"deliveryLng\" IS NOT NULL AND \"deliveryLat\" >= -90 AND \"deliveryLat\" <= 90 AND \"deliveryLng\" >= -180 AND \"deliveryLng\" <= 180)", name: "order_delivery_coordinates_valid")
 }
 
 model OrderItem {

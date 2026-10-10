@@ -6,6 +6,7 @@ import { Role } from '../auth/dto/register.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
+import { OrderCreatedResponseDto, OrderResponseDto } from './dto/order-response.dto.js';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto.js';
 import { OrdersService } from './orders.service.js';
 
@@ -19,8 +20,12 @@ export class OrdersController {
   @Post()
   @Roles(Role.CLIENT)
   @ApiOperation({ summary: 'Crear un pedido con reserva de inventario (Solo CLIENT)' })
-  @ApiResponse({ status: 201, description: 'Pedido creado exitosamente con estado PENDING' })
-  @ApiResponse({ status: 400, description: 'Stock insuficiente para alguno de los productos' })
+  @ApiResponse({
+    status: 201,
+    description: 'Pedido creado exitosamente con estado PENDING y persistencia escalar de coordenadas',
+    type: OrderCreatedResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Stock insuficiente para alguno de los productos o coordenadas inválidas' })
   @HttpCode(HttpStatus.CREATED)
   async create(
     @CurrentUser('userId') userId: string,
@@ -32,7 +37,11 @@ export class OrdersController {
   @Get('my-orders')
   @Roles(Role.CLIENT)
   @ApiOperation({ summary: 'Listar historial de pedidos del cliente autenticado (Solo CLIENT)' })
-  @ApiResponse({ status: 200, description: 'Historial de pedidos con items y zona' })
+  @ApiResponse({
+    status: 200,
+    description: 'Historial de pedidos con items, zona enriquecida, deliveryLocation y preparación geográfica',
+    type: [OrderResponseDto],
+  })
   async findMyOrders(@CurrentUser('userId') userId: string) {
     return this.ordersService.findMyOrders(userId);
   }
@@ -40,7 +49,11 @@ export class OrdersController {
   @Get()
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Listado global de todos los pedidos (Solo ADMIN)' })
-  @ApiResponse({ status: 200, description: 'Listado completo de pedidos' })
+  @ApiResponse({
+    status: 200,
+    description: 'Listado completo de pedidos con items, zona, cliente y preparación geográfica',
+    type: [OrderResponseDto],
+  })
   async findAll() {
     return this.ordersService.findAll();
   }
@@ -49,7 +62,11 @@ export class OrdersController {
   @ApiOperation({
     summary: 'Consultar detalle de un pedido por ID (CLIENT propio, DRIVER asignado a ruta, ADMIN global)',
   })
-  @ApiResponse({ status: 200, description: 'Detalle del pedido' })
+  @ApiResponse({
+    status: 200,
+    description: 'Detalle del pedido con items, zona enriquecida, deliveryLocation y preparación geográfica',
+    type: OrderResponseDto,
+  })
   @ApiResponse({ status: 403, description: 'Acceso denegado: no autorizado para consultar este pedido' })
   @ApiResponse({ status: 404, description: 'Pedido no encontrado' })
   async findOne(
@@ -64,7 +81,11 @@ export class OrdersController {
   @ApiOperation({
     summary: 'Actualizar estado del pedido (ADMIN cancelación no terminal; DRIVER bloqueado fail-closed hasta ruta en progreso)',
   })
-  @ApiResponse({ status: 200, description: 'Estado actualizado correctamente' })
+  @ApiResponse({
+    status: 200,
+    description: 'Estado actualizado correctamente',
+    type: OrderCreatedResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Transición inválida o asignación no permitida en este endpoint' })
   @ApiResponse({ status: 403, description: 'Acceso denegado: rol o ruta no autorizada (DRIVER fail-closed hasta Issue #10)' })
   @ApiResponse({ status: 404, description: 'Pedido no encontrado' })

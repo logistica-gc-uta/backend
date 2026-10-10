@@ -1,5 +1,9 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
+import {
+  enrichZoneWithGeography,
+  validateCoordinatePair,
+} from '../orders/order-geography.util.js';
 import { CreateZoneDto } from './dto/create-zone.dto.js';
 import { UpdateZoneDto } from './dto/update-zone.dto.js';
 
@@ -8,7 +12,8 @@ export class ZonesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll() {
-    return this.prisma.zone.all();
+    const zones = await this.prisma.zone.all();
+    return zones.map(enrichZoneWithGeography);
   }
 
   async findOne(id: string) {
@@ -16,7 +21,7 @@ export class ZonesService {
     if (!zone) {
       throw new NotFoundException(`Zona con ID '${id}' no encontrada`);
     }
-    return zone;
+    return enrichZoneWithGeography(zone);
   }
 
   async create(dto: CreateZoneDto) {
@@ -30,10 +35,16 @@ export class ZonesService {
       throw new ConflictException(`Ya existe una zona registrada con el nombre '${dto.name}'`);
     }
 
-    return this.prisma.zone.create({
+    const coords = validateCoordinatePair(dto.depotLat, dto.depotLng, 'depot');
+
+    const created = await this.prisma.zone.create({
       name: dto.name,
       code: dto.code,
+      depotLat: coords.lat,
+      depotLng: coords.lng,
     });
+
+    return enrichZoneWithGeography(created);
   }
 
   async update(id: string, dto: UpdateZoneDto) {
@@ -53,10 +64,24 @@ export class ZonesService {
       }
     }
 
-    return this.prisma.zone.where({ id }).update({
+    const hasCoords = dto.depotLat !== undefined || dto.depotLng !== undefined;
+    let coordUpdate = {};
+    if (hasCoords) {
+      const coords = validateCoordinatePair(dto.depotLat, dto.depotLng, 'depot');
+      coordUpdate = { depotLat: coords.lat, depotLng: coords.lng };
+    }
+
+    const updated = await this.prisma.zone.where({ id }).update({
       ...(dto.name ? { name: dto.name } : {}),
       ...(dto.code ? { code: dto.code } : {}),
+      ...coordUpdate,
     });
+
+    if (!updated) {
+      throw new NotFoundException(`Zona con ID '${id}' no encontrada`);
+    }
+
+    return enrichZoneWithGeography(updated);
   }
 
   async remove(id: string) {

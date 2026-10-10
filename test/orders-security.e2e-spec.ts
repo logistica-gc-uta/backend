@@ -555,4 +555,133 @@ describe('Orders Security Integration & E2E (PostgreSQL Real)', () => {
       expect(snapshotAfter?.status).toBe(snapshotBefore?.status);
     });
   });
+
+  describe('8. Geolocation persistence, complete-pair validation, and read-model eligibility', () => {
+    it('CLIENT puede crear pedido con coordenadas válidas y leerlo con deliveryLocation y planningEligibility', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/orders')
+        .set('Authorization', `Bearer ${clientA.token}`)
+        .send({
+          zoneId: zone.id,
+          deliveryAddress: 'Av. Cevallos y Montalvo',
+          deliveryLat: -1.249,
+          deliveryLng: -78.616,
+          items: [{ productId: product.id, quantity: 1 }],
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.deliveryLat).toBe(-1.249);
+      expect(res.body.deliveryLng).toBe(-78.616);
+
+      const readRes = await request(app.getHttpServer())
+        .get(`/api/v1/orders/${res.body.id}`)
+        .set('Authorization', `Bearer ${clientA.token}`);
+
+      expect(readRes.status).toBe(200);
+      expect(readRes.body.deliveryLocation).toEqual({ lat: -1.249, lng: -78.616 });
+      expect(readRes.body.planningEligibility).toBeDefined();
+    });
+
+    it('CLIENT puede crear pedido omitiendo coordenadas (compatibilidad hacia atrás con pares nulos)', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/orders')
+        .set('Authorization', `Bearer ${clientA.token}`)
+        .send({
+          zoneId: zone.id,
+          deliveryAddress: 'Calle Bolivar 456',
+          items: [{ productId: product.id, quantity: 1 }],
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.deliveryLat).toBeNull();
+      expect(res.body.deliveryLng).toBeNull();
+
+      const readRes = await request(app.getHttpServer())
+        .get(`/api/v1/orders/${res.body.id}`)
+        .set('Authorization', `Bearer ${clientA.token}`);
+
+      expect(readRes.status).toBe(200);
+      expect(readRes.body.deliveryLocation).toBeNull();
+      expect(readRes.body.planningEligibility.eligible).toBe(false);
+      expect(readRes.body.planningEligibility.reasons).toContain('MISSING_DELIVERY_COORDINATES');
+    });
+
+    it('rechaza con 400 Bad Request coordenadas incompletas, nulas explícitas o fuera de rango en creación de pedidos', async () => {
+      const invalidPayloads = [
+        { deliveryLat: -1.2 },
+        { deliveryLng: -78.6 },
+        { deliveryLat: null, deliveryLng: null },
+        { deliveryLat: 95, deliveryLng: -78.6 },
+        { deliveryLat: -1.2, deliveryLng: 185 },
+        { deliveryLat: '-1.2', deliveryLng: -78.6 },
+      ];
+
+      for (const payload of invalidPayloads) {
+        const res = await request(app.getHttpServer())
+          .post('/api/v1/orders')
+          .set('Authorization', `Bearer ${clientA.token}`)
+          .send({
+            zoneId: zone.id,
+            deliveryAddress: 'Dirección de prueba',
+            items: [{ productId: product.id, quantity: 1 }],
+            ...payload,
+          });
+
+        expect(res.status).toBe(400);
+      }
+    });
+
+    it('rechaza con 400 Bad Request campos geográficos en actualización de estado (forbidNonWhitelisted)', async () => {
+      const res = await request(app.getHttpServer())
+        .patch(`/api/v1/orders/${orderClientAAssignedRouteA.id}/status`)
+        .set('Authorization', `Bearer ${admin.token}`)
+        .send({
+          status: OrderStatus.CANCELLED,
+          deliveryLat: -1.25,
+          deliveryLng: -78.62,
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('property deliveryLat should not exist'),
+          expect.stringContaining('property deliveryLng should not exist'),
+        ]),
+      );
+    });
+
+    it('ADMIN puede crear y actualizar zonas con coordenadas de depósito y recupera depotLocation', async () => {
+      const unique = `${Date.now()}`;
+      const createRes = await request(app.getHttpServer())
+        .post('/api/v1/zones')
+        .set('Authorization', `Bearer ${admin.token}`)
+        .send({
+          name: `Zona Geo ${unique}`,
+          code: `ZG-${unique.slice(-6)}`,
+          depotLat: -1.24,
+          depotLng: -78.61,
+        });
+
+      expect(createRes.status).toBe(201);
+      expect(createRes.body.depotLocation).toEqual({ lat: -1.24, lng: -78.61 });
+
+      const patchOmitRes = await request(app.getHttpServer())
+        .patch(`/api/v1/zones/${createRes.body.id}`)
+        .set('Authorization', `Bearer ${admin.token}`)
+        .send({ name: `Zona Geo Renombrada ${unique}` });
+
+      expect(patchOmitRes.status).toBe(200);
+      expect(patchOmitRes.body.depotLat).toBe(-1.24);
+      expect(patchOmitRes.body.depotLocation).toEqual({ lat: -1.24, lng: -78.61 });
+
+      const patchUpdateRes = await request(app.getHttpServer())
+        .patch(`/api/v1/zones/${createRes.body.id}`)
+        .set('Authorization', `Bearer ${admin.token}`)
+        .send({ depotLat: -1.25, depotLng: -78.62 });
+
+      expect(patchUpdateRes.status).toBe(200);
+      expect(patchUpdateRes.body.depotLat).toBe(-1.25);
+      expect(patchUpdateRes.body.depotLocation).toEqual({ lat: -1.25, lng: -78.62 });
+    });
+  });
 });
