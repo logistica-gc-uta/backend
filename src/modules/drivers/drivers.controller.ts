@@ -1,3 +1,5 @@
+import { RouteHistoryResponseDto } from '../routes/dto/route-history-response.dto.js';
+import { DriverAvailabilityResponseDto } from '../routes/dto/driver-availability-response.dto.js';
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -20,61 +22,30 @@ import { DriversService } from './drivers.service.js';
 export class DriversController {
   constructor(private readonly driversService: DriversService) {}
 
+  @Get('me/availability')
+  @Roles(Role.DRIVER)
+  @ApiOperation({
+    summary: 'Read effective availability of the authenticated driver',
+  })
+  @ApiResponse({ status: 200, type: DriverAvailabilityResponseDto })
+  @ApiResponse({ status: 404, description: 'Driver profile not found' })
+  async findMyAvailability(
+    @CurrentUser('userId') userId: string,
+  ): Promise<DriverAvailabilityResponseDto> {
+    return this.driversService.findMyAvailability(userId);
+  }
+
   @Get('me/routes')
   @Roles(Role.DRIVER)
   @ApiOperation({
     summary: 'Read routes assigned to the authenticated DRIVER',
     description:
-      'JWT subject is the sole identity source. Optional date filters Route.date using the America/Guayaquil local day, inclusive start and exclusive next midnight. Orders include all statuses and are ordered by stopOrder, NULL last, then id.',
+      'JWT subject is the sole identity source. Optional date filters Route.date using the America/Guayaquil local day, inclusive start and exclusive next midnight. Historical orders derive stable RouteStop association; current commercial fields are not snapshots. Raw sequence is preserved, NULL last, ties by stop ID.',
   })
   @ApiResponse({
     status: 200,
     description: 'Assigned routes; [] when no routes or driver profile exists',
-    schema: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['id', 'date', 'zone', 'orders'],
-        properties: {
-          id: { type: 'string', format: 'uuid' },
-          date: { type: 'string', format: 'date-time' },
-          zone: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-              code: { type: 'string' },
-            },
-          },
-          orders: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                deliveryAddress: { type: 'string' },
-                status: {
-                  type: 'string',
-                  enum: [
-                    'PENDING',
-                    'ASSIGNED',
-                    'IN_TRANSIT',
-                    'DELIVERED',
-                    'CANCELLED',
-                  ],
-                },
-                scheduledDeliveryDate: {
-                  type: 'string',
-                  format: 'date-time',
-                  nullable: true,
-                },
-                stopOrder: { type: 'integer', nullable: true },
-              },
-            },
-          },
-        },
-      },
-    },
+    type: [RouteHistoryResponseDto],
   })
   @ApiResponse({
     status: 400,

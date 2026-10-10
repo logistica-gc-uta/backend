@@ -146,10 +146,11 @@ export class SecurityFixtureManager {
     };
   }
 
-  async createRoute(driverId: string, zoneId: string): Promise<RouteFixture> {
+  async createRoute(driverId: string, zoneId: string, status: string = 'DRAFT'): Promise<RouteFixture> {
     const route = await this.prisma.route.create({
       driverId,
       zoneId,
+      status,
     });
     this.createdRouteIds.push(route.id);
     return {

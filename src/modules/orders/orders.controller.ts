@@ -1,12 +1,33 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { CurrentUser, type AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import {
+  CurrentUser,
+  type AuthenticatedUser,
+} from '../auth/decorators/current-user.decorator.js';
 import { Roles } from '../auth/decorators/roles.decorator.js';
 import { Role } from '../auth/dto/register.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
-import { OrderCreatedResponseDto, OrderResponseDto } from './dto/order-response.dto.js';
+import {
+  OrderCreatedResponseDto,
+  OrderResponseDto,
+} from './dto/order-response.dto.js';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto.js';
 import { OrdersService } from './orders.service.js';
 
@@ -19,13 +40,20 @@ export class OrdersController {
 
   @Post()
   @Roles(Role.CLIENT)
-  @ApiOperation({ summary: 'Crear un pedido con reserva de inventario (Solo CLIENT)' })
+  @ApiOperation({
+    summary: 'Crear un pedido con reserva de inventario (Solo CLIENT)',
+  })
   @ApiResponse({
     status: 201,
-    description: 'Pedido creado exitosamente con estado PENDING y persistencia escalar de coordenadas',
+    description:
+      'Pedido creado exitosamente con estado PENDING y persistencia escalar de coordenadas',
     type: OrderCreatedResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Stock insuficiente para alguno de los productos o coordenadas inválidas' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Stock insuficiente para alguno de los productos o coordenadas inválidas',
+  })
   @HttpCode(HttpStatus.CREATED)
   async create(
     @CurrentUser('userId') userId: string,
@@ -36,10 +64,14 @@ export class OrdersController {
 
   @Get('my-orders')
   @Roles(Role.CLIENT)
-  @ApiOperation({ summary: 'Listar historial de pedidos del cliente autenticado (Solo CLIENT)' })
+  @ApiOperation({
+    summary:
+      'Listar historial de pedidos del cliente autenticado (Solo CLIENT)',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Historial de pedidos con items, zona enriquecida, deliveryLocation y preparación geográfica',
+    description:
+      'Historial de pedidos con items, zona enriquecida, deliveryLocation y preparación geográfica',
     type: [OrderResponseDto],
   })
   async findMyOrders(@CurrentUser('userId') userId: string) {
@@ -51,7 +83,8 @@ export class OrdersController {
   @ApiOperation({ summary: 'Listado global de todos los pedidos (Solo ADMIN)' })
   @ApiResponse({
     status: 200,
-    description: 'Listado completo de pedidos con items, zona, cliente y preparación geográfica',
+    description:
+      'Listado completo de pedidos con items, zona, cliente y preparación geográfica',
     type: [OrderResponseDto],
   })
   async findAll() {
@@ -60,14 +93,19 @@ export class OrdersController {
 
   @Get(':id')
   @ApiOperation({
-    summary: 'Consultar detalle de un pedido por ID (CLIENT propio, DRIVER asignado a ruta, ADMIN global)',
+    summary:
+      'Consultar detalle de un pedido por ID (CLIENT propio, DRIVER asignado a ruta, ADMIN global)',
   })
   @ApiResponse({
     status: 200,
-    description: 'Detalle del pedido con items, zona enriquecida, deliveryLocation y preparación geográfica',
+    description:
+      'Detalle del pedido con items, zona enriquecida, deliveryLocation y preparación geográfica',
     type: OrderResponseDto,
   })
-  @ApiResponse({ status: 403, description: 'Acceso denegado: no autorizado para consultar este pedido' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acceso denegado: no autorizado para consultar este pedido',
+  })
   @ApiResponse({ status: 404, description: 'Pedido no encontrado' })
   async findOne(
     @Param('id') id: string,
@@ -79,17 +117,29 @@ export class OrdersController {
   @Patch(':id/status')
   @Roles(Role.DRIVER, Role.ADMIN)
   @ApiOperation({
-    summary: 'Actualizar estado del pedido (ADMIN cancelación no terminal; DRIVER bloqueado fail-closed hasta ruta en progreso)',
+    summary:
+      'Update order status: DRIVER active-visit progress; ADMIN cancellation without operational history',
   })
   @ApiResponse({
     status: 200,
     description: 'Estado actualizado correctamente',
     type: OrderCreatedResponseDto,
   })
-  @ApiResponse({ status: 400, description: 'Transición inválida o asignación no permitida en este endpoint' })
-  @ApiResponse({ status: 403, description: 'Acceso denegado: rol o ruta no autorizada (DRIVER fail-closed hasta Issue #10)' })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Transición inválida o asignación no permitida en este endpoint',
+  })
+  @ApiResponse({
+    status: 403,
+    description:
+      'Access denied: unauthorized role, missing driver profile or route ownership',
+  })
   @ApiResponse({ status: 404, description: 'Pedido no encontrado' })
-  @ApiResponse({ status: 409, description: 'Conflicto por modificación concurrente del pedido' })
+  @ApiResponse({
+    status: 409,
+    description: 'Conflicto por modificación concurrente del pedido',
+  })
   async updateStatus(
     @Param('id') id: string,
     @Body() dto: UpdateOrderStatusDto,

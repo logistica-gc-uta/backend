@@ -1,0 +1,160 @@
+[
+  {
+    "id": "route-lifecycle.coherence-guards",
+    "label": "Install deferred lifecycle coherence and insert-time audit guards",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "name": "route_lifecycle_coherence_guard"
+      }
+    },
+    "precheck": [
+      {
+        "description": "fail closed when existing routes have duplicate active reservations",
+        "sql": "SELECT NOT EXISTS (\n  SELECT 1 FROM public.\"driverReservation\"\n  WHERE \"releasedAt\" IS NULL\n  GROUP BY \"routeId\" HAVING COUNT(*) > 1\n) AS result"
+      },
+      {
+        "description": "fail closed when existing routes have duplicate reconciliation audits",
+        "sql": "SELECT NOT EXISTS (\n  SELECT 1 FROM public.\"legacyRouteReconciliation\"\n  GROUP BY \"routeId\" HAVING COUNT(*) > 1\n) AS result"
+      },
+      {
+        "description": "ensure these coherence functions are not already installed",
+        "sql": "SELECT to_regprocedure('public.t1e_validate_route_coherence(text)') IS NULL AS result"
+      }
+    ],
+    "execute": [
+      {
+        "description": "install row-locked route, visit, claim, and hold consistency checks",
+        "sql": "\nCREATE FUNCTION public.t1e_validate_route_coherence(p_route_id text) RETURNS void\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  route_row public.route%ROWTYPE;\n  stop_count bigint;\n  active_claim_count bigint;\n  active_reservation_count bigint;\nBEGIN\n  SELECT * INTO route_row\n  FROM public.route\n  WHERE id = p_route_id\n  FOR UPDATE;\n  IF NOT FOUND OR route_row.status IS NULL THEN\n    RETURN;\n  END IF;\n\n  SELECT COUNT(*) INTO stop_count\n  FROM public.\"routeStop\"\n  WHERE \"routeId\" = p_route_id AND NOT \"isLegacy\" AND sequence IS NOT NULL;\n  SELECT COUNT(*) INTO active_claim_count\n  FROM public.\"orderClaim\"\n  WHERE \"routeId\" = p_route_id AND \"releasedAt\" IS NULL;\n  SELECT COUNT(*) INTO active_reservation_count\n  FROM public.\"driverReservation\"\n  WHERE \"routeId\" = p_route_id AND \"releasedAt\" IS NULL;\n\n  IF route_row.status = 'DRAFT' THEN\n    IF EXISTS (\n      SELECT 1 FROM public.\"driverReservation\"\n      WHERE \"routeId\" = p_route_id AND \"releasedAt\" IS NULL\n    ) THEN\n      RAISE EXCEPTION 'DRAFT route cannot hold an active driver reservation'\n        USING ERRCODE = '23514';\n    END IF;\n    IF EXISTS (\n      SELECT 1 FROM public.\"order\"\n      WHERE \"routeId\" = p_route_id\n    ) THEN\n      RAISE EXCEPTION 'DRAFT route cannot own an order route pointer'\n        USING ERRCODE = '23514';\n    END IF;\n  ELSIF route_row.status IN ('ASSIGNED', 'IN_PROGRESS') THEN\n    IF route_row.\"driverId\" IS NULL OR active_reservation_count <> 1 OR NOT EXISTS (\n      SELECT 1 FROM public.\"driverReservation\" d\n      WHERE d.\"routeId\" = p_route_id\n        AND d.\"driverId\" = route_row.\"driverId\"\n        AND d.\"reservedAt\" IS NOT NULL\n        AND d.\"releasedAt\" IS NULL\n    ) THEN\n      RAISE EXCEPTION 'Assigned or in-progress route requires one matching active driver reservation'\n        USING ERRCODE = '23514';\n    END IF;\n  ELSIF route_row.status = 'COMPLETED' THEN\n    IF active_claim_count <> 0 THEN\n      RAISE EXCEPTION 'COMPLETED route cannot retain active order claims'\n        USING ERRCODE = '23514';\n    END IF;\n    IF route_row.\"returnedAt\" IS NULL THEN\n      IF route_row.\"driverId\" IS NULL OR active_reservation_count <> 1 OR NOT EXISTS (\n        SELECT 1 FROM public.\"driverReservation\" d\n        WHERE d.\"routeId\" = p_route_id\n          AND d.\"driverId\" = route_row.\"driverId\"\n          AND d.\"reservedAt\" IS NOT NULL\n          AND d.\"releasedAt\" IS NULL\n      ) THEN\n        RAISE EXCEPTION 'Completed route remains held until one matching physical-return reservation is released'\n          USING ERRCODE = '23514';\n      END IF;\n    ELSIF active_reservation_count <> 0 OR NOT EXISTS (\n      SELECT 1 FROM public.\"driverReservation\" d\n      WHERE d.\"routeId\" = p_route_id\n        AND d.\"driverId\" = route_row.\"driverId\"\n        AND d.\"reservedAt\" IS NOT NULL\n        AND d.\"releasedAt\" = route_row.\"returnedAt\"\n    ) THEN\n      RAISE EXCEPTION 'Returned route requires its matching reservation release at the recorded return time'\n        USING ERRCODE = '23514';\n    END IF;\n  END IF;\n\n  IF route_row.status IN ('DRAFT', 'ASSIGNED', 'IN_PROGRESS') THEN\n    IF active_claim_count <> stop_count OR EXISTS (\n      SELECT 1\n      FROM public.\"orderClaim\" c\n      LEFT JOIN public.\"routeStop\" s\n        ON s.\"routeId\" = c.\"routeId\" AND s.\"orderId\" = c.\"orderId\"\n       AND NOT s.\"isLegacy\" AND s.sequence IS NOT NULL\n      WHERE c.\"routeId\" = p_route_id AND c.\"releasedAt\" IS NULL\n        AND (s.id IS NULL OR c.\"claimedAt\" IS NULL)\n    ) OR EXISTS (\n      SELECT 1\n      FROM public.\"routeStop\" s\n      LEFT JOIN public.\"orderClaim\" c\n        ON c.\"routeId\" = s.\"routeId\" AND c.\"orderId\" = s.\"orderId\"\n       AND c.\"releasedAt\" IS NULL\n      WHERE s.\"routeId\" = p_route_id\n        AND (c.id IS NULL OR c.\"claimedAt\" IS NULL)\n    ) THEN\n      RAISE EXCEPTION 'Verified route stops require exactly matching active order claims'\n        USING ERRCODE = '23514';\n    END IF;\n  END IF;\n\n  IF route_row.status IN ('ASSIGNED', 'IN_PROGRESS') AND EXISTS (\n    SELECT 1\n    FROM public.\"routeStop\" s\n    JOIN public.\"order\" o ON o.id = s.\"orderId\"\n    WHERE s.\"routeId\" = p_route_id\n      AND NOT s.\"isLegacy\" AND s.sequence IS NOT NULL\n      AND o.\"routeId\" IS DISTINCT FROM p_route_id\n  ) THEN\n    RAISE EXCEPTION 'Assigned or in-progress verified stops require their current order route pointer'\n      USING ERRCODE = '23514';\n  END IF;\nEND $$;\n\nCREATE FUNCTION public.t1e_validate_stop_visit(p_stop_id text) RETURNS void\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  stop_row public.\"routeStop\"%ROWTYPE;\n  route_row public.route%ROWTYPE;\n  order_row public.\"order\"%ROWTYPE;\n  attempt_count bigint;\nBEGIN\n  SELECT * INTO stop_row FROM public.\"routeStop\" WHERE id = p_stop_id;\n  IF NOT FOUND OR stop_row.\"isLegacy\" OR stop_row.sequence IS NULL THEN\n    RETURN;\n  END IF;\n  SELECT * INTO route_row FROM public.route WHERE id = stop_row.\"routeId\";\n  IF NOT FOUND OR route_row.status IS NULL OR route_row.status = 'DRAFT' THEN\n    IF EXISTS (SELECT 1 FROM public.\"deliveryAttempt\" WHERE \"stopId\" = p_stop_id) THEN\n      RAISE EXCEPTION 'DRAFT or legacy stop cannot have a recorded visit attempt'\n        USING ERRCODE = '23514';\n    END IF;\n    RETURN;\n  END IF;\n  SELECT * INTO order_row FROM public.\"order\" WHERE id = stop_row.\"orderId\";\n  SELECT COUNT(*) INTO attempt_count\n  FROM public.\"deliveryAttempt\" WHERE \"stopId\" = p_stop_id;\n\n  IF stop_row.outcome IS NULL OR stop_row.outcome = 'PENDING' THEN\n    IF attempt_count <> 0 THEN\n      RAISE EXCEPTION 'Pending stop cannot retain a completed visit attempt'\n        USING ERRCODE = '23514';\n    END IF;\n    RETURN;\n  END IF;\n  IF route_row.status NOT IN ('IN_PROGRESS', 'COMPLETED') OR\n     route_row.\"startedAt\" IS NULL OR route_row.\"driverId\" IS NULL OR\n     attempt_count = 0 THEN\n    RAISE EXCEPTION 'Resolved verified stop requires a visit attempt on its active route'\n      USING ERRCODE = '23514';\n  END IF;\n  IF EXISTS (\n    SELECT 1 FROM public.\"deliveryAttempt\" a\n    WHERE a.\"stopId\" = p_stop_id\n      AND (a.outcome <> stop_row.outcome\n        OR a.\"driverId\" <> route_row.\"driverId\"\n        OR a.\"recordedAt\" < route_row.\"startedAt\"\n        OR (route_row.\"completedAt\" IS NOT NULL\n          AND a.\"recordedAt\" > route_row.\"completedAt\"))\n  ) THEN\n    RAISE EXCEPTION 'Visit attempt must match the immutable stop outcome, route owner, and lifecycle time'\n      USING ERRCODE = '23514';\n  END IF;\n  IF stop_row.outcome = 'FAILED' AND NOT order_row.\"requiresAdministrativeReview\" THEN\n    RAISE EXCEPTION 'Failed visit requires current administrative review flag'\n      USING ERRCODE = '23514';\n  END IF;\nEND $$;\n\nCREATE FUNCTION public.t1e_attempt_capture_guard() RETURNS trigger\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  route_row public.route%ROWTYPE;\n  stop_row public.\"routeStop\"%ROWTYPE;\n  order_row public.\"order\"%ROWTYPE;\nBEGIN\n  SELECT * INTO stop_row FROM public.\"routeStop\" WHERE id = NEW.\"stopId\";\n  IF NOT FOUND OR stop_row.\"isLegacy\" OR stop_row.sequence IS NULL THEN\n    RAISE EXCEPTION 'Delivery attempt requires a stable verified route stop'\n      USING ERRCODE = '23514';\n  END IF;\n  SELECT * INTO route_row FROM public.route WHERE id = stop_row.\"routeId\";\n  IF NOT FOUND OR route_row.status <> 'IN_PROGRESS' OR\n     route_row.\"startedAt\" IS NULL OR route_row.\"driverId\" <> NEW.\"driverId\" OR\n     NEW.\"recordedAt\" < route_row.\"startedAt\" OR\n     NEW.\"recordedAt\" > clock_timestamp() THEN\n    RAISE EXCEPTION 'Delivery attempt requires the current route driver and a valid in-progress lifecycle time'\n      USING ERRCODE = '23514';\n  END IF;\n  SELECT * INTO order_row FROM public.\"order\" WHERE id = stop_row.\"orderId\";\n  IF NEW.outcome = 'FAILED' AND order_row.status IN ('DELIVERED', 'CANCELLED') THEN\n    RAISE EXCEPTION 'Failed visit cannot manufacture a delivered or cancelled order'\n      USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND $$;\n\nCREATE FUNCTION public.t1e_route_constraint_guard() RETURNS trigger\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  old_row jsonb := '{}'::jsonb;\n  new_row jsonb := '{}'::jsonb;\n  route_ids text[];\n  route_key text;\n  stop_key text;\nBEGIN\n  IF TG_OP <> 'INSERT' THEN old_row := to_jsonb(OLD); END IF;\n  IF TG_OP <> 'DELETE' THEN new_row := to_jsonb(NEW); END IF;\n  IF TG_TABLE_NAME = 'deliveryAttempt' THEN\n    stop_key := COALESCE(new_row ->> 'stopId', old_row ->> 'stopId');\n    PERFORM public.t1e_validate_stop_visit(stop_key);\n    RETURN NULL;\n  ELSIF TG_TABLE_NAME = 'routeStop' THEN\n    stop_key := COALESCE(new_row ->> 'id', old_row ->> 'id');\n    PERFORM public.t1e_validate_stop_visit(stop_key);\n    route_ids := ARRAY(SELECT DISTINCT value FROM unnest(ARRAY[\n      old_row ->> 'routeId', new_row ->> 'routeId'\n    ]) AS value WHERE value IS NOT NULL ORDER BY value);\n  ELSIF TG_TABLE_NAME = 'route' THEN\n    route_ids := ARRAY(SELECT DISTINCT value FROM unnest(ARRAY[\n      old_row ->> 'id', new_row ->> 'id'\n    ]) AS value WHERE value IS NOT NULL ORDER BY value);\n  ELSIF TG_TABLE_NAME = 'order' THEN\n    route_ids := ARRAY(SELECT DISTINCT value FROM unnest(ARRAY[\n      old_row ->> 'routeId', new_row ->> 'routeId'\n    ]) AS value WHERE value IS NOT NULL ORDER BY value);\n  ELSE\n    route_ids := ARRAY(SELECT DISTINCT value FROM unnest(ARRAY[\n      old_row ->> 'routeId', new_row ->> 'routeId'\n    ]) AS value WHERE value IS NOT NULL ORDER BY value);\n  END IF;\n  FOREACH route_key IN ARRAY route_ids LOOP\n    PERFORM public.t1e_validate_route_coherence(route_key);\n  END LOOP;\n  RETURN NULL;\nEND $$;\n\nCREATE FUNCTION public.t1e_claim_history_guard() RETURNS trigger\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  route_status text;\n  completed_at timestamptz;\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    RAISE EXCEPTION 'Order claim history is immutable and cannot be deleted'\n      USING ERRCODE = '23514';\n  END IF;\n  IF NEW.id IS DISTINCT FROM OLD.id OR NEW.\"routeId\" IS DISTINCT FROM OLD.\"routeId\" OR\n     NEW.\"orderId\" IS DISTINCT FROM OLD.\"orderId\" OR\n     NEW.\"claimedAt\" IS DISTINCT FROM OLD.\"claimedAt\" THEN\n    RAISE EXCEPTION 'Order claim identity and claim time are immutable'\n      USING ERRCODE = '23514';\n  END IF;\n  IF OLD.\"releasedAt\" IS NOT NULL AND NEW.\"releasedAt\" IS DISTINCT FROM OLD.\"releasedAt\" THEN\n    RAISE EXCEPTION 'Released order claim history is immutable'\n      USING ERRCODE = '23514';\n  END IF;\n  IF OLD.\"releasedAt\" IS NULL AND NEW.\"releasedAt\" IS NOT NULL THEN\n    SELECT status::text, \"completedAt\" INTO route_status, completed_at\n    FROM public.route WHERE id = OLD.\"routeId\";\n    IF route_status = 'COMPLETED' AND completed_at = NEW.\"releasedAt\" THEN\n      RETURN NEW;\n    END IF;\n    IF route_status = 'DRAFT' AND NOT EXISTS (\n      SELECT 1 FROM public.\"routeStop\" s\n      WHERE s.\"routeId\" = OLD.\"routeId\" AND s.\"orderId\" = OLD.\"orderId\"\n    ) THEN\n      RETURN NEW;\n    END IF;\n    RAISE EXCEPTION 'Order claim may be released only at valid completion or pre-start draft stop removal'\n      USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND $$;\n\nCREATE FUNCTION public.t1e_reservation_history_guard() RETURNS trigger\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  route_status text;\n  returned_at timestamptz;\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    RAISE EXCEPTION 'Driver reservation history is immutable and cannot be deleted'\n      USING ERRCODE = '23514';\n  END IF;\n  IF NEW.id IS DISTINCT FROM OLD.id OR NEW.\"routeId\" IS DISTINCT FROM OLD.\"routeId\" OR\n     NEW.\"driverId\" IS DISTINCT FROM OLD.\"driverId\" OR\n     NEW.\"reservedAt\" IS DISTINCT FROM OLD.\"reservedAt\" THEN\n    RAISE EXCEPTION 'Driver reservation identity and reserve time are immutable'\n      USING ERRCODE = '23514';\n  END IF;\n  IF OLD.\"releasedAt\" IS NOT NULL AND NEW.\"releasedAt\" IS DISTINCT FROM OLD.\"releasedAt\" THEN\n    RAISE EXCEPTION 'Released driver reservation history is immutable'\n      USING ERRCODE = '23514';\n  END IF;\n  IF OLD.\"releasedAt\" IS NULL AND NEW.\"releasedAt\" IS NOT NULL THEN\n    SELECT status::text, \"returnedAt\" INTO route_status, returned_at\n    FROM public.route WHERE id = OLD.\"routeId\";\n    IF route_status = 'COMPLETED' AND returned_at = NEW.\"releasedAt\" THEN\n      RETURN NEW;\n    END IF;\n    IF route_status IS NULL THEN\n      RETURN NEW;\n    END IF;\n    RAISE EXCEPTION 'Verified driver reservation may be released only at physical return'\n      USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND $$;\n\nCREATE FUNCTION public.t1e_reconciliation_admin_guard() RETURNS trigger\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  actor_role text;\nBEGIN\n  SELECT role::text INTO actor_role FROM public.\"user\"\n  WHERE id = NEW.\"administratorId\"\n  FOR SHARE;\n  IF actor_role IS DISTINCT FROM 'ADMIN' THEN\n    RAISE EXCEPTION 'Legacy reconciliation requires a current ADMIN authority'\n      USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND $$;\n\nCREATE FUNCTION public.t1e_legacy_release_audit_guard() RETURNS trigger\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  route_status text;\nBEGIN\n  IF OLD.\"releasedAt\" IS NULL AND NEW.\"releasedAt\" IS NOT NULL THEN\n    SELECT status::text INTO route_status FROM public.route WHERE id = NEW.\"routeId\";\n    IF route_status IS NULL AND NOT EXISTS (\n      SELECT 1 FROM public.\"legacyRouteReconciliation\" a\n      WHERE a.\"routeId\" = NEW.\"routeId\"\n        AND a.\"releaseDriverHold\"\n        AND a.\"recordedAt\" = NEW.\"releasedAt\"\n    ) THEN\n      RAISE EXCEPTION 'Legacy driver hold release requires its matching route reconciliation audit'\n        USING ERRCODE = '23514';\n    END IF;\n  END IF;\n  RETURN NULL;\nEND $$;\n\nCREATE TRIGGER t1e_delivery_attempt_capture\nBEFORE INSERT ON public.\"deliveryAttempt\"\nFOR EACH ROW EXECUTE FUNCTION public.t1e_attempt_capture_guard();\n\nCREATE TRIGGER t1e_order_claim_history\nBEFORE UPDATE OR DELETE ON public.\"orderClaim\"\nFOR EACH ROW EXECUTE FUNCTION public.t1e_claim_history_guard();\n\nCREATE TRIGGER t1e_driver_reservation_history\nBEFORE UPDATE OR DELETE ON public.\"driverReservation\"\nFOR EACH ROW EXECUTE FUNCTION public.t1e_reservation_history_guard();\n\nCREATE TRIGGER t1e_reconciliation_admin\nBEFORE INSERT ON public.\"legacyRouteReconciliation\"\nFOR EACH ROW EXECUTE FUNCTION public.t1e_reconciliation_admin_guard();\n\nCREATE CONSTRAINT TRIGGER t1e_route_coherence\nAFTER INSERT OR UPDATE ON public.route\nDEFERRABLE INITIALLY DEFERRED FOR EACH ROW\nEXECUTE FUNCTION public.t1e_route_constraint_guard();\n\nCREATE CONSTRAINT TRIGGER t1e_stop_coherence\nAFTER INSERT OR UPDATE OR DELETE ON public.\"routeStop\"\nDEFERRABLE INITIALLY DEFERRED FOR EACH ROW\nEXECUTE FUNCTION public.t1e_route_constraint_guard();\n\nCREATE CONSTRAINT TRIGGER t1e_claim_coherence\nAFTER INSERT OR UPDATE OR DELETE ON public.\"orderClaim\"\nDEFERRABLE INITIALLY DEFERRED FOR EACH ROW\nEXECUTE FUNCTION public.t1e_route_constraint_guard();\n\nCREATE CONSTRAINT TRIGGER t1e_reservation_coherence\nAFTER INSERT OR UPDATE OR DELETE ON public.\"driverReservation\"\nDEFERRABLE INITIALLY DEFERRED FOR EACH ROW\nEXECUTE FUNCTION public.t1e_route_constraint_guard();\n\nCREATE CONSTRAINT TRIGGER t1e_reconciliation_coherence\nAFTER INSERT ON public.\"legacyRouteReconciliation\"\nDEFERRABLE INITIALLY DEFERRED FOR EACH ROW\nEXECUTE FUNCTION public.t1e_route_constraint_guard();\n\nCREATE CONSTRAINT TRIGGER t1e_order_route_pointer_coherence\nAFTER UPDATE OF \"routeId\" ON public.\"order\"\nDEFERRABLE INITIALLY DEFERRED FOR EACH ROW\nEXECUTE FUNCTION public.t1e_route_constraint_guard();\n\nCREATE CONSTRAINT TRIGGER t1e_attempt_coherence\nAFTER INSERT ON public.\"deliveryAttempt\"\nDEFERRABLE INITIALLY DEFERRED FOR EACH ROW\nEXECUTE FUNCTION public.t1e_route_constraint_guard();\n\nCREATE CONSTRAINT TRIGGER t1e_reservation_legacy_release_audit\nAFTER UPDATE OF \"releasedAt\" ON public.\"driverReservation\"\nDEFERRABLE INITIALLY DEFERRED FOR EACH ROW\nEXECUTE FUNCTION public.t1e_legacy_release_audit_guard();\n"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify all twelve coherence triggers exist and are enabled",
+        "sql": "SELECT COUNT(*) = 12 AS result FROM pg_trigger WHERE tgenabled = 'O' AND tgname IN (\n              't1e_delivery_attempt_capture',\n              't1e_order_claim_history',\n              't1e_driver_reservation_history',\n              't1e_reconciliation_admin',\n              't1e_route_coherence',\n              't1e_stop_coherence',\n              't1e_claim_coherence',\n              't1e_reservation_coherence',\n              't1e_reconciliation_coherence',\n              't1e_order_route_pointer_coherence',\n              't1e_attempt_coherence',\n              't1e_reservation_legacy_release_audit'\n            )"
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.deliveryAttempt.delivery_attempt_failure_reason_pairing_2c593598",
+    "label": "Add check constraint \"delivery_attempt_failure_reason_pairing_2c593598\" on \"deliveryAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "delivery_attempt_failure_reason_pairing_2c593598",
+        "table": "deliveryAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"delivery_attempt_failure_reason_pairing_2c593598\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "delivery_attempt_failure_reason_pairing_2c593598",
+          "public",
+          "\"public\".\"deliveryAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"delivery_attempt_failure_reason_pairing_2c593598\"",
+        "sql": "ALTER TABLE \"public\".\"deliveryAttempt\" ADD CONSTRAINT \"delivery_attempt_failure_reason_pairing_2c593598\" CHECK ((outcome = 'FAILED' AND \"failureReason\" IS NOT NULL) OR (outcome = 'SUCCESSFUL' AND \"failureReason\" IS NULL))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"delivery_attempt_failure_reason_pairing_2c593598\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "delivery_attempt_failure_reason_pairing_2c593598",
+          "public",
+          "\"public\".\"deliveryAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.driverReservation.one_active_reservation_per_route_b3e558e7",
+    "label": "Create index \"one_active_reservation_per_route_b3e558e7\" on \"driverReservation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "one_active_reservation_per_route_b3e558e7",
+        "table": "driverReservation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"one_active_reservation_per_route_b3e558e7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"one_active_reservation_per_route_b3e558e7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"one_active_reservation_per_route_b3e558e7\"",
+        "sql": "CREATE UNIQUE INDEX \"one_active_reservation_per_route_b3e558e7\" ON \"public\".\"driverReservation\" (\"routeId\") WHERE ((\"releasedAt\" IS NULL))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"one_active_reservation_per_route_b3e558e7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"one_active_reservation_per_route_b3e558e7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.legacyRouteReconciliation.one_reconciliation_per_route_37762cb4",
+    "label": "Create index \"one_reconciliation_per_route_37762cb4\" on \"legacyRouteReconciliation\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "one_reconciliation_per_route_37762cb4",
+        "table": "legacyRouteReconciliation"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"one_reconciliation_per_route_37762cb4\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"one_reconciliation_per_route_37762cb4\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"one_reconciliation_per_route_37762cb4\"",
+        "sql": "CREATE UNIQUE INDEX \"one_reconciliation_per_route_37762cb4\" ON \"public\".\"legacyRouteReconciliation\" (\"routeId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"one_reconciliation_per_route_37762cb4\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"one_reconciliation_per_route_37762cb4\""
+        ]
+      }
+    ]
+  }
+]

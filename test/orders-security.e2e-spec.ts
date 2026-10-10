@@ -287,7 +287,7 @@ describe('Orders Security Integration & E2E (PostgreSQL Real)', () => {
       expect(snapshotAfter?.status).toBe(snapshotBefore?.status);
     });
 
-    it('DRIVER A debe recibir 403 Forbidden al intentar mutar su propio pedido (fail-closed por Issue #10)', async () => {
+    it('DRIVER A es rechazado con 409 Conflict al intentar mutar su propio pedido sin ruta en progreso (Issue #10)', async () => {
       const snapshotBefore = await fixtures.getOrderSnapshot(orderClientAAssignedRouteA.id);
 
       const res = await request(app.getHttpServer())
@@ -295,8 +295,8 @@ describe('Orders Security Integration & E2E (PostgreSQL Real)', () => {
         .set('Authorization', `Bearer ${driverUserA.token}`)
         .send({ status: OrderStatus.IN_TRANSIT });
 
-      expect(res.status).toBe(403);
-      expect(res.body.message).toContain('deshabilitadas hasta que se implemente la verificación de ruta en progreso (#10)');
+      expect(res.status).toBe(409);
+      expect(res.body.message).toMatch(/(Verified route in progress required|Stable route stop required)/);
 
       const snapshotAfter = await fixtures.getOrderSnapshot(orderClientAAssignedRouteA.id);
       expect(snapshotAfter?.status).toBe(snapshotBefore?.status);
@@ -522,18 +522,18 @@ describe('Orders Security Integration & E2E (PostgreSQL Real)', () => {
       expect(snapshotAfter?.status).toBe(snapshotBefore?.status);
     });
 
-    it('DRIVER es rechazado con 403 Forbidden ante transiciones sobre pedidos propios en estado terminal (fail-closed #10)', async () => {
+    it('DRIVER es rechazado con 409 Conflict ante transiciones sobre pedidos propios en estado terminal (Issue #10)', async () => {
       const snapshotBefore = await fixtures.getOrderSnapshot(orderDeliveredTerminal.id);
 
       // DRIVER A intenta modificar pedido terminal de su ruta:
-      // Debe responder 403 Forbidden (fail-closed por Issue #10) antes de validar el grafo de estados
+      // Con Issue #10 la ruta debe estar en progreso; si no lo está, responde 409 Conflict
       const res = await request(app.getHttpServer())
         .patch(`/api/v1/orders/${orderDeliveredTerminal.id}/status`)
         .set('Authorization', `Bearer ${driverUserA.token}`)
         .send({ status: OrderStatus.CANCELLED });
 
-      expect(res.status).toBe(403);
-      expect(res.body.message).toContain('deshabilitadas hasta que se implemente la verificación de ruta en progreso (#10)');
+      expect(res.status).toBe(409);
+      expect(res.body.message).toMatch(/(Verified route in progress required|Stable route stop required)/);
 
       const snapshotAfter = await fixtures.getOrderSnapshot(orderDeliveredTerminal.id);
       expect(snapshotAfter?.status).toBe(snapshotBefore?.status);

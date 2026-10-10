@@ -1,10 +1,11 @@
+import { RoutesModule } from '../routes/routes.module.js';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
 import { DriversController } from './drivers.controller.js';
 import { DriversService } from './drivers.service.js';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, RoutesModule],
   controllers: [DriversController],
   providers: [DriversService],
   exports: [DriversService],

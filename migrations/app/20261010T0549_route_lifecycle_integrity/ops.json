@@ -1,0 +1,71 @@
+[
+  {
+    "id": "index.route.one_in_progress_route_per_driver_8b94e85e",
+    "label": "Create index \"one_in_progress_route_per_driver_8b94e85e\" on \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "one_in_progress_route_per_driver_8b94e85e",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"one_in_progress_route_per_driver_8b94e85e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"one_in_progress_route_per_driver_8b94e85e\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"one_in_progress_route_per_driver_8b94e85e\"",
+        "sql": "CREATE UNIQUE INDEX \"one_in_progress_route_per_driver_8b94e85e\" ON \"public\".\"route\" (\"driverId\") WHERE ((status = 'IN_PROGRESS'))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"one_in_progress_route_per_driver_8b94e85e\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"one_in_progress_route_per_driver_8b94e85e\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "route-lifecycle.integrity-guards",
+    "label": "Install row-locked route structure and append-only history guards",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "name": "route_integrity_guard"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure these guard functions are not already installed",
+        "sql": "SELECT to_regprocedure('public.route_integrity_guard()') IS NULL AS result"
+      }
+    ],
+    "execute": [
+      {
+        "description": "install integrity functions and enabled triggers",
+        "sql": "\nCREATE FUNCTION public.route_integrity_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    IF OLD.status IS NULL OR OLD.status IN ('IN_PROGRESS', 'COMPLETED') THEN\n      RAISE EXCEPTION 'Route structure is frozen or unverified legacy history' USING ERRCODE = '23514';\n    END IF;\n    RETURN OLD;\n  END IF;\n  IF TG_OP = 'UPDATE' THEN\n    IF OLD.status IS NULL AND NEW IS DISTINCT FROM OLD THEN\n      RAISE EXCEPTION 'Unverified legacy route cannot be rewritten' USING ERRCODE = '23514';\n    END IF;\n    IF NEW.id IS DISTINCT FROM OLD.id OR NEW.\"createdAt\" IS DISTINCT FROM OLD.\"createdAt\" THEN\n      RAISE EXCEPTION 'Route history identity is immutable' USING ERRCODE = '23514';\n    END IF;\n    IF OLD.status IN ('IN_PROGRESS', 'COMPLETED') AND\n      (NEW.\"driverId\", NEW.\"zoneId\", NEW.date) IS DISTINCT FROM (OLD.\"driverId\", OLD.\"zoneId\", OLD.date) THEN\n      RAISE EXCEPTION 'Route structure is frozen' USING ERRCODE = '23514';\n    END IF;\n    -- Irreversible freeze boundaries, not the complete service transition graph.\n    IF OLD.status = 'COMPLETED' AND NEW.status IS DISTINCT FROM OLD.status OR\n      OLD.status = 'IN_PROGRESS' AND NEW.status NOT IN ('IN_PROGRESS', 'COMPLETED') THEN\n      RAISE EXCEPTION 'Frozen lifecycle cannot regress to a mutable state' USING ERRCODE = '23514';\n    END IF;\n    IF OLD.status IS NOT NULL AND NEW.status IS NULL THEN\n      RAISE EXCEPTION 'Verified lifecycle cannot become unverified' USING ERRCODE = '23514';\n    END IF;\n    IF (OLD.\"startedAt\" IS NOT NULL OR OLD.\"startedById\" IS NOT NULL) AND\n      (NEW.\"startedAt\", NEW.\"startedById\") IS DISTINCT FROM (OLD.\"startedAt\", OLD.\"startedById\") OR\n      (OLD.\"completedAt\" IS NOT NULL OR OLD.\"completedById\" IS NOT NULL) AND\n      (NEW.\"completedAt\", NEW.\"completedById\") IS DISTINCT FROM (OLD.\"completedAt\", OLD.\"completedById\") OR\n      (OLD.\"returnedAt\" IS NOT NULL OR OLD.\"returnedById\" IS NOT NULL) AND\n      (NEW.\"returnedAt\", NEW.\"returnedById\") IS DISTINCT FROM (OLD.\"returnedAt\", OLD.\"returnedById\") THEN\n      RAISE EXCEPTION 'Recorded lifecycle event evidence is immutable' USING ERRCODE = '23514';\n    END IF;\n  END IF;\n  IF (NEW.\"startedAt\" IS NULL) <> (NEW.\"startedById\" IS NULL) OR\n     (NEW.\"completedAt\" IS NULL) <> (NEW.\"completedById\" IS NULL) OR\n     (NEW.\"returnedAt\" IS NULL) <> (NEW.\"returnedById\" IS NULL) THEN\n    RAISE EXCEPTION 'Lifecycle events require paired timestamps and actors' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.status IS NULL AND (NEW.\"startedAt\" IS NOT NULL OR NEW.\"completedAt\" IS NOT NULL OR NEW.\"returnedAt\" IS NOT NULL) THEN\n    RAISE EXCEPTION 'Unverified legacy route cannot invent events' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.\"startedAt\" IS NOT NULL AND NEW.status NOT IN ('IN_PROGRESS', 'COMPLETED') OR\n    (NEW.\"completedAt\" IS NOT NULL OR NEW.\"returnedAt\" IS NOT NULL) AND NEW.status <> 'COMPLETED' THEN\n    RAISE EXCEPTION 'Recorded event is incompatible with lifecycle state' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.status = 'IN_PROGRESS' AND NEW.\"driverId\" IS NULL THEN\n    RAISE EXCEPTION 'IN_PROGRESS requires an assigned driver' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.status IS NOT NULL THEN\n    IF EXISTS (SELECT 1 FROM public.\"routeStop\" s JOIN public.\"order\" o ON o.id = s.\"orderId\"\n      WHERE s.\"routeId\" = NEW.id AND (s.\"isLegacy\" OR s.sequence IS NULL OR s.sequence NOT BETWEEN 1 AND 4 OR o.\"zoneId\" <> NEW.\"zoneId\")) THEN\n      RAISE EXCEPTION 'Verified route requires valid nonlegacy sequence and same zone' USING ERRCODE = '23514';\n    END IF;\n    IF (SELECT COUNT(*) FROM public.\"routeStop\" WHERE \"routeId\" = NEW.id) > 4 THEN\n      RAISE EXCEPTION 'Route maximum is four stops' USING ERRCODE = '23514';\n    END IF;\n  END IF;\n  RETURN NEW;\nEND $$;\n\nCREATE FUNCTION public.route_stop_integrity_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  route_ids text[];\n  route_row record;\n  old_stop_id text;\n  structural boolean;\n  order_zone text;\n  destination_zone text;\n  destination_status text;\nBEGIN\n  IF TG_OP = 'INSERT' THEN\n    route_ids := ARRAY[NEW.\"routeId\"];\n    structural := true;\n  ELSIF TG_OP = 'DELETE' THEN\n    route_ids := ARRAY[OLD.\"routeId\"];\n    structural := true;\n  ELSE\n    route_ids := ARRAY[OLD.\"routeId\", NEW.\"routeId\"];\n    old_stop_id := OLD.id;\n    structural := (NEW.id, NEW.\"routeId\", NEW.\"orderId\", NEW.sequence, NEW.\"isLegacy\", NEW.\"createdAt\")\n      IS DISTINCT FROM (OLD.id, OLD.\"routeId\", OLD.\"orderId\", OLD.sequence, OLD.\"isLegacy\", OLD.\"createdAt\");\n  END IF;\n  -- Lock old and new parents in one deterministic order, sharing the start lock.\n  FOR route_row IN SELECT id, status, \"zoneId\" FROM public.route\n    WHERE id = ANY(route_ids) ORDER BY id FOR UPDATE LOOP\n    IF route_row.status IS NULL THEN\n      RAISE EXCEPTION 'Unverified legacy stop history cannot be rewritten' USING ERRCODE = '23514';\n    END IF;\n    IF structural AND route_row.status IN ('IN_PROGRESS', 'COMPLETED') THEN\n      RAISE EXCEPTION 'Route stop structure is frozen' USING ERRCODE = '23514';\n    END IF;\n    IF TG_OP <> 'DELETE' AND route_row.id = NEW.\"routeId\" THEN\n      destination_zone := route_row.\"zoneId\";\n      destination_status := route_row.status;\n    END IF;\n  END LOOP;\n  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;\n  IF TG_OP = 'UPDATE' AND NEW.outcome IS DISTINCT FROM OLD.outcome AND destination_status <> 'IN_PROGRESS' THEN\n    RAISE EXCEPTION 'Visit outcome changes require IN_PROGRESS' USING ERRCODE = '23514';\n  END IF;\n  IF TG_OP = 'INSERT' AND NEW.outcome IS DISTINCT FROM 'PENDING' THEN\n    RAISE EXCEPTION 'New verified visit outcome must be PENDING' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.\"isLegacy\" OR NEW.sequence IS NULL OR NEW.sequence NOT BETWEEN 1 AND 4 THEN\n    RAISE EXCEPTION 'Verified stop requires nonlegacy sequence 1 through 4' USING ERRCODE = '23514';\n  END IF;\n  SELECT \"zoneId\" INTO order_zone FROM public.\"order\" WHERE id = NEW.\"orderId\" FOR SHARE;\n  IF order_zone IS DISTINCT FROM destination_zone THEN\n    RAISE EXCEPTION 'Route stop order must belong to the same zone' USING ERRCODE = '23514';\n  END IF;\n  IF (SELECT COUNT(*) FROM public.\"routeStop\" WHERE \"routeId\" = NEW.\"routeId\" AND (old_stop_id IS NULL OR id <> old_stop_id)) >= 4 THEN\n    RAISE EXCEPTION 'Route maximum is four stops' USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND $$;\n\nCREATE FUNCTION public.route_history_append_only() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nBEGIN\n  RAISE EXCEPTION 'Route evidence is append-only' USING ERRCODE = '23514';\nEND $$;\n\nCREATE TRIGGER route_no_truncate BEFORE TRUNCATE ON public.route FOR EACH STATEMENT EXECUTE FUNCTION public.route_history_append_only();\nCREATE TRIGGER route_stop_no_truncate BEFORE TRUNCATE ON public.\"routeStop\" FOR EACH STATEMENT EXECUTE FUNCTION public.route_history_append_only();\nCREATE TRIGGER route_integrity_guard BEFORE INSERT OR UPDATE OR DELETE ON public.route FOR EACH ROW EXECUTE FUNCTION public.route_integrity_guard();\nCREATE TRIGGER route_stop_integrity_guard BEFORE INSERT OR UPDATE OR DELETE ON public.\"routeStop\" FOR EACH ROW EXECUTE FUNCTION public.route_stop_integrity_guard();\nCREATE TRIGGER delivery_attempt_append_only BEFORE UPDATE OR DELETE ON public.\"deliveryAttempt\" FOR EACH ROW EXECUTE FUNCTION public.route_history_append_only();\nCREATE TRIGGER delivery_attempt_no_truncate BEFORE TRUNCATE ON public.\"deliveryAttempt\" FOR EACH STATEMENT EXECUTE FUNCTION public.route_history_append_only();\nCREATE TRIGGER legacy_reconciliation_append_only BEFORE UPDATE OR DELETE ON public.\"legacyRouteReconciliation\" FOR EACH ROW EXECUTE FUNCTION public.route_history_append_only();\nCREATE TRIGGER legacy_reconciliation_no_truncate BEFORE TRUNCATE ON public.\"legacyRouteReconciliation\" FOR EACH STATEMENT EXECUTE FUNCTION public.route_history_append_only();\n"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify all eight integrity/history triggers exist and are enabled",
+        "sql": "SELECT COUNT(*) = 8 AS result FROM pg_trigger WHERE NOT tgisinternal AND tgenabled = 'O' AND tgname IN ('route_no_truncate', 'route_stop_no_truncate', 'route_integrity_guard', 'route_stop_integrity_guard', 'delivery_attempt_append_only', 'delivery_attempt_no_truncate', 'legacy_reconciliation_append_only', 'legacy_reconciliation_no_truncate')"
+      }
+    ]
+  }
+]

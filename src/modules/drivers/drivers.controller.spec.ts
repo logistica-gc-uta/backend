@@ -25,3 +25,19 @@ describe('driver-owned routes', () => {
     expect(service.findMyRoutes).toHaveBeenCalledWith('jwt-user', '2024-02-29');
   });
 });
+
+describe('Driver availability identity', () => {
+  it('delegates only authenticated ownership to the shared availability projection', async () => {
+    const service: any = {
+      findMyAvailability: jest
+        .fn()
+        .mockResolvedValue({ isAvailable: false, blockingRouteIds: ['route'] }),
+    };
+    const controller = new DriversController(service);
+    expect(await controller.findMyAvailability('jwt-owner')).toEqual({
+      isAvailable: false,
+      blockingRouteIds: ['route'],
+    });
+    expect(service.findMyAvailability).toHaveBeenCalledWith('jwt-owner');
+  });
+});
