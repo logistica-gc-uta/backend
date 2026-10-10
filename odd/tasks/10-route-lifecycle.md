@@ -1,3 +1,41 @@
+## CI coverage correction — 2026-10-10
+
+Scope: existing `feat/10-route-lifecycle`, Draft PR #22, HEAD `92e75e1`.
+No commits, publication, new branches, E2E/Newman, or frozen RDD mutations authorized.
+Single read-only Codex verifier authorized; reuse it for final verification.
+
+- [x] C1: reproduce CI coverage failure and identify meaningful missing branches.
+  Evidence: exact CI command failed locally with 36 suites / 404 tests passing;
+  branches 768/969 (79.25%), statements 89.52%, functions 89.41%, lines 90.42%.
+  Local Node 26.9.0 / pnpm 12.4.1. At least eight additional branch hits needed.
+- [x] C2: add focused updateOrder tests in route-progress.service.spec.ts and
+  verify the unchanged global 80% coverage command.
+  Observed: 36 suites / 407 tests pass; branches 787/969 (81.21%), statements
+  91.94%, functions 90.47%, lines 93.05%. Three tests add 19 covered branch arms.
+  Exact CI command, scoped Prettier, type-aware oxlint and git diff --check pass.
+  No production, configuration or coverage exclusions changed; no E2E run.
+  Work-unit commit deferred because the user explicitly forbids commits.
+  Route: inline mechanical insertion into one understood spec using verifier
+  recommendations; command execution delegated to the same read-only verifier.
+  Expected assertions: transit/replay, successful delivery and immutable attempt,
+  forbidden cancellation with unchanged order. No production changes.
+  RED evidence is the observed coverage gate failure; no new behavior is being
+  implemented, so no stub-based behavioral RED is required.
+- [ ] C3: reconcile RDD ledger and generated Prisma artifact requirements before
+  final delivery; partial, not superseded by coverage success.
+  RDD mode observed on/global. Read-only inspect offered a fresh review of the
+  two local changed paths; no START, consent, capture or approval occurred.
+  This does not establish the consolidated candidate or T1a/T5a ledger status.
+  Prisma migration metadata confirms consecutive lifecycle edges:
+  00d34ab -> 46fa533 -> c98b76b -> 15ef5b1. All destination snapshots exist;
+  do not remove them or historical migration operations. Exact ops/hash/runtime
+  consistency and supported consolidated-review scope remain pending.
+  PR #22 remains Draft; its remote body incorrectly describes RETURNED as a
+  lifecycle state, despite the documented four-state model. Remote edits remain
+  unauthorized. No generated artifacts were modified or deleted.
+
+Next step: C3 read-only RDD/Prisma checks; commit remains explicitly unauthorized.
+
 ## Delivery Strategy & Maintainer Size Exception
 - Delivery strategy: `single-pr`; user-approved `exception-ok` (`size:exception` granted by maintainer).
 - Justification: The combined changes (Prisma 8 relational contract, cross-entity PL/pgSQL consistency triggers, and route lifecycle services) constitute an atomic relational unit. Splitting into multiple PRs would temporarily violate schema invariants and cross-table constraints in intermediate states.

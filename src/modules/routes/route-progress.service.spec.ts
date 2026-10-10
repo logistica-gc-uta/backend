@@ -2,6 +2,7 @@ import { ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { RouteProgressService } from './route-progress.service.js';
 import { FailedVisitReason } from './dto/record-failed-visit.dto.js';
+import { OrderStatus } from '../orders/dto/update-order-status.dto.js';
 
 describe('Route progress authorization boundary', () => {
   const dto = {
@@ -177,6 +178,50 @@ describe('Route progress transactional decisions', () => {
     service = new RouteProgressService({
       client: { transaction: async (fn: any) => fn(tx) },
     } as unknown as PrismaService);
+  });
+  it('moves an assigned order into transit and replays that transition', async () => {
+    const first = await service.updateOrder(
+      'order',
+      'actor',
+      OrderStatus.IN_TRANSIT,
+    );
+
+    expect(first).toMatchObject({ status: OrderStatus.IN_TRANSIT });
+    expect(rows.RouteStop[0].outcome).toBe('PENDING');
+    expect(rows.DeliveryAttempt).toHaveLength(0);
+    await expect(
+      service.updateOrder('order', 'actor', OrderStatus.IN_TRANSIT),
+    ).resolves.toEqual(first);
+    expect(rows.DeliveryAttempt).toHaveLength(0);
+  });
+  it('records successful delivery and resolves its pending stop', async () => {
+    await service.updateOrder('order', 'actor', OrderStatus.IN_TRANSIT);
+    const delivered = await service.updateOrder(
+      'order',
+      'actor',
+      OrderStatus.DELIVERED,
+    );
+
+    expect(delivered).toMatchObject({ status: OrderStatus.DELIVERED });
+    expect(rows.RouteStop[0].outcome).toBe('SUCCESSFUL');
+    expect(rows.DeliveryAttempt).toHaveLength(1);
+    expect(rows.DeliveryAttempt[0]).toMatchObject({
+      outcome: 'SUCCESSFUL',
+      failureReason: null,
+      idempotencyKey: 'delivery:stop',
+    });
+    expect(rows.Route[0].status).toBe('IN_PROGRESS');
+    expect(rows.OrderClaim[0].releasedAt).toBeNull();
+    expect(rows.DriverReservation[0].releasedAt).toBeNull();
+  });
+  it('rejects driver cancellation without changing the order', async () => {
+    await expect(
+      service.updateOrder('order', 'actor', OrderStatus.CANCELLED),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    expect(rows.Order[0].status).toBe('ASSIGNED');
+    expect(rows.RouteStop[0].outcome).toBe('PENDING');
+    expect(rows.DeliveryAttempt).toHaveLength(0);
   });
   it('rejects ownership observed without successfully acquiring the route lock', async () => {
     const route = Object.assign(rows.Route[0], {
