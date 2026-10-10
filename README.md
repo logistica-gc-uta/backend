@@ -270,3 +270,9 @@ El flujo de trabajo automatizado en [`.github/workflows/ci.yml`](./.github/workf
    - Propagación estricta de fallos: no se utiliza `continue-on-error`, por lo que cualquier fallo en pruebas o verificación detiene el pipeline.
 
 > *Nota de estado remoto:* La ejecución en los runners remotos de GitHub Actions se activará automáticamente al enviar el branch y abrir el Pull Request correspondiente (referenciando `Refs #8`).
+
+## Consulta de rutas del repartidor
+
+`GET /api/v1/drivers/me/routes?date=YYYY-MM-DD` permite a un usuario `DRIVER` consultar únicamente sus rutas asignadas, con zona y pedidos ordenados por parada. Sin rutas o perfil de repartidor devuelve `[]`. La identidad proviene exclusivamente del JWT; los campos de consulta no admiten IDs de usuario, repartidor ni ruta.
+
+El filtro opcional se aplica a `Route.date` durante el día local de `America/Guayaquil` (inicio inclusivo, siguiente medianoche exclusiva), no a la fecha programada de cada pedido. Fechas inexistentes, valores repetidos o campos desconocidos devuelven `400`; sin JWT válido devuelve `401`, y otros roles reciben `403`. Esta consulta no habilita cambios de estado por parte del repartidor. Consulte el [contrato y los límites de seguridad](docs/driver-routes.md).

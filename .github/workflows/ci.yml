@@ -70,16 +70,16 @@ jobs:
         env:
           POSTGRES_USER: logistica_user
           POSTGRES_PASSWORD: logistica_password123
-          POSTGRES_DB: logistica_db
+          POSTGRES_DB: issue6_ci_${{ github.run_id }}_${{ github.run_attempt }}
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U logistica_user -d logistica_db"
+          --health-cmd "pg_isready -U logistica_user -d issue6_ci_${{ github.run_id }}_${{ github.run_attempt }}"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgresql://logistica_user:logistica_password123@localhost:5432/logistica_db?schema=public
+      DATABASE_URL: postgresql://logistica_user:logistica_password123@127.0.0.1:5432/issue6_ci_${{ github.run_id }}_${{ github.run_attempt }}?schema=public
       # Solo para el entorno efímero de CI; no es un secreto real.
       JWT_SECRET: ci_only_jwt_secret
       JWT_EXPIRES_IN: 1d

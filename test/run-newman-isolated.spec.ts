@@ -4,7 +4,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 describe('Isolated Newman Runner Safety & Isolation Contract', () => {
-  const runnerScriptPath = path.resolve(process.cwd(), 'test/run-newman-isolated.sh');
+  const runnerScriptPath = path.resolve(
+    process.cwd(),
+    'test/run-newman-isolated.sh',
+  );
   let tempDir: string;
   let fakeBinDir: string;
   let logFile: string;
@@ -22,11 +25,18 @@ describe('Isolated Newman Runner Safety & Isolation Contract', () => {
 
   function createFakeExecutable(name: string, scriptContent: string) {
     const filePath = path.join(fakeBinDir, name);
-    fs.writeFileSync(filePath, `#!/usr/bin/env bash\n${scriptContent}\n`, { mode: 0o755 });
+    fs.writeFileSync(filePath, `#!/usr/bin/env bash\n${scriptContent}\n`, {
+      mode: 0o755,
+    });
     return filePath;
   }
 
-  function setupStandardFakeBinaries(options?: { newmanExitCode?: number; backendHang?: boolean }) {
+  function setupStandardFakeBinaries(options?: {
+    newmanExitCode?: number;
+    backendHang?: boolean;
+    wrongOwner?: boolean;
+    unknownId?: boolean;
+  }) {
     const newmanCode = options?.newmanExitCode ?? 0;
 
     createFakeExecutable(
@@ -34,7 +44,22 @@ describe('Isolated Newman Runner Safety & Isolation Contract', () => {
       `
 echo "docker $@" >> "${logFile}"
 if [ "$1" = "run" ]; then
+  for arg in "$@"; do
+    if [[ "$arg" == delivery.issue6.owner=* ]]; then
+      printf '%s' "\${arg#*=}" > "${tempDir}/owner"
+    fi
+  done
+  touch "${tempDir}/container"
   echo "mock-pg-container-id-777"
+  exit 0
+elif [ "$1" = "inspect" ]; then
+  ${options?.unknownId ? 'exit 1' : ':'}
+  ${options?.wrongOwner ? 'echo "foreign-owner"; exit 0' : ':'}
+  if [ ! -f "${tempDir}/container" ]; then exit 1; fi
+  if [ "$2" = "-f" ]; then cat "${tempDir}/owner"; fi
+  exit 0
+elif [ "$1" = "rm" ]; then
+  rm -f "${tempDir}/container"
   exit 0
 elif [ "$1" = "port" ]; then
   echo "127.0.0.1:54999"
@@ -146,7 +171,9 @@ exit ${newmanCode}
       });
 
       expect(res.status).not.toBe(0);
-      expect(res.stderr + res.stdout).toMatch(/forbidden|error|invalid|unknown|report/i);
+      expect(res.stderr + res.stdout).toMatch(
+        /forbidden|error|invalid|unknown|report/i,
+      );
 
       // Must NOT have invoked docker
       const calls = readCallLog();
@@ -161,7 +188,8 @@ exit ${newmanCode}
     const env = {
       ...process.env,
       PATH: `${fakeBinDir}:${process.env.PATH}`,
-      DATABASE_URL: 'postgresql://admin:secret@shared-dev-host:5432/delivery_dev',
+      DATABASE_URL:
+        'postgresql://admin:secret@shared-dev-host:5432/delivery_dev',
     };
 
     const res = spawnSync('bash', [runnerScriptPath], {
@@ -197,10 +225,24 @@ exit ${newmanCode}
     expect(res.status).toBe(0);
 
     const calls = readCallLog();
-    expect(calls.some((c) => c.startsWith('docker run') && c.includes('--rm'))).toBe(true);
+    expect(
+      calls.some(
+        (c) =>
+          c.startsWith('docker run') &&
+          c.includes('--rm') &&
+          c.includes('--pull=never') &&
+          c.includes('--label delivery.issue6.owner='),
+      ),
+    ).toBe(true);
+    expect(calls.filter((c) => c.startsWith('docker inspect')).length).toBe(2);
     expect(calls.some((c) => c.includes('backend-started'))).toBe(true);
     expect(calls.some((c) => c.includes('backend-killed'))).toBe(true);
-    expect(calls.some((c) => c.includes('docker rm') && c.includes('mock-pg-container-id-777'))).toBe(true);
+    expect(
+      calls.some(
+        (c) =>
+          c.includes('docker rm') && c.includes('mock-pg-container-id-777'),
+      ),
+    ).toBe(true);
   });
 
   it('passes single quoted reporter comma argument -r cli,htmlextra when --report flag is provided', () => {
@@ -224,7 +266,9 @@ exit ${newmanCode}
     const newmanCall = calls.find((c) => c.startsWith('newman'));
     expect(newmanCall).toBeDefined();
     expect(newmanCall).toContain('-r cli,htmlextra');
-    expect(newmanCall).toContain('--reporter-htmlextra-export reports/newman/informe-api.html');
+    expect(newmanCall).toContain(
+      '--reporter-htmlextra-export reports/newman/informe-api.html',
+    );
   });
 
   it('preserves failure exit code 42 from Newman and cleans up backend PID and container', () => {
@@ -247,8 +291,35 @@ exit ${newmanCode}
     const calls = readCallLog();
     expect(calls.some((c) => c.includes('backend-started'))).toBe(true);
     expect(calls.some((c) => c.includes('backend-killed'))).toBe(true);
-    expect(calls.some((c) => c.includes('docker rm') && c.includes('mock-pg-container-id-777'))).toBe(true);
+    expect(
+      calls.some(
+        (c) =>
+          c.includes('docker rm') && c.includes('mock-pg-container-id-777'),
+      ),
+    ).toBe(true);
   });
+
+  it.each([{ wrongOwner: true }, { unknownId: true }])(
+    'refuses container removal when ownership cannot be verified: %p',
+    (options) => {
+      setupStandardFakeBinaries(options);
+      const env = { ...process.env, PATH: `${fakeBinDir}:${process.env.PATH}` };
+      delete env.DATABASE_URL;
+      const result = spawnSync('bash', [runnerScriptPath], {
+        env,
+        encoding: 'utf8',
+        timeout: 10000,
+      });
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toContain(
+        'Refusing cleanup without exact container ownership',
+      );
+      expect(readCallLog().some((c) => c.startsWith('docker rm'))).toBe(false);
+      expect(readCallLog().some((c) => c.includes('backend-killed'))).toBe(
+        true,
+      );
+    },
+  );
 
   it('exits with non-zero signal status on SIGINT/SIGTERM and cleans up resources', (done) => {
     createFakeExecutable(
@@ -256,7 +327,20 @@ exit ${newmanCode}
       `
 echo "docker $@" >> "${logFile}"
 if [ "$1" = "run" ]; then
+  for arg in "$@"; do
+    if [[ "$arg" == delivery.issue6.owner=* ]]; then
+      printf '%s' "\${arg#*=}" > "${tempDir}/owner"
+    fi
+  done
+  touch "${tempDir}/container"
   echo "mock-pg-container-id-sig"
+  exit 0
+elif [ "$1" = "inspect" ]; then
+  if [ ! -f "${tempDir}/container" ]; then exit 1; fi
+  if [ "$2" = "-f" ]; then cat "${tempDir}/owner"; fi
+  exit 0
+elif [ "$1" = "rm" ]; then
+  rm -f "${tempDir}/container"
   exit 0
 elif [ "$1" = "port" ]; then
   echo "127.0.0.1:54999"
@@ -334,7 +418,12 @@ exit 0
       expect(code).toBe(130);
       const calls = readCallLog();
       expect(calls.some((c) => c.includes('backend-killed'))).toBe(true);
-      expect(calls.some((c) => c.includes('docker rm') && c.includes('mock-pg-container-id-sig'))).toBe(true);
+      expect(
+        calls.some(
+          (c) =>
+            c.includes('docker rm') && c.includes('mock-pg-container-id-sig'),
+        ),
+      ).toBe(true);
       done();
     });
   }, 15000);
