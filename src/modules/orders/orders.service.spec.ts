@@ -117,6 +117,53 @@ describe('OrdersService', () => {
       expect(withoutDate.scheduledDeliveryDate).toBeNull();
     });
 
+    it('persiste deliveryLat y deliveryLng cuando se proporcionan coordenadas válidas', async () => {
+      prismaMock.zone.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validZone) });
+      prismaMock.product.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validProduct) });
+
+      await service.createOrder('user-1', {
+        ...createDto,
+        deliveryLat: -1.249,
+        deliveryLng: -78.616,
+      });
+
+      const call = txMock.orm.public.Order.create.mock.calls[0][0];
+      expect(call.deliveryLat).toBe(-1.249);
+      expect(call.deliveryLng).toBe(-78.616);
+    });
+
+    it('persiste deliveryLat y deliveryLng como null cuando se omiten coordenadas', async () => {
+      prismaMock.zone.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validZone) });
+      prismaMock.product.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validProduct) });
+
+      await service.createOrder('user-1', createDto);
+
+      const call = txMock.orm.public.Order.create.mock.calls[0][0];
+      expect(call.deliveryLat).toBeNull();
+      expect(call.deliveryLng).toBeNull();
+    });
+
+    it('rechaza par incompleto, nulo o fuera de rango a nivel de servicio con BadRequestException', async () => {
+      prismaMock.zone.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validZone) });
+      prismaMock.product.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validProduct) });
+
+      await expect(
+        service.createOrder('user-1', { ...createDto, deliveryLat: -1.2 } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.createOrder('user-1', { ...createDto, deliveryLat: null, deliveryLng: null } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.createOrder('user-1', { ...createDto, deliveryLat: 95, deliveryLng: 0 } as any),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.createOrder('user-1', { ...createDto, deliveryLat: NaN, deliveryLng: 0 } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('Caso 1: Creación exitosa de orden con cálculo de total y descuento de stock', async () => {
       prismaMock.zone.where.mockReturnValue({
         first: jest.fn().mockResolvedValue(validZone),
@@ -195,6 +242,23 @@ describe('OrdersService', () => {
       routeId: 'route-1',
       status: OrderStatus.PENDING,
       total: 1500,
+      deliveryLat: -1.25,
+      deliveryLng: -78.62,
+      zone: {
+        id: 'zone-1',
+        depotLat: -1.24,
+        depotLng: -78.61,
+      },
+    };
+
+    const expectedEnrichedOrder = {
+      ...sampleOrder,
+      deliveryLocation: { lat: -1.25, lng: -78.62 },
+      planningEligibility: { eligible: true, reasons: [] },
+      zone: {
+        ...sampleOrder.zone,
+        depotLocation: { lat: -1.24, lng: -78.61 },
+      },
     };
 
     const adminUser: AuthenticatedUser = {
@@ -227,18 +291,18 @@ describe('OrdersService', () => {
       role: 'DRIVER',
     };
 
-    it('ADMIN debe poder leer cualquier pedido globalmente', async () => {
+    it('ADMIN debe poder leer cualquier pedido globalmente con modelo enriquecido', async () => {
       prismaMock.order.first.mockResolvedValue(sampleOrder);
 
       const result = await service.findOne('order-1', adminUser);
-      expect(result).toEqual(sampleOrder);
+      expect(result).toEqual(expectedEnrichedOrder);
     });
 
-    it('CLIENT debe poder leer sus propios pedidos', async () => {
+    it('CLIENT debe poder leer sus propios pedidos con modelo enriquecido', async () => {
       prismaMock.order.first.mockResolvedValue(sampleOrder);
 
       const result = await service.findOne('order-1', ownerClient);
-      expect(result).toEqual(sampleOrder);
+      expect(result).toEqual(expectedEnrichedOrder);
     });
 
     it('CLIENT debe ser rechazado con ForbiddenException si intenta leer pedidos ajenos (IDOR/BOLA)', async () => {
@@ -259,7 +323,7 @@ describe('OrdersService', () => {
       });
 
       const result = await service.findOne('order-1', assignedDriverUser);
-      expect(result).toEqual(sampleOrder);
+      expect(result).toEqual(expectedEnrichedOrder);
     });
 
     it('DRIVER debe ser rechazado con ForbiddenException si el pedido no está asignado a ninguna ruta', async () => {
@@ -545,22 +609,39 @@ describe('OrdersService', () => {
   });
 
   describe('findMyOrders', () => {
-    it('debe retornar pedidos pertenecientes al usuario autenticado', async () => {
-      const orders = [{ id: 'order-1', userId: 'user-1' }];
+    it('debe retornar pedidos pertenecientes al usuario autenticado enriquecidos con deliveryLocation y planningEligibility', async () => {
+      const orders = [
+        {
+          id: 'order-1',
+          userId: 'user-1',
+          deliveryLat: null,
+          deliveryLng: null,
+          zone: { id: 'zone-1', depotLat: null, depotLng: null },
+        },
+      ];
       prismaMock.order.all.mockResolvedValue(orders);
 
       const result = await service.findMyOrders('user-1');
-      expect(result).toEqual(orders);
+      expect(result[0].deliveryLocation).toBeNull();
+      expect(result[0].planningEligibility.eligible).toBe(false);
     });
   });
 
   describe('findAll', () => {
-    it('debe retornar todos los pedidos para ADMIN', async () => {
-      const orders = [{ id: 'order-1' }, { id: 'order-2' }];
+    it('debe retornar todos los pedidos para ADMIN enriquecidos con deliveryLocation y planningEligibility', async () => {
+      const orders = [
+        {
+          id: 'order-1',
+          deliveryLat: -1.25,
+          deliveryLng: -78.62,
+          zone: { id: 'zone-1', depotLat: -1.24, depotLng: -78.61 },
+        },
+      ];
       prismaMock.order.all.mockResolvedValue(orders);
 
       const result = await service.findAll();
-      expect(result).toEqual(orders);
+      expect(result[0].deliveryLocation).toEqual({ lat: -1.25, lng: -78.62 });
+      expect(result[0].planningEligibility.eligible).toBe(true);
     });
   });
 });

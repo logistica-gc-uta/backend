@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { CreateZoneDto } from './dto/create-zone.dto.js';
 import { UpdateZoneDto } from './dto/update-zone.dto.js';
+import { ZoneResponseDto } from './dto/zone-response.dto.js';
 import { ZonesService } from './zones.service.js';
 
 @ApiTags('Zones')
@@ -15,7 +16,11 @@ export class ZonesController {
 
   @Get()
   @ApiOperation({ summary: 'Listar todas las zonas de entrega' })
-  @ApiResponse({ status: 200, description: 'Listado de zonas obtenido correctamente' })
+  @ApiResponse({
+    status: 200,
+    description: 'Listado de zonas obtenido correctamente con coordenadas y ubicación de depósito',
+    type: [ZoneResponseDto],
+  })
   async findAll() {
     return this.zonesService.findAll();
   }
@@ -23,7 +28,11 @@ export class ZonesController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener los detalles de una zona por su ID' })
   @ApiParam({ name: 'id', description: 'ID único de la zona', example: 'cm123abc456' })
-  @ApiResponse({ status: 200, description: 'Zona obtenida correctamente' })
+  @ApiResponse({
+    status: 200,
+    description: 'Zona obtenida correctamente con coordenadas y ubicación de depósito',
+    type: ZoneResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Zona no encontrada' })
   async findOne(@Param('id') id: string) {
     return this.zonesService.findOne(id);
@@ -34,7 +43,11 @@ export class ZonesController {
   @Roles(Role.ADMIN)
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Crear una nueva zona de entrega (Solo ADMIN)' })
-  @ApiResponse({ status: 201, description: 'Zona creada exitosamente' })
+  @ApiResponse({
+    status: 201,
+    description: 'Zona creada exitosamente con persistencia de depósito y objeto depotLocation',
+    type: ZoneResponseDto,
+  })
   @ApiResponse({ status: 403, description: 'Prohibido: se requiere rol ADMIN' })
   @ApiResponse({ status: 409, description: 'Nombre o código de zona ya existente' })
   @HttpCode(HttpStatus.CREATED)
@@ -48,7 +61,11 @@ export class ZonesController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Actualizar una zona de entrega (Solo ADMIN)' })
   @ApiParam({ name: 'id', description: 'ID de la zona a actualizar', example: 'cm123abc456' })
-  @ApiResponse({ status: 200, description: 'Zona actualizada exitosamente' })
+  @ApiResponse({
+    status: 200,
+    description: 'Zona actualizada exitosamente con coordenadas y objeto depotLocation',
+    type: ZoneResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'Datos de entrada inválidos' })
   @ApiResponse({ status: 403, description: 'Prohibido: se requiere rol ADMIN' })
   @ApiResponse({ status: 404, description: 'Zona no encontrada' })
@@ -71,4 +88,3 @@ export class ZonesController {
     return this.zonesService.remove(id);
   }
 }
-

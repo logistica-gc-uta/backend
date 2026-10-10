@@ -190,6 +190,20 @@
                   "kind": "scalar"
                 }
               },
+              "deliveryLat": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/float8@1",
+                  "kind": "scalar"
+                }
+              },
+              "deliveryLng": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/float8@1",
+                  "kind": "scalar"
+                }
+              },
               "id": {
                 "nullable": false,
                 "type": {
@@ -325,6 +339,12 @@
                 },
                 "deliveryAddress": {
                   "column": "deliveryAddress"
+                },
+                "deliveryLat": {
+                  "column": "deliveryLat"
+                },
+                "deliveryLng": {
+                  "column": "deliveryLng"
                 },
                 "id": {
                   "column": "id"
@@ -770,6 +790,20 @@
                   "kind": "scalar"
                 }
               },
+              "depotLat": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/float8@1",
+                  "kind": "scalar"
+                }
+              },
+              "depotLng": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/float8@1",
+                  "kind": "scalar"
+                }
+              },
               "id": {
                 "nullable": false,
                 "type": {
@@ -824,6 +858,12 @@
                 },
                 "createdAt": {
                   "column": "createdAt"
+                },
+                "depotLat": {
+                  "column": "depotLat"
+                },
+                "depotLng": {
+                  "column": "depotLng"
                 },
                 "id": {
                   "column": "id"
@@ -916,6 +956,11 @@
             "order": {
               "checks": [
                 {
+                  "expression": "(\"deliveryLat\" IS NULL AND \"deliveryLng\" IS NULL) OR (\"deliveryLat\" IS NOT NULL AND \"deliveryLng\" IS NOT NULL AND \"deliveryLat\" >= -90 AND \"deliveryLat\" <= 90 AND \"deliveryLng\" >= -180 AND \"deliveryLng\" <= 180)",
+                  "name": "order_delivery_coordinates_valid_84ff84b6",
+                  "prefix": "order_delivery_coordinates_valid"
+                },
+                {
                   "expression": "\"status\" IN ('PENDING', 'ASSIGNED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED')",
                   "name": "order_status_check_148f644e",
                   "prefix": "order_status_check"
@@ -935,6 +980,16 @@
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "deliveryLat": {
+                  "codecId": "pg/float8@1",
+                  "nativeType": "float8",
+                  "nullable": true
+                },
+                "deliveryLng": {
+                  "codecId": "pg/float8@1",
+                  "nativeType": "float8",
+                  "nullable": true
                 },
                 "id": {
                   "codecId": "pg/text@1",
@@ -1380,6 +1435,13 @@
               ]
             },
             "zone": {
+              "checks": [
+                {
+                  "expression": "(\"depotLat\" IS NULL AND \"depotLng\" IS NULL) OR (\"depotLat\" IS NOT NULL AND \"depotLng\" IS NOT NULL AND \"depotLat\" >= -90 AND \"depotLat\" <= 90 AND \"depotLng\" >= -180 AND \"depotLng\" <= 180)",
+                  "name": "zone_depot_coordinates_valid_5c13ee7e",
+                  "prefix": "zone_depot_coordinates_valid"
+                }
+              ],
               "columns": {
                 "code": {
                   "codecId": "pg/text@1",
@@ -1394,6 +1456,16 @@
                   },
                   "nativeType": "timestamptz",
                   "nullable": false
+                },
+                "depotLat": {
+                  "codecId": "pg/float8@1",
+                  "nativeType": "float8",
+                  "nullable": true
+                },
+                "depotLng": {
+                  "codecId": "pg/float8@1",
+                  "nativeType": "float8",
+                  "nullable": true
                 },
                 "id": {
                   "codecId": "pg/text@1",
@@ -1452,7 +1524,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "ade716a5854bac9da24d9d458e813194b99fcacf7c156ace530749782dfead7f"
+    "storageHash": "00d34ab56ae55b663a53148a126d233c0801ea6863ee0e3b22273a20d77d862e"
   },
   "execution": {
     "executionHash": "d6145f3e6e216e86f3c1ecdaecde35f0d1fe4626d9704e6e4963a6b3e9df628f",

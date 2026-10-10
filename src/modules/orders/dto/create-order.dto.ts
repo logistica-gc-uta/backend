@@ -1,6 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsISO8601, IsInt, IsNotEmpty, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsDefined,
+  IsISO8601,
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
 
 export class OrderItemDto {
   @ApiProperty({ description: 'ID del producto a ordenar', example: 'cm789xyz123' })
@@ -36,6 +50,30 @@ export class CreateOrderDto {
   @IsISO8601({}, { message: 'La fecha programada debe tener un formato ISO 8601 válido' })
   scheduledDeliveryDate?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Latitud geográfica de entrega [-90, 90] seleccionada por el usuario. Opcional; si se proporciona, requiere deliveryLng como par finito completo.',
+    example: -1.24908,
+  })
+  @ValidateIf((o: CreateOrderDto) => o.deliveryLat !== undefined || o.deliveryLng !== undefined)
+  @IsDefined({ message: 'La latitud de entrega es obligatoria si se proporciona longitud' })
+  @IsNumber({ allowNaN: false, allowInfinity: false }, { message: 'La latitud de entrega debe ser un número finito' })
+  @Min(-90, { message: 'La latitud de entrega debe ser mayor o igual a -90' })
+  @Max(90, { message: 'La latitud de entrega debe ser menor o igual a 90' })
+  deliveryLat?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'Longitud geográfica de entrega [-180, 180] seleccionada por el usuario. Opcional; si se proporciona, requiere deliveryLat como par finito completo.',
+    example: -78.61675,
+  })
+  @ValidateIf((o: CreateOrderDto) => o.deliveryLat !== undefined || o.deliveryLng !== undefined)
+  @IsDefined({ message: 'La longitud de entrega es obligatoria si se proporciona latitud' })
+  @IsNumber({ allowNaN: false, allowInfinity: false }, { message: 'La longitud de entrega debe ser un número finito' })
+  @Min(-180, { message: 'La longitud de entrega debe ser mayor o igual a -180' })
+  @Max(180, { message: 'La longitud de entrega debe ser menor o igual a 180' })
+  deliveryLng?: number;
+
   @ApiProperty({ description: 'Lista de productos del pedido', type: () => [OrderItemDto] })
   @IsArray({ message: 'Los items deben ser un arreglo' })
   @ArrayMinSize(1, { message: 'El pedido debe contener al menos un producto' })
@@ -43,4 +81,3 @@ export class CreateOrderDto {
   @Type(() => OrderItemDto)
   items!: OrderItemDto[];
 }
-

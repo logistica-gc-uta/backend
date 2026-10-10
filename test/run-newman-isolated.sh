@@ -40,7 +40,8 @@ BACKEND_LOG=""
 RUNNER_EXIT_CODE=0
 
 # Invoked indirectly via EXIT trap
-# shellcheck disable=SC2317
+# Trap callback false positive: https://www.shellcheck.net/wiki/SC2329
+# shellcheck disable=SC2317,SC2329
 cleanup() {
   local status=$?
   set +e
@@ -61,7 +62,8 @@ cleanup() {
 }
 
 # Invoked indirectly via signal traps (INT, TERM, HUP)
-# shellcheck disable=SC2317
+# Trap callback false positive: https://www.shellcheck.net/wiki/SC2329
+# shellcheck disable=SC2317,SC2329
 handle_signal() {
   local sig_code=$1
   RUNNER_EXIT_CODE=$sig_code
@@ -82,6 +84,7 @@ CONTAINER_NAME="isolated-pg-${RANDOM}-$$"
 # 3. Spawn ephemeral PostgreSQL container (no volumes, loopback random port)
 CONTAINER_ID=$(docker run -d --rm \
   --name "$CONTAINER_NAME" \
+  --pull=never \
   -p 127.0.0.1::5432 \
   -e POSTGRES_USER="$PG_USER" \
   -e POSTGRES_PASSWORD="$PG_PASS" \
@@ -119,8 +122,18 @@ if [[ $READY -eq 0 ]]; then
 fi
 
 # 5. Initialize schema and seed data ONLY in owned ephemeral database
-DATABASE_URL="$ISOLATED_DB_URL" pnpm prisma db init --db "$ISOLATED_DB_URL" >/dev/null
+DATABASE_URL="$ISOLATED_DB_URL" pnpm prisma db migrate --db "$ISOLATED_DB_URL" >/dev/null
+DATABASE_URL="$ISOLATED_DB_URL" pnpm prisma db verify --db "$ISOLATED_DB_URL" >/dev/null
 DATABASE_URL="$ISOLATED_DB_URL" pnpm tsx src/prisma/seed.ts >/dev/null
+# Seed twice: identity and coordinate values must remain unchanged, including NULLs.
+SEED_SNAPSHOT_SQL='SELECT row_to_json(z) FROM (SELECT id, code, "depotLat", "depotLng" FROM "zone" ORDER BY code) z;'
+SEED_BEFORE=$(docker exec "$CONTAINER_ID" psql -U "$PG_USER" -d "$PG_DB" -At -c "$SEED_SNAPSHOT_SQL")
+DATABASE_URL="$ISOLATED_DB_URL" pnpm tsx src/prisma/seed.ts >/dev/null
+SEED_AFTER=$(docker exec "$CONTAINER_ID" psql -U "$PG_USER" -d "$PG_DB" -At -c "$SEED_SNAPSHOT_SQL")
+if [[ "$SEED_BEFORE" != "$SEED_AFTER" ]]; then
+  echo "Error: Seed changed existing zone identities or depot coordinates." >&2
+  exit 1
+fi
 
 # 6. Allocate free local port for dedicated backend
 APP_PORT=$(node -e 'const net = require("net"); const s = net.createServer(); s.listen(0, "127.0.0.1", () => { console.log(s.address().port); s.close(); });')

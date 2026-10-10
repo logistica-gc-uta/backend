@@ -551,7 +551,16 @@
                   "const body = pm.response.json();",
                   "pm.test('Devuelve un arreglo no vacío (seed)', () => pm.expect(body).to.be.an('array').that.is.not.empty);",
                   "pm.test('Cada zona tiene id, name y code', () => body.forEach(z => pm.expect(z).to.include.keys('id', 'name', 'code')));",
-                  "pm.collectionVariables.set('otherZoneId', body[0].id);"
+                  "pm.collectionVariables.set('otherZoneId', body[0].id);",
+                  "pm.test('DEMO/TEST seed depots expose deterministic GeoPoints', () => {",
+                  "  const points = {'CEN-01': [-1.241, -78.619], 'FIC-02': [-1.249, -78.632], 'HUA-03': [-1.271, -78.629]};",
+                  "  Object.entries(points).forEach(([code, pair]) => {",
+                  "    const z = body.find(z => z.code === code);",
+                  "    pm.expect(z, code).to.exist;",
+                  "    pm.expect(z.depotLat).to.eql(pair[0]); pm.expect(z.depotLng).to.eql(pair[1]);",
+                  "    pm.expect(z.depotLocation).to.eql({lat: pair[0], lng: pair[1]});",
+                  "  });",
+                  "});"
                 ]
               }
             }
@@ -593,7 +602,8 @@
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.test('Zona creada con el código enviado', () => pm.expect(body.code).to.eql(pm.collectionVariables.get('zoneCode')));",
-                  "pm.collectionVariables.set('zoneId', body.id);"
+                  "pm.collectionVariables.set('zoneId', body.id);",
+                  "pm.test('DEMO/TEST depot persists and maps lat/lng', () => { const z = pm.response.json(); pm.expect(z.depotLat).to.eql(-1.241); pm.expect(z.depotLng).to.eql(-78.619); pm.expect(z.depotLocation).to.eql({lat: -1.241, lng: -78.619}); });"
                 ]
               }
             }
@@ -615,7 +625,7 @@
                 "zones"
               ]
             },
-            "description": "",
+            "description": "DEMO/TEST depot coordinates; not a production depot.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -628,7 +638,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"{{zoneName}}\",\n  \"code\": \"{{zoneCode}}\"\n}"
+              "raw": "{\n  \"name\": \"{{zoneName}}\",\n  \"code\": \"{{zoneCode}}\",\n  \"depotLat\": -1.241,\n  \"depotLng\": -78.619\n}"
             }
           }
         },
@@ -772,7 +782,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Es la zona creada', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('zoneId')));"
+                  "pm.test('Es la zona creada', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('zoneId')));",
+                  "pm.test('DEMO/TEST depot persists and maps lat/lng', () => { const z = pm.response.json(); pm.expect(z.depotLat).to.eql(-1.241); pm.expect(z.depotLng).to.eql(-78.619); pm.expect(z.depotLocation).to.eql({lat: -1.241, lng: -78.619}); });"
                 ]
               }
             }
@@ -1120,7 +1131,8 @@
                   "pm.test('El pedido nace en estado PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
                   "pm.test('Total = 2 x precio unitario', () => pm.expect(body.total).to.eql(2 * 49.9));",
                   "pm.test('Conserva la dirección de entrega', () => pm.expect(body.deliveryAddress).to.include('Ambato'));",
-                  "pm.collectionVariables.set('orderId1', body.id);"
+                  "pm.collectionVariables.set('orderId1', body.id);",
+                  "pm.test('DEMO/TEST destination coordinates persist', () => { const o = pm.response.json(); pm.expect(o.deliveryLat).to.eql(-1.25); pm.expect(o.deliveryLng).to.eql(-78.63); });"
                 ]
               }
             }
@@ -1142,7 +1154,7 @@
                 "orders"
               ]
             },
-            "description": "Crea el pedido 1 de 4 que se agruparán en una ruta.",
+            "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1155,7 +1167,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #1, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ]\n}"
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #1, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
             }
           }
         },
@@ -1172,7 +1184,8 @@
                   "pm.test('El pedido nace en estado PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
                   "pm.test('Total = 2 x precio unitario', () => pm.expect(body.total).to.eql(2 * 49.9));",
                   "pm.test('Conserva la dirección de entrega', () => pm.expect(body.deliveryAddress).to.include('Ambato'));",
-                  "pm.collectionVariables.set('orderId2', body.id);"
+                  "pm.collectionVariables.set('orderId2', body.id);",
+                  "pm.test('DEMO/TEST destination coordinates persist', () => { const o = pm.response.json(); pm.expect(o.deliveryLat).to.eql(-1.25); pm.expect(o.deliveryLng).to.eql(-78.63); });"
                 ]
               }
             }
@@ -1194,7 +1207,7 @@
                 "orders"
               ]
             },
-            "description": "Crea el pedido 2 de 4 que se agruparán en una ruta.",
+            "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1207,7 +1220,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #2, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ]\n}"
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #2, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
             }
           }
         },
@@ -1224,7 +1237,8 @@
                   "pm.test('El pedido nace en estado PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
                   "pm.test('Total = 2 x precio unitario', () => pm.expect(body.total).to.eql(2 * 49.9));",
                   "pm.test('Conserva la dirección de entrega', () => pm.expect(body.deliveryAddress).to.include('Ambato'));",
-                  "pm.collectionVariables.set('orderId3', body.id);"
+                  "pm.collectionVariables.set('orderId3', body.id);",
+                  "pm.test('DEMO/TEST destination coordinates persist', () => { const o = pm.response.json(); pm.expect(o.deliveryLat).to.eql(-1.25); pm.expect(o.deliveryLng).to.eql(-78.63); });"
                 ]
               }
             }
@@ -1246,7 +1260,7 @@
                 "orders"
               ]
             },
-            "description": "Crea el pedido 3 de 4 que se agruparán en una ruta.",
+            "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -1259,7 +1273,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #3, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ]\n}"
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #3, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
             }
           }
         },
@@ -1276,7 +1290,8 @@
                   "pm.test('El pedido nace en estado PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
                   "pm.test('Total = 2 x precio unitario', () => pm.expect(body.total).to.eql(2 * 49.9));",
                   "pm.test('Conserva la dirección de entrega', () => pm.expect(body.deliveryAddress).to.include('Ambato'));",
-                  "pm.collectionVariables.set('orderId4', body.id);"
+                  "pm.collectionVariables.set('orderId4', body.id);",
+                  "pm.test('Omitted pair persists both NULLs', () => { const o = pm.response.json(); pm.expect(o.deliveryLat).to.be.null; pm.expect(o.deliveryLng).to.be.null; });"
                 ]
               }
             }
@@ -1312,6 +1327,241 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #4, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Create Order - geographic rejection explicit null",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Malformed coordinate pair rejected with 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #1, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": null,\n  \"deliveryLng\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Create Order - geographic rejection nonnumeric",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Malformed coordinate pair rejected with 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #1, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": \"-1.25\",\n  \"deliveryLng\": -78.63\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Create Order - geographic rejection out-of-range longitude",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Malformed coordinate pair rejected with 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #1, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": 181\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Create Order - geographic rejection out-of-range latitude",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Malformed coordinate pair rejected with 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #1, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": 91,\n  \"deliveryLng\": -78.63\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Create Order - geographic rejection incomplete",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Malformed coordinate pair rejected with 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
+            },
+            "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #1, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": -1.25\n}"
             }
           }
         },
@@ -1474,7 +1724,9 @@
                   "pm.test('Incluye los pedidos creados', () => {",
                   "  const ids = body.map(o => o.id);",
                   "  [1, 2, 3, 4].forEach(n => pm.expect(ids).to.include(pm.collectionVariables.get('orderId' + n)));",
-                  "});"
+                  "});",
+                  "pm.test('Readback retains destination and geographic readiness', () => { const o = pm.response.json().find(o => o.id === pm.collectionVariables.get('orderId1')); pm.expect(o.deliveryLocation).to.eql({lat: -1.25, lng: -78.63}); pm.expect(o.planningEligibility).to.eql({eligible: true, reasons: []}); });",
+                  "pm.test('Historical readback remains visible and geographically ineligible', () => { const o = pm.response.json().find(o => o.id === pm.collectionVariables.get('orderId4')); pm.expect(o.deliveryLocation).to.be.null; pm.expect(o.planningEligibility.eligible).to.eql(false); pm.expect(o.planningEligibility.reasons).to.include('MISSING_DELIVERY_COORDINATES'); });"
                 ]
               }
             }
@@ -1514,7 +1766,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Devuelve un arreglo', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                  "pm.test('Devuelve un arreglo', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('Readback retains destination and geographic readiness', () => { const o = pm.response.json().find(o => o.id === pm.collectionVariables.get('orderId1')); pm.expect(o.deliveryLocation).to.eql({lat: -1.25, lng: -78.63}); pm.expect(o.planningEligibility).to.eql({eligible: true, reasons: []}); });"
                 ]
               }
             }
@@ -1591,7 +1844,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Pedido PENDING con sus items', () => { const b = pm.response.json(); pm.expect(b.status).to.eql('PENDING'); pm.expect(b.items).to.have.lengthOf(1); });"
+                  "pm.test('Pedido PENDING con sus items', () => { const b = pm.response.json(); pm.expect(b.status).to.eql('PENDING'); pm.expect(b.items).to.have.lengthOf(1); });",
+                  "pm.test('Single-order readback retains coordinates', () => { const o = pm.response.json(); pm.expect(o.deliveryLat).to.eql(-1.25); pm.expect(o.deliveryLng).to.eql(-78.63); pm.expect(o.zone.depotLocation).to.eql({lat: -1.241, lng: -78.619}); pm.expect(o.planningEligibility.eligible).to.eql(true); });"
                 ]
               }
             }

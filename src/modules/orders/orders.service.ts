@@ -10,6 +10,10 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
 import { OrderStatus, UpdateOrderStatusDto } from './dto/update-order-status.dto.js';
+import {
+  enrichOrderWithGeography,
+  validateCoordinatePair,
+} from './order-geography.util.js';
 import { validateOrderTransition } from './order-status.policy.js';
 
 @Injectable()
@@ -17,6 +21,8 @@ export class OrdersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createOrder(userId: string, dto: CreateOrderDto) {
+    const coords = validateCoordinatePair(dto.deliveryLat, dto.deliveryLng, 'delivery');
+
     // 1. Validar que la zona exista
     const zone = await this.prisma.zone.where({ id: dto.zoneId }).first();
     if (!zone) {
@@ -73,6 +79,8 @@ export class OrdersService {
         userId,
         zoneId: dto.zoneId,
         deliveryAddress: dto.deliveryAddress,
+        deliveryLat: coords.lat,
+        deliveryLng: coords.lng,
         scheduledDeliveryDate: dto.scheduledDeliveryDate ? toInstant(dto.scheduledDeliveryDate) : null,
         status: OrderStatus.PENDING,
         total: totalOrder,
@@ -94,19 +102,21 @@ export class OrdersService {
   }
 
   async findMyOrders(userId: string) {
-    return this.prisma.order
+    const orders = await this.prisma.order
       .where({ userId })
       .include('items', (i) => i.include('product'))
       .include('zone')
       .all();
+    return orders.map(enrichOrderWithGeography);
   }
 
   async findAll() {
-    return this.prisma.order
+    const orders = await this.prisma.order
       .include('items', (i) => i.include('product'))
       .include('zone')
       .include('user')
       .all();
+    return orders.map(enrichOrderWithGeography);
   }
 
   async findOne(id: string, user: AuthenticatedUser) {
@@ -121,14 +131,14 @@ export class OrdersService {
     }
 
     if (user.role === 'ADMIN') {
-      return order;
+      return enrichOrderWithGeography(order);
     }
 
     if (user.role === 'CLIENT') {
       if (order.userId !== user.userId) {
         throw new ForbiddenException('No tiene permisos para consultar este pedido');
       }
-      return order;
+      return enrichOrderWithGeography(order);
     }
 
     if (user.role === 'DRIVER') {
@@ -146,7 +156,7 @@ export class OrdersService {
         throw new ForbiddenException('No tiene permisos para consultar pedidos de otra ruta');
       }
 
-      return order;
+      return enrichOrderWithGeography(order);
     }
 
     throw new ForbiddenException('Rol no autorizado para consultar pedidos');

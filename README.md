@@ -127,7 +127,7 @@ pnpm prisma db init
 ```bash
 pnpm run seed
 ```
-Este comando creará automáticamente los usuarios, choferes, zonas y productos necesarios para pruebas.
+Este comando creará automáticamente los usuarios, choferes, zonas y productos necesarios para pruebas. Las coordenadas de depósitos son datos DEMO/TEST solo para zonas nuevas; no actualiza coordenadas de zonas existentes ni completa registros históricos.
 
 ### Paso 7: Iniciar el servidor en modo desarrollo
 ```bash
@@ -162,6 +162,8 @@ http://localhost:3000/api/docs
 - **Swagger / OpenAPI interactivo:** [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
   > Puedes autenticarte directamente en Swagger haciendo clic en el botón **Authorize** e ingresando el token Bearer devuelto por `/api/v1/auth/login`.
 - **Seguridad y Ciclo de Vida de Pedidos (#8):** [`docs/order-security.md`](./docs/order-security.md) (Matriz de permisos, mitigación IDOR/BOLA, gobierno de estados y concurrencia).
+- **Contrato geográfico (#9):** [`docs/geolocation-contract.md`](./docs/geolocation-contract.md) (pares opcionales, lectura, preparación geográfica y responsabilidad del mapa).
+- **Migración y recuperación geográfica:** [`docs/geolocation-migration.md`](./docs/geolocation-migration.md).
 - **Diseño de Armado de Rutas (Clarke & Wright):** [`docs/clarke-wright.md`](./docs/clarke-wright.md).
 
 ---
@@ -176,12 +178,12 @@ El archivo [`delivery-api.postman_collection.json`](./delivery-api.postman_colle
 
 ### Ejecutar con Newman (CLI y Ejecutor Aislado)
 
-Para garantizar aislamiento absoluto y proteger la base de datos de desarrollo, el proyecto incluye un ejecutor dedicado (`test/run-newman-isolated.sh`):
+Para aislar las pruebas y proteger la base de datos de desarrollo, el proyecto incluye un ejecutor dedicado (`test/run-newman-isolated.sh`):
 
-- **Aprovisionamiento efímero:** Levanta automáticamente un contenedor PostgreSQL 16 dedicado en un puerto loopback aleatorio (`127.0.0.1::5432`), inicializa el esquema y datos semilla solo en esa base y levanta el backend en un puerto libre.
+- **Aprovisionamiento efímero:** Levanta automáticamente un contenedor PostgreSQL 16 dedicado en un puerto loopback aleatorio (`127.0.0.1::5432`), aplica la cadena real de migraciones Prisma 8, verifica el contrato y ejecuta la semilla dos veces solo en esa base y levanta el backend en un puerto libre.
 - **Protección de base externa:** El script rechaza incondicionalmente cualquier variable `DATABASE_URL` heredada en el entorno (`exit 1`), garantizando que jamás se conecte ni mute bases de datos compartidas o locales.
-- **Limpieza atómica y señales:** Captura `EXIT`, `INT`, `TERM` y `HUP`, asegurando la detención del backend dedicado y la eliminación del contenedor efímero. Preserva códigos de salida no nulos (ej. 42 de Newman o 130 de SIGINT).
-- **Cobertura de seguridad (59 requests, 242 assertions):**
+- **Limpieza y señales:** Captura `EXIT`, `INT`, `TERM` y `HUP`, gestionando la detención del backend dedicado y la eliminación del contenedor efímero; SIGKILL o fallos de Docker pueden requerir limpieza manual de recursos cuya propiedad se haya verificado. Preserva códigos de salida no nulos (ej. 42 de Newman o 130 de SIGINT).
+- **Cobertura funcional y de seguridad (64 requests, 268 assertions en la ejecución local T3):**
   - Evalúa intentos de mutación de chofer a `IN_TRANSIT` y `DELIVERED` como pruebas negativas `403 Forbidden` (*fail-closed*, no omitidas); la progresión positiva `ASSIGNED -> IN_TRANSIT -> DELIVERED` con `Route.IN_PROGRESS` queda formalmente pendiente del Issue #10.
   - Valores de estado no permitidos en el DTO son rechazados con `400 Bad Request`.
   - Bloqueo de IDOR/BOLA entre choferes y clientes verificado con `403 Forbidden`.

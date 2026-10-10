@@ -5,11 +5,13 @@ import { db } from './db.js';
 async function main() {
   console.log('Iniciando seed de datos...');
 
+  // DEMO/TEST coordinates only: illustrative points, not verified production depots.
+  // Create-if-absent deliberately leaves existing/historical coordinates unchanged.
   // 1. Zonas de entrega
   const zonesData = [
-    { name: 'Centro', code: 'CEN-01' },
-    { name: 'Ficoa', code: 'FIC-02' },
-    { name: 'Huachi', code: 'HUA-03' },
+    { name: 'Centro', code: 'CEN-01', depotLat: -1.241, depotLng: -78.619 },
+    { name: 'Ficoa', code: 'FIC-02', depotLat: -1.249, depotLng: -78.632 },
+    { name: 'Huachi', code: 'HUA-03', depotLat: -1.271, depotLng: -78.629 },
   ];
 
   for (const z of zonesData) {
