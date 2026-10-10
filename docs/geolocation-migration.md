@@ -1,6 +1,6 @@
-# Geolocation Persistence Migration Runbook (#9 - T1)
+# Geolocation Persistence Migration Runbook (#9)
 
-This runbook documents the additive schema contract, migration graph transition, constraint enforcement, and disposable recovery procedures for persisting geolocation coordinates on `Order` and `Zone` entities in accordance with Issue #9 (T1).
+This runbook documents the additive schema contract, migration graph transition, constraint enforcement, and disposable recovery/rollback procedures for persisting geolocation coordinates on `Order` and `Zone` entities in accordance with Issue #9 (T1).
 
 ---
 
@@ -68,7 +68,9 @@ graph TD
 
 All commands use the installed Prisma 8 toolchain (`prisma@8.0.0-rc.15` / `@prisma/orm-postgres@8.0.0-rc.11`).
 
-### 3.1 Contract Emission and Planning
+### 3.1 Historical authoring steps (do not replay on the current tip)
+
+The migration below is already checked in. These steps describe its creation from the previous `ade716a` checkpoint, not deployment instructions. Planning again from the current `00d34ab` ref does not reproduce that transition.
 1. Emit contract artifacts (`contract.json` and `contract.d.ts`):
    ```bash
    pnpm prisma contract emit
@@ -120,7 +122,7 @@ All commands use the installed Prisma 8 toolchain (`prisma@8.0.0-rc.15` / `@pris
 
 Earlier diagnostic runs against fixed database names on a shared PostgreSQL instance did not prove data immutability. The verified procedure below enforces execution strictly inside programmatically managed owned fixtures with canonical containment, receipt guards, and direct process I/O.
 
-### 5.1 Programmatic Flow in Owned Harness
+### 5.1 Recovery of the migrated contract in the owned harness
 Manual shell workflows with arbitrary paths or fixed `/tmp` files are strictly rejected. The supported safe flow is executed via `test/geolocation-migration.fixtures.ts`:
 1. **Creation of Private Scratch Target**:
    `createScratchFile('migration-recovery')` allocates a private temporary file with exclusive creation (`flag: 'wx'`) and `0600` permissions within an owned session `mkdtemp` directory.
@@ -158,5 +160,24 @@ The test suite in [`test/geolocation-migration.e2e-spec.ts`](../test/geolocation
   - Rejects incomplete pairs (`(val, NULL)` and `(NULL, val)`).
   - Rejects out-of-range coordinates (`> 90`, `< -90`, `> 180`, `< -180`).
   - Rejects `NaN`, `Infinity`, and `-Infinity`.
-- **Backup & restore**: Validates dump/restore roundtrip into a fresh disposable target with zero data loss, relation preservation, and active check constraint enforcement.
+- **Migrated-contract recovery**: Validates dump/restore roundtrip into a fresh disposable target with fixture data preservation, relation preservation, and active check constraint enforcement. This is not schema rollback.
+- **Pre-migration rollback**: Separate clean and populated baseline backups are restored into two newly created receipt-owned databases. Checks assert `prisma_contract.marker.core_hash` for space `app` equals `ade716a5854bac9da24d9d458e813194b99fcacf7c156ace530749782dfead7f`, all four geographic columns are absent, clean business tables are empty, and populated historical row counts and linked foreign-key joins are retained. No current-contract Prisma verification is claimed for the historical baseline.
 - **Observed Cleanup and Teardown Limits**: Tests verify that under normal test completion and handled termination signals (SIGINT, SIGTERM, SIGHUP), all registered owned containers, databases, and scratch files are cleaned up. However, uncatchable termination (`SIGKILL / kill -9`) or Docker daemon failure cannot be guaranteed to achieve zero leftovers without an external sweeper.
+
+## 7. Deployment and recovery ownership
+
+Use the checked-in migration bundle and matching `migrations/snapshots/00d34ab56ae55b663a53148a126d233c0801ea6863ee0e3b22273a20d77d862e/` together; do not hand-edit hashes, mark an unapplied migration as applied, or replace the chain with `db init`. The offline `db` ref is not proof that any particular deployed database has reached that state.
+
+An environment owner must explicitly authorize the target, maintenance window, backup retention and credentials before deployment. No shared/production deployment or rollback was executed by this feature. The additive change has no shipped reverse migration: application rollback can leave nullable columns in place, but dropping columns destroys newly collected coordinates. Production schema rollback needs a separately reviewed plan; restore only a verified backup into an explicitly authorized target. The disposable recovery and rollback tests prove fixture flows, not a production recovery guarantee.
+
+T2 subsequently verified direct Prisma 8 migration/verification and a raw marker query at the full target hash. T3 independently ran migration/verification successfully through the Newman runner, but did not capture a separate raw marker query. Do not conflate these executions. See the [API/frontend contract](geolocation-contract.md) for historical NULL readiness and demo-only seed behavior.
+
+## 8. Executable pre-geolocation backup rollback
+
+Before applying the geographic transition, the owned E2E suite migrates a clean fixture to baseline `ade716a` and calls `backupOwnedDatabase` with a registered private scratch file. A separate populated baseline fixture is backed up after representative linked rows are inserted and before migrating forward. Both source fixtures then execute the checked-in geographic migration.
+
+Later, `createOwnedDatabase` registers a new unique target for each rollback. `restoreOwnedDatabase` restores the corresponding pre-migration dump through direct argv/stdin and receipt/canonical-file guards. The assertions in section 6 validate the baseline marker, absent geographic columns and expected clean or populated business state. The existing post-migration recovery test remains separate and continues validating current-contract Prisma parity and CHECK enforcement. No reverse SQL or column-drop operation is shipped.
+
+An environment owner must approve the target, credentials/session, maintenance window, pre-migration backup and retention policy, and compatible historical application version before any real rollback. Stop writes before the backup/cutover as agreed by that owner. Restoring a pre-migration backup loses **all writes after that backup**, including newly confirmed coordinates; this test does not implement incremental recovery or production cutover. Historical baseline verification here is raw marker/schema/fixture-row proof, not a `prisma db verify` against an official historical contract configuration.
+
+The fixture starts only cached `postgres:16-alpine` with `--pull=never`; missing images fail rather than downloading. The Newman runner's trap callbacks use only function-scoped SC2317/SC2329 directives, consistent with [ShellCheck's documented trap exception](https://www.shellcheck.net/wiki/SC2329), without changing runtime behavior.

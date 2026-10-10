@@ -126,6 +126,7 @@ export function startOwnedContainer(options?: {
         'run',
         '-d',
         '--rm',
+        '--pull=never',
         '--name',
         containerName,
         '--label',

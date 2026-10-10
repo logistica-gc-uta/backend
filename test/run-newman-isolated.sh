@@ -40,7 +40,8 @@ BACKEND_LOG=""
 RUNNER_EXIT_CODE=0
 
 # Invoked indirectly via EXIT trap
-# shellcheck disable=SC2317
+# Trap callback false positive: https://www.shellcheck.net/wiki/SC2329
+# shellcheck disable=SC2317,SC2329
 cleanup() {
   local status=$?
   set +e
@@ -61,7 +62,8 @@ cleanup() {
 }
 
 # Invoked indirectly via signal traps (INT, TERM, HUP)
-# shellcheck disable=SC2317
+# Trap callback false positive: https://www.shellcheck.net/wiki/SC2329
+# shellcheck disable=SC2317,SC2329
 handle_signal() {
   local sig_code=$1
   RUNNER_EXIT_CODE=$sig_code

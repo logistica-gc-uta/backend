@@ -135,6 +135,7 @@ exit 0
       setupFakeDocker();
       const receipt = startOwnedContainer({ readinessTimeoutMs: 1000 });
       expect(receipt).toBeDefined();
+      expect(fs.readFileSync(logFile, 'utf-8')).toContain('run -d --rm --pull=never');
       const dbUrl = createOwnedDatabase('geo_registered_test_db');
       expect(typeof dbUrl).toBe('string');
 

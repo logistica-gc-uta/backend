@@ -12,7 +12,8 @@ import {
 } from './geolocation-migration.fixtures.js';
 
 describe('Geolocation Migration and Persistence (Issue #9 - T1)', () => {
-  const BASELINE_HASH = 'ade716a5854bac9da24d9d458e813194b99fcacf7c156ace530749782dfead7f';
+  const BASELINE_HASH =
+    'ade716a5854bac9da24d9d458e813194b99fcacf7c156ace530749782dfead7f';
 
   const sessionSuffix = randomUUID().replace(/-/g, '').slice(0, 8);
   const FRESH_DB_NAME = `geo_fresh_${sessionSuffix}`;
@@ -23,10 +24,14 @@ describe('Geolocation Migration and Persistence (Issue #9 - T1)', () => {
   let legacyDbUrl: string;
   let restoreDbUrl: string;
   let backupScratchPath: string;
+  let cleanBaselineBackup: string;
+  let legacyBaselineBackup: string;
 
   beforeAll(() => {
     startOwnedContainer();
     backupScratchPath = createScratchFile('migration-recovery');
+    cleanBaselineBackup = createScratchFile('clean-baseline');
+    legacyBaselineBackup = createScratchFile('legacy-baseline');
   });
 
   afterAll(() => {
@@ -105,6 +110,7 @@ describe('Geolocation Migration and Persistence (Issue #9 - T1)', () => {
         `,
       );
       expect(relationCount).toBe('1');
+      backupOwnedDatabase(LEGACY_DB_NAME, legacyBaselineBackup);
     });
 
     it('applies geolocation migration to legacy database and verifies historical integrity', () => {
@@ -116,7 +122,9 @@ describe('Geolocation Migration and Persistence (Issue #9 - T1)', () => {
         LEGACY_DB_NAME,
         `SELECT id || '|' || "deliveryAddress" || '|' || ("deliveryLat" IS NULL)::text || '|' || ("deliveryLng" IS NULL)::text || '|' || total::text FROM public."order" WHERE id = 'o-legacy-1';`,
       );
-      expect(legacyOrderReadback).toBe('o-legacy-1|Calle 100 #15-20|true|true|50');
+      expect(legacyOrderReadback).toBe(
+        'o-legacy-1|Calle 100 #15-20|true|true|50',
+      );
 
       const legacyZoneReadback = execPsqlCommand(
         LEGACY_DB_NAME,
@@ -147,6 +155,8 @@ describe('Geolocation Migration and Persistence (Issue #9 - T1)', () => {
 
     it('migrates a fresh database completely from scratch and verifies schema parity', () => {
       freshDbUrl = createOwnedDatabase(FRESH_DB_NAME);
+      runPrismaMigrate(freshDbUrl, BASELINE_HASH);
+      backupOwnedDatabase(FRESH_DB_NAME, cleanBaselineBackup);
       runPrismaMigrate(freshDbUrl);
 
       const verifyRes = runPrismaVerify(freshDbUrl);
@@ -368,7 +378,9 @@ describe('Geolocation Migration and Persistence (Issue #9 - T1)', () => {
         RESTORE_DB_NAME,
         `SELECT id || '|' || "deliveryAddress" || '|' || ("deliveryLat" IS NULL)::text || '|' || ("deliveryLng" IS NULL)::text FROM public."order" WHERE id = 'o-legacy-1';`,
       );
-      expect(restoredOrderReadback).toBe('o-legacy-1|Calle 100 #15-20|true|true');
+      expect(restoredOrderReadback).toBe(
+        'o-legacy-1|Calle 100 #15-20|true|true',
+      );
 
       // Verify relations on restored database
       const restoredRelationCount = execPsqlCommand(
@@ -400,6 +412,91 @@ describe('Geolocation Migration and Persistence (Issue #9 - T1)', () => {
           `,
         );
       }).toThrow(/check/i);
+    });
+  });
+
+  describe('Pre-migration Backup Rollback on Fresh Owned Targets', () => {
+    function assertBaseline(dbName: string) {
+      expect(
+        execPsqlCommand(
+          dbName,
+          "SELECT core_hash FROM prisma_contract.marker WHERE space = 'app';",
+        ),
+      ).toBe(BASELINE_HASH);
+      expect(
+        execPsqlCommand(
+          dbName,
+          `
+        SELECT COUNT(*) FROM information_schema.columns
+        WHERE table_schema = 'public' AND (
+          (table_name = 'order' AND column_name IN ('deliveryLat', 'deliveryLng')) OR
+          (table_name = 'zone' AND column_name IN ('depotLat', 'depotLng'))
+        );
+      `,
+        ),
+      ).toBe('0');
+      expect(() =>
+        execPsqlCommand(
+          dbName,
+          `
+        INSERT INTO public."order" (id, "userId", "zoneId", "deliveryAddress")
+        VALUES ('o-rollback-invalid', 'missing-user', 'missing-zone', 'Fixture only');
+      `,
+        ),
+      ).toThrow(/foreign key/i);
+    }
+
+    it('restores the clean pre-geolocation baseline marker, schema and empty business tables', () => {
+      const dbName = `geo_rollback_clean_${sessionSuffix}`;
+      createOwnedDatabase(dbName);
+      restoreOwnedDatabase(dbName, cleanBaselineBackup);
+      assertBaseline(dbName);
+      expect(
+        execPsqlCommand(
+          dbName,
+          `
+        SELECT (SELECT COUNT(*) FROM public."user") + (SELECT COUNT(*) FROM public.driver)
+          + (SELECT COUNT(*) FROM public.zone) + (SELECT COUNT(*) FROM public.route)
+          + (SELECT COUNT(*) FROM public.product) + (SELECT COUNT(*) FROM public."order")
+          + (SELECT COUNT(*) FROM public."orderItem");
+      `,
+        ),
+      ).toBe('0');
+    });
+
+    it('restores the populated pre-geolocation baseline with historical rows and foreign keys', () => {
+      const dbName = `geo_rollback_legacy_${sessionSuffix}`;
+      createOwnedDatabase(dbName);
+      restoreOwnedDatabase(dbName, legacyBaselineBackup);
+      assertBaseline(dbName);
+      expect(
+        execPsqlCommand(
+          dbName,
+          `
+        SELECT o.id || '|' || o."deliveryAddress" || '|' || o.total::text || '|' || z.name || '|' || z.code
+        FROM public."order" o
+        JOIN public."user" u ON o."userId" = u.id
+        JOIN public.zone z ON o."zoneId" = z.id
+        JOIN public.route r ON o."routeId" = r.id AND r."zoneId" = z.id
+        JOIN public.driver d ON r."driverId" = d.id
+        JOIN public."user" du ON d."userId" = du.id
+        JOIN public."orderItem" oi ON oi."orderId" = o.id
+        JOIN public.product p ON oi."productId" = p.id
+        WHERE o.id = 'o-legacy-1';
+      `,
+        ),
+      ).toBe('o-legacy-1|Calle 100 #15-20|50|Zona Norte|ZN-01');
+      expect(
+        execPsqlCommand(
+          dbName,
+          `
+        SELECT (SELECT COUNT(*) FROM public."user")::text || '|' ||
+          (SELECT COUNT(*) FROM public.driver)::text || '|' || (SELECT COUNT(*) FROM public.zone)::text || '|' ||
+          (SELECT COUNT(*) FROM public.route)::text || '|' || (SELECT COUNT(*) FROM public.product)::text || '|' ||
+          (SELECT COUNT(*) FROM public."order")::text || '|' || (SELECT COUNT(*) FROM public."orderItem")::text;
+      `,
+        ),
+      ).toBe('2|1|1|1|1|1|1');
     });
   });
 });
