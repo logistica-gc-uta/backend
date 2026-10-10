@@ -11,7 +11,7 @@ Este documento describe el modelo de seguridad, autorización basada en identida
 | **Ciclo de vida** | Grafo centralizado y unívoco en `order-status.policy.ts` con transiciones finitas controladas y protección estricta de estados terminales (`DELIVERED`, `CANCELLED`). |
 | **Concurrencia** | Actualización condicional atómica a nivel de ORM/SQL (`.where({ id, status })`) para mitigar carreras de estado (*stale updates*). |
 | **Migraciones de BD** | Cero cambios de esquema DDL; el modelo existente en `contract.prisma` cubre íntegramente las relaciones necesarias. |
-| **Dependencia #10** | Escrituras por repartidor deshabilitadas *fail-closed* con `403 Forbidden` tras resolución de pertenencia, hasta que se implemente la verificación de ruta en progreso (`Route.IN_PROGRESS`). |
+| **Dependencia #10** | ~~Resuelta (PR #22).~~ La progresión de pedidos por repartidor está habilitada mediante `RouteProgressService`, que verifica pertenencia de ruta y estado `IN_PROGRESS` antes de permitir transiciones operativas. |
 
 ---
 
@@ -28,7 +28,7 @@ Este documento describe el modelo de seguridad, autorización basada en identida
 | **DRIVER** | `/orders/:id` | `GET` | Resuelve `User -> Driver -> Route -> Order`. Solo puede leer pedidos asignados a su ruta activa | `200 OK` | `401`, `403 Forbidden` (pedido sin ruta o ruta de otro chofer), `404` |
 | **DRIVER** | `/orders` | `GET` | Prohibido (requiere `ADMIN`) | — | `403 Forbidden` |
 | **DRIVER** | `/orders/my-orders` | `GET` | Prohibido (requiere `CLIENT`) | — | `403 Forbidden` |
-| **DRIVER** | `/orders/:id/status` | `PATCH` | **Fail-closed**: Rechaza todas las mutaciones con `403 Forbidden` tras resolución de pertenencia (incluso transiciones terminales o inválidas), hasta que se implemente verificación de ruta en progreso en Issue #10 | — | `403 Forbidden` |
+| **DRIVER** | `/orders/:id/status` | `PATCH` | Resuelve `User → Driver → Route → Order`. Requiere ruta en estado `IN_PROGRESS` con pertenencia verificada. Permite progresión operativa (`ASSIGNED → IN_TRANSIT → DELIVERED`) mediante `RouteProgressService`. Rechaza con `403 Forbidden` si no hay perfil, ruta inexistente, ruta ajena o ruta no activa | `200 OK` | `400 Bad Request`, `403 Forbidden`, `404`, `409 Conflict` |
 | **ADMIN** | `/orders` | `GET` | Lectura global de todos los pedidos del sistema | `200 OK` | `401`, `403` |
 | **ADMIN** | `/orders/:id` | `GET` | Lectura global de cualquier pedido por ID | `200 OK` | `401`, `404` |
 | **ADMIN** | `/orders/:id/status` | `PATCH` | Solo permite cancelar pedidos no terminales (`CANCELLED`). Rechaza `ASSIGNED` (reservado para `/routes/assign`) y rechaza transiciones operativas | `200 OK` | `400 Bad Request`, `401`, `404`, `409 Conflict` |
@@ -84,7 +84,7 @@ Para evitar oráculos de información (donde un usuario no autorizado descubre e
 1. **Existencia del recurso:** Se busca la orden en base de datos. Si no existe, retorna `404 Not Found`.
 2. **Autorización y pertenencia:**
    - Si el rol es `CLIENT`, se rechaza de inmediato con `403 Forbidden`.
-   - Si el rol es `DRIVER`, se resuelve la cadena `User -> Driver -> Route -> Order`. Si no tiene perfil, el pedido no tiene ruta o la ruta pertenece a otro chofer, se rechaza con `403 Forbidden`. Si la ruta coincide, se deniega fail-closed con `403 Forbidden` debido a la dependencia de Issue #10. En ningún caso se evalúa el grafo para el chofer ni se retorna 400.
+   - Si el rol es `DRIVER`, la mutación se delega a `RouteProgressService.updateOrder()`, que resuelve `User → Driver → Route → Order`, verifica pertenencia de ruta y estado `IN_PROGRESS`, y evalúa el grafo de transiciones antes de ejecutar la actualización atómica. Si la ruta no pertenece al chofer o no está activa, se rechaza con `403 Forbidden`.
 3. **Validación del ciclo de vida (exclusivo para `ADMIN`):**
    - Se valida `validateOrderTransition(order.status, dto.status)` arrojando `400 Bad Request` si la transición es inválida o el estado es terminal.
    - Se asegura que los administradores solo cancelen pedidos no terminales.
@@ -115,17 +115,19 @@ En PostgreSQL y Prisma 8, si dos transacciones concurrentes intentan actualizar 
 
 ## 6. Riesgos preexistentes identificados
 
-Durante la auditoría y diseño de pruebas de integración, se identificó el siguiente aspecto fuera del alcance actual:
+Durante la auditoría y diseño de pruebas de integración, se identificó el siguiente aspecto (ahora resuelto):
 
-- **Visibilidad en endpoints de rutas (`RoutesController`):**
-  - Los endpoints `GET /routes` y `GET /routes/:id` exigen estrictamente rol `ADMIN` (`@Roles(Role.ADMIN)`).
-  - *Impacto:* Los repartidores actualmente no disponen de un endpoint para listar su propia ruta asignada de forma agrupada, dependiendo de consultar pedidos individuales (`GET /orders/:id`). Esto deberá ser abordado dentro del alcance del Issue #10.
+- **Visibilidad en endpoints de rutas (`RoutesController` / `DriversController`):**
+  - Los endpoints `GET /routes` y `GET /routes/:id` mantienen restricción estricta `ADMIN` (`@Roles(Role.ADMIN)`).
+  - ~~*Impacto original:*~~ Los repartidores no disponían de un endpoint para listar su propia ruta asignada. **Resuelto en PR #20:** el endpoint `GET /api/v1/drivers/me/routes` permite al chofer autenticado consultar sus rutas mediante JWT, sin exponer rutas de otros conductores.
 
 ---
 
 ## 7. Evidencia de verificación
 
-Ejecución verificada en entorno local con PostgreSQL real y contenedor efímero:
+> **Nota:** Las métricas a continuación reflejan el baseline del PR #19 (Issue #8). Los PRs #20 y #22 (Issue #10) añadieron 15+ suites adicionales de rutas, progresión, historial y coherencia. El CI vigente en `main` (`ab40d88`) finalizó exitosamente. Consultar la ejecución más reciente en [GitHub Actions](https://github.com/logistica-gc-uta/backend/actions).
+
+Ejecución verificada en entorno local con PostgreSQL real y contenedor efímero (baseline PR #19):
 
 - **Análisis estático:** `pnpm lint` $\rightarrow$ 0 errores, 0 advertencias (`oxlint --type-aware src/ test/`).
 - **Validación de scripts shell:** `bash -n test/run-newman-isolated.sh` $\rightarrow$ sintaxis válida (exit 0); análisis estático con contenedor `docker run --rm -i koalaman/shellcheck:v0.10.0 - < test/run-newman-isolated.sh` $\rightarrow$ exit 0 sin advertencias. Configurado en CI como control obligatorio.
@@ -162,7 +164,7 @@ Para garantizar la reproducibilidad y prevenir la corrupción o reinicio indiscr
    - Se eliminaron comandos destructivos de reseteo (`seed:reset-drivers`) y levantamientos redundantes en segundo plano en CI.
 
 4. **Cobertura de seguridad en Newman (`delivery-api.postman_collection.json`):**
-   - **Progresión de chofer fail-closed (Pendiente #10):** Las solicitudes de `DRIVER` a `IN_TRANSIT` y `DELIVERED` se ejecutan activamente como pruebas negativas con respuesta `403 Forbidden` (no son omitidas), verificando el comportamiento fail-closed mientras la progresión positiva (`ASSIGNED -> IN_TRANSIT -> DELIVERED` con `Route.IN_PROGRESS`) permanece pendiente de implementación en el Issue #10.
+   - **Progresión de chofer (Implementada, Issue #10 / PR #22):** Las pruebas de `DRIVER` verifican tanto la progresión positiva (`ASSIGNED → IN_TRANSIT → DELIVERED` con ruta `IN_PROGRESS` verificada) como las pruebas negativas (ruta ajena, ruta no activa → `403 Forbidden`). La implementación utiliza `RouteProgressService` para validar pertenencia y estado de ruta.
    - **Validación DTO:** Valores de estado inválidos (ej. `VOLANDO`) retornan `400 Bad Request` disparados por `ValidationPipe`.
    - **Autorización precede al grafo:** Intentos de mutación sobre pedidos `PENDING` por choferes sin asignación retornan `403 Forbidden` sin filtrar el estado del pedido.
    - **Validación cruzada de identidad (2 choferes / 2 clientes):** Pruebas cruzadas de lectura y escritura (`GET /orders/:id` y `PATCH /orders/:id/status`) verifican que el Cliente 2 y el Chofer 2 reciben `403 Forbidden` al intentar acceder o mutar pedidos del Cliente 1 o rutas del Chofer 1.
@@ -172,4 +174,4 @@ Para garantizar la reproducibilidad y prevenir la corrupción o reinicio indiscr
 5. **Secuencia de integración continua (`.github/workflows/ci.yml`):**
    - **Job `quality`:** Valida sintaxis shell (`bash -n`), análisis con `shellcheck` (con instalación automática vía apt si no está presente en el runner), linter con `oxlint`, compilación (`pnpm build`), pruebas unitarias con umbral estricto $\ge 80\,\%$ en todas las dimensiones y subida del artefacto de cobertura (`actions/upload-artifact@v4`).
    - **Job `api-tests`:** Inicia servicio PostgreSQL temporal (`postgres:16-alpine`), inicializa esquema para E2E (`pnpm prisma db init`), ejecuta la suite E2E (`pnpm run test:e2e --runInBand` con 31 pruebas), compila explícitamente el backend (`pnpm run build`) e invoca el runner aislado con `env -u DATABASE_URL pnpm run test:api:report`. Los fallos se propagan estrictamente sin `continue-on-error` y el reporte HTML de Newman se almacena como artefacto (`informe-newman`).
-   - **Estado remoto:** La ejecución automatizada en los runners remotos de GitHub Actions queda pendiente de la apertura e integración del Pull Request.
+   - **Estado remoto:** Todas las ejecuciones automatizadas en los runners de GitHub Actions finalizan exitosamente en `main` tras la integración de los PRs #19, #20 y #22.
