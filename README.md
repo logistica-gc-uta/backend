@@ -165,6 +165,7 @@ http://localhost:3000/api/docs
 - **Contrato geográfico (#9):** [`docs/geolocation-contract.md`](./docs/geolocation-contract.md) (pares opcionales, lectura, preparación geográfica y responsabilidad del mapa).
 - **Migración y recuperación geográfica:** [`docs/geolocation-migration.md`](./docs/geolocation-migration.md).
 - **Diseño de Armado de Rutas (Clarke & Wright):** [`docs/clarke-wright.md`](./docs/clarke-wright.md).
+- **Propuestas de rutas (#7):** [`docs/route-planning.md`](./docs/route-planning.md) (`GET /api/v1/route-proposals`, solo lectura, solo ADMIN).
 
 ---
 

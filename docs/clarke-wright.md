@@ -116,13 +116,15 @@ El servicio actual `RoutesService.assignRoute` ya implementa el último paso de 
 
 ## 6. Alcance actual y trabajo pendiente
 
-Esta entrega implementa y prueba **el algoritmo**. Todavía **no está conectado a la API**. Pendiente:
+El algoritmo está conectado a PostgreSQL mediante `GET /api/v1/route-proposals` (solo ADMIN, solo lectura). Contrato, ejemplo y límites en [route-planning.md](./route-planning.md) (#7). Las coordenadas de `Order` y `Zone` ya existen (#9) y la confirmación y asignación de rutas ya existen (#10).
 
-1. **Coordenadas.** `Order` solo guarda `deliveryAddress` (texto) y `Zone` no tiene depósito. Se necesita `latitude`/`longitude` en `Order` y coordenadas del depósito en `Zone` (migración de esquema, a acordar con el equipo). Mientras tanto el algoritmo se prueba con coordenadas sintéticas y distancia inyectable.
-2. **Endpoint de armado** por fecha y zona, y el disparador (manual o programado).
+Pendiente:
+
+1. **Confirmación a nivel de día.** La propuesta agrupa por día calendario (`America/Guayaquil`), pero `POST /routes` exige hoy el mismo instante exacto en todos los pedidos (`confirmable` lo informa). Relajar esa guarda es una decisión del equipo (#10/#12).
+2. **Disparador programado** del armado. Hoy la propuesta se pide de forma manual.
 3. **Pedidos de último momento.** Si llega un pedido con rutas ya armadas, se aplicará una inserción de menor costo: insertarlo en la ruta existente donde menos aumente la distancia, siempre que tenga menos de 4 paradas; si ninguna tiene espacio, generar una ruta nueva.
-4. **Concurrencia.** Evitar que dos solicitudes simultáneas asignen el mismo pedido o repartidor. `assignRoute` revalida dentro de una transacción, pero falta bloqueo explícito a nivel de fila (`SELECT … FOR UPDATE`) y pruebas de carga que lo demuestren.
-5. **Ventanas de tiempo.** El enunciado menciona la hora aproximada de entrega. Esta versión agrupa solo por fecha; incorporar ventanas horarias (VRPTW) sería una extensión posterior.
+4. **Concurrencia.** La confirmación y la asignación revalidan bajo bloqueo (#10); falta demostrarlo con pruebas de carga.
+5. **Distancia por carretera y ventanas horarias (VRPTW).** La función de distancia del algoritmo es inyectable; esta versión usa Haversine y agrupa solo por día.
 
 ## 7. Limitaciones conocidas
 
