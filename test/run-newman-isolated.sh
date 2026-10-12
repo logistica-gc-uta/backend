@@ -65,10 +65,11 @@ cleanup() {
       # Daemon outages, permissions, successful inspection and other errors fail closed.
       inspect_output=$(LC_ALL=C docker inspect -f '{{.Id}}' "$CONTAINER_ID" 2>&1)
       inspect_status=$?
-      # Docker 29.9 emits one stdout LF followed by lowercase stderr; older
-      # Docker emits only the capitalized stderr. Command substitution removes
+      # Docker 29.9 emits one stdout LF followed by lowercase stderr; GitHub Actions
+      # and newer Docker CLIs emit one stdout LF followed by capitalized stderr;
+      # older Docker emits only the capitalized stderr. Command substitution removes
       # trailing LFs, but preserves that leading stdout LF. No generic matching.
-      if [[ $inspect_status -ne 1 || ( "$inspect_output" != "Error: No such object: $CONTAINER_ID" && "$inspect_output" != $'\n'"error: no such object: $CONTAINER_ID" ) ]]; then
+      if [[ $inspect_status -ne 1 || ( "$inspect_output" != "Error: No such object: $CONTAINER_ID" && "$inspect_output" != $'\n'"Error: No such object: $CONTAINER_ID" && "$inspect_output" != $'\n'"error: no such object: $CONTAINER_ID" ) ]]; then
         echo "Error: Owned container cleanup was not confirmed." >&2
         printf 'Cleanup inspect: container=%s status=%s output=%q\n' "$CONTAINER_ID" "$inspect_status" "${inspect_output:0:512}" >&2
         cleanup_failed=1

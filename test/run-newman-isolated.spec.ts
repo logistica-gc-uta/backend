@@ -378,12 +378,30 @@ exit ${newmanCode}
     expect(result.stderr).not.toContain('cleanup was not confirmed');
   });
 
+  it('accepts the exact GitHub Actions Docker absence protocol (stdout LF, capitalized stderr, status 1)', () => {
+    setupStandardFakeBinaries({
+      postRemovalStdout: '\n',
+      postRemovalError: 'Error: No such object: mock-pg-container-id-777',
+      postRemovalStatus: 1,
+    });
+    const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${fakeBinDir}:${process.env.PATH}` };
+    delete env.DATABASE_URL;
+    const result = spawnSync('bash', [runnerScriptPath], { env, encoding: 'utf8', timeout: 10000 });
+    expect(result.status).toBe(0);
+    expect(readCallLog()).toContain('inspect-locale=C');
+    expect(result.stdout).toContain('container=mock-pg-container-id-777 owner=48999');
+    expect(result.stderr).not.toContain('cleanup was not confirmed');
+  });
+
   it.each([
     { postRemovalError: 'error: no such object: another-container', postRemovalStdout: '\n' },
     { postRemovalError: 'error: no such object: mock-pg-container-id-777', postRemovalStatus: 0 },
     { postRemovalError: 'ERROR: NO SUCH OBJECT: mock-pg-container-id-777' },
     { postRemovalError: 'error: no such object: mock-pg-container-id-777 extra' },
     { postRemovalError: 'error: no such object: mock-pg-container-id-777', postRemovalStdout: 'unexpected' },
+    { postRemovalError: 'Error: No such object: another-container', postRemovalStdout: '\n' },
+    { postRemovalError: 'Error: No such object: mock-pg-container-id-777', postRemovalStdout: '\n', postRemovalStatus: 0 },
+    { postRemovalError: 'Error: No such object: mock-pg-container-id-777 extra', postRemovalStdout: '\n' },
   ])('rejects non-exact Docker absence variants: %p', (options) => {
     setupStandardFakeBinaries(options);
     const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${fakeBinDir}:${process.env.PATH}` };
