@@ -35,7 +35,15 @@ describe('Isolated Newman Runner Safety & Isolation Contract', () => {
     newmanExitCode?: number;
     backendHang?: boolean;
     wrongOwner?: boolean;
+    ownerInspectFailure?: boolean;
     unknownId?: boolean;
+    removalFailure?: boolean;
+    removedDespiteFailure?: boolean;
+    postRemovalError?: string;
+    postRemovalStdout?: string;
+    postRemovalStatus?: number;
+    initializationExitCode?: number;
+    remainsAfterRemoval?: boolean;
   }) {
     const newmanCode = options?.newmanExitCode ?? 0;
 
@@ -55,12 +63,20 @@ if [ "$1" = "run" ]; then
 elif [ "$1" = "inspect" ]; then
   ${options?.unknownId ? 'exit 1' : ':'}
   ${options?.wrongOwner ? 'echo "foreign-owner"; exit 0' : ':'}
-  if [ ! -f "${tempDir}/container" ]; then exit 1; fi
-  if [ "$2" = "-f" ]; then cat "${tempDir}/owner"; fi
+  if [ ! -f "${tempDir}/container" ]; then
+    printf '%s' '${options?.postRemovalStdout ?? ''}'
+    echo "inspect-locale=$LC_ALL" >> "${logFile}"
+    echo '${options?.postRemovalError ?? 'Error: No such object: mock-pg-container-id-777'}' >&2
+    exit ${options?.postRemovalStatus ?? 1}
+  fi
+  if [ "$2" = "-f" ]; then
+    cat "${tempDir}/owner"
+    exit ${options?.ownerInspectFailure ? 1 : 0}
+  fi
   exit 0
 elif [ "$1" = "rm" ]; then
-  rm -f "${tempDir}/container"
-  exit 0
+  ${(options?.removalFailure && !options?.removedDespiteFailure) || options?.remainsAfterRemoval ? ':' : `rm -f "${tempDir}/container"`}
+  exit ${options?.removalFailure ? 1 : 0}
 elif [ "$1" = "port" ]; then
   echo "127.0.0.1:54999"
   exit 0
@@ -80,6 +96,9 @@ exit 0
       'pnpm',
       `
 echo "pnpm $@" >> "${logFile}"
+if [ "$1" = "prisma" ] && [ "$3" = "migrate" ]; then
+  exit ${options?.initializationExitCode ?? 0}
+fi
 if [ "$1" = "exec" ]; then
   shift
   exec "$@"
@@ -209,7 +228,7 @@ exit ${newmanCode}
   it('runs full lifecycle and terminates dedicated backend PID and container on exit', () => {
     setupStandardFakeBinaries();
 
-    const env = {
+    const env: NodeJS.ProcessEnv = {
       ...process.env,
       PATH: `${fakeBinDir}:${process.env.PATH}`,
     };
@@ -248,7 +267,7 @@ exit ${newmanCode}
   it('passes single quoted reporter comma argument -r cli,htmlextra when --report flag is provided', () => {
     setupStandardFakeBinaries();
 
-    const env = {
+    const env: NodeJS.ProcessEnv = {
       ...process.env,
       PATH: `${fakeBinDir}:${process.env.PATH}`,
     };
@@ -274,7 +293,7 @@ exit ${newmanCode}
   it('preserves failure exit code 42 from Newman and cleans up backend PID and container', () => {
     setupStandardFakeBinaries({ newmanExitCode: 42 });
 
-    const env = {
+    const env: NodeJS.ProcessEnv = {
       ...process.env,
       PATH: `${fakeBinDir}:${process.env.PATH}`,
     };
@@ -299,11 +318,98 @@ exit ${newmanCode}
     ).toBe(true);
   });
 
-  it.each([{ wrongOwner: true }, { unknownId: true }])(
+  it.each([
+    { removalFailure: true },
+    { removalFailure: true, removedDespiteFailure: true },
+    { postRemovalError: 'Cannot connect to the Docker daemon' },
+    { postRemovalError: 'permission denied while trying to connect to Docker' },
+    { postRemovalError: 'Error: No such object: another-container' },
+    { postRemovalError: '' },
+    { postRemovalStatus: 2 },
+    { remainsAfterRemoval: true },
+  ])('fails closed when cleanup cannot be proven: %p', (options) => {
+    setupStandardFakeBinaries(options);
+    const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${fakeBinDir}:${process.env.PATH}` };
+    delete env.DATABASE_URL;
+    const result = spawnSync('bash', [runnerScriptPath], {
+      env, encoding: 'utf8', timeout: 10000,
+    });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/cleanup|removal/i);
+    const dockerCalls = readCallLog().filter((call) => call.startsWith('docker '));
+    expect(dockerCalls.filter((call) => call.startsWith('docker rm '))).toEqual([
+      'docker rm -f mock-pg-container-id-777',
+    ]);
+    expect(dockerCalls.filter((call) => call.startsWith('docker inspect ')))
+      .toEqual([
+        'docker inspect -f {{ index .Config.Labels "delivery.issue6.owner" }} mock-pg-container-id-777',
+        'docker inspect -f {{.Id}} mock-pg-container-id-777',
+      ]);
+    expect(dockerCalls.every((call) => !/docker (ps|system|container)/.test(call))).toBe(true);
+  });
+
+  it.each([
+    { removalFailure: true },
+    { postRemovalError: 'Cannot connect to the Docker daemon' },
+    { wrongOwner: true },
+  ])('preserves the primary Newman failure when cleanup also fails: %p', (options) => {
+    setupStandardFakeBinaries({ ...options, newmanExitCode: 42 });
+    const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${fakeBinDir}:${process.env.PATH}` };
+    delete env.DATABASE_URL;
+    const result = spawnSync('bash', [runnerScriptPath], {
+      env, encoding: 'utf8', timeout: 10000,
+    });
+    expect(result.status).toBe(42);
+    expect(result.stderr).toMatch(/cleanup|removal/i);
+  });
+
+  it('accepts the exact Docker 29.9 absence protocol (stdout LF, lowercase stderr, status 1)', () => {
+    setupStandardFakeBinaries({
+      postRemovalStdout: '\n',
+      postRemovalError: 'error: no such object: mock-pg-container-id-777',
+      postRemovalStatus: 1,
+    });
+    const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${fakeBinDir}:${process.env.PATH}` };
+    delete env.DATABASE_URL;
+    const result = spawnSync('bash', [runnerScriptPath], { env, encoding: 'utf8', timeout: 10000 });
+    expect(result.status).toBe(0);
+    expect(readCallLog()).toContain('inspect-locale=C');
+    expect(result.stdout).toContain('container=mock-pg-container-id-777 owner=48999');
+    expect(result.stderr).not.toContain('cleanup was not confirmed');
+  });
+
+  it.each([
+    { postRemovalError: 'error: no such object: another-container', postRemovalStdout: '\n' },
+    { postRemovalError: 'error: no such object: mock-pg-container-id-777', postRemovalStatus: 0 },
+    { postRemovalError: 'ERROR: NO SUCH OBJECT: mock-pg-container-id-777' },
+    { postRemovalError: 'error: no such object: mock-pg-container-id-777 extra' },
+    { postRemovalError: 'error: no such object: mock-pg-container-id-777', postRemovalStdout: 'unexpected' },
+  ])('rejects non-exact Docker absence variants: %p', (options) => {
+    setupStandardFakeBinaries(options);
+    const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${fakeBinDir}:${process.env.PATH}` };
+    delete env.DATABASE_URL;
+    const result = spawnSync('bash', [runnerScriptPath], { env, encoding: 'utf8', timeout: 10000 });
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('cleanup was not confirmed');
+  });
+
+  it('preserves a schema initialization failure when removal also fails', () => {
+    setupStandardFakeBinaries({ initializationExitCode: 7, removalFailure: true });
+    const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${fakeBinDir}:${process.env.PATH}` };
+    delete env.DATABASE_URL;
+    const result = spawnSync('bash', [runnerScriptPath], {
+      env, encoding: 'utf8', timeout: 10000,
+    });
+    expect(result.status).toBe(7);
+    expect(result.stderr).toContain('Owned container removal failed');
+    expect(readCallLog().some((call) => call.startsWith('newman '))).toBe(false);
+  });
+
+  it.each([{ wrongOwner: true }, { unknownId: true }, { ownerInspectFailure: true }])(
     'refuses container removal when ownership cannot be verified: %p',
     (options) => {
       setupStandardFakeBinaries(options);
-      const env = { ...process.env, PATH: `${fakeBinDir}:${process.env.PATH}` };
+      const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${fakeBinDir}:${process.env.PATH}` };
       delete env.DATABASE_URL;
       const result = spawnSync('bash', [runnerScriptPath], {
         env,
@@ -336,7 +442,10 @@ if [ "$1" = "run" ]; then
   echo "mock-pg-container-id-sig"
   exit 0
 elif [ "$1" = "inspect" ]; then
-  if [ ! -f "${tempDir}/container" ]; then exit 1; fi
+  if [ ! -f "${tempDir}/container" ]; then
+    echo 'Error: No such object: mock-pg-container-id-sig' >&2
+    exit 1
+  fi
   if [ "$2" = "-f" ]; then cat "${tempDir}/owner"; fi
   exit 0
 elif [ "$1" = "rm" ]; then
@@ -395,7 +504,7 @@ exit 0
 `,
     );
 
-    const env = {
+    const env: NodeJS.ProcessEnv = {
       ...process.env,
       PATH: `${fakeBinDir}:${process.env.PATH}`,
     };

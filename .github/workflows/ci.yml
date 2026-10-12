@@ -32,14 +32,14 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Validar sintaxis de scripts shell (bash -n)
-        run: bash -n test/run-newman-isolated.sh
+        run: bash -n test/run-newman-isolated.sh test/run-e2e-isolated.sh
 
       - name: Validar scripts shell (shellcheck)
         run: |
           if ! command -v shellcheck >/dev/null 2>&1; then
             sudo apt-get update && sudo apt-get install -y shellcheck
           fi
-          shellcheck test/run-newman-isolated.sh
+          shellcheck test/run-newman-isolated.sh test/run-e2e-isolated.sh
 
       - name: Lint (oxlint)
         run: pnpm run lint
@@ -64,25 +64,6 @@ jobs:
     name: Pruebas de integración E2E y API (PostgreSQL y Newman)
     runs-on: ubuntu-latest
     needs: quality
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: logistica_user
-          POSTGRES_PASSWORD: logistica_password123
-          POSTGRES_DB: issue6_ci_${{ github.run_id }}_${{ github.run_attempt }}
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U logistica_user -d issue6_ci_${{ github.run_id }}_${{ github.run_attempt }}"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      DATABASE_URL: postgresql://logistica_user:logistica_password123@127.0.0.1:5432/issue6_ci_${{ github.run_id }}_${{ github.run_attempt }}?schema=public
-      # Solo para el entorno efímero de CI; no es un secreto real.
-      JWT_SECRET: ci_only_jwt_secret
-      JWT_EXPIRES_IN: 1d
     steps:
       - uses: actions/checkout@v4
 
@@ -96,17 +77,17 @@ jobs:
       - name: Instalar dependencias
         run: pnpm install --frozen-lockfile
 
-      - name: Inicializar esquema en base de datos temporal
-        run: pnpm prisma db init
+      - name: Preparar imagen PostgreSQL para runners propietarios
+        run: docker pull postgres:16-alpine
 
-      - name: Ejecutar pruebas E2E (PostgreSQL)
-        run: pnpm run test:e2e --runInBand
+      - name: Ejecutar manifiesto E2E completo (PostgreSQL aislado)
+        run: env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm run test:e2e:isolated
 
       - name: Compilar backend para pruebas de API
         run: pnpm run build
 
       - name: Ejecutar colección Newman (aislado)
-        run: env -u DATABASE_URL pnpm run test:api:report
+        run: env -u DATABASE_URL DOTENV_CONFIG_PATH=/dev/null pnpm run test:api:report
 
       - name: Subir reporte HTML de Newman
         if: always()
