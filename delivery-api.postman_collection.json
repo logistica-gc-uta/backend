@@ -7,6 +7,15 @@
   },
   "event": [
     {
+      "listen": "prerequest",
+      "script": { "type": "text/javascript", "exec": [
+        "if (!pm.collectionVariables.get('futureOrderDate')) pm.collectionVariables.set('futureOrderDate', new Date(Date.now() + 86400000).toISOString());",
+        "const planningYear = new Date().getUTCFullYear() + 3; pm.collectionVariables.set('planningYear', planningYear);",
+        "if (pm.request.body && pm.request.body.mode === 'raw') pm.request.body.update(pm.request.body.raw.replace(/2030-02-14T15:00:00.000Z/g, pm.collectionVariables.get('futureOrderDate')).replace(/2031-/g, planningYear + '-'));",
+        "if (pm.request.url.toString().includes('2031-')) pm.request.url.update(pm.request.url.toString().replace(/2031-/g, planningYear + '-'));"
+      ] }
+    },
+    {
       "listen": "test",
       "script": {
         "type": "text/javascript",
@@ -278,7 +287,9 @@
                   "pm.test('Devuelve access_token JWT', () => pm.expect(body.access_token).to.be.a('string').and.match(/^[\\w-]+\\.[\\w-]+\\.[\\w-]+$/));",
                   "pm.test('El usuario tiene rol CLIENT', () => pm.expect(body.user.role).to.eql('CLIENT'));",
                   "pm.test('No expone la contraseña', () => pm.expect(body.user).to.not.have.property('password'));",
-                  "pm.collectionVariables.set('clientToken', body.access_token);"
+                  "pm.collectionVariables.set('clientToken', body.access_token);",
+                  "pm.collectionVariables.set('registeredClientId', body.user.id);",
+                  "pm.collectionVariables.set('registeredClientName', body.user.name);"
                 ]
               }
             }
@@ -1654,8 +1665,9 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Devuelve un arreglo', () => pm.expect(pm.response.json()).to.be.an('array'));",
-                  "pm.test('Readback retains destination and geographic readiness', () => { const o = pm.response.json().find(o => o.id === pm.collectionVariables.get('orderId1')); pm.expect(o.deliveryLocation).to.eql({lat: -1.25, lng: -78.63}); pm.expect(o.planningEligibility).to.eql({eligible: true, reasons: []}); });"
+                  "pm.test('Devuelve un arreglo de items paginados', () => pm.expect(pm.response.json().items).to.be.an('array'));",
+                  "pm.test('Pagination metadata retains global count', () => { const b = pm.response.json(); pm.expect(b.page).to.eql(1); pm.expect(b.pageSize).to.eql(20); pm.expect(b.total).to.be.at.least(4); pm.expect(b.items.length).to.be.at.least(4); });",
+                  "pm.test('Readback retains destination and geographic readiness', () => { const o = pm.response.json().items.find(o => o.id === pm.collectionVariables.get('orderId1')); pm.expect(o.deliveryLocation).to.eql({lat: -1.25, lng: -78.63}); pm.expect(o.planningEligibility).to.eql({eligible: true, reasons: []}); });"
                 ]
               }
             }
@@ -3128,6 +3140,97 @@
       ]
     },
     {
+      "name": "Issue 11 ADMIN registered and guest orders",
+      "event": [
+        { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+          "const common = { zoneId: pm.collectionVariables.get('zoneId'), deliveryAddress: 'DEMO/TEST ADMIN recipient address', deliveryLat: -1.25, deliveryLng: -78.63, scheduledDeliveryDate: pm.collectionVariables.get('futureOrderDate'), items: [{productId: pm.collectionVariables.get('productId'), quantity: 1}] };",
+          "const guest = {...common, recipient: {type: 'GUEST', name: 'DEMO Guest', contactPhone: '+593999111222'}};",
+          "pm.variables.set('adminGuestBody', JSON.stringify(guest));",
+          "pm.variables.set('adminRegisteredBody', JSON.stringify({...common, recipient: {type: 'REGISTERED_CLIENT', clientId: pm.collectionVariables.get('registeredClientId'), contactPhone: '+593999333444'}}));",
+          "pm.variables.set('adminUnknownBody', JSON.stringify({...guest, recipient: {...guest.recipient, unexpectedRecipientKey: 'reject'}}));"
+        ] } },
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('No authentication secrets in order payload', () => pm.expect(pm.response.text()).not.to.match(/password|access_token/));"
+        ] } }
+      ],
+      "item": [
+        {
+          "name": "ADMIN creates REGISTERED_CLIENT order",
+          "request": { "method": "POST", "url": "{{baseUrl}}/orders/admin", "header": [{"key":"Content-Type","value":"application/json"}], "auth": {"type":"bearer","bearer":[{"key":"token","value":"{{adminToken}}","type":"string"}]}, "body":{"mode":"raw","raw":"{{adminRegisteredBody}}"} },
+          "event": [{"listen":"test","script":{"type":"text/javascript","exec":[
+            "pm.test('Registered ADMIN creation 201', () => pm.response.to.have.status(201));",
+            "const b = pm.response.json(); pm.collectionVariables.set('adminRegisteredOrderId', b.id);",
+            "pm.test('Registered owner and immutable recipient snapshot', () => { pm.expect(b.userId).to.eql(pm.collectionVariables.get('registeredClientId')); pm.expect(b.createdById).not.to.eql(b.userId); pm.expect(b.recipientType).to.eql('REGISTERED_CLIENT'); pm.expect(b.recipientName).to.eql(pm.collectionVariables.get('registeredClientName')); pm.expect(b.recipientPhone).to.eql('+593999333444'); });",
+            "pm.test('Registered creation reserves one line and keeps geography', () => { pm.expect(b.items).to.have.lengthOf(1); pm.expect(b.items[0].quantity).to.eql(1); pm.expect(b.deliveryLat).to.eql(-1.25); pm.expect(b.deliveryLng).to.eql(-78.63); pm.expect(b.status).to.eql('PENDING'); });"
+          ]}}]
+        },
+        {
+          "name": "ADMIN creates GUEST order",
+          "request": { "method": "POST", "url": "{{baseUrl}}/orders/admin", "header": [{"key":"Content-Type","value":"application/json"}], "auth": {"type":"bearer","bearer":[{"key":"token","value":"{{adminToken}}","type":"string"}]}, "body":{"mode":"raw","raw":"{{adminGuestBody}}"} },
+          "event": [{"listen":"test","script":{"type":"text/javascript","exec":[
+            "pm.test('Guest ADMIN creation 201', () => pm.response.to.have.status(201));",
+            "const b = pm.response.json(); pm.collectionVariables.set('adminGuestOrderId', b.id);",
+            "pm.test('Guest has no digital owner and has ADMIN creator', () => { pm.expect(b.userId).to.be.null; pm.expect(b.createdById).to.be.a('string'); pm.expect(b.recipientType).to.eql('GUEST'); pm.expect(b.recipientName).to.eql('DEMO Guest'); pm.expect(b.recipientPhone).to.eql('+593999111222'); });",
+            "pm.test('Guest retains geographic readiness', () => { pm.expect(b.deliveryLat).to.eql(-1.25); pm.expect(b.deliveryLng).to.eql(-78.63); pm.expect(b.status).to.eql('PENDING'); });"
+          ]}}]
+        },
+        {
+          "name": "CLIENT reads ADMIN registered order without contact",
+          "request": { "method":"GET", "url":"{{baseUrl}}/orders/{{adminRegisteredOrderId}}", "auth":{"type":"bearer","bearer":[{"key":"token","value":"{{clientToken}}","type":"string"}]} },
+          "event":[{"listen":"test","script":{"type":"text/javascript","exec":[
+            "pm.test('Registered owner readback 200', () => pm.response.to.have.status(200));",
+            "pm.test('CLIENT projection excludes recipient contact', () => { const b = pm.response.json(); pm.expect(b.id).to.eql(pm.collectionVariables.get('adminRegisteredOrderId')); pm.expect(b).not.to.have.property('recipientPhone'); pm.expect(b.userId).to.eql(pm.collectionVariables.get('registeredClientId')); });"
+          ]}}]
+        },
+        {
+          "name":"CLIENT my-orders includes registered but excludes GUEST",
+          "request":{"method":"GET","url":"{{baseUrl}}/orders/my-orders","auth":{"type":"bearer","bearer":[{"key":"token","value":"{{clientToken}}","type":"string"}]}},
+          "event":[{"listen":"test","script":{"type":"text/javascript","exec":[
+            "pm.test('CLIENT history remains array 200', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
+            "pm.test('Digital ownership controls history and contact', () => { const b = pm.response.json(); pm.expect(b.some(o => o.id === pm.collectionVariables.get('adminRegisteredOrderId'))).to.eql(true); pm.expect(b.some(o => o.id === pm.collectionVariables.get('adminGuestOrderId'))).to.eql(false); b.forEach(o => pm.expect(o).not.to.have.property('recipientPhone')); });"
+          ]}}]
+        },
+        {
+          "name":"CLIENT cannot read GUEST order",
+          "request":{"method":"GET","url":"{{baseUrl}}/orders/{{adminGuestOrderId}}","auth":{"type":"bearer","bearer":[{"key":"token","value":"{{clientToken}}","type":"string"}]}},
+          "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('Guest IDOR denied without contact 403', () => { pm.response.to.have.status(403); pm.expect(pm.response.text()).not.to.match(/DEMO Guest|999111222/); });"]}}]
+        },
+        {
+          "name":"Other CLIENT cannot read ADMIN registered order",
+          "request":{"method":"GET","url":"{{baseUrl}}/orders/{{adminRegisteredOrderId}}","auth":{"type":"bearer","bearer":[{"key":"token","value":"{{client2Token}}","type":"string"}]}},
+          "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('Registered IDOR denied without contact 403', () => { pm.response.to.have.status(403); pm.expect(pm.response.text()).not.to.include('999333444'); });"]}}]
+        },
+        {
+          "name":"CLIENT cannot create ADMIN order",
+          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{clientToken}}","type":"string"}]},"body":{"mode":"raw","raw":"{{adminGuestBody}}"}},
+          "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('CLIENT ADMIN creation forbidden 403', () => pm.response.to.have.status(403));"]}}]
+        },
+        {
+          "name":"DRIVER cannot create ADMIN order",
+          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{driverToken}}","type":"string"}]},"body":{"mode":"raw","raw":"{{adminGuestBody}}"}},
+          "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('DRIVER ADMIN creation forbidden 403', () => pm.response.to.have.status(403));"]}}]
+        },
+        {
+          "name":"ADMIN creation requires JWT",
+          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{{adminGuestBody}}"}},
+          "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('ADMIN creation unauthenticated 401', () => pm.response.to.have.status(401));"]}}]
+        },
+        {
+          "name":"ADMIN recipient unknown key rejected",
+          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{adminToken}}","type":"string"}]},"body":{"mode":"raw","raw":"{{adminUnknownBody}}"}},
+          "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('Unknown recipient key rejected 400', () => pm.response.to.have.status(400));"]}}]
+        },
+        {
+          "name":"ADMIN paginated readback includes both recipient variants",
+          "request":{"method":"GET","url":"{{baseUrl}}/orders?zoneId={{zoneId}}&pageSize=100","auth":{"type":"bearer","bearer":[{"key":"token","value":"{{adminToken}}","type":"string"}]}},
+          "event":[{"listen":"test","script":{"type":"text/javascript","exec":[
+            "pm.test('ADMIN envelope metadata 200', () => { pm.response.to.have.status(200); const b = pm.response.json(); pm.expect(b.page).to.eql(1); pm.expect(b.pageSize).to.eql(100); pm.expect(b.total).to.eql(b.items.length); });",
+            "pm.test('ADMIN readback retains both snapshots', () => { const b = pm.response.json().items; const guest = b.find(o => o.id === pm.collectionVariables.get('adminGuestOrderId')); pm.expect(guest.recipientPhone).to.eql('+593999111222'); pm.expect(guest.deliveryLocation).to.eql({lat:-1.25,lng:-78.63}); pm.expect(guest.planningEligibility.eligible).to.eql(true); pm.expect(b.find(o => o.id === pm.collectionVariables.get('adminRegisteredOrderId')).recipientPhone).to.eql('+593999333444'); });"
+          ]}}]
+        }
+      ]
+    },
+    {
       "name": "06-Planning (Clarke & Wright proposals)",
       "description": "Issue #7: read-only route proposals built from PostgreSQL. Setup creates its own zone with depot and 6 orders (5 geolocated, one of them scheduled at another hour of the same day, + 1 without coordinates).",
       "item": [
@@ -3530,7 +3633,7 @@
                       "const body = pm.response.json();",
                       "const ids = JSON.parse(pm.collectionVariables.get('planOrderIds'));",
                       "pm.test('Metadata: day, timezone, capacity and distance method', () => {",
-                      "  pm.expect(body.date).to.eql('2031-03-14');",
+                      "  pm.expect(body.date).to.eql(pm.collectionVariables.get('planningYear') + '-03-14');",
                       "  pm.expect(body.timeZone).to.eql('America/Guayaquil');",
                       "  pm.expect(body.capacity).to.eql(4);",
                       "  pm.expect(body.distanceMethod).to.eql('HAVERSINE_STRAIGHT_LINE');",
@@ -3560,8 +3663,8 @@
                       "pm.test('Exactly one proposal mixes the 15:00Z and 18:00Z orders of the same business day', () => {",
                       "  const mixed = body.proposals.filter(p => p.scheduledInstants.length === 2);",
                       "  pm.expect(mixed).to.have.lengthOf(1);",
-                      "  pm.expect(mixed[0].scheduledInstants).to.eql(['2031-03-14T15:00:00Z', '2031-03-14T18:00:00Z']);",
-                      "  pm.expect(mixed[0].routeDate).to.eql('2031-03-14T15:00:00Z');",
+                      "  const year = pm.collectionVariables.get('planningYear'); pm.expect(mixed[0].scheduledInstants).to.eql([year + '-03-14T15:00:00Z', year + '-03-14T18:00:00Z']);",
+                      "  pm.expect(mixed[0].routeDate).to.eql(year + '-03-14T15:00:00Z');",
                       "});",
                       "pm.test('The order without coordinates is excluded with its reason', () => {",
                       "  pm.expect(body.excluded).to.eql([{ orderId: pm.collectionVariables.get('planNoCoordOrderId'), zoneId: pm.collectionVariables.get('planZoneId'), reasons: ['MISSING_DELIVERY_COORDINATES'] }]);",
@@ -4123,7 +4226,7 @@
                       "pm.test('Status 201', () => pm.response.to.have.status(201));",
                       "const body = pm.response.json();",
                       "pm.test('Proposal persisted as DRAFT without driver', () => { pm.expect(body.status).to.eql('DRAFT'); pm.expect(body.driverId).to.eql(null); });",
-                      "pm.test('Route date is the earliest scheduled instant', () => pm.expect(body.date).to.eql('2031-03-14T15:00:00Z'));"
+                      "pm.test('Route date is the earliest scheduled instant', () => pm.expect(body.date).to.eql(pm.collectionVariables.get('planningYear') + '-03-14T15:00:00Z'));"
                     ]
                   }
                 }

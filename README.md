@@ -12,7 +12,7 @@ Backend modular de alto rendimiento para la gestión logística de despachos, pe
 - **Validación de Datos:** `class-validator` y `class-transformer` con `ValidationPipe` global.
 - **Documentación Interactiva:** OpenAPI / Swagger (`@nestjs/swagger`) en `/api/docs`.
 - **Linter & Análisis Estático:** [oxlint](https://oxc.rs/) con reglas type-aware.
-- **Testing:** [Jest](https://jestjs.io/) con suites automatizadas y cobertura al 100% de reglas de negocio.
+- **Testing:** [Jest](https://jestjs.io/) con suites automatizadas y umbral CI del 80 % en cada métrica de cobertura.
 - **Contenedores:** Docker & Docker Compose.
 
 ```
@@ -161,6 +161,7 @@ http://localhost:3000/api/docs
 - **API Base:** `http://localhost:3000/api/v1`
 - **Swagger / OpenAPI interactivo:** [http://localhost:3000/api/docs](http://localhost:3000/api/docs)
   > Puedes autenticarte directamente en Swagger haciendo clic en el botón **Authorize** e ingresando el token Bearer devuelto por `/api/v1/auth/login`.
+- **Pedidos administrativos e invitados (#11):** [`docs/issue-11-admin-guest-orders.md`](./docs/issue-11-admin-guest-orders.md) (API y verificación independiente A–E completa con compatibilidad TypeScript downstream no oficial; revisión y entrega aún pendientes).
 - **Seguridad y Ciclo de Vida de Pedidos (#8):** [`docs/order-security.md`](./docs/order-security.md) (Matriz de permisos, mitigación IDOR/BOLA, gobierno de estados y concurrencia).
 - **Contrato geográfico (#9):** [`docs/geolocation-contract.md`](./docs/geolocation-contract.md) (pares opcionales, lectura, preparación geográfica y responsabilidad del mapa).
 - **Migración y recuperación geográfica:** [`docs/geolocation-migration.md`](./docs/geolocation-migration.md).
@@ -184,20 +185,17 @@ Para aislar las pruebas y proteger la base de datos de desarrollo, el proyecto i
 - **Aprovisionamiento efímero:** Levanta automáticamente un contenedor PostgreSQL 16 dedicado en un puerto loopback aleatorio (`127.0.0.1::5432`), aplica la cadena real de migraciones Prisma 8, verifica el contrato y ejecuta la semilla dos veces solo en esa base y levanta el backend en un puerto libre.
 - **Protección de base externa:** El script rechaza incondicionalmente cualquier variable `DATABASE_URL` heredada en el entorno (`exit 1`), garantizando que jamás se conecte ni mute bases de datos compartidas o locales.
 - **Limpieza y señales:** Captura `EXIT`, `INT`, `TERM` y `HUP`, gestionando la detención del backend dedicado y la eliminación del contenedor efímero; SIGKILL o fallos de Docker pueden requerir limpieza manual de recursos cuya propiedad se haya verificado. Preserva códigos de salida no nulos (ej. 42 de Newman o 130 de SIGINT).
-- **Cobertura funcional y de seguridad (64 requests, 268 assertions en la ejecución local T3):**
-  - Evalúa intentos de mutación de chofer a `IN_TRANSIT` y `DELIVERED` como pruebas negativas `403 Forbidden` (*fail-closed*, no omitidas); la progresión positiva `ASSIGNED -> IN_TRANSIT -> DELIVERED` con `Route.IN_PROGRESS` queda formalmente pendiente del Issue #10.
-  - Valores de estado no permitidos en el DTO son rechazados con `400 Bad Request`.
-  - Bloqueo de IDOR/BOLA entre choferes y clientes verificado con `403 Forbidden`.
-  - Invarianza de pedidos en base de datos tras intentos de mutación denegados.
+- **Evidencia final #11:** 104 requests y 434 assertions, cero fallos y salida global 0; conserva las 93 requests anteriores y agrega 11 de pedidos administrativos/invitados. Comprueba permisos, IDOR/BOLA, estados, inventario y destinatarios; listado ADMIN con `{items,total,page,pageSize}`.
+- **Limpieza verificable:** registra ID/owner y comprueba propiedad antes de eliminar. Solo acepta ausencia del ID exacto con status 1 y las dos formas conocidas de Docker (mayúsculas o variante minúscula de Docker 29.9 con LF inicial). Error de remoción o inspección inesperada falla cerrado; preserva el fallo primario. Consulta final por owner: cero contenedores propios.
 
 **Comandos seguros de ejecución:**
 
 ```bash
 # Ejecución en consola
-env -u DATABASE_URL pnpm run test:api
+env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm run test:api
 
 # Ejecución con generación de reporte HTML (reports/newman/informe-api.html)
-env -u DATABASE_URL pnpm run test:api:report
+env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm run test:api:report
 ```
 
 ---
@@ -208,40 +206,58 @@ env -u DATABASE_URL pnpm run test:api:report
 ```bash
 pnpm test --runInBand
 ```
-Ejecuta 156 pruebas automatizadas en 21 suites Jest, cubriendo autenticación, ciclo de vida de pedidos, políticas de autorización, algoritmo de rutas y contratos de CI.
+La verificación independiente final ejecutó 559 pruebas en 44 suites Jest con cobertura, incluida la compatibilidad downstream; cubre autenticación, pedidos, autorización, rutas y contratos de CI.
 
 ### Ejecutar Cobertura de Código (Umbral CI >= 80 %)
 ```bash
-pnpm run test:cov --coverageThreshold='{"global":{"statements":80,"branches":80,"functions":80,"lines":80}}'
+env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm run test:cov --runInBand --coverageThreshold='{"global":{"statements":80,"branches":80,"functions":80,"lines":80}}'
 ```
-Métricas reales alcanzadas: Statements 98.08 %, Branches 87.82 %, Functions 92.68 %, Lines 98.10 %.
+Verificación independiente final: **44 suites / 559 pruebas PASS**, con umbrales originales del 80 % cada uno. Statements 90.79 %, Branches 81.73 %, Functions 89.08 %, Lines 92.05 %.
 
 ### Ejecutar Pruebas de Integración y Seguridad (E2E)
 ```bash
-pnpm run test:e2e --runInBand
+env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm run test:e2e:isolated
 ```
-Ejecuta 31 pruebas E2E contra PostgreSQL real (`test/orders-security.e2e-spec.ts` y `test/app.e2e-spec.ts`), validando autorización JWT, matriz de roles, prevención IDOR/BOLA, grafo de estados e invariancia de datos sin colisiones ni reseteos globales.
+Runner canónico: 18 suites / 322 pruebas PASS. Ejecuta 15 suites con recursos propios y 3 legacy en bases PostgreSQL 16 propias, migradas/verificadas y con limpieza confirmada. Sin BD ambiental/compartida ni volúmenes persistentes de Compose. `test:e2e` sigue disponible como runner Jest directo, pero no sustituye este aislamiento integral.
 
 ### Validar Scripts Shell
 ```bash
 # Validación sintáctica
-bash -n test/run-newman-isolated.sh
+bash -n test/run-newman-isolated.sh test/run-e2e-isolated.sh
+node --check test/run-e2e-isolated.mjs
 
-# Análisis estático con ShellCheck (vía Docker)
-docker run --rm -i koalaman/shellcheck:v0.10.0 - < test/run-newman-isolated.sh
+# Análisis estático cuando ShellCheck esté instalado
+shellcheck test/run-newman-isolated.sh test/run-e2e-isolated.sh
 ```
+Bash y Node PASS en la verificación final; ShellCheck no estaba instalado localmente (sin PASS atribuido).
 
 ### Ejecutar Linter
 ```bash
 pnpm run lint
 ```
-Ejecuta oxlint (`oxlint --type-aware src/ test/`) sin advertencias ni errores.
+Ejecuta oxlint (`oxlint --type-aware src/ test/`). Verificación final PASS con advertencia histórica en `test/route-start.e2e-spec.ts:217`.
+
+### TypeScript: compatibilidad downstream acotada (#11)
+```bash
+pnpm exec tsc --noEmit --tsBuildInfoFile /dev/null
+```
+**PASS independiente final: salida 0, cero diagnósticos.** El fallo anterior de tres TS2741 históricos queda supersedido por una compatibilidad downstream explícitamente autorizada, **no oficial de Prisma**, sin alterar migraciones. [Declaración sin emisión runtime](types/prisma-legacy-rawsql-compat.d.ts): solo tres identidades legacy, retorno del input real sin inventar `objectType`; el overload estricto SDK sigue vigente para operaciones nuevas. [Pruebas y límites](docs/issue-11-admin-guest-orders.md#compatibilidad-downstream-autorizada--verificación-independiente-completa) congelan bytes/SQL y limitan usos a las tres rutas históricas. La declaración global no comprueba SQL ni procedencia por sí sola: esas garantías dependen del guard separado en Jest/CI. A–E están completas funcionalmente y verificadas; esto no es aprobación RDD ni autorización de entrega.
+
+```bash
+env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm test --runInBand --runTestsByPath test/prisma-legacy-rawsql-compat.spec.ts
+```
+25/25 pruebas PASS independientes: compilación semántica, 17 fixtures negativos y adversarios de SQL/procedencia con hashes históricos congelados. La investigación acotada a rc.11/15/17 no encontró corrección upstream; no implica que todas las versiones estén afectadas. Sin instalación ni cambios de dependencias/lock por esta compatibilidad; migraciones y artefactos intactos. Sustituirla solo por una solución upstream verificada y repetir los checks.
+
+```bash
+pnpm exec tsc --noEmit --incremental false -p tsconfig.build.json
+```
+El chequeo separado de build también PASS; el PASS raíz se verificó con su propio comando, no se infiere del build.
 
 ### Compilar para Producción
 ```bash
 pnpm run build
 ```
-Genera los archivos compilados en `dist/`.
+Genera los archivos compilados en `dist/`; build con emisión PASS en la verificación independiente final.
 
 ### Iniciar en Producción
 ```bash
@@ -252,7 +268,7 @@ pnpm run start:prod
 
 ## 9. Pipeline de Integración Continua (CI)
 
-El flujo de trabajo automatizado en [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) implementa una estrategia de dos etapas que garantiza que ningún cambio defectuoso o inseguro se integre:
+El flujo en [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) conecta dos etapas de calidad. Su build no reemplaza el chequeo TypeScript raíz ni la revisión requerida:
 
 1. **Job `quality` (Lint, build y pruebas unitarias):**
    - Checkout y configuración de Node.js 26.
@@ -263,14 +279,15 @@ El flujo de trabajo automatizado en [`.github/workflows/ci.yml`](./.github/workf
    - Publicación del artefacto de cobertura (`cobertura`).
 
 2. **Job `api-tests` (Pruebas de integración E2E y API con PostgreSQL y Newman):**
-   - Servicio temporal PostgreSQL 16 (`postgres:16-alpine`) en puerto 5432 con health check.
-   - Creación de esquema relacional con `pnpm prisma db init`.
-   - Ejecución de la suite E2E (`pnpm run test:e2e --runInBand`, 31 pruebas) contra el servicio de PostgreSQL.
-   - Ejecución de la suite de API Newman mediante `env -u DATABASE_URL pnpm run test:api:report`, permitiendo al runner levantar de forma autónoma su propio entorno efímero y generar el reporte HTML.
+   - Preparación de `postgres:16-alpine`, sin servicio compartido ni `db init` global.
+   - Manifiesto E2E completo mediante `env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm run test:e2e:isolated`; cada runner gestiona sus recursos y migraciones.
+   - Build y Newman mediante `env -u DATABASE_URL DOTENV_CONFIG_PATH=/dev/null pnpm run test:api:report`; genera su propio JWT y entorno efímero, con reporte HTML.
    - Publicación del reporte HTML de Newman (`informe-newman`).
    - Propagación estricta de fallos: no se utiliza `continue-on-error`, por lo que cualquier fallo en pruebas o verificación detiene el pipeline.
 
-> *Nota de estado remoto:* La ejecución en los runners remotos de GitHub Actions se activará automáticamente al enviar el branch y abrir el Pull Request correspondiente (referenciando `Refs #8`).
+> A–E completas funcionalmente y verificadas de forma independiente, no CI remota ni aprobación nativa. Rama `feat/11-admin-guest-orders`, HEAD `57208e9` y Draft PR #26 intactos; sin staging, commits, push, merge ni cierre de Issue #11. RDD sigue diferida por el usuario. Próximo paso: coordinar nueva autorización de commits/RDD; publicación, CI, revisión, merge y cierre son decisiones separadas.
+>
+> Límites: intervalo reloj BD final → COMMIT; forwarding de señales OS reales del runner E2E no probado independientemente; ShellCheck local no disponible. No son fallos atribuidos a los checks funcionales ejecutados.
 
 ## Consulta de rutas del repartidor
 
