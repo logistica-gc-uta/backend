@@ -115,10 +115,10 @@ export class RoutePlanningService {
       depots,
       capacity: DEFAULT_ROUTE_CAPACITY,
     }).map((route) => {
+      // Instants are ISO strings of the same business day, sorted chronologically.
       const scheduledInstants = [
         ...new Set(route.orderIds.map((id) => instants.get(id)!)),
-      ].sort();
-      const confirmable = scheduledInstants.length === 1;
+      ].sort((a, b) => Temporal.Instant.compare(Temporal.Instant.from(a), Temporal.Instant.from(b)));
       return {
         zoneId: route.zoneId,
         zoneCode: zones.get(route.zoneId)!.code,
@@ -132,8 +132,8 @@ export class RoutePlanningService {
         })),
         totalDistanceKm: roundKm(route.totalDistance),
         scheduledInstants,
-        confirmable,
-        routeDate: confirmable ? scheduledInstants[0]! : null,
+        // Earliest scheduled instant: any instant of the business day is accepted by POST /routes.
+        routeDate: scheduledInstants[0]!,
       };
     });
 

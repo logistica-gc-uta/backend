@@ -17,7 +17,8 @@ export class ConfirmDraftRouteDto {
 
   @ApiProperty({
     format: 'date-time',
-    description: 'Explicit proposal instant; temporary exact-equality guard',
+    description:
+      'Explicit route instant; every order must be scheduled on the same America/Guayaquil calendar day (a proposal uses its earliest scheduled instant)',
   })
   @IsISO8601({ strict: true })
   @Matches(/T.*(?:Z|[+-]\d{2}:\d{2})$/)
