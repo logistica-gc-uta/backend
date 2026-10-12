@@ -29,13 +29,26 @@ locked before route creation and sorted order locks; order eligibility/date/clai
 are revalidated under locks. Competing claims/reservations reject409; any failure
 rolls back route, stops, claims, reservation, commercial pointers and projection.
 
-## Temporary stricter timestamp guard
+## Business-day schedule guard
 
-Only explicit proposals whose nonnull order schedule instants exactly equal the
-supplied route instant are accepted. Assignment revalidates the same equality.
-Equivalent ISO offsets denote the same instant; no timezone/day normalization or
-inference from nullable dates occurs. This is a conservative temporary guard,
-not a decided business rule for same-day scheduling.
+Confirmation (`POST /routes`) and the assignment of a DRAFT accept an order only
+when its non-null `scheduledDeliveryDate` falls on the **same `America/Guayaquil`
+calendar day** as the route instant (`routeDate` when confirming, `Route.date`
+when assigning). Orders may be scheduled at different hours of that day, which is
+what the route planning proposal (`GET /route-proposals`, see
+[route-planning.md](./route-planning.md)) produces: its `routeDate` is the earliest
+scheduled instant of the proposal. A null schedule, or one on another local day,
+is rejected with 409 before persistence.
+
+The day boundary is local midnight, not UTC: `2026-10-11T04:59:59Z` belongs to
+October 10 and `2026-10-11T05:00:00Z` to October 11. Instants on the same local day
+may fall on different UTC dates (`23:30Z` and `04:00Z` the next UTC day are both
+evening of the same Guayaquil day). The comparison is revalidated under the same
+order locks as before; it replaces the previous exact-instant equality.
+
+The legacy `POST /routes/assign` keeps the **stricter** rule described above: it
+derives the route date from one exact common non-null scheduled timestamp and
+rejects any mismatch, so its behaviour does not change.
 
 ## Atomic ownership and availability
 

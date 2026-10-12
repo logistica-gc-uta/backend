@@ -54,23 +54,17 @@ export class RouteProposalDto {
 
   @ApiProperty({
     type: [String],
-    description: 'Distinct scheduled instants among the orders of this proposal',
+    description:
+      'Distinct scheduled instants among the orders of this proposal, in chronological order',
   })
   scheduledInstants!: string[];
 
   @ApiProperty({
-    description:
-      'True when all orders share the exact same scheduled instant, so POST /routes accepts the proposal as is (current exact-equality guard)',
-  })
-  confirmable!: boolean;
-
-  @ApiProperty({
     format: 'date-time',
-    nullable: true,
     description:
-      'Value to send as routeDate to POST /routes when confirmable; null otherwise',
+      'Earliest scheduled instant of the proposal. Send it as routeDate to POST /routes: any instant of the same America/Guayaquil business day as all its orders is accepted',
   })
-  routeDate!: string | null;
+  routeDate!: string;
 }
 
 export class ExcludedOrderDto {

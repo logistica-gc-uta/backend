@@ -169,6 +169,46 @@ describe('RouteAssignmentService', () => {
       expect(claims).toHaveLength(0);
     },
   );
+  describe('same business day schedules (America/Guayaquil)', () => {
+    const at = (iso: string) => Temporal.Instant.from(iso);
+
+    it('confirms orders scheduled at different hours of the route business day', async () => {
+      orders[0].scheduledDeliveryDate = at('2026-10-10T05:00:00Z'); // 00:00 local
+      orders.push({ ...orders[0], id: 'second', scheduledDeliveryDate: at('2026-10-11T04:59:59Z') }); // 23:59:59 local
+      await expect(
+        service.confirmDraft(
+          { ...dto, routeDate: '2026-10-10T05:00:00Z', orderIds: ['order', 'second'] },
+          'admin',
+        ),
+      ).resolves.toMatchObject({ status: 'DRAFT' });
+    });
+
+    it('accepts a route instant that is not the exact schedule of any order', async () => {
+      orders[0].scheduledDeliveryDate = at('2026-10-10T15:00:00Z');
+      await expect(
+        service.confirmDraft({ ...dto, routeDate: '2026-10-10T09:00:00Z' }, 'admin'),
+      ).resolves.toMatchObject({ status: 'DRAFT' });
+    });
+
+    it('accepts instants on the same local day that fall on different UTC dates', async () => {
+      orders[0].scheduledDeliveryDate = at('2026-10-10T23:30:00Z'); // 18:30 local
+      await expect(
+        service.confirmDraft({ ...dto, routeDate: '2026-10-11T04:00:00Z' }, 'admin'), // 23:00 local
+      ).resolves.toMatchObject({ status: 'DRAFT' });
+    });
+
+    it.each([
+      ['one second after local midnight of the next day', '2026-10-11T05:00:00Z'],
+      ['one second before local midnight of the previous day', '2026-10-10T04:59:59Z'],
+    ])('rejects an order scheduled %s', async (_label, schedule) => {
+      orders[0].scheduledDeliveryDate = at(schedule);
+      await expect(
+        service.confirmDraft({ ...dto, routeDate: '2026-10-10T05:00:00Z' }, 'admin'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(claims).toHaveLength(0);
+    });
+  });
+
   it('confirms DRAFT without assigning commercial orders', async () => {
     await expect(service.confirmDraft(dto, 'admin')).resolves.toMatchObject({
       status: 'DRAFT',

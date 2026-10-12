@@ -89,7 +89,7 @@ describe('RoutePlanningService', () => {
     service = new RoutePlanningService(prisma);
   });
 
-  it('propone 2 rutas (4 + 1) para 5 pedidos de una zona y las marca confirmables', async () => {
+  it('propone 2 rutas (4 + 1) para 5 pedidos de una zona y usa el instante programado como routeDate', async () => {
     const z = zone('z1', 'CEN-01');
     orders = ['a', 'b', 'c', 'd', 'e'].map((id) => order(id, z));
 
@@ -104,7 +104,6 @@ describe('RoutePlanningService', () => {
       expect(proposal.zoneId).toBe('z1');
       expect(proposal.zoneCode).toBe('CEN-01');
       expect(proposal.depot).toEqual({ lat: -1.241, lng: -78.619 });
-      expect(proposal.confirmable).toBe(true);
       expect(proposal.routeDate).toBe('2030-02-14T17:00:00Z');
       expect(proposal.totalDistanceKm).toBeGreaterThan(0);
       expect(proposal.stops.map((s) => s.sequence)).toEqual(proposal.orderIds.map((_, i) => i + 1));
@@ -143,17 +142,27 @@ describe('RoutePlanningService', () => {
     }
   });
 
-  it('agrupa pedidos del mismo día a distinta hora pero los marca no confirmables', async () => {
+  it('agrupa pedidos del mismo día a distinta hora y propone el instante más temprano como routeDate', async () => {
     const z = zone('z1', 'CEN-01');
-    orders = [order('a', z), order('b', z, { scheduledDeliveryDate: AFTERNOON })];
+    orders = [order('tarde', z, { scheduledDeliveryDate: AFTERNOON }), order('temprano', z)];
 
     const { proposals } = await service.propose({ date: DAY });
 
     expect(proposals).toHaveLength(1);
     expect(proposals[0]!.orderIds).toHaveLength(2);
     expect(proposals[0]!.scheduledInstants).toEqual(['2030-02-14T17:00:00Z', '2030-02-14T20:00:00Z']);
-    expect(proposals[0]!.confirmable).toBe(false);
-    expect(proposals[0]!.routeDate).toBeNull();
+    expect(proposals[0]!.routeDate).toBe('2030-02-14T17:00:00Z');
+  });
+
+  it('ordena los instantes cronológicamente aunque difieran en formato o longitud', async () => {
+    const z = zone('z1', 'CEN-01');
+    const withSeconds = Temporal.Instant.from('2030-02-14T09:30:15Z');
+    orders = [order('a', z, { scheduledDeliveryDate: NOON }), order('b', z, { scheduledDeliveryDate: withSeconds })];
+
+    const { proposals } = await service.propose({ date: DAY });
+
+    expect(proposals[0]!.scheduledInstants).toEqual(['2030-02-14T09:30:15Z', '2030-02-14T17:00:00Z']);
+    expect(proposals[0]!.routeDate).toBe('2030-02-14T09:30:15Z');
   });
 
   it('excluye y explica los pedidos no planificables en lugar de ocultarlos', async () => {

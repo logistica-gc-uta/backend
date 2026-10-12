@@ -120,7 +120,7 @@ El algoritmo está conectado a PostgreSQL mediante `GET /api/v1/route-proposals`
 
 Pendiente:
 
-1. **Confirmación a nivel de día.** La propuesta agrupa por día calendario (`America/Guayaquil`), pero `POST /routes` exige hoy el mismo instante exacto en todos los pedidos (`confirmable` lo informa). Relajar esa guarda es una decisión del equipo (#10/#12).
+1. ~~Confirmación a nivel de día~~: resuelta. `POST /routes` acepta pedidos programados a distinta hora del mismo día `America/Guayaquil` (ver [route-assignment.md](./route-assignment.md)).
 2. **Disparador programado** del armado. Hoy la propuesta se pide de forma manual.
 3. **Pedidos de último momento.** Si llega un pedido con rutas ya armadas, se aplicará una inserción de menor costo: insertarlo en la ruta existente donde menos aumente la distancia, siempre que tenga menos de 4 paradas; si ninguna tiene espacio, generar una ruta nueva.
 4. **Concurrencia.** La confirmación y la asignación revalidan bajo bloqueo (#10); falta demostrarlo con pruebas de carga.
