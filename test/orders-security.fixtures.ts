@@ -147,12 +147,16 @@ export class SecurityFixtureManager {
   }
 
   async createRoute(driverId: string, zoneId: string, status: string = 'DRAFT'): Promise<RouteFixture> {
+    if (status !== 'DRAFT' && status !== 'ASSIGNED' && status !== 'IN_PROGRESS' && status !== 'COMPLETED') {
+      throw new Error(`Invalid route fixture status: ${status}`);
+    }
     const route = await this.prisma.route.create({
       driverId,
       zoneId,
       status,
     });
     this.createdRouteIds.push(route.id);
+    if (route.driverId === null) throw new Error('Expected the route fixture to retain its driver');
     return {
       id: route.id,
       driverId: route.driverId,
@@ -175,6 +179,7 @@ export class SecurityFixtureManager {
       deliveryAddress: `Av. Seguridad ${randomUUID().slice(0, 6)}`,
     });
     this.createdOrderIds.push(order.id);
+    if (order.userId === null) throw new Error('Expected the CLIENT order fixture to retain its owner');
     return {
       id: order.id,
       userId: order.userId,

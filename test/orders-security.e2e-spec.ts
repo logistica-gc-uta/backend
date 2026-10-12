@@ -310,8 +310,11 @@ describe('Orders Security Integration & E2E (PostgreSQL Real)', () => {
         .set('Authorization', `Bearer ${admin.token}`);
 
       expect(res.status).toBe(200);
-      expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body.length).toBeGreaterThanOrEqual(4);
+      expect(Array.isArray(res.body.items)).toBe(true);
+      expect(res.body.items.length).toBeGreaterThanOrEqual(4);
+      expect(res.body.total).toBeGreaterThanOrEqual(4);
+      expect(res.body).toMatchObject({ page: 1, pageSize: 20 });
+      expect(res.body.total).toBe(res.body.items.length);
     });
 
     it('ADMIN debe poder consultar el detalle de cualquier pedido', async () => {
