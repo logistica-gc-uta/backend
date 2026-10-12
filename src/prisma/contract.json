@@ -95,6 +95,19 @@
               }
             ]
           },
+          "RecipientType": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "REGISTERED_CLIENT",
+                "value": "REGISTERED_CLIENT"
+              },
+              {
+                "name": "GUEST",
+                "value": "GUEST"
+              }
+            ]
+          },
           "Role": {
             "codecId": "pg/text@1",
             "members": [
@@ -621,6 +634,13 @@
                   "kind": "scalar"
                 }
               },
+              "createdById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "deliveryAddress": {
                 "nullable": false,
                 "type": {
@@ -642,11 +662,52 @@
                   "kind": "scalar"
                 }
               },
+              "deliveryWindowEnd": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "deliveryWindowStart": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
               "id": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
+                }
+              },
+              "recipientName": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "recipientPhone": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "recipientType": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "RecipientType",
+                  "namespaceId": "public",
+                  "plane": "domain"
                 }
               },
               "requiresAdministrativeReview": {
@@ -698,7 +759,7 @@
                 }
               },
               "userId": {
-                "nullable": false,
+                "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
@@ -713,6 +774,22 @@
               }
             },
             "relations": {
+              "createdBy": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "createdById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
               "items": {
                 "cardinality": "1:N",
                 "on": {
@@ -746,7 +823,7 @@
               },
               "user": {
                 "cardinality": "N:1",
-                "nullable": false,
+                "nullable": true,
                 "on": {
                   "localFields": [
                     "userId"
@@ -782,6 +859,9 @@
                 "createdAt": {
                   "column": "createdAt"
                 },
+                "createdById": {
+                  "column": "createdById"
+                },
                 "deliveryAddress": {
                   "column": "deliveryAddress"
                 },
@@ -791,8 +871,23 @@
                 "deliveryLng": {
                   "column": "deliveryLng"
                 },
+                "deliveryWindowEnd": {
+                  "column": "deliveryWindowEnd"
+                },
+                "deliveryWindowStart": {
+                  "column": "deliveryWindowStart"
+                },
                 "id": {
                   "column": "id"
+                },
+                "recipientName": {
+                  "column": "recipientName"
+                },
+                "recipientPhone": {
+                  "column": "recipientPhone"
+                },
+                "recipientType": {
+                  "column": "recipientType"
                 },
                 "requiresAdministrativeReview": {
                   "column": "requiresAdministrativeReview"
@@ -1503,6 +1598,21 @@
               }
             },
             "relations": {
+              "createdOrders": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "createdById"
+                  ]
+                },
+                "to": {
+                  "model": "Order",
+                  "namespace": "public"
+                }
+              },
               "driver": {
                 "cardinality": "1:1",
                 "nullable": true,
@@ -2104,6 +2214,21 @@
                   "prefix": "order_delivery_coordinates_valid"
                 },
                 {
+                  "expression": "COALESCE((\"deliveryWindowStart\" IS NULL AND \"deliveryWindowEnd\" IS NULL) OR (\"deliveryWindowStart\" IS NOT NULL AND \"deliveryWindowEnd\" IS NOT NULL AND \"scheduledDeliveryDate\" IS NOT NULL AND \"deliveryWindowStart\" < \"deliveryWindowEnd\" AND \"scheduledDeliveryDate\" >= \"deliveryWindowStart\" AND \"scheduledDeliveryDate\" <= \"deliveryWindowEnd\" AND (\"deliveryWindowStart\" AT TIME ZONE 'America/Guayaquil')::date = (\"deliveryWindowEnd\" AT TIME ZONE 'America/Guayaquil')::date), false)",
+                  "name": "order_delivery_window_valid_f5c8ac7d",
+                  "prefix": "order_delivery_window_valid"
+                },
+                {
+                  "expression": "\"recipientType\" IN ('REGISTERED_CLIENT', 'GUEST')",
+                  "name": "order_recipientType_check_42f2716e",
+                  "prefix": "order_recipientType_check"
+                },
+                {
+                  "expression": "COALESCE((\"recipientType\" IS NULL AND \"userId\" IS NOT NULL) OR (\"recipientType\" = 'GUEST' AND \"userId\" IS NULL AND \"createdById\" IS NOT NULL AND \"recipientName\" ~ '[^[:space:]]' AND \"recipientPhone\" ~ '[^[:space:]]') OR (\"recipientType\" = 'REGISTERED_CLIENT' AND \"userId\" IS NOT NULL AND \"createdById\" IS NOT NULL AND \"recipientName\" ~ '[^[:space:]]'), false)",
+                  "name": "order_recipient_identity_valid_34850a45",
+                  "prefix": "order_recipient_identity_valid"
+                },
+                {
                   "expression": "\"status\" IN ('PENDING', 'ASSIGNED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED')",
                   "name": "order_status_check_148f644e",
                   "prefix": "order_status_check"
@@ -2118,6 +2243,11 @@
                   },
                   "nativeType": "timestamptz",
                   "nullable": false
+                },
+                "createdById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
                 },
                 "deliveryAddress": {
                   "codecId": "pg/text@1",
@@ -2134,10 +2264,41 @@
                   "nativeType": "float8",
                   "nullable": true
                 },
+                "deliveryWindowEnd": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "deliveryWindowStart": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
                 "id": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "recipientName": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "recipientPhone": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "recipientType": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "RecipientType",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
                 },
                 "requiresAdministrativeReview": {
                   "codecId": "pg/bool@1",
@@ -2190,7 +2351,7 @@
                 "userId": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
-                  "nullable": false
+                  "nullable": true
                 },
                 "zoneId": {
                   "codecId": "pg/text@1",
@@ -2203,6 +2364,22 @@
                   "source": {
                     "columns": [
                       "userId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "order"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "createdById"
                     ],
                     "namespaceId": "public",
                     "tableName": "order"
@@ -2251,10 +2428,26 @@
               "indexes": [
                 {
                   "columns": [
+                    "createdById"
+                  ],
+                  "name": "order_createdById_idx_8bf640ed",
+                  "prefix": "order_createdById_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
                     "routeId"
                   ],
                   "name": "order_routeId_idx_91ae2fd6",
                   "prefix": "order_routeId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "scheduledDeliveryDate"
+                  ],
+                  "name": "order_scheduledDeliveryDate_idx_f9ab4656",
+                  "prefix": "order_scheduledDeliveryDate_idx",
                   "unique": false
                 },
                 {
@@ -2271,6 +2464,16 @@
                   ],
                   "name": "order_zoneId_idx_1b631e86",
                   "prefix": "order_zoneId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "zoneId",
+                    "status",
+                    "scheduledDeliveryDate"
+                  ],
+                  "name": "order_zoneId_status_scheduledDeliveryDate_idx_2a0dd38d",
+                  "prefix": "order_zoneId_status_scheduledDeliveryDate_idx",
                   "unique": false
                 }
               ],
@@ -3017,6 +3220,13 @@
                 "CANCELLED"
               ]
             },
+            "RecipientType": {
+              "kind": "valueSet",
+              "values": [
+                "REGISTERED_CLIENT",
+                "GUEST"
+              ]
+            },
             "Role": {
               "kind": "valueSet",
               "values": [
@@ -3055,7 +3265,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "15ef5b17c1444e1f37222de1c696766119c6c4494633f6c5fcb256dee13cba83"
+    "storageHash": "e357d1aa2fdc74464e729ec7cd8bb087b979a13b22e0f88aa005b60be4c16427"
   },
   "execution": {
     "executionHash": "879fc99dc8539ad849ead59f382673a10513c12c2311b14e0cbb9c65efa8d4f7",

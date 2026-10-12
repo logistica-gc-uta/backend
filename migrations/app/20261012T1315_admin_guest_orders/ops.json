@@ -1,0 +1,582 @@
+[
+  {
+    "id": "column.public.order.createdById",
+    "label": "Add column \"createdById\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "createdById",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"createdById\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "createdById"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"createdById\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"createdById\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"createdById\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "createdById"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.deliveryWindowEnd",
+    "label": "Add column \"deliveryWindowEnd\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "deliveryWindowEnd",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"deliveryWindowEnd\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "deliveryWindowEnd"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"deliveryWindowEnd\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"deliveryWindowEnd\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"deliveryWindowEnd\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "deliveryWindowEnd"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.deliveryWindowStart",
+    "label": "Add column \"deliveryWindowStart\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "deliveryWindowStart",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"deliveryWindowStart\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "deliveryWindowStart"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"deliveryWindowStart\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"deliveryWindowStart\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"deliveryWindowStart\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "deliveryWindowStart"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.recipientName",
+    "label": "Add column \"recipientName\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "recipientName",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"recipientName\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "recipientName"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"recipientName\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"recipientName\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"recipientName\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "recipientName"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.recipientPhone",
+    "label": "Add column \"recipientPhone\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "recipientPhone",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"recipientPhone\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "recipientPhone"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"recipientPhone\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"recipientPhone\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"recipientPhone\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "recipientPhone"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.recipientType",
+    "label": "Add column \"recipientType\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "recipientType",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"recipientType\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "recipientType"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"recipientType\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"recipientType\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"recipientType\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "recipientType"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.dropNotNull.order.userId",
+    "label": "Drop NOT NULL on \"order\".\"userId\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "userId",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"userId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "userId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop NOT NULL on \"userId\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ALTER COLUMN \"userId\" DROP NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"userId\" is nullable",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "userId",
+          "YES"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.order.order_delivery_window_valid_f5c8ac7d",
+    "label": "Add check constraint \"order_delivery_window_valid_f5c8ac7d\" on \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "order_delivery_window_valid_f5c8ac7d",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"order_delivery_window_valid_f5c8ac7d\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_delivery_window_valid_f5c8ac7d",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"order_delivery_window_valid_f5c8ac7d\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD CONSTRAINT \"order_delivery_window_valid_f5c8ac7d\" CHECK (COALESCE((\"deliveryWindowStart\" IS NULL AND \"deliveryWindowEnd\" IS NULL) OR (\"deliveryWindowStart\" IS NOT NULL AND \"deliveryWindowEnd\" IS NOT NULL AND \"scheduledDeliveryDate\" IS NOT NULL AND \"deliveryWindowStart\" < \"deliveryWindowEnd\" AND \"scheduledDeliveryDate\" >= \"deliveryWindowStart\" AND \"scheduledDeliveryDate\" <= \"deliveryWindowEnd\" AND (\"deliveryWindowStart\" AT TIME ZONE 'America/Guayaquil')::date = (\"deliveryWindowEnd\" AT TIME ZONE 'America/Guayaquil')::date), false))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"order_delivery_window_valid_f5c8ac7d\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_delivery_window_valid_f5c8ac7d",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.order.order_recipientType_check_42f2716e",
+    "label": "Add check constraint \"order_recipientType_check_42f2716e\" on \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "order_recipientType_check_42f2716e",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"order_recipientType_check_42f2716e\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_recipientType_check_42f2716e",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"order_recipientType_check_42f2716e\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD CONSTRAINT \"order_recipientType_check_42f2716e\" CHECK (\"recipientType\" IN ('REGISTERED_CLIENT', 'GUEST'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"order_recipientType_check_42f2716e\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_recipientType_check_42f2716e",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.order.order_recipient_identity_valid_34850a45",
+    "label": "Add check constraint \"order_recipient_identity_valid_34850a45\" on \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "order_recipient_identity_valid_34850a45",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"order_recipient_identity_valid_34850a45\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_recipient_identity_valid_34850a45",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"order_recipient_identity_valid_34850a45\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD CONSTRAINT \"order_recipient_identity_valid_34850a45\" CHECK (COALESCE((\"recipientType\" IS NULL AND \"userId\" IS NOT NULL) OR (\"recipientType\" = 'GUEST' AND \"userId\" IS NULL AND \"createdById\" IS NOT NULL AND \"recipientName\" ~ '[^[:space:]]' AND \"recipientPhone\" ~ '[^[:space:]]') OR (\"recipientType\" = 'REGISTERED_CLIENT' AND \"userId\" IS NOT NULL AND \"createdById\" IS NOT NULL AND \"recipientName\" ~ '[^[:space:]]'), false))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"order_recipient_identity_valid_34850a45\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_recipient_identity_valid_34850a45",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.order.order_createdById_idx_8bf640ed",
+    "label": "Create index \"order_createdById_idx_8bf640ed\" on \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "order_createdById_idx_8bf640ed",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"order_createdById_idx_8bf640ed\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"order_createdById_idx_8bf640ed\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"order_createdById_idx_8bf640ed\"",
+        "sql": "CREATE INDEX \"order_createdById_idx_8bf640ed\" ON \"public\".\"order\" (\"createdById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"order_createdById_idx_8bf640ed\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"order_createdById_idx_8bf640ed\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.order.order_scheduledDeliveryDate_idx_f9ab4656",
+    "label": "Create index \"order_scheduledDeliveryDate_idx_f9ab4656\" on \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "order_scheduledDeliveryDate_idx_f9ab4656",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"order_scheduledDeliveryDate_idx_f9ab4656\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"order_scheduledDeliveryDate_idx_f9ab4656\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"order_scheduledDeliveryDate_idx_f9ab4656\"",
+        "sql": "CREATE INDEX \"order_scheduledDeliveryDate_idx_f9ab4656\" ON \"public\".\"order\" (\"scheduledDeliveryDate\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"order_scheduledDeliveryDate_idx_f9ab4656\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"order_scheduledDeliveryDate_idx_f9ab4656\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.order.order_zoneId_status_scheduledDeliveryDate_idx_2a0dd38d",
+    "label": "Create index \"order_zoneId_status_scheduledDeliveryDate_idx_2a0dd38d\" on \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "order_zoneId_status_scheduledDeliveryDate_idx_2a0dd38d",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"order_zoneId_status_scheduledDeliveryDate_idx_2a0dd38d\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"order_zoneId_status_scheduledDeliveryDate_idx_2a0dd38d\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"order_zoneId_status_scheduledDeliveryDate_idx_2a0dd38d\"",
+        "sql": "CREATE INDEX \"order_zoneId_status_scheduledDeliveryDate_idx_2a0dd38d\" ON \"public\".\"order\" (\"zoneId\", \"status\", \"scheduledDeliveryDate\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"order_zoneId_status_scheduledDeliveryDate_idx_2a0dd38d\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"order_zoneId_status_scheduledDeliveryDate_idx_2a0dd38d\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.order.order_createdById_fkey",
+    "label": "Add foreign key \"order_createdById_fkey\" on \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "order_createdById_fkey",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"order_createdById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_createdById_fkey",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"order_createdById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"order\"\nADD CONSTRAINT \"order_createdById_fkey\"\nFOREIGN KEY (\"createdById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"order_createdById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_createdById_fkey",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ]
+  }
+]
