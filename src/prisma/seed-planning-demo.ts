@@ -9,8 +9,7 @@ import { db } from './db.js';
 //   pnpm run seed:planning-demo [--orders 40] [--date 2030-02-14]
 //
 // --orders: pedidos por zona (por defecto 12).
-// --date:   día de entrega; todos los pedidos usan las 10:00 de Guayaquil
-//           (15:00Z) para que las propuestas sean confirmables.
+// --date:   día de entrega; todos los pedidos usan las 10:00 de Guayaquil (15:00Z).
 
 const LABEL = 'DEMO/TEST planning';
 

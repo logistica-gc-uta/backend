@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
-import { nowInstant } from '../../common/temporal.util.js';
+import { isSameBusinessDay, nowInstant } from '../../common/temporal.util.js';
 import { OrderStatus } from '../orders/dto/update-order-status.dto.js';
 import {
   canTransitionRoute,
@@ -126,10 +126,10 @@ export class RouteAssignmentService {
         ) ||
         order.zoneId !== zoneId ||
         !order.scheduledDeliveryDate ||
-        Temporal.Instant.compare(order.scheduledDeliveryDate, date) !== 0
+        !isSameBusinessDay(order.scheduledDeliveryDate, date)
       ) {
         throw new ConflictException(
-          'Orders require PENDING eligibility, one zone and exact explicit schedule instant',
+          'Orders require PENDING eligibility, one zone and a scheduled instant on the route business day',
         );
       }
     }

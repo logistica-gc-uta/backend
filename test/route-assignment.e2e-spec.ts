@@ -328,6 +328,28 @@ describe('Confirmed draft and assignment: owned PostgreSQL16 and real JWT', () =
       expect(await db.orm.public.OrderClaim.all()).toHaveLength(0);
     },
   );
+  it('confirms and assigns orders scheduled at different hours of the same America/Guayaquil day', async () => {
+    // PROPOSAL_DATE is 19:00 local on 2026-10-09; 03:00Z is 22:00 local the same day.
+    await db.orm.public.Order.where({ id: 'two' }).update({
+      scheduledDeliveryDate: Temporal.Instant.from('2026-10-10T03:00:00Z'),
+    });
+    const confirmed = await draft(['one', 'two']).expect(201);
+    expect(confirmed.body.status).toBe('DRAFT');
+    expect(await db.orm.public.OrderClaim.all()).toHaveLength(2);
+    await assign(confirmed.body.id).expect(200);
+    const two = await db.orm.public.Order.where({ id: 'two' }).first();
+    expect(two?.status).toBe('ASSIGNED');
+    expect(two?.scheduledDeliveryDate?.toString()).toBe('2026-10-10T03:00:00Z');
+  });
+  it('rejects an order scheduled one second into the next local day without partial DRAFT', async () => {
+    // 05:00:00Z is 00:00:00 local on 2026-10-10, a different business day than PROPOSAL_DATE.
+    await db.orm.public.Order.where({ id: 'one' }).update({
+      scheduledDeliveryDate: Temporal.Instant.from('2026-10-10T05:00:00Z'),
+    });
+    await draft().expect(409);
+    expect(await db.orm.public.Route.all()).toHaveLength(0);
+    expect(await db.orm.public.OrderClaim.all()).toHaveLength(0);
+  });
   it('enforces maximum four, uniqueness, timestamp, JWT ADMIN and body whitelist', async () => {
     await draft(['one', 'two', 'three', 'four']).expect(201);
     await draft(['one', 'two', 'three', 'four', 'five']).expect(400);

@@ -144,6 +144,11 @@
       "type": "string"
     },
     {
+      "key": "planConfirmedCount",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "planZoneId",
       "value": "",
       "type": "string"
@@ -3124,7 +3129,7 @@
     },
     {
       "name": "06-Planning (Clarke & Wright proposals)",
-      "description": "Issue #7: read-only route proposals built from PostgreSQL. Setup creates its own zone with depot and 6 orders (5 geolocated + 1 without coordinates).",
+      "description": "Issue #7: read-only route proposals built from PostgreSQL. Setup creates its own zone with depot and 6 orders (5 geolocated, one of them scheduled at another hour of the same day, + 1 without coordinates).",
       "item": [
         {
           "name": "Setup",
@@ -3298,7 +3303,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #2, Ambato\",\n  \"scheduledDeliveryDate\": \"2031-03-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.243,\n  \"deliveryLng\": -78.622\n}"
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #2, Ambato\",\n  \"scheduledDeliveryDate\": \"2031-03-14T18:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.243,\n  \"deliveryLng\": -78.622\n}"
                 }
               }
             },
@@ -3548,14 +3553,21 @@
                       "  pm.expect(p.stops.map(s => s.sequence)).to.eql(p.orderIds.map((_, i) => i + 1));",
                       "  pm.expect(p.stops.map(s => s.orderId)).to.eql(p.orderIds);",
                       "}));",
-                      "pm.test('Same scheduled instant: confirmable with routeDate', () => body.proposals.forEach(p => {",
-                      "  pm.expect(p.confirmable).to.eql(true);",
-                      "  pm.expect(p.routeDate).to.eql('2031-03-14T15:00:00Z');",
+                      "pm.test('routeDate is the earliest scheduled instant of each proposal', () => body.proposals.forEach(p => {",
+                      "  pm.expect(p.routeDate).to.eql(p.scheduledInstants[0]);",
+                      "  pm.expect(p).to.not.have.property('confirmable');",
                       "}));",
+                      "pm.test('Exactly one proposal mixes the 15:00Z and 18:00Z orders of the same business day', () => {",
+                      "  const mixed = body.proposals.filter(p => p.scheduledInstants.length === 2);",
+                      "  pm.expect(mixed).to.have.lengthOf(1);",
+                      "  pm.expect(mixed[0].scheduledInstants).to.eql(['2031-03-14T15:00:00Z', '2031-03-14T18:00:00Z']);",
+                      "  pm.expect(mixed[0].routeDate).to.eql('2031-03-14T15:00:00Z');",
+                      "});",
                       "pm.test('The order without coordinates is excluded with its reason', () => {",
                       "  pm.expect(body.excluded).to.eql([{ orderId: pm.collectionVariables.get('planNoCoordOrderId'), zoneId: pm.collectionVariables.get('planZoneId'), reasons: ['MISSING_DELIVERY_COORDINATES'] }]);",
                       "});",
-                      "const first = body.proposals.find(p => p.orderIds.length === 4);",
+                      "const first = body.proposals.find(p => p.scheduledInstants.length === 2);",
+                      "pm.collectionVariables.set('planConfirmedCount', String(first.orderIds.length));",
                       "pm.collectionVariables.set('planProposalRouteDate', first.routeDate);",
                       "pm.collectionVariables.set('planProposalOrderIds', JSON.stringify(first.orderIds));",
                       "pm.collectionVariables.set('planProposalBody', pm.response.text());"
@@ -4101,7 +4113,7 @@
           "name": "Confirm with existing lifecycle",
           "item": [
             {
-              "name": "POST Confirm the proposal as DRAFT (existing POST /routes)",
+              "name": "POST Confirm a mixed-hour proposal as DRAFT (existing POST /routes)",
               "event": [
                 {
                   "listen": "test",
@@ -4110,7 +4122,8 @@
                     "exec": [
                       "pm.test('Status 201', () => pm.response.to.have.status(201));",
                       "const body = pm.response.json();",
-                      "pm.test('Proposal persisted as DRAFT without driver', () => { pm.expect(body.status).to.eql('DRAFT'); pm.expect(body.driverId).to.eql(null); });"
+                      "pm.test('Proposal persisted as DRAFT without driver', () => { pm.expect(body.status).to.eql('DRAFT'); pm.expect(body.driverId).to.eql(null); });",
+                      "pm.test('Route date is the earliest scheduled instant', () => pm.expect(body.date).to.eql('2031-03-14T15:00:00Z'));"
                     ]
                   }
                 }
@@ -4160,7 +4173,8 @@
                       "pm.test('Status 200', () => pm.response.to.have.status(200));",
                       "const body = pm.response.json();",
                       "const confirmed = JSON.parse(pm.collectionVariables.get('planProposalOrderIds'));",
-                      "pm.test('Only the remaining order is still planned', () => pm.expect(body.summary).to.eql({ candidateOrders: 6, plannedOrders: 1, excludedOrders: 5, routes: 1 }));",
+                      "const k = Number(pm.collectionVariables.get('planConfirmedCount'));",
+                      "pm.test('Only the orders left out of the DRAFT are still planned', () => pm.expect(body.summary).to.eql({ candidateOrders: 6, plannedOrders: 5 - k, excludedOrders: 1 + k, routes: 1 }));",
                       "pm.test('Confirmed orders are excluded as ACTIVE_ROUTE_CLAIM', () => confirmed.forEach(id => {",
                       "  const e = body.excluded.find(x => x.orderId === id);",
                       "  pm.expect(e.reasons).to.eql(['ACTIVE_ROUTE_CLAIM']);",
