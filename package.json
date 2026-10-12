@@ -27,7 +27,8 @@
     "test:api": "./test/run-newman-isolated.sh",
     "test:api:isolated": "./test/run-newman-isolated.sh",
     "test:api:raw": "newman run delivery-api.postman_collection.json -e test/postman/logistica_env.json",
-    "test:api:report": "./test/run-newman-isolated.sh --report"
+    "test:api:report": "./test/run-newman-isolated.sh --report",
+    "seed:planning-demo": "tsx src/prisma/seed-planning-demo.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
