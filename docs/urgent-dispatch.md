@@ -38,3 +38,13 @@ Keys are global. Exact actor/body replay returns the original outcome; altered a
 The new official-CLI `urgent_dispatch_audit` migration creates the audit model and narrows pre-start release exceptions to an ADMIN audit inserted in the same transaction. It does not change old migration files/hashes, frozen-route guards, failure attempts or completed stop history. No temporary proposal table exists.
 
 B evidence: real isolated PostgreSQL/JWT HTTP tests passed (5 cases); 37 focused unit/assignment tests passed; TypeScript and focused type-aware lint passed. Rescheduling, full concurrency, full-suite evidence and independent verification remain pending.
+
+## Explicit agreement and retry
+
+CONTACT uses `orderId`, `agreementConfirmed` and (for an unresolved failure) the latest `attemptId`. A false agreement records management only and must omit scheduling fields. A true agreement requires `scheduledDeliveryDate`, `deliveryWindowStart`, and `deliveryWindowEnd`: explicit ISO offsets, one Guayaquil day, schedule within the window, and strictly future schedule/window start. Use minimal reasons, never conversation/contact snapshots.
+
+RESCHEDULE uses `orderId` and `agreementId` (the CONTACT audit ID). It revalidates geography, agreement freshness/consumption and PostgreSQL wall-clock timing under locks. Failed R1 must be COMPLETED with its order claim released. Reprogramming preserves commercial order identity/items and all R1 stop IDs, sequences, outcomes and attempts; it clears the review hold and expressly sets the same order PENDING, not an automatic failure transition. A reserved pre-start order may be removed only while leaving a nonempty valid route; no started route structure is changed. A later future-date DRAFT/assignment can use existing ADMIN routes endpoints; same-day urgencies also support CONFIRM.
+
+Driver reservations remain held through completion until DRIVER confirms depot return. R2 gets a new stable stop, while R1 retains all historical visits. The SQL-only `agreed_delivery_rescheduling` migration adds an audited review-resolution guard and a genuine data invariant (failure hold or matching audited reschedule). Its check fails closed on inconsistent legacy data; it never manufactures agreement evidence. No contract artifacts are re-emitted for this SQL-only step.
+
+C evidence: both absence/refusal R1→R2 PostgreSQL/JWT scenarios passed, including missing agreement, duplicate/conflicting schedule, original-history equality and pre-return driver rejection. Exact fixture instants use PostgreSQL microsecond precision.

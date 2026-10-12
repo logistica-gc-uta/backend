@@ -1,4 +1,10 @@
 import {
+  parseDeliveryTiming,
+  assertDeliveryFuture,
+  deliveryClock,
+} from '../orders/order-delivery.util.js';
+import { evaluatePlanningEligibility } from '../orders/order-geography.util.js';
+import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -82,6 +88,15 @@ export class DispatchInterventionService {
       MOVE: ['orderId', 'routeId', 'targetRouteId'],
       REASSIGN_DRIVER: ['routeId', 'driverId'],
       PRIORITIZE: ['orderId'],
+      CONTACT: [
+        'orderId',
+        'attemptId',
+        'agreementConfirmed',
+        'scheduledDeliveryDate',
+        'deliveryWindowStart',
+        'deliveryWindowEnd',
+      ],
+      RESCHEDULE: ['orderId', 'agreementId'],
     };
     const required: Record<string, string[]> = {
       CONFIRM: ['orderId', 'fingerprint'],
@@ -90,6 +105,8 @@ export class DispatchInterventionService {
       MOVE: ['orderId', 'routeId', 'targetRouteId'],
       REASSIGN_DRIVER: ['routeId', 'driverId'],
       PRIORITIZE: ['orderId'],
+      CONTACT: ['orderId'],
+      RESCHEDULE: ['orderId', 'agreementId'],
     };
     const allowed = fields[dto.action];
     if (
@@ -148,6 +165,200 @@ export class DispatchInterventionService {
       recordedAt: nowInstant(),
     });
   }
+  private async schedule(
+    tx: Transaction,
+    dto: DispatchInterventionDto,
+    actorId: string,
+  ) {
+    const db = tx.orm.public;
+    const initial = await db.Order.where({ id: dto.orderId! }).first();
+    if (!initial) throw new NotFoundException('Order not found');
+    let route = initial.routeId
+      ? await db.Route.where({ id: initial.routeId }).first()
+      : null;
+    if (route) {
+      if (route.driverId) await this.assignment.lockDriver(tx, route.driverId);
+      route = await db.Route.where({ id: route.id }).update({ id: route.id });
+    }
+    const order = await db.Order.where({ id: initial.id }).update({
+      id: initial.id,
+    });
+    if (!order || order.routeId !== initial.routeId)
+      throw new ConflictException('Order route changed; refresh decision');
+    if (order.status === 'DELIVERED' || order.status === 'CANCELLED')
+      throw new ConflictException(
+        'Commercially resolved order cannot be rescheduled',
+      );
+    const attempts = [];
+    for (const stop of await db.RouteStop.where({
+      orderId: order.id,
+      outcome: 'FAILED',
+    }).all()) {
+      for (const attempt of await db.DeliveryAttempt.where({
+        stopId: stop.id,
+        outcome: 'FAILED',
+      }).all())
+        attempts.push(attempt);
+    }
+    attempts.sort(
+      (a, b) =>
+        Temporal.Instant.compare(b.recordedAt, a.recordedAt) ||
+        b.id.localeCompare(a.id),
+    );
+    const latest = attempts[0];
+    if (dto.action === 'CONTACT') {
+      if (typeof dto.agreementConfirmed !== 'boolean')
+        throw new BadRequestException(
+          'Explicit agreementConfirmed boolean required',
+        );
+      if (
+        order.requiresAdministrativeReview &&
+        (!latest || dto.attemptId !== latest.id)
+      )
+        throw new ConflictException(
+          'Contact must refer to the latest failed attempt',
+        );
+      if (!order.requiresAdministrativeReview && dto.attemptId)
+        throw new ConflictException('No unresolved failed attempt');
+      if (dto.agreementConfirmed) {
+        const timing = parseDeliveryTiming(dto, true);
+        if (!timing.deliveryWindowStart || !timing.deliveryWindowEnd)
+          throw new BadRequestException('Agreed delivery window required');
+        assertDeliveryFuture(
+          timing,
+          await deliveryClock(tx, this.prisma.client.raw),
+        );
+      } else if (
+        dto.scheduledDeliveryDate !== undefined ||
+        dto.deliveryWindowStart !== undefined ||
+        dto.deliveryWindowEnd !== undefined
+      )
+        throw new BadRequestException(
+          'Unconfirmed contact cannot record an agreed schedule',
+        );
+      return this.response(
+        await this.createAudit(tx, dto, actorId, order.routeId, {
+          orderId: order.id,
+          routeId: order.routeId,
+          attemptId: latest?.id ?? null,
+        }),
+      );
+    }
+    const contact = await db.DispatchIntervention.where({
+      id: dto.agreementId!,
+      orderId: order.id,
+      action: 'CONTACT',
+      outcome: 'APPLIED',
+    }).first();
+    const payload = contact?.payload as
+      | {
+          agreementConfirmed?: boolean;
+          attemptId?: string;
+          scheduledDeliveryDate?: string;
+          deliveryWindowStart?: string;
+          deliveryWindowEnd?: string;
+        }
+      | undefined;
+    if (!contact || payload?.agreementConfirmed !== true)
+      throw new ConflictException(
+        'Persisted explicit date/window agreement required',
+      );
+    if (
+      order.requiresAdministrativeReview &&
+      (!latest || payload.attemptId !== latest.id)
+    )
+      throw new ConflictException(
+        'Agreement must resolve the latest failed attempt',
+      );
+    if (!order.requiresAdministrativeReview && payload.attemptId)
+      throw new ConflictException(
+        'Failed attempt already administratively resolved',
+      );
+    const timing = parseDeliveryTiming(payload, true);
+    if (!timing.deliveryWindowStart || !timing.deliveryWindowEnd)
+      throw new ConflictException('Agreed delivery window required');
+    assertDeliveryFuture(
+      timing,
+      await deliveryClock(tx, this.prisma.client.raw),
+    );
+    if (
+      !evaluatePlanningEligibility(
+        order,
+        await db.Zone.where({ id: order.zoneId }).first(),
+      ).planningEligibility.eligible
+    )
+      throw new ConflictException(
+        'Confirmed delivery and depot coordinates required',
+      );
+    const claim = await db.OrderClaim.where({
+      orderId: order.id,
+      releasedAt: null,
+    }).first();
+    if (
+      route &&
+      !canMutateRouteStructure(route.status as RouteStatus | null) &&
+      route.status !== 'COMPLETED'
+    )
+      throw new ConflictException('Route structure is frozen or unverified');
+    if (
+      order.requiresAdministrativeReview &&
+      (route?.status !== 'COMPLETED' || claim)
+    )
+      throw new ConflictException(
+        'Failed original route must complete and release the order before retry',
+      );
+    if (claim && (!route || claim.routeId !== route.id || !claim.claimedAt))
+      throw new ConflictException('Matching verified source claim required');
+    if (
+      (
+        await db.DispatchIntervention.where({
+          orderId: order.id,
+          action: 'RESCHEDULE',
+          outcome: 'APPLIED',
+        }).all()
+      ).some(
+        (a) =>
+          (a.payload as { agreementId?: string })?.agreementId === contact.id,
+      )
+    )
+      throw new ConflictException('Agreement already consumed');
+    const audit = await this.createAudit(tx, dto, actorId, order.routeId, {
+      orderId: order.id,
+      routeId: order.routeId,
+      agreementId: contact.id,
+      attemptId: latest?.id ?? null,
+      scheduledDeliveryDate: timing.scheduledDeliveryDate!.toString(),
+    });
+    if (claim && route) {
+      const stops = await db.RouteStop.where({ routeId: route.id }).all();
+      if (stops.length <= 1)
+        throw new ConflictException(
+          'Rescheduling cannot empty a reserved route',
+        );
+      // Rescheduling one pre-start stop is the same central structural operation as moving it.
+      const ids = stops
+        .filter((s) => s.orderId !== order.id)
+        .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
+        .map((s) => s.orderId);
+      await this.assignment.replaceStops(tx, route.id, ids);
+      await db.OrderClaim.where({ id: claim.id }).update({
+        releasedAt: nowInstant(),
+      });
+    }
+    await db.Order.where({ id: order.id }).update({
+      ...timing,
+      status: 'PENDING',
+      requiresAdministrativeReview: false,
+      routeId: null,
+      stopOrder: null,
+    });
+    assertDeliveryFuture(
+      timing,
+      await deliveryClock(tx, this.prisma.client.raw),
+    );
+    return this.response(audit);
+  }
+
   async intervene(
     dto: DispatchInterventionDto,
     actorId: string,
@@ -160,6 +371,8 @@ export class DispatchInterventionService {
           requestId: dto.requestId,
         }).first();
         if (prior) return this.replay(prior, actorId, dto);
+        if (dto.action === 'CONTACT' || dto.action === 'RESCHEDULE')
+          return this.schedule(tx, dto, actorId);
         if (dto.action === 'CONFIRM' || dto.action === 'REJECT') {
           const initial = await this.urgency.propose(dto.orderId!, tx);
           const route = initial.routeId

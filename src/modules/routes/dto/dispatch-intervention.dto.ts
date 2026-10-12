@@ -4,6 +4,7 @@ import {
   ArrayMinSize,
   ArrayUnique,
   IsArray,
+  IsBoolean,
   IsIn,
   IsString,
   IsUUID,
@@ -18,6 +19,8 @@ export const DISPATCH_ACTIONS = [
   'MOVE',
   'REASSIGN_DRIVER',
   'PRIORITIZE',
+  'CONTACT',
+  'RESCHEDULE',
 ] as const;
 export class DispatchInterventionDto {
   @ApiProperty({
@@ -66,6 +69,34 @@ export class DispatchInterventionDto {
   @ArrayUnique()
   @IsUUID(undefined, { each: true })
   orderIds?: string[];
+  @ApiPropertyOptional({ format: 'uuid' })
+  @ValidateIf((o) => o.attemptId !== undefined)
+  @IsUUID()
+  attemptId?: string;
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'Persisted CONTACT decision with an explicit date/window agreement',
+  })
+  @ValidateIf((o) => o.agreementId !== undefined)
+  @IsUUID()
+  agreementId?: string;
+  @ApiPropertyOptional()
+  @ValidateIf((o) => o.agreementConfirmed !== undefined)
+  @IsBoolean()
+  agreementConfirmed?: boolean;
+  @ApiPropertyOptional({ format: 'date-time' })
+  @ValidateIf((o) => o.scheduledDeliveryDate !== undefined)
+  @IsString()
+  scheduledDeliveryDate?: string;
+  @ApiPropertyOptional({ format: 'date-time' })
+  @ValidateIf((o) => o.deliveryWindowStart !== undefined)
+  @IsString()
+  deliveryWindowStart?: string;
+  @ApiPropertyOptional({ format: 'date-time' })
+  @ValidateIf((o) => o.deliveryWindowEnd !== undefined)
+  @IsString()
+  deliveryWindowEnd?: string;
 }
 export class DispatchAuditDto {
   @ApiProperty() id!: string;

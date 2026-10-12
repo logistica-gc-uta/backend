@@ -22,8 +22,8 @@ S15 — "No fabriques aprobaciones ni desactives RDD por cuenta propia. Si el me
 ## Tasks
 T0 | S1-S15 | inline coordination + delegated read-only map (evidence budget) | done | main/dependencies verified; source clarification reconciled; map received; tracking setup (no code commit)
 T1 A | S1,S6,S7,S11 | inline (dependent units; no parallel writer reason) | done | RED exit1, GREEN 13/13, tsc/lint exit0; commit b508930
-T2 B | S2,S8,S10,S12 | inline | in_progress | RED 404, GREEN 5 PostgreSQL HTTP cases; 37 unit/assignment tests; tsc/lint exit0; commit pending
-T3 C | S3,S13,S14 | inline | pending | commit none
+T2 B | S2,S8,S10,S12 | inline | done | RED 404, GREEN 5 PostgreSQL HTTP cases; 37 unit/assignment tests; tsc/lint exit0; commit a0131cf
+T3 C | S3,S13,S14 | inline | in_progress | explicit persisted agreement, historical retry; commit none
 T4 D | S4,S9,S10,S15 | inline | pending | commit none
 T5 E | S5,S6-S15 | inline checks + independent verify (security/concurrency) | pending | commit none
 
@@ -228,3 +228,5 @@ Continúa con la implementación.
 L6 — A RED exit1 (missing module); GREEN exit0, 13/13 tests. TypeScript exit0; focused lint exit0 (one mapped-DTO spread warning corrected); diff check exit0. No active local Git hooks. One final PR scope, no line-size hard cap. Independent feature verification and PostgreSQL checks remain scheduled for E.
 
 L7 — B: official CLI emitted genuine audit schema b1646787 from e357d1aa, planned 8 schema operations plus reviewed custom audit guard operation. Initial HTTP GREEN exposed DTO own undefined fields (400); exact defined-field validation corrected, 5 HTTP cases passed. Installed rawSql target requires objectType table, confirmed against installed types; tsc/lint exit0. Priority RED/GREEN captured; 37 unit tests passed. Migration hashes of previously committed files remain untouched. RDD remains deferred.
+
+L8 — C: corrected public-projection assertion before observed CONTACT RED (400). SQL-only CLI migration initially blocked on true no-op self-edge; diagnosed on an owned DB, added a genuine fail-closed failure-hold invariant through official dataTransform/self-emit (no previous hashes touched). Initial GREEN exposed nanosecond-vs-PostgreSQL-microsecond fixture precision; corrected fixture precision. Absence/refusal 2/2 scenarios pass, including no agreement/started R1 rejection, exact replay/consumed agreement, R1 stops+attempts equality, return-before-driver reuse and same order on R2. The 5 unchanged B cases also passed in the preceding integrated run. tsc/lint exit0.

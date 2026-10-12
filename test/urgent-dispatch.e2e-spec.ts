@@ -358,4 +358,131 @@ describe('Issue12 dispatch: PostgreSQL + actual JWT HTTP', () => {
       snapshot,
     );
   });
+  it.each(['RECIPIENT_ABSENT', 'RECIPIENT_REFUSED'])(
+    'CP-SEG-004/008: %s, explicit agreement, same commercial order in R2 and immutable R1 history',
+    async (reason) => {
+      const { route, orders } = await makeRoute(1);
+      const orderId = orders[0]!.id;
+      await api(
+        'post',
+        `/routes/${route.id}/start`,
+        {},
+        ids.driverUser,
+        'DRIVER',
+      ).expect(200);
+      const stop = (await history(route.id)).stops[0];
+      await api(
+        'post',
+        `/routes/${route.id}/stops/${stop.id}/failure`,
+        {
+          requestId: randomUUID(),
+          reason,
+          context: 'Only necessary operational context',
+        },
+        ids.driverUser,
+        'DRIVER',
+      ).expect(200);
+      const failed = await history(route.id);
+      expect(failed.stops[0].outcome).toBe('FAILED');
+      expect(failed.stops[0].attempts[0].failureReason).toBe(reason);
+      const commercial = (await api('get', `/orders/${orderId}`).expect(200))
+        .body;
+      expect(commercial.status).toBe('ASSIGNED');
+      expect(
+        (await api('get', '/dispatch/inbox').expect(200)).body.incidents.some(
+          (i: any) => i.orderId === orderId,
+        ),
+      ).toBe(true);
+      expect((await proposal(orderId)).reasons).toContain(
+        'ADMINISTRATIVE_REVIEW_REQUIRED',
+      );
+      const attemptId = failed.stops[0].attempts[0].id;
+      const unresolved = (
+        await intervene({
+          action: 'CONTACT',
+          orderId,
+          attemptId,
+          agreementConfirmed: false,
+        }).expect(200)
+      ).body;
+      await intervene({
+        action: 'RESCHEDULE',
+        orderId,
+        agreementId: unresolved.id,
+      }).expect(409);
+      await intervene({
+        action: 'CONTACT',
+        orderId,
+        attemptId,
+        agreementConfirmed: true,
+      }).expect(400);
+      expect((await history(route.id)).stops).toEqual(failed.stops);
+      const time = today().add({ minutes: 15 }).round({ smallestUnit: 'microsecond' });
+      const contact = (
+        await intervene({
+          action: 'CONTACT',
+          orderId,
+          attemptId,
+          agreementConfirmed: true,
+          scheduledDeliveryDate: time.toString(),
+          deliveryWindowStart: time.subtract({ minutes: 5 }).toString(),
+          deliveryWindowEnd: time.add({ minutes: 10 }).toString(),
+        }).expect(200)
+      ).body;
+      await intervene({
+        action: 'RESCHEDULE',
+        orderId,
+        agreementId: contact.id,
+      }).expect(409);
+      await api(
+        'post',
+        `/routes/${route.id}/complete`,
+        {},
+        ids.driverUser,
+        'DRIVER',
+      ).expect(200);
+      const body = {
+        action: 'RESCHEDULE',
+        orderId,
+        agreementId: contact.id,
+        requestId: randomUUID(),
+      };
+      const scheduled = (await intervene(body).expect(200)).body;
+      expect(scheduled.orderId).toBe(orderId);
+      expect((await intervene(body).expect(200)).body).toEqual(scheduled);
+      await intervene({ ...body, requestId: randomUUID() }).expect(409);
+      const after = (await api('get', `/orders/${orderId}`).expect(200)).body;
+      expect(after.status).toBe('PENDING');
+      expect(after.scheduledDeliveryDate).toBe(time.toString());
+      const draft = (
+        await api('post', '/routes', {
+          zoneId: ids.zone,
+          routeDate: time.toString(),
+          orderIds: [orderId],
+        }).expect(201)
+      ).body;
+      await api('post', `/routes/${draft.id}/assign`, {
+        driverId: ids.driver,
+      }).expect(409);
+      await api(
+        'post',
+        `/routes/${route.id}/return`,
+        {},
+        ids.driverUser,
+        'DRIVER',
+      ).expect(200);
+      await api('post', `/routes/${draft.id}/assign`, {
+        driverId: ids.driver,
+      }).expect(200);
+      expect((await history(route.id)).stops).toEqual(failed.stops);
+      const r2 = await history(draft.id);
+      expect(r2.stops[0].orderId).toBe(orderId);
+      expect(r2.stops[0].id).not.toBe(stop.id);
+      expect(r2.stops[0].attempts).toEqual([]);
+      const inbox = (await api('get', '/dispatch/inbox').expect(200)).body;
+      expect(inbox.incidents.some((i: any) => i.orderId === orderId)).toBe(
+        false,
+      );
+    },
+  );
 });
