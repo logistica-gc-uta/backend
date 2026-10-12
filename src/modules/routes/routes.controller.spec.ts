@@ -175,9 +175,9 @@ describe('Route history serialized Swagger matches role-specific responses', () 
     await app?.close();
   });
   it('has exactly the persisted lifecycle states plus the NULL projection, not an invented return state', () => {
-    expect(
-      doc.components!.schemas!.RouteHistoryResponseDto.properties!.status,
-    ).toMatchObject({
+    const schema = doc.components!.schemas!.RouteHistoryResponseDto;
+    if ('$ref' in schema) throw new Error('Expected an inline RouteHistoryResponseDto schema');
+    expect(schema.properties!.status).toMatchObject({
       enum: ['UNVERIFIED', 'DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED'],
     });
   });
@@ -236,6 +236,12 @@ describe('Route history serialized Swagger matches role-specific responses', () 
         'deliveryLat',
         'deliveryLng',
         'createdAt',
+        'createdById',
+        'recipientType',
+        'recipientName',
+        'recipientPhone',
+        'deliveryWindowStart',
+        'deliveryWindowEnd',
         'requiresAdministrativeReview',
       ].sort(),
     );

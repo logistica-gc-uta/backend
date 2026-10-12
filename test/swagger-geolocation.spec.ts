@@ -179,14 +179,16 @@ describe('Swagger Geolocation OpenAPI Specification (GREEN verification)', () =>
       expect(schema?.items?.$ref).toBe('#/components/schemas/OrderResponseDto');
     });
 
-    it('GET /api/v1/orders debe responder 200 con un arreglo de OrderResponseDto', () => {
+    it('GET /api/v1/orders returns the documented ADMIN pagination envelope', () => {
       const op = document.paths?.['/api/v1/orders']?.get;
       expect(op).toBeDefined();
       const response200 = op.responses?.['200'];
       expect(response200).toBeDefined();
       const schema = response200.content?.['application/json']?.schema;
-      expect(schema?.type).toBe('array');
-      expect(schema?.items?.$ref).toBe('#/components/schemas/OrderResponseDto');
+      expect(schema?.$ref).toBe('#/components/schemas/AdminOrdersPageDto');
+      const envelope = document.components.schemas.AdminOrdersPageDto;
+      expect(envelope.properties.items.items.$ref).toBe('#/components/schemas/OrderResponseDto');
+      expect(envelope.required).toEqual(expect.arrayContaining(['items', 'total', 'page', 'pageSize']));
     });
 
     it('GET /api/v1/orders/{id} debe responder 200 con OrderResponseDto', () => {

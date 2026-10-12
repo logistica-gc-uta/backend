@@ -1,3 +1,6 @@
+import { ROLES_KEY } from '../auth/decorators/roles.decorator.js';
+import { CreateAdminOrderDto } from './dto/create-admin-order.dto.js';
+import { ListAdminOrdersDto } from './dto/list-admin-orders.dto.js';
 import { AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
 import { OrderStatus } from './dto/update-order-status.dto.js';
 import { OrdersController } from './orders.controller.js';
@@ -9,6 +12,7 @@ describe('OrdersController', () => {
   beforeEach(() => {
     ordersServiceMock = {
       createOrder: jest.fn(),
+      createAdminOrder: jest.fn(),
       findMyOrders: jest.fn(),
       findAll: jest.fn(),
       findOne: jest.fn(),
@@ -33,6 +37,20 @@ describe('OrdersController', () => {
     const result = await controller.create('user-1', dto);
     expect(ordersServiceMock.createOrder).toHaveBeenCalledWith('user-1', dto);
     expect(result).toEqual(createdOrder);
+  });
+
+  it('delegates ADMIN creation with only the injected JWT actor and keeps distinct role gates', async () => {
+    const dto = new CreateAdminOrderDto();
+    await controller.createAdmin('jwt-admin', dto);
+    expect(ordersServiceMock.createAdminOrder).toHaveBeenCalledWith('jwt-admin', dto);
+    expect(Reflect.getMetadata(ROLES_KEY, Object.getOwnPropertyDescriptor(OrdersController.prototype, 'createAdmin')!.value)).toEqual(['ADMIN']);
+    expect(Reflect.getMetadata(ROLES_KEY, Object.getOwnPropertyDescriptor(OrdersController.prototype, 'create')!.value)).toEqual(['CLIENT']);
+  });
+
+  it('forwards the typed ADMIN pagination/filter contract', async () => {
+    const dto = Object.assign(new ListAdminOrdersDto(), { page: 2, pageSize: 10, date: '2030-02-14' });
+    await controller.findAll(dto);
+    expect(ordersServiceMock.findAll).toHaveBeenCalledWith(dto);
   });
 
   it('findMyOrders debe delegar con userId', async () => {

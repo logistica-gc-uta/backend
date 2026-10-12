@@ -46,8 +46,8 @@ export class OrderItemResponseDto {
   @ApiProperty({ description: 'Precio unitario congelado al crear el pedido en USD', example: 750.0, type: Number })
   price: number;
 
-  @ApiProperty({ description: 'Detalle del producto asociado', type: () => ProductSummaryDto })
-  product: ProductSummaryDto;
+  @ApiPropertyOptional({ description: 'Included on read queries; creation returns frozen line values', type: () => ProductSummaryDto })
+  product?: ProductSummaryDto;
 }
 
 export class UserSummaryDto {
@@ -57,25 +57,40 @@ export class UserSummaryDto {
   @ApiProperty({ description: 'Nombre completo del usuario', example: 'Carlos Cliente' })
   name: string;
 
-  @ApiProperty({ description: 'Correo electrónico registrado', example: 'cliente@correo.com' })
-  email: string;
-
-  @ApiProperty({ description: 'Rol asignado al usuario en el sistema', example: 'CLIENT' })
-  role: string;
-
-  @ApiProperty({
-    description: 'Fecha de registro del usuario en formato ISO 8601',
-    example: '2026-10-01T08:00:00.000Z',
-  })
-  createdAt: Date;
 }
 
 export class OrderCreatedResponseDto {
+  @ApiProperty({ type: String, nullable: true, description: 'Verified creator or null for unverified history' })
+  createdById: string | null;
+
+  @ApiProperty({ type: String, enum: ['REGISTERED_CLIENT', 'GUEST'], nullable: true })
+  recipientType: 'REGISTERED_CLIENT' | 'GUEST' | null;
+
+  @ApiProperty({ type: String, nullable: true, description: 'Recipient snapshot; null for unverified history' })
+  recipientName: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true, description: 'ADMIN or authorized own-route DRIVER only; omitted for CLIENT' })
+  recipientPhone?: string | null;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  deliveryWindowStart: string | null;
+
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  deliveryWindowEnd: string | null;
+
+  @ApiPropertyOptional({ type: () => [OrderItemResponseDto], description: 'Included on creation; status updates may omit lines' })
+  items?: OrderItemResponseDto[];
+
   @ApiProperty({ description: 'Identificador único del pedido (UUID)', example: 'cm123order456' })
   id: string;
 
-  @ApiProperty({ description: 'ID del cliente propietario del pedido', example: 'cm123user456' })
-  userId: string;
+  @ApiProperty({
+    description: 'ID del cliente propietario del pedido o null para invitado sin cuenta',
+    example: 'cm123user456',
+    type: String,
+    nullable: true,
+  })
+  userId: string | null;
 
   @ApiProperty({ description: 'ID de la zona de entrega asignada', example: 'cm123zone456' })
   zoneId: string;
@@ -143,7 +158,7 @@ export class OrderResponseDto extends OrderCreatedResponseDto {
     description: 'Lista de ítems con sus productos asociados incluidos en el pedido',
     type: () => [OrderItemResponseDto],
   })
-  items: OrderItemResponseDto[];
+  declare items: OrderItemResponseDto[];
 
   @ApiProperty({
     description: 'Información de la zona de entrega con la ubicación estructurada de su depósito',
@@ -168,8 +183,23 @@ export class OrderResponseDto extends OrderCreatedResponseDto {
   planningEligibility: PlanningEligibilityDto;
 
   @ApiPropertyOptional({
-    description: 'Datos del cliente que realizó el pedido (incluido en listados administrativos)',
+    description: 'Datos del cliente propietario (incluido en listados administrativos); null para invitado',
     type: () => UserSummaryDto,
+    nullable: true,
   })
-  user?: UserSummaryDto;
+  user?: UserSummaryDto | null;
+}
+
+export class AdminOrdersPageDto {
+  @ApiProperty({ type: () => [OrderResponseDto] })
+  items: OrderResponseDto[];
+
+  @ApiProperty({ type: Number })
+  total: number;
+
+  @ApiProperty({ type: Number, minimum: 1, default: 1 })
+  page: number;
+
+  @ApiProperty({ type: Number, minimum: 1, maximum: 100, default: 20 })
+  pageSize: number;
 }

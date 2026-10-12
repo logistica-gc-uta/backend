@@ -47,7 +47,7 @@ describe('RouteAssignmentService', () => {
     reservation = null;
     const model = (
       first: (filter: any) => any,
-      all = () => [],
+      all: () => unknown[] = () => [],
       create = (value: any) => value,
     ) => ({
       where: (filter: any) => ({

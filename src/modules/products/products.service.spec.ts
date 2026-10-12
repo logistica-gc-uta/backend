@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../database/prisma.service.js';
 import { ProductsService } from './products.service.js';
@@ -16,6 +16,17 @@ describe('ProductsService', () => {
         create: jest.fn(),
         update: jest.fn(),
       },
+    };
+
+    prismaMock.client = {
+      raw: { sql: (...[_strings, id]: Parameters<PrismaService['client']['raw']['sql']>) => ({ returnsRow: () => ({ build: () => ({ id }) }) }) },
+      transaction: jest.fn((callback) => callback({
+        query: jest.fn(async () => {
+          const row = await prismaMock.product.first();
+          return row ? [row] : [];
+        }),
+        orm: { public: { Product: prismaMock.product } },
+      })),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -122,6 +133,11 @@ describe('ProductsService', () => {
   });
 
   describe('updateStock', () => {
+    it.each([-1, 0.5, NaN, Infinity, 2147483648])('rejects invalid stock %s even without an HTTP pipe', async (stock) => {
+      await expect(service.updateStock('prod-1', { stock })).rejects.toThrow(BadRequestException);
+      expect(prismaMock.client.transaction).not.toHaveBeenCalled();
+      expect(prismaMock.product.update).not.toHaveBeenCalled();
+    });
     it('debe actualizar el stock de un producto existente', async () => {
       const mockProduct = { id: 'prod-1', name: 'Laptop', price: 750, stock: 10 };
       const updatedProduct = { ...mockProduct, stock: 25 };
@@ -133,6 +149,7 @@ describe('ProductsService', () => {
 
       expect(prismaMock.product.where).toHaveBeenCalledWith({ id: 'prod-1' });
       expect(prismaMock.product.update).toHaveBeenCalledWith({ stock: 25 });
+      if (result === null) throw new Error('Expected the updated product to exist');
       expect(result.stock).toBe(25);
     });
 

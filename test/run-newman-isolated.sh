@@ -33,6 +33,7 @@ fi
 
 unset baseUrl
 unset BASE_URL
+export DOTENV_CONFIG_PATH=/dev/null
 
 OWNER_NONCE="$(node -e 'console.log(require("crypto").randomUUID())')"
 CONTAINER_ID=""
@@ -44,30 +45,48 @@ RUNNER_EXIT_CODE=0
 # shellcheck disable=SC2317,SC2329
 cleanup() {
   local status=$?
+  local cleanup_failed=0
+  local owner_label inspect_output inspect_status
   set +e
   if [[ -n "${BACKEND_PID:-}" ]] && kill -0 "$BACKEND_PID" 2>/dev/null; then
     kill -TERM "$BACKEND_PID" 2>/dev/null || true
     wait "$BACKEND_PID" 2>/dev/null || true
   fi
   if [[ -n "${CONTAINER_ID:-}" ]]; then
-    if [[ "$(docker inspect -f '{{ index .Config.Labels "delivery.issue6.owner" }}' "$CONTAINER_ID" 2>/dev/null)" == "$OWNER_NONCE" ]]; then
-      docker rm -f "$CONTAINER_ID" >/dev/null 2>&1 || true
-      if docker inspect "$CONTAINER_ID" >/dev/null 2>&1; then
+    owner_label=$(docker inspect -f '{{ index .Config.Labels "delivery.issue6.owner" }}' "$CONTAINER_ID" 2>/dev/null)
+    inspect_status=$?
+    if [[ $inspect_status -eq 0 && "$owner_label" == "$OWNER_NONCE" ]]; then
+      printf 'Owned container verified: container=%s owner=%s\n' "$CONTAINER_ID" "$OWNER_NONCE"
+      if ! docker rm -f "$CONTAINER_ID" >/dev/null 2>&1; then
+        echo "Error: Owned container removal failed." >&2
+        cleanup_failed=1
+      fi
+      # Only Docker's exact not-found response for this owned ID proves absence.
+      # Daemon outages, permissions, successful inspection and other errors fail closed.
+      inspect_output=$(LC_ALL=C docker inspect -f '{{.Id}}' "$CONTAINER_ID" 2>&1)
+      inspect_status=$?
+      # Docker 29.9 emits one stdout LF followed by lowercase stderr; GitHub Actions
+      # and newer Docker CLIs emit one stdout LF followed by capitalized stderr;
+      # older Docker emits only the capitalized stderr. Command substitution removes
+      # trailing LFs, but preserves that leading stdout LF. No generic matching.
+      if [[ $inspect_status -ne 1 || ( "$inspect_output" != "Error: No such object: $CONTAINER_ID" && "$inspect_output" != $'\n'"Error: No such object: $CONTAINER_ID" && "$inspect_output" != $'\n'"error: no such object: $CONTAINER_ID" ) ]]; then
         echo "Error: Owned container cleanup was not confirmed." >&2
-        RUNNER_EXIT_CODE=1
+        printf 'Cleanup inspect: container=%s status=%s output=%q\n' "$CONTAINER_ID" "$inspect_status" "${inspect_output:0:512}" >&2
+        cleanup_failed=1
       fi
     else
       echo "Error: Refusing cleanup without exact container ownership." >&2
-      RUNNER_EXIT_CODE=1
+      cleanup_failed=1
     fi
   fi
-  if [[ -n "${BACKEND_LOG:-}" && -f "$BACKEND_LOG" ]]; then
-    rm -f "$BACKEND_LOG" >/dev/null 2>&1 || true
+  # Cleanup failure must not replace the original command or signal failure.
+  if [[ $status -ne 0 ]]; then
+    exit "$status"
   fi
   if [[ $RUNNER_EXIT_CODE -ne 0 ]]; then
     exit "$RUNNER_EXIT_CODE"
   fi
-  exit "$status"
+  exit "$cleanup_failed"
 }
 
 # Invoked indirectly via signal traps (INT, TERM, HUP); https://www.shellcheck.net/wiki/SC2329
@@ -94,11 +113,13 @@ CONTAINER_ID=$(docker run -d --rm --pull=never \
   --label "delivery.issue6.owner=$OWNER_NONCE" \
   --name "$CONTAINER_NAME" \
   --pull=never \
+  --tmpfs /var/lib/postgresql/data:rw \
   -p 127.0.0.1::5432 \
   -e POSTGRES_USER="$PG_USER" \
   -e POSTGRES_PASSWORD="$PG_PASS" \
   -e POSTGRES_DB="$PG_DB" \
   postgres:16-alpine)
+printf 'Owned container created: container=%s owner=%s\n' "$CONTAINER_ID" "$OWNER_NONCE"
 
 # Extract published loopback port
 PORT_MAPPING=$(docker port "$CONTAINER_ID" 5432/tcp | head -n 1)
@@ -148,9 +169,10 @@ fi
 APP_PORT=$(node -e 'const net = require("net"); const s = net.createServer(); s.listen(0, "127.0.0.1", () => { console.log(s.address().port); s.close(); });')
 
 # 7. Launch dedicated backend process with explicit isolated env
-JWT_SECRET="isolated-runner-jwt-secret-do-not-use-in-production"
+JWT_SECRET="$(node -e 'console.log(require("crypto").randomUUID())')"
 JWT_EXPIRES_IN="1d"
-BACKEND_LOG=$(mktemp -t backend-isolated-XXXXXX.log)
+mkdir -p reports/newman
+BACKEND_LOG="reports/newman/backend-${OWNER_NONCE}.log"
 
 # Ensure dist is up-to-date
 pnpm build >/dev/null 2>&1
@@ -199,9 +221,5 @@ pnpm exec newman run delivery-api.postman_collection.json \
   "${NEWMAN_ARGS[@]}"
 RUNNER_EXIT_CODE=$?
 set -e
-
-if [[ -f "$BACKEND_LOG" ]]; then
-  rm -f "$BACKEND_LOG"
-fi
 
 exit "$RUNNER_EXIT_CODE"

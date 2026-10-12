@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'15ef5b17c1444e1f37222de1c696766119c6c4494633f6c5fcb256dee13cba83'>;
+  StorageHashBase<'e357d1aa2fdc74464e729ec7cd8bb087b979a13b22e0f88aa005b60be4c16427'>;
 export type ExecutionHash =
   ExecutionHashBase<'879fc99dc8539ad849ead59f382673a10513c12c2311b14e0cbb9c65efa8d4f7'>;
 export type ProfileHash =
@@ -278,7 +278,13 @@ export type FieldOutputTypes = {
     };
     readonly Order: {
       readonly id: CodecTypes['pg/text@1']['output'];
-      readonly userId: CodecTypes['pg/text@1']['output'];
+      readonly userId: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdById: CodecTypes['pg/text@1']['output'] | null;
+      readonly recipientType: 'REGISTERED_CLIENT' | 'GUEST' | null;
+      readonly recipientName: CodecTypes['pg/text@1']['output'] | null;
+      readonly recipientPhone: CodecTypes['pg/text@1']['output'] | null;
+      readonly deliveryWindowStart: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly deliveryWindowEnd: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly zoneId: CodecTypes['pg/text@1']['output'];
       readonly routeId: CodecTypes['pg/text@1']['output'] | null;
       readonly status: 'PENDING' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
@@ -392,7 +398,13 @@ export type FieldInputTypes = {
     };
     readonly Order: {
       readonly id: CodecTypes['pg/text@1']['input'];
-      readonly userId: CodecTypes['pg/text@1']['input'];
+      readonly userId: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdById: CodecTypes['pg/text@1']['input'] | null;
+      readonly recipientType: 'REGISTERED_CLIENT' | 'GUEST' | null;
+      readonly recipientName: CodecTypes['pg/text@1']['input'] | null;
+      readonly recipientPhone: CodecTypes['pg/text@1']['input'] | null;
+      readonly deliveryWindowStart: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly deliveryWindowEnd: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly zoneId: CodecTypes['pg/text@1']['input'];
       readonly routeId: CodecTypes['pg/text@1']['input'] | null;
       readonly status: 'PENDING' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
@@ -506,17 +518,23 @@ export type StorageColumnTypes = {
     };
     readonly order: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly createdById: CodecTypes['pg/text@1']['output'] | null;
       readonly deliveryAddress: CodecTypes['pg/text@1']['output'];
       readonly deliveryLat: CodecTypes['pg/float8@1']['output'] | null;
       readonly deliveryLng: CodecTypes['pg/float8@1']['output'] | null;
+      readonly deliveryWindowEnd: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly deliveryWindowStart: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly id: CodecTypes['pg/text@1']['output'];
+      readonly recipientName: CodecTypes['pg/text@1']['output'] | null;
+      readonly recipientPhone: CodecTypes['pg/text@1']['output'] | null;
+      readonly recipientType: 'REGISTERED_CLIENT' | 'GUEST' | null;
       readonly requiresAdministrativeReview: CodecTypes['pg/bool@1']['output'];
       readonly routeId: CodecTypes['pg/text@1']['output'] | null;
       readonly scheduledDeliveryDate: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly status: 'PENDING' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
       readonly stopOrder: CodecTypes['pg/int4@1']['output'] | null;
       readonly total: CodecTypes['pg/float8@1']['output'];
-      readonly userId: CodecTypes['pg/text@1']['output'];
+      readonly userId: CodecTypes['pg/text@1']['output'] | null;
       readonly zoneId: CodecTypes['pg/text@1']['output'];
     };
     readonly orderClaim: {
@@ -620,17 +638,23 @@ export type StorageColumnInputTypes = {
     };
     readonly order: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly createdById: CodecTypes['pg/text@1']['input'] | null;
       readonly deliveryAddress: CodecTypes['pg/text@1']['input'];
       readonly deliveryLat: CodecTypes['pg/float8@1']['input'] | null;
       readonly deliveryLng: CodecTypes['pg/float8@1']['input'] | null;
+      readonly deliveryWindowEnd: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly deliveryWindowStart: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly id: CodecTypes['pg/text@1']['input'];
+      readonly recipientName: CodecTypes['pg/text@1']['input'] | null;
+      readonly recipientPhone: CodecTypes['pg/text@1']['input'] | null;
+      readonly recipientType: 'REGISTERED_CLIENT' | 'GUEST' | null;
       readonly requiresAdministrativeReview: CodecTypes['pg/bool@1']['input'];
       readonly routeId: CodecTypes['pg/text@1']['input'] | null;
       readonly scheduledDeliveryDate: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly status: 'PENDING' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
       readonly stopOrder: CodecTypes['pg/int4@1']['input'] | null;
       readonly total: CodecTypes['pg/float8@1']['input'];
-      readonly userId: CodecTypes['pg/text@1']['input'];
+      readonly userId: CodecTypes['pg/text@1']['input'] | null;
       readonly zoneId: CodecTypes['pg/text@1']['input'];
     };
     readonly orderClaim: {
@@ -705,9 +729,10 @@ export namespace Models {
     password: CodecTypes['pg/text@1']['output'];
     role: 'ADMIN' | 'CLIENT' | 'DRIVER';
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    createdOrders: public_Order[];
     driver: public_Driver | null;
     orders: public_Order[];
-    readonly [RelationKeys]?: 'driver' | 'orders';
+    readonly [RelationKeys]?: 'createdOrders' | 'driver' | 'orders';
   };
   export type public_Driver = {
     id: CodecTypes['pg/text@1']['output'];
@@ -764,7 +789,13 @@ export namespace Models {
   };
   export type public_Order = {
     id: CodecTypes['pg/text@1']['output'];
-    userId: CodecTypes['pg/text@1']['output'];
+    userId: CodecTypes['pg/text@1']['output'] | null;
+    createdById: CodecTypes['pg/text@1']['output'] | null;
+    recipientType: 'REGISTERED_CLIENT' | 'GUEST' | null;
+    recipientName: CodecTypes['pg/text@1']['output'] | null;
+    recipientPhone: CodecTypes['pg/text@1']['output'] | null;
+    deliveryWindowStart: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    deliveryWindowEnd: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
     zoneId: CodecTypes['pg/text@1']['output'];
     routeId: CodecTypes['pg/text@1']['output'] | null;
     status: 'PENDING' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
@@ -776,11 +807,12 @@ export namespace Models {
     deliveryLng: CodecTypes['pg/float8@1']['output'] | null;
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     requiresAdministrativeReview: CodecTypes['pg/bool@1']['output'];
+    createdBy: public_User | null;
     items: public_OrderItem[];
     route: public_Route | null;
-    user: public_User;
+    user: public_User | null;
     zone: public_Zone;
-    readonly [RelationKeys]?: 'items' | 'route' | 'user' | 'zone';
+    readonly [RelationKeys]?: 'createdBy' | 'items' | 'route' | 'user' | 'zone';
   };
   export type public_OrderItem = {
     id: CodecTypes['pg/text@1']['output'];
@@ -1211,7 +1243,37 @@ type ContractBase = Omit<
                 readonly userId: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
-                  readonly nullable: false;
+                  readonly nullable: true;
+                };
+                readonly createdById: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly recipientType: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly recipientName: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly recipientPhone: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly deliveryWindowStart: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
+                readonly deliveryWindowEnd: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
                 };
                 readonly zoneId: {
                   readonly nativeType: 'text';
@@ -1292,6 +1354,24 @@ type ContractBase = Omit<
                   readonly unique: false;
                 },
                 {
+                  readonly name: 'order_createdById_idx_8bf640ed';
+                  readonly prefix: 'order_createdById_idx';
+                  readonly columns: readonly ['createdById'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'order_scheduledDeliveryDate_idx_f9ab4656';
+                  readonly prefix: 'order_scheduledDeliveryDate_idx';
+                  readonly columns: readonly ['scheduledDeliveryDate'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'order_zoneId_status_scheduledDeliveryDate_idx_2a0dd38d';
+                  readonly prefix: 'order_zoneId_status_scheduledDeliveryDate_idx';
+                  readonly columns: readonly ['zoneId', 'status', 'scheduledDeliveryDate'];
+                  readonly unique: false;
+                },
+                {
                   readonly name: 'order_zoneId_idx_1b631e86';
                   readonly prefix: 'order_zoneId_idx';
                   readonly columns: readonly ['zoneId'];
@@ -1310,6 +1390,18 @@ type ContractBase = Omit<
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'order';
                     readonly columns: readonly ['userId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'order';
+                    readonly columns: readonly ['createdById'];
                   };
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
@@ -1895,6 +1987,10 @@ type ContractBase = Omit<
                 'CANCELLED',
               ];
             };
+            readonly RecipientType: {
+              readonly kind: 'valueSet';
+              readonly values: readonly ['REGISTERED_CLIENT', 'GUEST'];
+            };
             readonly Role: {
               readonly kind: 'valueSet';
               readonly values: readonly ['ADMIN', 'CLIENT', 'DRIVER'];
@@ -2240,8 +2336,38 @@ type ContractBase = Omit<
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
               readonly userId: {
-                readonly nullable: false;
+                readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdById: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly recipientType: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly recipientName: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly recipientPhone: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly deliveryWindowStart: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly deliveryWindowEnd: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
               };
               readonly zoneId: {
                 readonly nullable: false;
@@ -2295,6 +2421,15 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly createdBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['createdById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
               readonly items: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -2321,7 +2456,7 @@ type ContractBase = Omit<
               readonly user: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
-                readonly nullable: false;
+                readonly nullable: true;
                 readonly on: {
                   readonly localFields: readonly ['userId'];
                   readonly targetFields: readonly ['id'];
@@ -2343,6 +2478,12 @@ type ContractBase = Omit<
               readonly fields: {
                 readonly id: { readonly column: 'id' };
                 readonly userId: { readonly column: 'userId' };
+                readonly createdById: { readonly column: 'createdById' };
+                readonly recipientType: { readonly column: 'recipientType' };
+                readonly recipientName: { readonly column: 'recipientName' };
+                readonly recipientPhone: { readonly column: 'recipientPhone' };
+                readonly deliveryWindowStart: { readonly column: 'deliveryWindowStart' };
+                readonly deliveryWindowEnd: { readonly column: 'deliveryWindowEnd' };
                 readonly zoneId: { readonly column: 'zoneId' };
                 readonly routeId: { readonly column: 'routeId' };
                 readonly status: { readonly column: 'status' };
@@ -2794,6 +2935,17 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly createdOrders: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Order';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['createdById'];
+                };
+              };
               readonly driver: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -2906,6 +3058,13 @@ type ContractBase = Omit<
               { readonly name: 'ADMIN'; readonly value: 'ADMIN' },
               { readonly name: 'CLIENT'; readonly value: 'CLIENT' },
               { readonly name: 'DRIVER'; readonly value: 'DRIVER' },
+            ];
+          };
+          readonly RecipientType: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'REGISTERED_CLIENT'; readonly value: 'REGISTERED_CLIENT' },
+              { readonly name: 'GUEST'; readonly value: 'GUEST' },
             ];
           };
           readonly OrderStatus: {

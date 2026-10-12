@@ -27,14 +27,21 @@ describe('CI Workflow Configuration & Security Contract', () => {
   });
 
   it('includes shell syntax (bash -n) and shellcheck validation in CI', () => {
-    expect(workflowContent).toMatch(/bash\s+-n/);
-    expect(workflowContent).toMatch(/shellcheck/);
+    expect(workflowContent).toContain(
+      'bash -n test/run-newman-isolated.sh test/run-e2e-isolated.sh',
+    );
+    expect(workflowContent).toContain(
+      'shellcheck test/run-newman-isolated.sh test/run-e2e-isolated.sh',
+    );
   });
 
-  it('executes E2E PostgreSQL test suite with --runInBand before Newman', () => {
-    expect(workflowContent).toMatch(/test:e2e.*--runInBand/);
+  it('executes the complete isolated E2E manifest before build and Newman', () => {
+    expect(workflowContent).toContain(
+      'run: env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm run test:e2e:isolated',
+    );
+    expect(workflowContent).not.toMatch(/pnpm run test:e2e(?:\s|$)/m);
 
-    const e2eIndex = workflowContent.indexOf('test:e2e');
+    const e2eIndex = workflowContent.indexOf('test:e2e:isolated');
     const buildIndex = workflowContent.indexOf(
       'Compilar backend para pruebas de API',
     );
@@ -49,29 +56,41 @@ describe('CI Workflow Configuration & Security Contract', () => {
     );
   });
 
-  it('uses the same run-attempt-unique loopback database for PostgreSQL health and E2E', () => {
-    const database = 'issue6_ci_${{ github.run_id }}_${{ github.run_attempt }}';
-    const apiJob = workflowContent.slice(
-      workflowContent.indexOf('  api-tests:'),
+  it('delegates all 18 suites to owned runners without a shared CI database or JWT', () => {
+    expect(workflowContent).not.toMatch(/^\s*(services|DATABASE_URL|JWT_SECRET|POSTGRES_DB):/m);
+    expect(workflowContent).not.toContain('secrets.');
+    expect(workflowContent).toContain('run: docker pull postgres:16-alpine');
+    const packageJson: { scripts: Record<string, string> } = JSON.parse(
+      fs.readFileSync(path.resolve(process.cwd(), 'package.json'), 'utf8'),
     );
-    const databaseName = apiJob.match(/^\s+POSTGRES_DB:\s*(.+)$/m)?.[1];
-    const healthDatabase = apiJob.match(
-      /--health-cmd "pg_isready -U logistica_user -d ([^"]+)"/,
-    )?.[1];
-    const databaseUrl = apiJob.match(/^\s+DATABASE_URL:\s*(.+)$/m)?.[1];
-
-    expect(databaseName).toBe(database);
-    expect(healthDatabase).toBe(databaseName);
-    expect(databaseUrl).toBe(
-      `postgresql://logistica_user:logistica_password123@127.0.0.1:5432/${database}?schema=public`,
-    );
-    expect(apiJob).toContain('JWT_SECRET: ci_only_jwt_secret');
-    expect(apiJob).not.toContain('secrets.');
+    expect(packageJson.scripts['test:e2e:isolated']).toBe('bash test/run-e2e-isolated.sh');
+    expect(packageJson.scripts['test:api:report']).toBe('./test/run-newman-isolated.sh --report');
+    const shell = fs.readFileSync(path.resolve(process.cwd(), 'test/run-e2e-isolated.sh'), 'utf8');
+    expect(shell).toContain('exec node test/run-e2e-isolated.mjs "$@"');
+    const runner = fs.readFileSync(path.resolve(process.cwd(), 'test/run-e2e-isolated.mjs'), 'utf8');
+    expect(fs.readdirSync(path.resolve(process.cwd(), 'test')).filter(
+      (file) => file.endsWith('.e2e-spec.ts'),
+    )).toHaveLength(18);
+    expect(runner).toContain("const jest = ['run', 'test:e2e', '--runInBand'];");
+    expect(runner).toContain("[...jest, '--listTests', '--json']");
+    expect(runner).toContain("[...jest, '--runTestsByPath', ...managed], { env: clean }");
+    expect(runner).toContain("delete clean.DATABASE_URL;");
+    expect(runner).toContain("delete clean.JWT_SECRET;");
+    expect(runner).toContain("DOTENV_CONFIG_PATH: '/dev/null'");
+    expect(runner).toContain("throw new Error('Refusing ambient DATABASE_URL')");
+    expect(runner).toContain("const legacyNames = ['app.e2e-spec.ts', 'orders-security.e2e-spec.ts', 'drivers-routes-security.e2e-spec.ts'];");
+    expect(runner).toContain("'--tmpfs', '/var/lib/postgresql/data:rw', '-p', '127.0.0.1::5432'");
+    expect(runner).toContain('`delivery.issue11.owner=${nonce}`');
+    expect(runner).toContain("owned.set(db, url)");
+    expect(runner).toContain('DATABASE_URL: owned.get(db), JWT_SECRET: randomUUID()');
+    expect(runner).toContain("['prisma', 'db', 'migrate', '--db', owned.get(db), '--to', target]");
+    expect(runner).toContain("['prisma', 'db', 'verify', '--db', owned.get(db)]");
+    expect(runner).toContain("[...jest, '--runTestsByPath', file], { env: childEnv, interruptible: true }");
   });
 
   it('unsets DATABASE_URL when invoking isolated Newman runner to prevent external DB collision', () => {
     expect(workflowContent).toMatch(
-      /env\s+-u\s+DATABASE_URL\s+pnpm\s+run\s+test:api:report/,
+      /^\s*run: env -u DATABASE_URL DOTENV_CONFIG_PATH=\/dev\/null pnpm run test:api:report\s*$/m,
     );
   });
 

@@ -42,7 +42,8 @@ describe('Confirmed draft and assignment: owned PostgreSQL16 and real JWT', () =
     request(app.getHttpServer())
       .post(`/api/v1/routes${path}`)
       .auth(token(sub), { type: 'bearer' })
-      .send(body);
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify(body));
   const draft = (orderIds = ['one']) =>
     post('', { zoneId: 'zone', orderIds, routeDate: PROPOSAL_DATE });
   const assign = (id: string) => post(`/${id}/assign`, { driverId: 'driver' });
@@ -199,6 +200,9 @@ describe('Confirmed draft and assignment: owned PostgreSQL16 and real JWT', () =
   it.each([null, 'IN_PROGRESS', 'COMPLETED'])(
     'rejects driver hold %s despite true availability',
     async (status) => {
+      if (status !== null && status !== 'IN_PROGRESS' && status !== 'COMPLETED') {
+        throw new Error(`Unexpected driver hold status: ${status}`);
+      }
       const result = await draft().expect(201);
       const busyRouteId = randomUUID();
       await db.transaction(async (tx) => {
@@ -469,7 +473,11 @@ describe('Confirmed draft and assignment: owned PostgreSQL16 and real JWT', () =
       release = resolve;
     });
     const holder = db.transaction(async (tx) => {
-      await tx.orm.public[model].where({ id }).update({ id });
+      if (model === 'Driver') {
+        await tx.orm.public.Driver.where({ id }).update({ id });
+      } else {
+        await tx.orm.public.Order.where({ id }).update({ id });
+      }
       signal();
       await barrier;
     });

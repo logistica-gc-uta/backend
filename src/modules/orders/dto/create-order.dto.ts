@@ -8,13 +8,14 @@ import {
   IsInt,
   IsNotEmpty,
   IsNumber,
-  IsOptional,
   IsString,
   Max,
+  Matches,
   Min,
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
+import { EXPLICIT_OFFSET } from '../order-delivery.util.js';
 
 export class OrderItemDto {
   @ApiProperty({ description: 'ID del producto a ordenar', example: 'cm789xyz123' })
@@ -43,11 +44,13 @@ export class CreateOrderDto {
   deliveryAddress!: string;
 
   @ApiPropertyOptional({
-    description: 'Fecha y hora programada para la entrega en formato ISO 8601',
-    example: '2026-09-25T14:30:00.000Z',
+    description: 'Instante futuro de entrega ISO 8601 con offset explícito; omitir si no hay fecha acordada',
+    format: 'date-time',
+    example: '2030-09-25T14:30:00.000Z',
   })
-  @IsOptional()
-  @IsISO8601({}, { message: 'La fecha programada debe tener un formato ISO 8601 válido' })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsISO8601({ strict: true }, { message: 'La fecha programada debe tener un formato ISO 8601 válido' })
+  @Matches(EXPLICIT_OFFSET)
   scheduledDeliveryDate?: string;
 
   @ApiPropertyOptional({

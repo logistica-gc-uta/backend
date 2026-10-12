@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -24,7 +25,10 @@ import { Role } from '../auth/dto/register.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
+import { CreateAdminOrderDto } from './dto/create-admin-order.dto.js';
+import { ListAdminOrdersDto } from './dto/list-admin-orders.dto.js';
 import {
+  AdminOrdersPageDto,
   OrderCreatedResponseDto,
   OrderResponseDto,
 } from './dto/order-response.dto.js';
@@ -62,6 +66,19 @@ export class OrdersController {
     return this.ordersService.createOrder(userId, dto);
   }
 
+  @Post('admin')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Create a delivery for a registered CLIENT or GUEST (ADMIN)' })
+  @ApiResponse({ status: 201, type: OrderCreatedResponseDto, description: 'Created with JWT creator and recipient snapshot' })
+  @ApiResponse({ status: 400, description: 'Invalid recipient, location, schedule/window or insufficient stock' })
+  @ApiResponse({ status: 401, description: 'JWT required' })
+  @ApiResponse({ status: 403, description: 'ADMIN role required' })
+  @ApiResponse({ status: 404, description: 'Registered client, zone or product not found' })
+  @HttpCode(HttpStatus.CREATED)
+  async createAdmin(@CurrentUser('userId') actorId: string, @Body() dto: CreateAdminOrderDto) {
+    return this.ordersService.createAdminOrder(actorId, dto);
+  }
+
   @Get('my-orders')
   @Roles(Role.CLIENT)
   @ApiOperation({
@@ -84,11 +101,14 @@ export class OrdersController {
   @ApiResponse({
     status: 200,
     description:
-      'Listado completo de pedidos con items, zona, cliente y preparación geográfica',
-    type: [OrderResponseDto],
+      'Paginated ADMIN envelope; scheduled Guayaquil date, zone and status filters; ascending scheduled date/id, NULL dates last',
+    type: AdminOrdersPageDto,
   })
-  async findAll() {
-    return this.ordersService.findAll();
+  @ApiResponse({ status: 400, description: 'Invalid filters or pagination bounds' })
+  @ApiResponse({ status: 401, description: 'JWT required' })
+  @ApiResponse({ status: 403, description: 'ADMIN role required' })
+  async findAll(@Query() dto: ListAdminOrdersDto = new ListAdminOrdersDto()) {
+    return this.ordersService.findAll(dto);
   }
 
   @Get(':id')

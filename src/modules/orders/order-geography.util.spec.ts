@@ -168,7 +168,10 @@ describe('order-geography.util', () => {
       const enriched = enrichOrderWithGeography(order);
       expect(enriched.deliveryLocation).toEqual({ lat: -1.25, lng: -78.62 });
       expect(enriched.planningEligibility.eligible).toBe(true);
-      expect(enriched.zone?.depotLocation).toEqual({ lat: -1.24, lng: -78.61 });
+      expect(enriched.zone).toEqual({
+        ...order.zone,
+        depotLocation: { lat: -1.24, lng: -78.61 },
+      });
     });
   });
 });
