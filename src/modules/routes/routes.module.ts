@@ -9,10 +9,12 @@ import { AuthModule } from '../auth/auth.module.js';
 import { RoutesController } from './routes.controller.js';
 import { RouteExecutionService } from './route-execution.service.js';
 import { RoutesService } from './routes.service.js';
+import { RoutePlanningService } from './route-planning.service.js';
+import { RoutePlanningController } from './route-planning.controller.js';
 
 @Module({
   imports: [AuthModule],
-  controllers: [RoutesController],
+  controllers: [RoutesController, RoutePlanningController],
   providers: [
     RouteHistoryService,
     RouteAvailabilityService,
@@ -22,6 +24,7 @@ import { RoutesService } from './routes.service.js';
     RoutesService,
     RouteExecutionService,
     RouteProgressService,
+    RoutePlanningService,
   ],
   exports: [
     RouteAvailabilityService,
