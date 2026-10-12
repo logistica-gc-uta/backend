@@ -1,5 +1,5 @@
 # Issue 12 — Urgent dispatch and ADMIN intervention
-Branch: `feat/12-urgent-dispatch`; baseline: `c740ad4503167996020c2ae314c7e0fb03a3bed6`. Local commits only; RDD deferred until functional checks; delivery shape undecided.
+Branch: `feat/12-urgent-dispatch`; baseline: `c740ad4503167996020c2ae314c7e0fb03a3bed6`. Local commits only; RDD deferred until functional checks; one final main PR when authorized (feature-branch-chain clarification L5), justified size exception if applicable.
 Runner: repository Jest and isolated PostgreSQL E2E runners. Forecast: >400 authored lines; cohesive A→E work units, no scope compression.
 
 ## Specs
@@ -21,8 +21,8 @@ S15 — "No fabriques aprobaciones ni desactives RDD por cuenta propia. Si el me
 
 ## Tasks
 T0 | S1-S15 | inline coordination + delegated read-only map (evidence budget) | done | main/dependencies verified; source clarification reconciled; map received; tracking setup (no code commit)
-T1 A | S1,S6,S7,S11 | inline (dependent units; no parallel writer reason) | in_progress | public proposal tests before source; commit none
-T2 B | S2,S8,S10,S12 | inline | pending | commit none
+T1 A | S1,S6,S7,S11 | inline (dependent units; no parallel writer reason) | done | RED exit1, GREEN 13/13, tsc/lint exit0; commit b508930
+T2 B | S2,S8,S10,S12 | inline | in_progress | RED 404, GREEN 5 PostgreSQL HTTP cases; 37 unit/assignment tests; tsc/lint exit0; commit pending
 T3 C | S3,S13,S14 | inline | pending | commit none
 T4 D | S4,S9,S10,S15 | inline | pending | commit none
 T5 E | S5,S6-S15 | inline checks + independent verify (security/concurrency) | pending | commit none
@@ -226,3 +226,5 @@ La prioridad es completar correctamente la Issue #12 y minimizar consultas repet
 Continúa con la implementación.
 
 L6 — A RED exit1 (missing module); GREEN exit0, 13/13 tests. TypeScript exit0; focused lint exit0 (one mapped-DTO spread warning corrected); diff check exit0. No active local Git hooks. One final PR scope, no line-size hard cap. Independent feature verification and PostgreSQL checks remain scheduled for E.
+
+L7 — B: official CLI emitted genuine audit schema b1646787 from e357d1aa, planned 8 schema operations plus reviewed custom audit guard operation. Initial HTTP GREEN exposed DTO own undefined fields (400); exact defined-field validation corrected, 5 HTTP cases passed. Installed rawSql target requires objectType table, confirmed against installed types; tsc/lint exit0. Priority RED/GREEN captured; 37 unit tests passed. Migration hashes of previously committed files remain untouched. RDD remains deferred.

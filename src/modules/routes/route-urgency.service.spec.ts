@@ -27,6 +27,7 @@ describe('Urgency proposals (CP-RUT-003/004/008/009)', () => {
       Driver: [{ id: 'driver', userId: 'driver-user' }],
       User: [{ id: 'driver-user', role: 'DRIVER' }],
       DeliveryAttempt: [],
+      DispatchIntervention: [],
     };
     writes = jest.fn(() => {
       throw new Error('Read-only proposal wrote data');
@@ -154,6 +155,22 @@ describe('Urgency proposals (CP-RUT-003/004/008/009)', () => {
     expect((await service.propose('urgent')).reasons).toContain(
       'ACTIVE_ROUTE_CLAIM',
     );
+  });
+  it('prioritizes explicitly audited orders without changing commercial state', async () => {
+    rows.Order!.push(order('priority'));
+    rows.DispatchIntervention!.push({
+      orderId: 'priority',
+      action: 'PRIORITIZE',
+      outcome: 'APPLIED',
+      recordedAt: instant(),
+    });
+    const result = await service.inbox();
+    expect(result.urgencies.map((p) => p.orderId)).toEqual([
+      'priority',
+      'urgent',
+    ]);
+    expect(rows.Order!.map((o) => o.status)).toEqual(['PENDING', 'PENDING']);
+    expect(writes).not.toHaveBeenCalled();
   });
   it('filters today in Guayaquil and does not expose recipient/attempt context', async () => {
     rows.Order!.push(

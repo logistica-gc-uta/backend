@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'e357d1aa2fdc74464e729ec7cd8bb087b979a13b22e0f88aa005b60be4c16427'>;
+  StorageHashBase<'b16467870b997eae482ffea8ef54bb526ddf4a16a3c587c2fc02a9db06d962c2'>;
 export type ExecutionHash =
-  ExecutionHashBase<'879fc99dc8539ad849ead59f382673a10513c12c2311b14e0cbb9c65efa8d4f7'>;
+  ExecutionHashBase<'1ac42ce6b6e27434bbbc88106a10133062703cec38478d62b368698ffeff898e'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -253,6 +253,19 @@ export type FieldOutputTypes = {
       readonly idempotencyKey: CodecTypes['pg/text@1']['output'];
       readonly requestPayload: CodecTypes['pg/json@1']['output'];
     };
+    readonly DispatchIntervention: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly requestId: CodecTypes['pg/text@1']['output'];
+      readonly actorId: CodecTypes['pg/text@1']['output'];
+      readonly orderId: CodecTypes['pg/text@1']['output'] | null;
+      readonly routeId: CodecTypes['pg/text@1']['output'] | null;
+      readonly action: CodecTypes['pg/text@1']['output'];
+      readonly reason: CodecTypes['pg/text@1']['output'];
+      readonly outcome: CodecTypes['pg/text@1']['output'];
+      readonly recordedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly payload: CodecTypes['pg/json@1']['output'];
+      readonly result: CodecTypes['pg/json@1']['output'];
+    };
     readonly Driver: {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'];
@@ -372,6 +385,19 @@ export type FieldInputTypes = {
       readonly context: CodecTypes['pg/json@1']['input'];
       readonly idempotencyKey: CodecTypes['pg/text@1']['input'];
       readonly requestPayload: CodecTypes['pg/json@1']['input'];
+    };
+    readonly DispatchIntervention: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly requestId: CodecTypes['pg/text@1']['input'];
+      readonly actorId: CodecTypes['pg/text@1']['input'];
+      readonly orderId: CodecTypes['pg/text@1']['input'] | null;
+      readonly routeId: CodecTypes['pg/text@1']['input'] | null;
+      readonly action: CodecTypes['pg/text@1']['input'];
+      readonly reason: CodecTypes['pg/text@1']['input'];
+      readonly outcome: CodecTypes['pg/text@1']['input'];
+      readonly recordedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly payload: CodecTypes['pg/json@1']['input'];
+      readonly result: CodecTypes['pg/json@1']['input'];
     };
     readonly Driver: {
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -493,6 +519,19 @@ export type StorageColumnTypes = {
       readonly requestPayload: CodecTypes['pg/json@1']['output'];
       readonly stopId: CodecTypes['pg/text@1']['output'];
     };
+    readonly dispatchIntervention: {
+      readonly action: CodecTypes['pg/text@1']['output'];
+      readonly actorId: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly orderId: CodecTypes['pg/text@1']['output'] | null;
+      readonly outcome: CodecTypes['pg/text@1']['output'];
+      readonly payload: CodecTypes['pg/json@1']['output'];
+      readonly reason: CodecTypes['pg/text@1']['output'];
+      readonly recordedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly requestId: CodecTypes['pg/text@1']['output'];
+      readonly result: CodecTypes['pg/json@1']['output'];
+      readonly routeId: CodecTypes['pg/text@1']['output'] | null;
+    };
     readonly driver: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -612,6 +651,19 @@ export type StorageColumnInputTypes = {
       readonly recordedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly requestPayload: CodecTypes['pg/json@1']['input'];
       readonly stopId: CodecTypes['pg/text@1']['input'];
+    };
+    readonly dispatchIntervention: {
+      readonly action: CodecTypes['pg/text@1']['input'];
+      readonly actorId: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly orderId: CodecTypes['pg/text@1']['input'] | null;
+      readonly outcome: CodecTypes['pg/text@1']['input'];
+      readonly payload: CodecTypes['pg/json@1']['input'];
+      readonly reason: CodecTypes['pg/text@1']['input'];
+      readonly recordedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly requestId: CodecTypes['pg/text@1']['input'];
+      readonly result: CodecTypes['pg/json@1']['input'];
+      readonly routeId: CodecTypes['pg/text@1']['input'] | null;
     };
     readonly driver: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
@@ -882,6 +934,23 @@ export namespace Models {
     route: public_Route;
     readonly [RelationKeys]?: 'administrator' | 'route';
   };
+  export type public_DispatchIntervention = {
+    id: CodecTypes['pg/text@1']['output'];
+    requestId: CodecTypes['pg/text@1']['output'];
+    actorId: CodecTypes['pg/text@1']['output'];
+    orderId: CodecTypes['pg/text@1']['output'] | null;
+    routeId: CodecTypes['pg/text@1']['output'] | null;
+    action: CodecTypes['pg/text@1']['output'];
+    reason: CodecTypes['pg/text@1']['output'];
+    outcome: CodecTypes['pg/text@1']['output'];
+    recordedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    payload: CodecTypes['pg/json@1']['output'];
+    result: CodecTypes['pg/json@1']['output'];
+    actor: public_User;
+    order: public_Order | null;
+    route: public_Route | null;
+    readonly [RelationKeys]?: 'actor' | 'order' | 'route';
+  };
 }
 
 export declare const models: {
@@ -898,6 +967,7 @@ export declare const models: {
     OrderClaim: Models.public_OrderClaim;
     DriverReservation: Models.public_DriverReservation;
     LegacyRouteReconciliation: Models.public_LegacyRouteReconciliation;
+    DispatchIntervention: Models.public_DispatchIntervention;
   };
 };
 
@@ -1006,6 +1076,126 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'driver';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly dispatchIntervention: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly requestId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly actorId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly orderId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly routeId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly action: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly reason: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly outcome: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly recordedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly payload: {
+                  readonly nativeType: 'json';
+                  readonly codecId: 'pg/json@1';
+                  readonly nullable: false;
+                };
+                readonly result: {
+                  readonly nativeType: 'json';
+                  readonly codecId: 'pg/json@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['requestId'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'dispatchIntervention_orderId_idx_d284871b';
+                  readonly prefix: 'dispatchIntervention_orderId_idx';
+                  readonly columns: readonly ['orderId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'dispatchIntervention_routeId_idx_91ae2fd6';
+                  readonly prefix: 'dispatchIntervention_routeId_idx';
+                  readonly columns: readonly ['routeId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'dispatchIntervention_actorId_idx_a58f6b4b';
+                  readonly prefix: 'dispatchIntervention_actorId_idx';
+                  readonly columns: readonly ['actorId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'dispatchIntervention';
+                    readonly columns: readonly ['actorId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'dispatchIntervention';
+                    readonly columns: readonly ['orderId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'order';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'dispatchIntervention';
+                    readonly columns: readonly ['routeId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'route';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -2042,6 +2232,10 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'LegacyRouteReconciliation';
     };
+    readonly dispatchIntervention: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'DispatchIntervention';
+    };
   };
   readonly domain: {
     readonly namespaces: {
@@ -2128,6 +2322,109 @@ type ContractBase = Omit<
                 readonly context: { readonly column: 'context' };
                 readonly idempotencyKey: { readonly column: 'idempotencyKey' };
                 readonly requestPayload: { readonly column: 'requestPayload' };
+              };
+            };
+          };
+          readonly DispatchIntervention: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly requestId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly actorId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly orderId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly routeId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly action: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly reason: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly outcome: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly recordedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly payload: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
+              };
+              readonly result: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
+              };
+            };
+            readonly relations: {
+              readonly actor: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['actorId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly order: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Order';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['orderId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly route: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Route';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['routeId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'dispatchIntervention';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly requestId: { readonly column: 'requestId' };
+                readonly actorId: { readonly column: 'actorId' };
+                readonly orderId: { readonly column: 'orderId' };
+                readonly routeId: { readonly column: 'routeId' };
+                readonly action: { readonly column: 'action' };
+                readonly reason: { readonly column: 'reason' };
+                readonly outcome: { readonly column: 'outcome' };
+                readonly recordedAt: { readonly column: 'recordedAt' };
+                readonly payload: { readonly column: 'payload' };
+                readonly result: { readonly column: 'result' };
               };
             };
           };
@@ -3139,6 +3436,14 @@ type ContractBase = Omit<
           readonly ref: {
             readonly namespace: 'public';
             readonly table: 'deliveryAttempt';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'dispatchIntervention';
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };

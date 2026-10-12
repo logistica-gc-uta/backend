@@ -255,3 +255,25 @@ model LegacyRouteReconciliation {
   @@index([routeId], unique: true, name: "one_reconciliation_per_route")
   @@index([administratorId])
 }
+
+// Idempotent ADMIN decisions; no temporary proposal persistence.
+model DispatchIntervention {
+  id         String @id @default(uuid())
+  requestId  String @unique
+  actorId    String
+  actor      User @relation(fields: [actorId], references: [id])
+  orderId    String?
+  order      Order? @relation(fields: [orderId], references: [id])
+  routeId    String?
+  route      Route? @relation(fields: [routeId], references: [id])
+  action     String
+  reason     String
+  outcome    String
+  recordedAt DateTime @default(now())
+  payload    Json
+  result     Json
+
+  @@index([orderId])
+  @@index([routeId])
+  @@check(expression: "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500", name: "dispatch_audit_valid")
+}

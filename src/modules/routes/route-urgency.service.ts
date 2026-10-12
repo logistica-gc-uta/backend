@@ -259,6 +259,24 @@ export class RouteUrgencyService {
       }
       incidents.push({ orderId: order.id, routeId: order.routeId, attempts });
     }
+    const priorities = new Map<string, string>();
+    for (const a of await db.DispatchIntervention.where({
+      action: 'PRIORITIZE',
+      outcome: 'APPLIED',
+    }).all()) {
+      if (
+        a.orderId &&
+        (!priorities.has(a.orderId) ||
+          a.recordedAt.toString() > priorities.get(a.orderId)!)
+      )
+        priorities.set(a.orderId, a.recordedAt.toString());
+    }
+    urgencies.sort(
+      (a, b) =>
+        (priorities.get(b.orderId) ?? '').localeCompare(
+          priorities.get(a.orderId) ?? '',
+        ) || a.orderId.localeCompare(b.orderId),
+    );
     return { date, timeZone: 'America/Guayaquil', urgencies, incidents };
   }
 }

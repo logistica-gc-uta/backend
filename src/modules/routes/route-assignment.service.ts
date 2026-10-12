@@ -1,3 +1,5 @@
+import { evaluatePlanningEligibility } from '../orders/order-geography.util.js';
+import { canMutateRouteStructure } from './route-lifecycle.policy.js';
 import { AssignRouteDto } from './dto/assign-route.dto.js';
 import { RouteAvailabilityService } from './route-availability.service.js';
 import {
@@ -38,7 +40,8 @@ export class RouteAssignmentService {
     private readonly availability: RouteAvailabilityService,
   ) {}
 
-  private async transaction<T>(
+  // Internal composition boundary: callers must keep all decisions/audit in this callback.
+  async transaction<T>(
     actorId: string,
     fn: (tx: Transaction) => Promise<T>,
   ): Promise<T> {
@@ -135,7 +138,7 @@ export class RouteAssignmentService {
     }
   }
 
-  private validateOrderIds(orderIds: string[]): void {
+  validateOrderIds(orderIds: string[]): void {
     if (
       !Array.isArray(orderIds) ||
       orderIds.length < 1 ||
@@ -143,6 +146,78 @@ export class RouteAssignmentService {
       new Set(orderIds).size !== orderIds.length
     )
       throw new BadRequestException('One to four distinct orders required');
+  }
+
+  // Rebuild only verified pre-start stops, preserving their identities. Deletion
+  // avoids transient unique-sequence collisions; deferred coherence sees final state.
+  async replaceStops(tx: Transaction, routeId: string, orderIds: string[]) {
+    this.validateOrderIds(orderIds);
+    const route = await tx.orm.public.Route.where({ id: routeId }).update({
+      id: routeId,
+    });
+    if (!route) throw new NotFoundException('Route not found');
+    if (!canMutateRouteStructure(route.status as RouteStatus | null))
+      throw new ConflictException('Route structure is frozen');
+    const stops = await tx.orm.public.RouteStop.where({ routeId }).all();
+    if (stops.some((s) => s.isLegacy || s.outcome !== 'PENDING' || !s.sequence))
+      throw new ConflictException('Verified pending stops required');
+    for (const id of [...orderIds].sort()) {
+      const order = await tx.orm.public.Order.where({ id }).update({ id });
+      if (!order) throw new NotFoundException('Order not found');
+      const claim = await tx.orm.public.OrderClaim.where({
+        orderId: id,
+        releasedAt: null,
+      }).first();
+      const existing = stops.some((s) => s.orderId === id);
+      const eligible =
+        existing && route.status === 'ASSIGNED'
+          ? order.status === 'ASSIGNED' &&
+            order.routeId === routeId &&
+            !order.requiresAdministrativeReview
+          : isOrderPlanningEligible(
+              order.status as OrderStatus,
+              false,
+              order.requiresAdministrativeReview,
+            );
+      if (
+        !eligible ||
+        order.zoneId !== route.zoneId ||
+        !order.scheduledDeliveryDate ||
+        !isSameBusinessDay(order.scheduledDeliveryDate, route.date) ||
+        !evaluatePlanningEligibility(
+          order,
+          await tx.orm.public.Zone.where({ id: route.zoneId }).first(),
+        ).planningEligibility.eligible ||
+        (existing ? claim?.routeId !== routeId || !claim.claimedAt : !!claim)
+      )
+        throw new ConflictException(
+          'Route order eligibility, geography, date or claim conflict',
+        );
+    }
+    for (const stop of stops)
+      await tx.orm.public.RouteStop.where({ id: stop.id }).delete();
+    const claimedAt = nowInstant();
+    for (const [index, orderId] of orderIds.entries()) {
+      const previous = stops.find((s) => s.orderId === orderId);
+      await tx.orm.public.RouteStop.create({
+        ...(previous ? { id: previous.id } : {}),
+        routeId,
+        orderId,
+        sequence: index + 1,
+        outcome: 'PENDING',
+        isLegacy: false,
+        createdAt: previous?.createdAt ?? claimedAt,
+      });
+      if (!previous)
+        await tx.orm.public.OrderClaim.create({ routeId, orderId, claimedAt });
+      if (route.status === 'ASSIGNED')
+        await tx.orm.public.Order.where({ id: orderId }).update({
+          routeId,
+          status: 'ASSIGNED',
+          stopOrder: index + 1,
+        });
+    }
+    return route;
   }
 
   async assignLegacy(
@@ -205,7 +280,7 @@ export class RouteAssignmentService {
     );
   }
 
-  private async confirmInTransaction(
+  async confirmInTransaction(
     tx: Transaction,
     dto: ConfirmDraftRouteDto,
     date: Temporal.Instant,
@@ -248,7 +323,7 @@ export class RouteAssignmentService {
     );
   }
 
-  private async lockDriver(tx: Transaction, driverId: string) {
+  async lockDriver(tx: Transaction, driverId: string) {
     const initialDriver = await tx.orm.public.Driver.where({
       id: driverId,
     }).first();
@@ -262,7 +337,7 @@ export class RouteAssignmentService {
     return driver;
   }
 
-  private async assignInTransaction(
+  async assignInTransaction(
     tx: Transaction,
     id: string,
     dto: AssignDraftRouteDto,

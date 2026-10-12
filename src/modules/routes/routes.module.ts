@@ -1,3 +1,4 @@
+import { DispatchInterventionService } from './dispatch-intervention.service.js';
 import { DispatchController } from './dispatch.controller.js';
 import { RouteUrgencyService } from './route-urgency.service.js';
 import { RouteHistoryService } from './route-history.service.js';
@@ -18,6 +19,7 @@ import { RoutePlanningController } from './route-planning.controller.js';
   imports: [AuthModule],
   controllers: [RoutesController, RoutePlanningController, DispatchController],
   providers: [
+    DispatchInterventionService,
     RouteUrgencyService,
     RouteHistoryService,
     RouteAvailabilityService,
