@@ -27,7 +27,7 @@ export class RoutePlanningController {
     summary:
       'Propose routes with Clarke & Wright for a day (read-only; nothing is persisted)',
     description:
-      'Selects the PENDING, geographically ready orders scheduled on the given America/Guayaquil calendar day, groups them by zone and returns temporary proposals of at most four stops that start and end at the zone depot. Distances are straight-line (Haversine). Orders that cannot be planned are listed in `excluded` with their reasons. A proposal is confirmed as DRAFT with POST /routes (only when `confirmable`) and assigned with POST /routes/:id/assign.',
+      'Selects the PENDING, geographically ready orders scheduled on the given America/Guayaquil calendar day, groups them by zone and returns temporary proposals of at most four stops that start and end at the zone depot. Distances are straight-line (Haversine). Orders that cannot be planned are listed in `excluded` with their reasons. A proposal is confirmed as DRAFT with POST /routes (using its `zoneId`, `routeDate` and `orderIds`) and assigned with POST /routes/:id/assign.',
   })
   @ApiResponse({ status: 200, type: RouteProposalResponseDto })
   @ApiResponse({

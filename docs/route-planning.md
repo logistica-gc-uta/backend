@@ -53,15 +53,14 @@ La elegibilidad geográfica reutiliza `evaluatePlanningEligibility` (#9), por lo
 
 `distanceMethod = HAVERSINE_STRAIGHT_LINE`: la distancia es en **línea recta**, no por carretera. No modela tráfico, cierres de calles ni tiempos de viaje. `totalDistanceKm` es el recorrido ida y vuelta depósito → paradas → depósito, redondeado a 3 decimales.
 
-### ¿Se puede confirmar la propuesta? (`confirmable`)
+### Confirmación: mismo día de negocio
 
-El enunciado agrupa por **fecha** (la hora es solo aproximada), por eso la propuesta junta los pedidos de todo el día. Pero la confirmación actual (`POST /routes`) exige, como guarda temporal, que **todos los pedidos tengan exactamente el mismo instante programado** (ver [route-assignment.md](./route-assignment.md)). Para no esconder esa diferencia, cada propuesta informa:
+El enunciado agrupa por **fecha** (la hora es solo aproximada), por eso la propuesta junta los pedidos de todo el día `America/Guayaquil`, aunque estén programados a horas distintas. `POST /routes` acepta esa propuesta tal cual: exige que cada pedido esté programado dentro del **mismo día de negocio** que `routeDate` (ver [route-assignment.md](./route-assignment.md)).
 
-- `scheduledInstants`: instantes distintos de sus pedidos.
-- `confirmable`: `true` si hay un único instante.
-- `routeDate`: valor a enviar a `POST /routes` cuando es confirmable; `null` si no.
+- `scheduledInstants`: instantes distintos de los pedidos, en orden cronológico.
+- `routeDate`: el instante programado **más temprano** de la propuesta; es el valor a enviar a `POST /routes`. Cualquier instante de ese mismo día sería aceptado.
 
-Una propuesta no confirmable sigue siendo útil para que el administrador la revise, pero hoy no se puede persistir tal cual. Relajar la guarda a nivel de día requiere una decisión del equipo (#10/#12) y **no se cambia en este issue**.
+Los límites del día son la medianoche local de Guayaquil, no la UTC: `2026-10-11T04:59:59Z` es el 10 de octubre y `2026-10-11T05:00:00Z` es el 11.
 
 ## Ejemplo
 
@@ -89,7 +88,6 @@ Una propuesta no confirmable sigue siendo útil para que el administrador la rev
       ],
       "totalDistanceKm": 1.274,
       "scheduledInstants": ["2030-02-14T15:00:00Z"],
-      "confirmable": true,
       "routeDate": "2030-02-14T15:00:00Z"
     }
   ],
@@ -100,7 +98,7 @@ Una propuesta no confirmable sigue siendo útil para que el administrador la rev
 }
 ```
 
-Para confirmar una propuesta `confirmable`: `POST /api/v1/routes` con `{ "zoneId", "routeDate", "orderIds" }` tomados de la propuesta.
+Para confirmar una propuesta: `POST /api/v1/routes` con `{ "zoneId", "routeDate", "orderIds" }` tomados de la propuesta.
 
 ## Límite de tamaño
 
@@ -133,6 +131,5 @@ bash test/run-newman-isolated.sh --report
 
 ## Pendiente fuera de este issue
 
-- Relajar la guarda de igualdad exacta de instante de `POST /routes` (decisión #10/#12).
 - Distancia por carretera en lugar de línea recta (la función de distancia del algoritmo ya es inyectable).
 - Ventanas horarias (VRPTW) y reintento de pedidos fallidos (#12).
