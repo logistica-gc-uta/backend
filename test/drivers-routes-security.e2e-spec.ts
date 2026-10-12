@@ -234,7 +234,7 @@ describe('Driver-owned routes (real PostgreSQL)', () => {
   it('documents bearer auth, query and actual array projection', () => {
     const doc = SwaggerModule.createDocument(
       app,
-      new DocumentBuilder().addBearerAuth({}, 'JWT-auth').build(),
+      new DocumentBuilder().addBearerAuth({ type: 'http' }, 'JWT-auth').build(),
     );
     const operation = doc.paths[endpoint].get!;
     expect(operation.security).toEqual([{ 'JWT-auth': [] }]);

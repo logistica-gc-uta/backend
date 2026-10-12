@@ -98,7 +98,16 @@ export class RouteHistoryResponseDto {
 
 /** ADMIN-only full commercial fields already returned by the existing route service. */
 export class AdminRouteHistoryOrderDto extends RouteHistoryOrderDto {
-  @ApiProperty() userId!: string;
+  @ApiProperty({ type: String, nullable: true }) userId!: string | null;
+  @ApiProperty({ type: String, nullable: true }) createdById!: string | null;
+  @ApiProperty({ type: String, enum: ['REGISTERED_CLIENT', 'GUEST'], nullable: true })
+  recipientType!: 'REGISTERED_CLIENT' | 'GUEST' | null;
+  @ApiProperty({ type: String, nullable: true }) recipientName!: string | null;
+  @ApiProperty({ type: String, nullable: true }) recipientPhone!: string | null;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  deliveryWindowStart!: string | null;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  deliveryWindowEnd!: string | null;
   @ApiProperty() zoneId!: string;
   @ApiProperty({ type: String, nullable: true }) routeId!: string | null;
   @ApiProperty() total!: number;

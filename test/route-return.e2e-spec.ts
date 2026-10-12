@@ -44,7 +44,8 @@ describe('Depot return and availability: owned PostgreSQL16 and real JWT', () =>
     request(app.getHttpServer())
       .post(`/api/v1/routes${path}`)
       .auth(token(sub), { type: 'bearer' })
-      .send(body);
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify(body));
   const draft = (orderIds = ['pending']) =>
     post('', { zoneId: 'zone', orderIds, routeDate: RETURN_DATE });
   const assign = (id: string) => post(`/${id}/assign`, { driverId: 'driver' });

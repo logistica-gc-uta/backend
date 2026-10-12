@@ -45,7 +45,8 @@ describe('Legacy reconciliation: owned PostgreSQL16 and real JWT', () => {
     request(app.getHttpServer())
       .post(`/api/v1/routes${path}`)
       .auth(token(sub), { type: 'bearer' })
-      .send(body);
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify(body));
 
   beforeAll(() => {
     receipt = startOwnedContainer();

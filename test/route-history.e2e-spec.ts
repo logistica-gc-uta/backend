@@ -62,7 +62,8 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
     request(host.app.getHttpServer())
       .post(`/api/v1/routes${path}`)
       .auth(host.token(sub, role), { type: 'bearer' })
-      .send(body);
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify(body));
   async function startedRoute() {
     // Legacy holds deliberately stay intact; this unrelated operational route uses another driver.
     const drafted = await post('', {
@@ -250,7 +251,8 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
       request(host.app.getHttpServer())
         .patch('/api/v1/orders/one/status')
         .auth(host.token(sub, 'DRIVER'), { type: 'bearer' })
-        .send(body);
+        .set('Content-Type', 'application/json')
+        .send(JSON.stringify(body));
     await patch('driver-user', { status: 'IN_TRANSIT' }).expect(403);
     await patch('other', {
       status: 'IN_TRANSIT',
@@ -312,9 +314,9 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
       type: 'array',
       items: { $ref: '#/components/schemas/RouteHistoryResponseDto' },
     });
-    expect(
-      doc.components!.schemas!.RouteHistoryResponseDto.properties!.stops,
-    ).toMatchObject({
+    const historySchema = doc.components!.schemas!.RouteHistoryResponseDto;
+    if ('$ref' in historySchema) throw new Error('Expected an inline RouteHistoryResponseDto schema');
+    expect(historySchema.properties!.stops).toMatchObject({
       type: 'array',
       items: { $ref: '#/components/schemas/RouteHistoryStopDto' },
     });

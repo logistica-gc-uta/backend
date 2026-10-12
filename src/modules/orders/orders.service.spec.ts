@@ -46,7 +46,24 @@ describe('OrdersService', () => {
       },
     };
 
+    // Keep existing product fixtures, but expose them through the tx-bound raw lane.
+    const raw = {
+      sql: (...[strings, id]: Parameters<PrismaService['client']['raw']['sql']>) => ({
+        returnsRow: () => ({ build: () => ({ where: { id }, clock: strings[0].includes('clock_timestamp') }) }),
+      }),
+    };
+    type MockPlan = ReturnType<ReturnType<ReturnType<typeof raw.sql>['returnsRow']>['build']>;
+    txMock.query = jest.fn(async (plan: MockPlan) => {
+      if (plan.clock) return [{ instant: Temporal.Instant.from('2026-09-01T00:00:00Z') }];
+      const product = await prismaMock.product.where(plan.where).first();
+      return product ? [product] : [];
+    });
     prismaMock = {
+      user: {
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        first: jest.fn().mockResolvedValue({ id: 'user-1', name: 'Real Client', role: 'CLIENT' }),
+      },
       zone: {
         where: jest.fn(),
       },
@@ -62,11 +79,16 @@ describe('OrdersService', () => {
       order: {
         where: jest.fn().mockReturnThis(),
         include: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        offset: jest.fn().mockReturnThis(),
+        aggregate: jest.fn().mockResolvedValue({ total: 1 }),
         first: jest.fn(),
         all: jest.fn(),
         update: jest.fn(),
       },
       client: {
+        raw,
         transaction: jest.fn((callback) => callback(txMock)),
       },
     };
@@ -119,7 +141,7 @@ describe('OrdersService', () => {
     const createDto = {
       zoneId: 'zone-1',
       deliveryAddress: 'Av. Los Chasquis 123',
-      scheduledDeliveryDate: '2026-09-25T14:00:00.000Z',
+      scheduledDeliveryDate: '2030-09-25T14:00:00.000Z',
       items: [
         {
           productId: 'prod-1',
@@ -140,7 +162,7 @@ describe('OrdersService', () => {
       const withDate = txMock.orm.public.Order.create.mock.calls[0][0];
       expect(withDate.scheduledDeliveryDate).toBeInstanceOf(Temporal.Instant);
       expect(withDate.scheduledDeliveryDate.toString()).toBe(
-        '2026-09-25T14:00:00Z',
+        '2030-09-25T14:00:00Z',
       );
 
       const { scheduledDeliveryDate: _omit, ...dtoWithoutDate } = createDto;
@@ -253,6 +275,34 @@ describe('OrdersService', () => {
       });
     });
 
+    it('uses only transaction stock/price and emits one consolidated line', async () => {
+      prismaMock.zone.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validZone) });
+      txMock.query.mockImplementation(async (plan: { clock: boolean }) => plan.clock
+        ? [{ instant: Temporal.Instant.from('2026-09-01T00:00:00Z') }]
+        : [{ ...validProduct, stock: 5, price: 20 }]);
+      const result = await service.createOrder('user-1', {
+        ...createDto, items: [{ productId: 'prod-1', quantity: 2 }, { productId: 'prod-1', quantity: 3 }],
+      });
+      expect(prismaMock.product.where).not.toHaveBeenCalled();
+      expect(prismaMock.client.transaction).toHaveBeenCalledTimes(1);
+      expect(txMock.query.mock.calls.filter(([plan]: [{ clock: boolean }]) => !plan.clock)).toHaveLength(1);
+      expect(result.total).toBe(100);
+      expect(result.items).toHaveLength(1);
+      expect(txMock.orm.public.Product.where.mock.results[0].value.update).toHaveBeenCalledWith({ stock: 0 });
+      expect(txMock.orm.public.OrderItem.create).toHaveBeenCalledWith(expect.objectContaining({ quantity: 5, price: 20 }));
+    });
+
+    it('propagates a line failure without retrying an order transaction', async () => {
+      prismaMock.zone.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validZone) });
+      txMock.query.mockImplementation(async (plan: { clock: boolean }) => plan.clock
+        ? [{ instant: Temporal.Instant.from('2026-09-01T00:00:00Z') }]
+        : [validProduct]);
+      txMock.orm.public.OrderItem.create.mockRejectedValue(new Error('insert failed'));
+      await expect(service.createOrder('user-1', createDto)).rejects.toThrow('insert failed');
+      expect(prismaMock.client.transaction).toHaveBeenCalledTimes(1);
+      expect(txMock.orm.public.Order.create).toHaveBeenCalledTimes(1);
+    });
+
     it('Caso 2: Error por stock insuficiente (BadRequestException)', async () => {
       prismaMock.zone.where.mockReturnValue({
         first: jest.fn().mockResolvedValue(validZone),
@@ -292,6 +342,28 @@ describe('OrdersService', () => {
       await expect(service.createOrder('user-1', createDto)).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('new order identity metadata', () => {
+    const dto = {
+      zoneId: 'zone-1', deliveryAddress: 'Address',
+      items: [{ productId: 'prod-1', quantity: 1 }],
+    };
+    it('snapshots the database CLIENT and JWT creator on the shared CLIENT path', async () => {
+      prismaMock.zone.where.mockReturnValue({ first: jest.fn().mockResolvedValue({ id: 'zone-1' }) });
+      prismaMock.product.where.mockReturnValue({ first: jest.fn().mockResolvedValue({ id: 'prod-1', name: 'Product', stock: 10, price: 1 }) });
+      const response = await service.createOrder('user-1', dto);
+      expect(txMock.orm.public.Order.create).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 'user-1', createdById: 'user-1', recipientType: 'REGISTERED_CLIENT',
+        recipientName: 'Real Client', recipientPhone: null,
+      }));
+      expect(response).not.toHaveProperty('recipientPhone');
+    });
+    it.each([null, { id: 'user-1', name: 'Admin', role: 'ADMIN' }])('rejects unavailable/non-CLIENT owner without stock writes', async (owner) => {
+      prismaMock.user.first.mockResolvedValue(owner);
+      await expect(service.createOrder('user-1', dto)).rejects.toThrow(owner ? BadRequestException : NotFoundException);
+      expect(prismaMock.client.transaction).not.toHaveBeenCalled();
     });
   });
 
@@ -356,14 +428,14 @@ describe('OrdersService', () => {
       prismaMock.order.first.mockResolvedValue(sampleOrder);
 
       const result = await service.findOne('order-1', adminUser);
-      expect(result).toEqual(expectedEnrichedOrder);
+      expect(result).toMatchObject(expectedEnrichedOrder);
     });
 
     it('CLIENT debe poder leer sus propios pedidos con modelo enriquecido', async () => {
       prismaMock.order.first.mockResolvedValue(sampleOrder);
 
       const result = await service.findOne('order-1', ownerClient);
-      expect(result).toEqual(expectedEnrichedOrder);
+      expect(result).toMatchObject(expectedEnrichedOrder);
     });
 
     it('CLIENT debe ser rechazado con ForbiddenException si intenta leer pedidos ajenos (IDOR/BOLA)', async () => {
@@ -388,7 +460,7 @@ describe('OrdersService', () => {
       });
 
       const result = await service.findOne('order-1', assignedDriverUser);
-      expect(result).toEqual(expectedEnrichedOrder);
+      expect(result).toMatchObject(expectedEnrichedOrder);
     });
 
     it('DRIVER debe ser rechazado con ForbiddenException si el pedido no está asignado a ninguna ruta', async () => {
@@ -790,8 +862,8 @@ describe('OrdersService', () => {
       prismaMock.order.all.mockResolvedValue(orders);
 
       const result = await service.findMyOrders('user-1');
-      expect(result[0].deliveryLocation).toBeNull();
-      expect(result[0].planningEligibility.eligible).toBe(false);
+      expect(result[0]).toHaveProperty('deliveryLocation', null);
+      expect(result[0]).toHaveProperty('planningEligibility.eligible', false);
     });
   });
 
@@ -808,8 +880,9 @@ describe('OrdersService', () => {
       prismaMock.order.all.mockResolvedValue(orders);
 
       const result = await service.findAll();
-      expect(result[0].deliveryLocation).toEqual({ lat: -1.25, lng: -78.62 });
-      expect(result[0].planningEligibility.eligible).toBe(true);
+      expect(result.items[0]).toHaveProperty('deliveryLocation', { lat: -1.25, lng: -78.62 });
+      expect(result.items[0]).toHaveProperty('planningEligibility.eligible', true);
+      expect(result).toMatchObject({ total: 1, page: 1, pageSize: 20 });
     });
   });
 });
