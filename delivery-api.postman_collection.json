@@ -142,6 +142,41 @@
       "key": "client2Token",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "planZoneId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "planZoneCode",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "planOrderIds",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "planNoCoordOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "planProposalRouteDate",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "planProposalOrderIds",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "planProposalBody",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -3084,6 +3119,1092 @@
             },
             "description": "Comprueba que la orden #4 cancelada no sufrió mutación tras el intento inválido de reactivación."
           }
+        }
+      ]
+    },
+    {
+      "name": "06-Planning (Clarke & Wright proposals)",
+      "description": "Issue #7: read-only route proposals built from PostgreSQL. Setup creates its own zone with depot and 6 orders (5 geolocated + 1 without coordinates).",
+      "item": [
+        {
+          "name": "Setup",
+          "item": [
+            {
+              "name": "POST Create planning zone with depot (ADMIN)",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const s = Date.now();",
+                      "pm.collectionVariables.set('planZoneCode', 'PLN-' + s);"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                      "const body = pm.response.json();",
+                      "pm.test('Zone has a depot', () => pm.expect(body.depotLocation).to.eql({ lat: -1.241, lng: -78.619 }));",
+                      "pm.collectionVariables.set('planZoneId', body.id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/zones",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "zones"
+                  ]
+                },
+                "description": "DEMO/TEST depot; not a production depot.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Zona Planning {{planZoneCode}}\",\n  \"code\": \"{{planZoneCode}}\",\n  \"depotLat\": -1.241,\n  \"depotLng\": -78.619\n}"
+                }
+              }
+            },
+            {
+              "name": "POST Create planning order #1 (CLIENT)",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.collectionVariables.set('planOrderIds', '[]');"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                      "const body = pm.response.json();",
+                      "pm.test('Pedido PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
+                      "const ids = JSON.parse(pm.collectionVariables.get('planOrderIds') || '[]');",
+                      "ids.push(body.id);",
+                      "pm.collectionVariables.set('planOrderIds', JSON.stringify(ids));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "orders"
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{clientToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #1, Ambato\",\n  \"scheduledDeliveryDate\": \"2031-03-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.242,\n  \"deliveryLng\": -78.6205\n}"
+                }
+              }
+            },
+            {
+              "name": "POST Create planning order #2 (CLIENT)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                      "const body = pm.response.json();",
+                      "pm.test('Pedido PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
+                      "const ids = JSON.parse(pm.collectionVariables.get('planOrderIds') || '[]');",
+                      "ids.push(body.id);",
+                      "pm.collectionVariables.set('planOrderIds', JSON.stringify(ids));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "orders"
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{clientToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #2, Ambato\",\n  \"scheduledDeliveryDate\": \"2031-03-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.243,\n  \"deliveryLng\": -78.622\n}"
+                }
+              }
+            },
+            {
+              "name": "POST Create planning order #3 (CLIENT)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                      "const body = pm.response.json();",
+                      "pm.test('Pedido PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
+                      "const ids = JSON.parse(pm.collectionVariables.get('planOrderIds') || '[]');",
+                      "ids.push(body.id);",
+                      "pm.collectionVariables.set('planOrderIds', JSON.stringify(ids));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "orders"
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{clientToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #3, Ambato\",\n  \"scheduledDeliveryDate\": \"2031-03-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.244,\n  \"deliveryLng\": -78.6235\n}"
+                }
+              }
+            },
+            {
+              "name": "POST Create planning order #4 (CLIENT)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                      "const body = pm.response.json();",
+                      "pm.test('Pedido PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
+                      "const ids = JSON.parse(pm.collectionVariables.get('planOrderIds') || '[]');",
+                      "ids.push(body.id);",
+                      "pm.collectionVariables.set('planOrderIds', JSON.stringify(ids));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "orders"
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{clientToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #4, Ambato\",\n  \"scheduledDeliveryDate\": \"2031-03-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.245,\n  \"deliveryLng\": -78.625\n}"
+                }
+              }
+            },
+            {
+              "name": "POST Create planning order #5 (CLIENT)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                      "const body = pm.response.json();",
+                      "pm.test('Pedido PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
+                      "const ids = JSON.parse(pm.collectionVariables.get('planOrderIds') || '[]');",
+                      "ids.push(body.id);",
+                      "pm.collectionVariables.set('planOrderIds', JSON.stringify(ids));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "orders"
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{clientToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #5, Ambato\",\n  \"scheduledDeliveryDate\": \"2031-03-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.246,\n  \"deliveryLng\": -78.6265\n}"
+                }
+              }
+            },
+            {
+              "name": "POST Create planning order #6 without coordinates (CLIENT)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                      "const body = pm.response.json();",
+                      "pm.test('Pedido PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
+                      "pm.collectionVariables.set('planNoCoordOrderId', body.id);"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "orders"
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{clientToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #6, Ambato\",\n  \"scheduledDeliveryDate\": \"2031-03-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ]\n}"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Proposals",
+          "item": [
+            {
+              "name": "GET Route proposals (ADMIN) - 5 orders give 2 routes (4 + 1)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const body = pm.response.json();",
+                      "const ids = JSON.parse(pm.collectionVariables.get('planOrderIds'));",
+                      "pm.test('Metadata: day, timezone, capacity and distance method', () => {",
+                      "  pm.expect(body.date).to.eql('2031-03-14');",
+                      "  pm.expect(body.timeZone).to.eql('America/Guayaquil');",
+                      "  pm.expect(body.capacity).to.eql(4);",
+                      "  pm.expect(body.distanceMethod).to.eql('HAVERSINE_STRAIGHT_LINE');",
+                      "});",
+                      "pm.test('Summary: 6 candidates, 5 planned, 1 excluded, 2 routes', () => pm.expect(body.summary).to.eql({ candidateOrders: 6, plannedOrders: 5, excludedOrders: 1, routes: 2 }));",
+                      "pm.test('Routes of 4 and 1 stops, never more than 4', () => {",
+                      "  const sizes = body.proposals.map(p => p.orderIds.length).sort();",
+                      "  pm.expect(sizes).to.eql([1, 4]);",
+                      "});",
+                      "pm.test('Every proposal is a single zone starting at its depot', () => body.proposals.forEach(p => {",
+                      "  pm.expect(p.zoneId).to.eql(pm.collectionVariables.get('planZoneId'));",
+                      "  pm.expect(p.depot).to.eql({ lat: -1.241, lng: -78.619 });",
+                      "  pm.expect(p.totalDistanceKm).to.be.above(0);",
+                      "}));",
+                      "pm.test('Each created order appears exactly once', () => {",
+                      "  const planned = body.proposals.flatMap(p => p.orderIds);",
+                      "  pm.expect(planned.slice().sort()).to.eql(ids.slice().sort());",
+                      "});",
+                      "pm.test('stops follow the visiting order', () => body.proposals.forEach(p => {",
+                      "  pm.expect(p.stops.map(s => s.sequence)).to.eql(p.orderIds.map((_, i) => i + 1));",
+                      "  pm.expect(p.stops.map(s => s.orderId)).to.eql(p.orderIds);",
+                      "}));",
+                      "pm.test('Same scheduled instant: confirmable with routeDate', () => body.proposals.forEach(p => {",
+                      "  pm.expect(p.confirmable).to.eql(true);",
+                      "  pm.expect(p.routeDate).to.eql('2031-03-14T15:00:00Z');",
+                      "}));",
+                      "pm.test('The order without coordinates is excluded with its reason', () => {",
+                      "  pm.expect(body.excluded).to.eql([{ orderId: pm.collectionVariables.get('planNoCoordOrderId'), zoneId: pm.collectionVariables.get('planZoneId'), reasons: ['MISSING_DELIVERY_COORDINATES'] }]);",
+                      "});",
+                      "const first = body.proposals.find(p => p.orderIds.length === 4);",
+                      "pm.collectionVariables.set('planProposalRouteDate', first.routeDate);",
+                      "pm.collectionVariables.set('planProposalOrderIds', JSON.stringify(first.orderIds));",
+                      "pm.collectionVariables.set('planProposalBody', pm.response.text());"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId={{planZoneId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "route-proposals"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2031-03-14"
+                    },
+                    {
+                      "key": "zoneId",
+                      "value": "{{planZoneId}}"
+                    }
+                  ]
+                },
+                "description": "Read-only Clarke & Wright proposal built from PostgreSQL data.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "GET Route proposals - same query is identical and persists nothing",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('Deterministic: identical response on repeat', () => pm.expect(pm.response.text()).to.eql(pm.collectionVariables.get('planProposalBody')));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId={{planZoneId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "route-proposals"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2031-03-14"
+                    },
+                    {
+                      "key": "zoneId",
+                      "value": "{{planZoneId}}"
+                    }
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "GET Routes - proposing created no route for the planning zone",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('No route persisted by the proposal', () => pm.expect(pm.response.json().filter(r => r.zoneId === pm.collectionVariables.get('planZoneId'))).to.have.lengthOf(0));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/routes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "routes"
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "GET Route proposals - without token",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId={{planZoneId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "route-proposals"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2031-03-14"
+                    },
+                    {
+                      "key": "zoneId",
+                      "value": "{{planZoneId}}"
+                    }
+                  ]
+                },
+                "description": ""
+              }
+            },
+            {
+              "name": "GET Route proposals - CLIENT forbidden",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId={{planZoneId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "route-proposals"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2031-03-14"
+                    },
+                    {
+                      "key": "zoneId",
+                      "value": "{{planZoneId}}"
+                    }
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{clientToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "GET Route proposals - DRIVER forbidden",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 403', () => pm.response.to.have.status(403));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId={{planZoneId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "route-proposals"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2031-03-14"
+                    },
+                    {
+                      "key": "zoneId",
+                      "value": "{{planZoneId}}"
+                    }
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{driverToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "GET Route proposals - missing date",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/route-proposals",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "route-proposals"
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "GET Route proposals - invalid calendar date",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/route-proposals?date=2031-02-30",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "route-proposals"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2031-02-30"
+                    }
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "GET Route proposals - unknown query field",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&driverId=x",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "route-proposals"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2031-03-14"
+                    },
+                    {
+                      "key": "driverId",
+                      "value": "x"
+                    }
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "GET Route proposals - zoneId not a UUID",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 400', () => pm.response.to.have.status(400));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId=centro",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "route-proposals"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2031-03-14"
+                    },
+                    {
+                      "key": "zoneId",
+                      "value": "centro"
+                    }
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "GET Route proposals - unknown zone",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId=00000000-0000-0000-0000-000000000000",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "route-proposals"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2031-03-14"
+                    },
+                    {
+                      "key": "zoneId",
+                      "value": "00000000-0000-0000-0000-000000000000"
+                    }
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "GET Route proposals - day without orders is empty",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('Empty proposal', () => { const b = pm.response.json(); pm.expect(b.proposals).to.eql([]); pm.expect(b.excluded).to.eql([]); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-15&zoneId={{planZoneId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "route-proposals"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2031-03-15"
+                    },
+                    {
+                      "key": "zoneId",
+                      "value": "{{planZoneId}}"
+                    }
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Confirm with existing lifecycle",
+          "item": [
+            {
+              "name": "POST Confirm the proposal as DRAFT (existing POST /routes)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                      "const body = pm.response.json();",
+                      "pm.test('Proposal persisted as DRAFT without driver', () => { pm.expect(body.status).to.eql('DRAFT'); pm.expect(body.driverId).to.eql(null); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/routes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "routes"
+                  ]
+                },
+                "description": "The proposal fields zoneId, routeDate and orderIds feed POST /routes unchanged.",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"routeDate\": \"{{planProposalRouteDate}}\",\n  \"orderIds\": {{planProposalOrderIds}}\n}"
+                }
+              }
+            },
+            {
+              "name": "GET Route proposals - confirmed orders are now reserved",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "const body = pm.response.json();",
+                      "const confirmed = JSON.parse(pm.collectionVariables.get('planProposalOrderIds'));",
+                      "pm.test('Only the remaining order is still planned', () => pm.expect(body.summary).to.eql({ candidateOrders: 6, plannedOrders: 1, excludedOrders: 5, routes: 1 }));",
+                      "pm.test('Confirmed orders are excluded as ACTIVE_ROUTE_CLAIM', () => confirmed.forEach(id => {",
+                      "  const e = body.excluded.find(x => x.orderId === id);",
+                      "  pm.expect(e.reasons).to.eql(['ACTIVE_ROUTE_CLAIM']);",
+                      "}));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId={{planZoneId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "route-proposals"
+                  ],
+                  "query": [
+                    {
+                      "key": "date",
+                      "value": "2031-03-14"
+                    },
+                    {
+                      "key": "zoneId",
+                      "value": "{{planZoneId}}"
+                    }
+                  ]
+                },
+                "description": "",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
         }
       ]
     }
