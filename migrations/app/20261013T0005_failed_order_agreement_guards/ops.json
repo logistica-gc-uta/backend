@@ -1,0 +1,79 @@
+[
+  {
+    "id": "checkConstraint.order.failed_order_commercial_hold_032f4a5d",
+    "label": "Add check constraint \"failed_order_commercial_hold_032f4a5d\" on \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "failed_order_commercial_hold_032f4a5d",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"failed_order_commercial_hold_032f4a5d\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "failed_order_commercial_hold_032f4a5d",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"failed_order_commercial_hold_032f4a5d\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD CONSTRAINT \"failed_order_commercial_hold_032f4a5d\" CHECK (NOT \"requiresAdministrativeReview\" OR status NOT IN ('DELIVERED', 'CANCELLED'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"failed_order_commercial_hold_032f4a5d\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "failed_order_commercial_hold_032f4a5d",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dispatch.forward-agreement-guard-installation",
+    "label": "Ensure agreement guards are installed on the real schema edge",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "objectType": "table",
+        "schema": "public",
+        "name": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "require append-only ADMIN audit foundation",
+        "sql": "SELECT to_regprocedure('public.dispatch_audit_actor_guard()') IS NOT NULL AS result"
+      },
+      {
+        "description": "fail closed on unreviewed failed history without explicit audited resolution",
+        "sql": "SELECT NOT EXISTS (\n            SELECT 1 FROM public.\"order\" o JOIN public.\"routeStop\" st ON st.\"orderId\"=o.id\n            JOIN public.\"deliveryAttempt\" d ON d.\"stopId\"=st.id AND d.outcome='FAILED'\n            WHERE NOT o.\"requiresAdministrativeReview\" AND NOT EXISTS (\n              SELECT 1 FROM public.\"dispatchIntervention\" a WHERE a.action='RESCHEDULE' AND a.outcome='APPLIED'\n                AND a.\"orderId\"=o.id AND a.result::jsonb ->> 'attemptId'=d.id\n            )\n          ) AS result"
+      }
+    ],
+    "execute": [
+      {
+        "description": "install/reinstall agreement functions transactionally while preserving history",
+        "sql": "CREATE OR REPLACE FUNCTION public.t1e_claim_history_guard() RETURNS trigger\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  route_status text;\n  completed_at timestamptz;\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    RAISE EXCEPTION 'Order claim history is immutable and cannot be deleted'\n      USING ERRCODE = '23514';\n  END IF;\n  IF NEW.id IS DISTINCT FROM OLD.id OR NEW.\"routeId\" IS DISTINCT FROM OLD.\"routeId\" OR\n     NEW.\"orderId\" IS DISTINCT FROM OLD.\"orderId\" OR\n     NEW.\"claimedAt\" IS DISTINCT FROM OLD.\"claimedAt\" THEN\n    RAISE EXCEPTION 'Order claim identity and claim time are immutable'\n      USING ERRCODE = '23514';\n  END IF;\n  IF OLD.\"releasedAt\" IS NOT NULL AND NEW.\"releasedAt\" IS DISTINCT FROM OLD.\"releasedAt\" THEN\n    RAISE EXCEPTION 'Released order claim history is immutable'\n      USING ERRCODE = '23514';\n  END IF;\n  IF OLD.\"releasedAt\" IS NULL AND NEW.\"releasedAt\" IS NOT NULL THEN\n    SELECT status::text, \"completedAt\" INTO route_status, completed_at\n    FROM public.route WHERE id = OLD.\"routeId\";\n    IF route_status = 'COMPLETED' AND completed_at = NEW.\"releasedAt\" THEN\n      RETURN NEW;\n    END IF;\n    IF route_status = 'DRAFT' AND NOT EXISTS (\n      SELECT 1 FROM public.\"routeStop\" s\n      WHERE s.\"routeId\" = OLD.\"routeId\" AND s.\"orderId\" = OLD.\"orderId\"\n    ) THEN\n      RETURN NEW;\n    END IF;\n    IF route_status = 'ASSIGNED' AND NOT EXISTS (\n      SELECT 1 FROM public.\"routeStop\" WHERE \"routeId\" = OLD.\"routeId\" AND \"orderId\" = OLD.\"orderId\"\n    ) AND EXISTS (\n      SELECT 1 FROM public.\"dispatchIntervention\" a\n      WHERE a.action IN ('MOVE', 'RESCHEDULE') AND a.outcome = 'APPLIED' AND a.\"orderId\" = OLD.\"orderId\"\n        AND (a.payload::jsonb ->> 'routeId' = OLD.\"routeId\" OR (a.action = 'RESCHEDULE' AND a.\"routeId\" = OLD.\"routeId\"))\n        AND a.xmin = pg_current_xact_id()::text::xid\n    ) THEN RETURN NEW; END IF;\n    RAISE EXCEPTION 'Order claim may be released only at valid completion or pre-start draft stop removal'\n      USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND $$;\n\nCREATE OR REPLACE FUNCTION public.t1e_validate_stop_visit(p_stop_id text) RETURNS void\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  stop_row public.\"routeStop\"%ROWTYPE;\n  route_row public.route%ROWTYPE;\n  order_row public.\"order\"%ROWTYPE;\n  attempt_count bigint;\nBEGIN\n  SELECT * INTO stop_row FROM public.\"routeStop\" WHERE id = p_stop_id;\n  IF NOT FOUND OR stop_row.\"isLegacy\" OR stop_row.sequence IS NULL THEN\n    RETURN;\n  END IF;\n  SELECT * INTO route_row FROM public.route WHERE id = stop_row.\"routeId\";\n  IF NOT FOUND OR route_row.status IS NULL OR route_row.status = 'DRAFT' THEN\n    IF EXISTS (SELECT 1 FROM public.\"deliveryAttempt\" WHERE \"stopId\" = p_stop_id) THEN\n      RAISE EXCEPTION 'DRAFT or legacy stop cannot have a recorded visit attempt'\n        USING ERRCODE = '23514';\n    END IF;\n    RETURN;\n  END IF;\n  SELECT * INTO order_row FROM public.\"order\" WHERE id = stop_row.\"orderId\";\n  SELECT COUNT(*) INTO attempt_count\n  FROM public.\"deliveryAttempt\" WHERE \"stopId\" = p_stop_id;\n\n  IF stop_row.outcome IS NULL OR stop_row.outcome = 'PENDING' THEN\n    IF attempt_count <> 0 THEN\n      RAISE EXCEPTION 'Pending stop cannot retain a completed visit attempt'\n        USING ERRCODE = '23514';\n    END IF;\n    RETURN;\n  END IF;\n  IF route_row.status NOT IN ('IN_PROGRESS', 'COMPLETED') OR\n     route_row.\"startedAt\" IS NULL OR route_row.\"driverId\" IS NULL OR\n     attempt_count = 0 THEN\n    RAISE EXCEPTION 'Resolved verified stop requires a visit attempt on its active route'\n      USING ERRCODE = '23514';\n  END IF;\n  IF EXISTS (\n    SELECT 1 FROM public.\"deliveryAttempt\" a\n    WHERE a.\"stopId\" = p_stop_id\n      AND (a.outcome <> stop_row.outcome\n        OR a.\"driverId\" <> route_row.\"driverId\"\n        OR a.\"recordedAt\" < route_row.\"startedAt\"\n        OR (route_row.\"completedAt\" IS NOT NULL\n          AND a.\"recordedAt\" > route_row.\"completedAt\"))\n  ) THEN\n    RAISE EXCEPTION 'Visit attempt must match the immutable stop outcome, route owner, and lifecycle time'\n      USING ERRCODE = '23514';\n  END IF;\n  IF stop_row.outcome = 'FAILED' AND NOT order_row.\"requiresAdministrativeReview\" AND NOT EXISTS (\n    SELECT 1 FROM public.\"dispatchIntervention\" a JOIN public.\"deliveryAttempt\" d\n      ON d.id = a.result::jsonb ->> 'attemptId'\n    WHERE a.action = 'RESCHEDULE' AND a.outcome = 'APPLIED' AND a.\"orderId\" = stop_row.\"orderId\"\n      AND d.\"stopId\" = stop_row.id AND d.outcome = 'FAILED' AND route_row.status = 'COMPLETED'\n  ) THEN\n    RAISE EXCEPTION 'Failed visit requires current administrative review flag'\n      USING ERRCODE = '23514';\n  END IF;\nEND $$;\n\n\nCREATE OR REPLACE FUNCTION public.dispatch_review_resolution_guard() RETURNS trigger\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nBEGIN\n  IF OLD.\"requiresAdministrativeReview\" AND (\n    NOT NEW.\"requiresAdministrativeReview\" OR (NEW.status IS DISTINCT FROM OLD.status AND NEW.status IN ('DELIVERED','CANCELLED','PENDING')) OR\n    (NEW.\"scheduledDeliveryDate\", NEW.\"deliveryWindowStart\", NEW.\"deliveryWindowEnd\", NEW.\"routeId\")\n    IS DISTINCT FROM (OLD.\"scheduledDeliveryDate\", OLD.\"deliveryWindowStart\", OLD.\"deliveryWindowEnd\", OLD.\"routeId\")\n  ) AND NOT EXISTS (\n    SELECT 1 FROM public.\"dispatchIntervention\" a\n    JOIN public.\"dispatchIntervention\" c ON c.id = a.payload::jsonb ->> 'agreementId'\n    JOIN public.\"deliveryAttempt\" d ON d.id = c.payload::jsonb ->> 'attemptId'\n    JOIN public.\"routeStop\" st ON st.id = d.\"stopId\"\n    JOIN public.route r ON r.id = st.\"routeId\"\n    WHERE a.action = 'RESCHEDULE' AND a.outcome = 'APPLIED' AND a.\"orderId\" = OLD.id\n      AND a.xmin = pg_current_xact_id()::text::xid\n      AND c.action = 'CONTACT' AND c.outcome = 'APPLIED' AND c.\"orderId\" = OLD.id\n      AND c.payload::jsonb -> 'agreementConfirmed' = 'true'::jsonb\n      AND st.\"orderId\" = OLD.id AND d.outcome = 'FAILED' AND r.status = 'COMPLETED'\n      AND NEW.status = 'PENDING' AND NOT NEW.\"requiresAdministrativeReview\" AND NEW.\"routeId\" IS NULL AND NEW.\"stopOrder\" IS NULL\n      AND NEW.\"scheduledDeliveryDate\" = (c.payload::jsonb ->> 'scheduledDeliveryDate')::timestamptz\n      AND NEW.\"deliveryWindowStart\" = (c.payload::jsonb ->> 'deliveryWindowStart')::timestamptz\n      AND NEW.\"deliveryWindowEnd\" = (c.payload::jsonb ->> 'deliveryWindowEnd')::timestamptz\n      AND NEW.\"deliveryWindowStart\" > clock_timestamp()\n      AND NOT EXISTS (SELECT 1 FROM public.\"orderClaim\" WHERE \"orderId\" = OLD.id AND \"releasedAt\" IS NULL)\n      AND NOT EXISTS (\n        SELECT 1 FROM public.\"deliveryAttempt\" later JOIN public.\"routeStop\" lst ON lst.id = later.\"stopId\"\n        WHERE lst.\"orderId\" = OLD.id AND later.outcome = 'FAILED' AND (later.\"recordedAt\", later.id) > (d.\"recordedAt\", d.id)\n      )\n  ) THEN\n    RAISE EXCEPTION 'Failed order requires an explicit persisted agreement and audited resolution after completion' USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND $$;\nDROP TRIGGER IF EXISTS dispatch_review_resolution ON public.\"order\";\nCREATE TRIGGER dispatch_review_resolution BEFORE UPDATE ON public.\"order\" FOR EACH ROW EXECUTE FUNCTION public.dispatch_review_resolution_guard();"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "agreement guard is enabled on order",
+        "sql": "SELECT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='dispatch_review_resolution' AND tgenabled='O' AND tgrelid='public.order'::regclass) AS result"
+      }
+    ]
+  }
+]

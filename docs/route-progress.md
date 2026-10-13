@@ -60,5 +60,5 @@ validate every inserted attempt against route state, actor, claim or outcome;
 it also does not enforce complete commercial/result/claim coherence for arbitrary
 SQL writers. Those are pending a dedicated database guard unit. Administrative
 reconciliation, depot return, scheduling-day normalization, assignment service
-integration, failed-order retry decisions and #12 rescheduling remain pending.
+integration were subsequently delivered in #10/#7. Failed-order management and explicit #12 rescheduling are described in [urgent dispatch](urgent-dispatch.md); unresolved failed orders remain held until an agreed ADMIN decision.
 No HTTP test coverage alone is a catalog-wide acceptance PASS or review receipt.

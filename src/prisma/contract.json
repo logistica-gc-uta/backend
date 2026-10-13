@@ -8,6 +8,10 @@
       "model": "DeliveryAttempt",
       "namespace": "public"
     },
+    "dispatchIntervention": {
+      "model": "DispatchIntervention",
+      "namespace": "public"
+    },
     "driver": {
       "model": "Driver",
       "namespace": "public"
@@ -322,6 +326,176 @@
               },
               "namespaceId": "public",
               "table": "deliveryAttempt"
+            }
+          },
+          "DispatchIntervention": {
+            "fields": {
+              "action": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "actorId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "orderId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "outcome": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "payload": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "reason": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "recordedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "requestId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "result": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "routeId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "actor": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "actorId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "order": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "orderId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Order",
+                  "namespace": "public"
+                }
+              },
+              "route": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "routeId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Route",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "action": {
+                  "column": "action"
+                },
+                "actorId": {
+                  "column": "actorId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "orderId": {
+                  "column": "orderId"
+                },
+                "outcome": {
+                  "column": "outcome"
+                },
+                "payload": {
+                  "column": "payload"
+                },
+                "reason": {
+                  "column": "reason"
+                },
+                "recordedAt": {
+                  "column": "recordedAt"
+                },
+                "requestId": {
+                  "column": "requestId"
+                },
+                "result": {
+                  "column": "result"
+                },
+                "routeId": {
+                  "column": "routeId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "dispatchIntervention"
             }
           },
           "Driver": {
@@ -1928,6 +2102,164 @@
                 }
               ]
             },
+            "dispatchIntervention": {
+              "checks": [
+                {
+                  "expression": "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500",
+                  "name": "dispatch_audit_valid_f083b472",
+                  "prefix": "dispatch_audit_valid"
+                }
+              ],
+              "columns": {
+                "action": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "actorId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "orderId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "outcome": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "payload": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "reason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "recordedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "requestId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "result": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "routeId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "actorId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "dispatchIntervention"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "orderId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "dispatchIntervention"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "order"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "routeId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "dispatchIntervention"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "route"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "actorId"
+                  ],
+                  "name": "dispatchIntervention_actorId_idx_a58f6b4b",
+                  "prefix": "dispatchIntervention_actorId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "orderId"
+                  ],
+                  "name": "dispatchIntervention_orderId_idx_d284871b",
+                  "prefix": "dispatchIntervention_orderId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "routeId"
+                  ],
+                  "name": "dispatchIntervention_routeId_idx_91ae2fd6",
+                  "prefix": "dispatchIntervention_routeId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "requestId"
+                  ]
+                }
+              ]
+            },
             "driver": {
               "columns": {
                 "createdAt": {
@@ -2208,6 +2540,11 @@
             },
             "order": {
               "checks": [
+                {
+                  "expression": "NOT \"requiresAdministrativeReview\" OR status NOT IN ('DELIVERED', 'CANCELLED')",
+                  "name": "failed_order_commercial_hold_032f4a5d",
+                  "prefix": "failed_order_commercial_hold"
+                },
                 {
                   "expression": "(\"deliveryLat\" IS NULL AND \"deliveryLng\" IS NULL) OR (\"deliveryLat\" IS NOT NULL AND \"deliveryLng\" IS NOT NULL AND \"deliveryLat\" >= -90 AND \"deliveryLat\" <= 90 AND \"deliveryLng\" >= -180 AND \"deliveryLng\" <= 180)",
                   "name": "order_delivery_coordinates_valid_84ff84b6",
@@ -3265,10 +3602,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "e357d1aa2fdc74464e729ec7cd8bb087b979a13b22e0f88aa005b60be4c16427"
+    "storageHash": "eb8ebd14b89f17eea5458cd12220be7bd572fa8f0e3771b68d2089c880e18f83"
   },
   "execution": {
-    "executionHash": "879fc99dc8539ad849ead59f382673a10513c12c2311b14e0cbb9c65efa8d4f7",
+    "executionHash": "1ac42ce6b6e27434bbbc88106a10133062703cec38478d62b368698ffeff898e",
     "mutations": {
       "defaults": [
         {
@@ -3280,6 +3617,17 @@
             "column": "id",
             "namespace": "public",
             "table": "deliveryAttempt"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "dispatchIntervention"
           }
         },
         {

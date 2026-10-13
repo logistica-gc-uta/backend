@@ -56,6 +56,9 @@ describe('complete isolated E2E routing and ownership', () => {
     expect(run.args).toContain('--tmpfs');
     expect(run.args).toContain('127.0.0.1::5432');
     expect(run.args).toContain('postgres:16-alpine');
+    const migrations = result.calls.filter(c => c.args.includes('migrate'));
+    expect(migrations).toHaveLength(3);
+    for (const migration of migrations) expect(migration.args[migration.args.indexOf('--to') + 1]).toBe('eb8ebd14b89f17eea5458cd12220be7bd572fa8f0e3771b68d2089c880e18f83');
     expect(result.calls.filter(c => c.args.includes('verify'))).toHaveLength(3);
     expect(result.calls.some(c => c.cmd === 'docker' && c.args[0] === 'stop')).toBe(true);
   });

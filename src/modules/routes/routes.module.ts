@@ -1,3 +1,6 @@
+import { DispatchInterventionService } from './dispatch-intervention.service.js';
+import { DispatchController } from './dispatch.controller.js';
+import { RouteUrgencyService } from './route-urgency.service.js';
 import { RouteHistoryService } from './route-history.service.js';
 import { LegacyRouteReconciliationService } from './legacy-route-reconciliation.service.js';
 import { RouteAvailabilityService } from './route-availability.service.js';
@@ -14,8 +17,10 @@ import { RoutePlanningController } from './route-planning.controller.js';
 
 @Module({
   imports: [AuthModule],
-  controllers: [RoutesController, RoutePlanningController],
+  controllers: [RoutesController, RoutePlanningController, DispatchController],
   providers: [
+    DispatchInterventionService,
+    RouteUrgencyService,
     RouteHistoryService,
     RouteAvailabilityService,
     RouteReturnService,
