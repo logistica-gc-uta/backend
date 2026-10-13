@@ -32,11 +32,15 @@ Se seleccionan los pedidos **`PENDING`** con `scheduledDeliveryDate` dentro del 
 
 | Razón de exclusión | Significado |
 | --- | --- |
-| `MISSING_DELIVERY_COORDINATES` / `INVALID_DELIVERY_COORDINATES` | Destino sin coordenadas o malformado |
-| `MISSING_ZONE_DEPOT_COORDINATES` / `INVALID_ZONE_DEPOT_COORDINATES` | La zona no tiene depósito válido |
-| `MISSING_ZONE` | Pedido sin zona asociada |
-| `ACTIVE_ROUTE_CLAIM` | Ya reservado por otra propuesta confirmada (DRAFT) |
-| `ADMINISTRATIVE_REVIEW_REQUIRED` | Requiere revisión administrativa |
+| `MISSING_DELIVERY_COORDINATES` | El destino no tiene coordenadas |
+| `INVALID_DELIVERY_COORDINATES` | Las coordenadas del destino están mal formadas o fuera de rango |
+| `MISSING_ZONE` | El pedido no tiene zona asociada |
+| `MISSING_ZONE_DEPOT_COORDINATES` | La zona no tiene depósito |
+| `INVALID_ZONE_DEPOT_COORDINATES` | El depósito de la zona tiene coordenadas inválidas |
+| `ACTIVE_ROUTE_CLAIM` | Ya está reservado por otra propuesta confirmada (ruta `DRAFT`) |
+| `ADMINISTRATIVE_REVIEW_REQUIRED` | **El administrador debe revisarlo a mano.** Ocurre cuando una entrega falló (visita fallida): el pedido no se replanifica hasta que un ADMIN intervenga y acuerde una nueva fecha |
+
+Estos 7 códigos se publican en Swagger como el enum `PlanningExclusionReason` (`excluded[].reasons` es un arreglo de ese enum), y la interfaz web los traduce a texto. Una prueba fija la lista: si se agrega o cambia un código, la prueba falla como recordatorio de **avisar a quien consume la API**.
 
 La elegibilidad geográfica reutiliza `evaluatePlanningEligibility` (#9), por lo que el criterio es el mismo que ve el frontend.
 
@@ -52,6 +56,22 @@ La elegibilidad geográfica reutiliza `evaluatePlanningEligibility` (#9), por lo
 ### Trazabilidad de la distancia
 
 `distanceMethod = HAVERSINE_STRAIGHT_LINE`: la distancia es en **línea recta**, no por carretera. No modela tráfico, cierres de calles ni tiempos de viaje. `totalDistanceKm` es el recorrido ida y vuelta depósito → paradas → depósito, redondeado a 3 decimales.
+
+### Ahorro frente a no optimizar
+
+Cada propuesta y el resumen del día comparan la ruta propuesta con una **línea base**: un viaje independiente depósito → pedido → depósito por cada pedido, calculado con **la misma distancia en línea recta**.
+
+| Campo | Dónde | Significado |
+| --- | --- | --- |
+| `baselineKm` | propuesta y `summary` | Km sin optimizar (línea base) |
+| `totalDistanceKm` / `plannedKm` | propuesta / `summary` | Km propuestos (ida y vuelta al depósito) |
+| `savingsKm` | propuesta y `summary` | `baselineKm − km propuestos` |
+| `savingsPercent` | propuesta y `summary` | Ahorro sobre la línea base, con 2 decimales |
+
+- Los km llevan 3 decimales. `savingsKm` y `savingsPercent` se calculan **a partir de los km ya redondeados**, así que `baselineKm − totalDistanceKm = savingsKm` se cumple exactamente en pantalla.
+- Los totales del día **suman lo mostrado en cada propuesta**, de modo que la suma que ve el usuario siempre cuadra. Los pedidos excluidos no cuentan.
+- Una ruta de un solo pedido ahorra 0. Si la línea base es 0 (pedidos en el depósito) el ahorro es 0 y nunca se divide entre 0.
+- Es un ahorro **en línea recta frente a una línea base deliberadamente simple**; no equivale al ahorro frente a una operación real. Rotúlese como «distancia estimada en línea recta, no por calles».
 
 ### Confirmación: mismo día de negocio
 
@@ -83,10 +103,14 @@ Los límites del día son la medianoche local de Guayaquil, no la UTC: `2026-10-
           "sequence": 1,
           "orderId": "8b1d…",
           "location": { "lat": -1.2412, "lng": -78.6188 },
+          "deliveryAddress": "Av. Los Chasquis y Río Guayllabamba, Ambato",
           "scheduledDeliveryDate": "2030-02-14T15:00:00Z"
         }
       ],
       "totalDistanceKm": 1.274,
+      "baselineKm": 5.096,
+      "savingsKm": 3.822,
+      "savingsPercent": 75,
       "scheduledInstants": ["2030-02-14T15:00:00Z"],
       "routeDate": "2030-02-14T15:00:00Z"
     }
@@ -94,9 +118,14 @@ Los límites del día son la medianoche local de Guayaquil, no la UTC: `2026-10-
   "excluded": [
     { "orderId": "5d2b…", "zoneId": "2f78…", "reasons": ["MISSING_DELIVERY_COORDINATES"] }
   ],
-  "summary": { "candidateOrders": 6, "plannedOrders": 5, "excludedOrders": 1, "routes": 2 }
+  "summary": {
+    "candidateOrders": 6, "plannedOrders": 5, "excludedOrders": 1, "routes": 2,
+    "baselineKm": 5.896, "plannedKm": 2.074, "savingsKm": 3.822, "savingsPercent": 64.82
+  }
 }
 ```
+
+El ejemplo está abreviado: solo muestra una de las dos propuestas y una de sus paradas. Cada parada trae `deliveryAddress` (sin nombre ni datos del cliente).
 
 Para confirmar una propuesta: `POST /api/v1/routes` con `{ "zoneId", "routeDate", "orderIds" }` tomados de la propuesta.
 

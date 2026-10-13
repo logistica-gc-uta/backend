@@ -12,6 +12,8 @@ import {
   type RoutingOrder,
 } from './algorithms/clarke-wright.js';
 import type { GeoPoint } from './algorithms/geo.util.js';
+import { independentTripsKm, savingsFigures } from './algorithms/route-metrics.js';
+import { ExclusionReason, type PlanningExclusionReason } from './planning-exclusion-reason.js';
 import type { PlanRoutesQueryDto } from './dto/plan-routes-query.dto.js';
 import type {
   ExcludedOrderDto,
@@ -28,12 +30,7 @@ export const DISTANCE_METHOD = 'HAVERSINE_STRAIGHT_LINE';
  */
 export const MAX_ORDERS_PER_ZONE = 2000;
 
-export const ExclusionReason = {
-  ACTIVE_ROUTE_CLAIM: 'ACTIVE_ROUTE_CLAIM',
-  ADMINISTRATIVE_REVIEW_REQUIRED: 'ADMINISTRATIVE_REVIEW_REQUIRED',
-} as const;
-
-const roundKm = (km: number) => Math.round(km * 1000) / 1000;
+export { ExclusionReason };
 
 /**
  * Builds TEMPORARY route proposals from PostgreSQL data. Read-only: it never
@@ -71,6 +68,7 @@ export class RoutePlanningService {
     const excluded: ExcludedOrderDto[] = [];
     const routable: RoutingOrder[] = [];
     const instants = new Map<string, string>();
+    const addresses = new Map<string, string>();
     const depots: Record<string, GeoPoint> = {};
     const zones = new Map<string, { code: string }>();
     const perZone = new Map<string, number>();
@@ -78,7 +76,7 @@ export class RoutePlanningService {
     for (const order of candidates) {
       const { deliveryLocation, planningEligibility } =
         evaluatePlanningEligibility(order, order.zone);
-      const reasons: string[] = [...planningEligibility.reasons];
+      const reasons: PlanningExclusionReason[] = [...planningEligibility.reasons];
       if (claimed.has(order.id)) reasons.push(ExclusionReason.ACTIVE_ROUTE_CLAIM);
       if (order.requiresAdministrativeReview) {
         reasons.push(ExclusionReason.ADMINISTRATIVE_REVIEW_REQUIRED);
@@ -102,6 +100,7 @@ export class RoutePlanningService {
       };
       zones.set(order.zoneId, { code: order.zone.code });
       instants.set(order.id, order.scheduledDeliveryDate!.toString());
+      addresses.set(order.id, order.deliveryAddress);
       routable.push({
         id: order.id,
         zoneId: order.zoneId,
@@ -119,6 +118,13 @@ export class RoutePlanningService {
       const scheduledInstants = [
         ...new Set(route.orderIds.map((id) => instants.get(id)!)),
       ].sort((a, b) => Temporal.Instant.compare(Temporal.Instant.from(a), Temporal.Instant.from(b)));
+      const savings = savingsFigures(
+        independentTripsKm(
+          route.orderIds.map((id) => locations.get(id)!),
+          depots[route.zoneId]!,
+        ),
+        route.totalDistance,
+      );
       return {
         zoneId: route.zoneId,
         zoneCode: zones.get(route.zoneId)!.code,
@@ -128,9 +134,13 @@ export class RoutePlanningService {
           sequence: index + 1,
           orderId,
           location: locations.get(orderId)!,
+          deliveryAddress: addresses.get(orderId)!,
           scheduledDeliveryDate: instants.get(orderId)!,
         })),
-        totalDistanceKm: roundKm(route.totalDistance),
+        totalDistanceKm: savings.plannedKm,
+        baselineKm: savings.baselineKm,
+        savingsKm: savings.savingsKm,
+        savingsPercent: savings.savingsPercent,
         scheduledInstants,
         // Earliest scheduled instant: any instant of the business day is accepted by POST /routes.
         routeDate: scheduledInstants[0]!,
@@ -138,6 +148,11 @@ export class RoutePlanningService {
     });
 
     excluded.sort((a, b) => a.orderId.localeCompare(b.orderId));
+    // Daily totals add up the figures shown per proposal, so the sum on screen always matches.
+    const daily = savingsFigures(
+      proposals.reduce((sum, proposal) => sum + proposal.baselineKm, 0),
+      proposals.reduce((sum, proposal) => sum + proposal.totalDistanceKm, 0),
+    );
     return {
       date: query.date,
       timeZone: PLANNING_TIME_ZONE,
@@ -150,6 +165,10 @@ export class RoutePlanningService {
         plannedOrders: routable.length,
         excludedOrders: excluded.length,
         routes: proposals.length,
+        baselineKm: daily.baselineKm,
+        plannedKm: daily.plannedKm,
+        savingsKm: daily.savingsKm,
+        savingsPercent: daily.savingsPercent,
       },
     };
   }
