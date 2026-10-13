@@ -41,7 +41,7 @@ Contrato, definición de la línea base y ejemplo de respuesta en [`docs/route-p
 
 **Seguridad y permisos:** Sin cambios: solo ADMIN. `deliveryAddress` es un dato personal que ya está disponible para ADMIN en los pedidos; no se agrega el nombre ni el teléfono del cliente.
 
-**Compatibilidad con otros componentes:** Los campos son aditivos. `benchmarks/routing/` (PR #28) tiene su propia versión de estas funciones; si ambos PR se fusionan, el benchmark podría reutilizar `route-metrics.ts` en un cambio posterior.
+**Compatibilidad con otros componentes:** Los campos son aditivos. El benchmark ya fusionado (PR #28, `benchmarks/routing/`) mantiene su propia versión de estas funciones; podría reutilizar `route-metrics.ts` en un cambio posterior.
 
 **Limitaciones conocidas:**
 - La distancia es en línea recta (Haversine): rotularla como «distancia estimada en línea recta, no por calles».
