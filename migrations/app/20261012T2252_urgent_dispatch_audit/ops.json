@@ -1,0 +1,357 @@
+[
+  {
+    "id": "table.dispatchIntervention",
+    "label": "Create table \"dispatchIntervention\"",
+    "summary": "Creates table \"dispatchIntervention\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"dispatchIntervention\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"dispatchIntervention\"",
+        "sql": "CREATE TABLE \"public\".\"dispatchIntervention\" (\n  \"action\" text NOT NULL,\n  \"actorId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"orderId\" text,\n  \"outcome\" text NOT NULL,\n  \"payload\" json NOT NULL,\n  \"reason\" text NOT NULL,\n  \"recordedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"requestId\" text NOT NULL,\n  \"result\" json NOT NULL,\n  \"routeId\" text,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"dispatch_audit_valid_f083b472\" CHECK (action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500)\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"dispatchIntervention\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.dispatchIntervention.dispatchIntervention_requestId_key",
+    "label": "Add unique constraint on \"dispatchIntervention\" (requestId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "dispatchIntervention_requestId_key",
+        "table": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"dispatchIntervention_requestId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatchIntervention_requestId_key",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"dispatchIntervention_requestId_key\"",
+        "sql": "ALTER TABLE \"public\".\"dispatchIntervention\" ADD CONSTRAINT \"dispatchIntervention_requestId_key\" UNIQUE (\"requestId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"dispatchIntervention_requestId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatchIntervention_requestId_key",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.dispatchIntervention.dispatchIntervention_actorId_idx_a58f6b4b",
+    "label": "Create index \"dispatchIntervention_actorId_idx_a58f6b4b\" on \"dispatchIntervention\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "dispatchIntervention_actorId_idx_a58f6b4b",
+        "table": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"dispatchIntervention_actorId_idx_a58f6b4b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispatchIntervention_actorId_idx_a58f6b4b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"dispatchIntervention_actorId_idx_a58f6b4b\"",
+        "sql": "CREATE INDEX \"dispatchIntervention_actorId_idx_a58f6b4b\" ON \"public\".\"dispatchIntervention\" (\"actorId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"dispatchIntervention_actorId_idx_a58f6b4b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispatchIntervention_actorId_idx_a58f6b4b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.dispatchIntervention.dispatchIntervention_orderId_idx_d284871b",
+    "label": "Create index \"dispatchIntervention_orderId_idx_d284871b\" on \"dispatchIntervention\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "dispatchIntervention_orderId_idx_d284871b",
+        "table": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"dispatchIntervention_orderId_idx_d284871b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispatchIntervention_orderId_idx_d284871b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"dispatchIntervention_orderId_idx_d284871b\"",
+        "sql": "CREATE INDEX \"dispatchIntervention_orderId_idx_d284871b\" ON \"public\".\"dispatchIntervention\" (\"orderId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"dispatchIntervention_orderId_idx_d284871b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispatchIntervention_orderId_idx_d284871b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.dispatchIntervention.dispatchIntervention_routeId_idx_91ae2fd6",
+    "label": "Create index \"dispatchIntervention_routeId_idx_91ae2fd6\" on \"dispatchIntervention\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "dispatchIntervention_routeId_idx_91ae2fd6",
+        "table": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"dispatchIntervention_routeId_idx_91ae2fd6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispatchIntervention_routeId_idx_91ae2fd6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"dispatchIntervention_routeId_idx_91ae2fd6\"",
+        "sql": "CREATE INDEX \"dispatchIntervention_routeId_idx_91ae2fd6\" ON \"public\".\"dispatchIntervention\" (\"routeId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"dispatchIntervention_routeId_idx_91ae2fd6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispatchIntervention_routeId_idx_91ae2fd6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.dispatchIntervention.dispatchIntervention_actorId_fkey",
+    "label": "Add foreign key \"dispatchIntervention_actorId_fkey\" on \"dispatchIntervention\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "dispatchIntervention_actorId_fkey",
+        "table": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"dispatchIntervention_actorId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatchIntervention_actorId_fkey",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"dispatchIntervention_actorId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"dispatchIntervention\"\nADD CONSTRAINT \"dispatchIntervention_actorId_fkey\"\nFOREIGN KEY (\"actorId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"dispatchIntervention_actorId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatchIntervention_actorId_fkey",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.dispatchIntervention.dispatchIntervention_orderId_fkey",
+    "label": "Add foreign key \"dispatchIntervention_orderId_fkey\" on \"dispatchIntervention\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "dispatchIntervention_orderId_fkey",
+        "table": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"dispatchIntervention_orderId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatchIntervention_orderId_fkey",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"dispatchIntervention_orderId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"dispatchIntervention\"\nADD CONSTRAINT \"dispatchIntervention_orderId_fkey\"\nFOREIGN KEY (\"orderId\")\nREFERENCES \"public\".\"order\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"dispatchIntervention_orderId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatchIntervention_orderId_fkey",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.dispatchIntervention.dispatchIntervention_routeId_fkey",
+    "label": "Add foreign key \"dispatchIntervention_routeId_fkey\" on \"dispatchIntervention\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "dispatchIntervention_routeId_fkey",
+        "table": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"dispatchIntervention_routeId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatchIntervention_routeId_fkey",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"dispatchIntervention_routeId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"dispatchIntervention\"\nADD CONSTRAINT \"dispatchIntervention_routeId_fkey\"\nFOREIGN KEY (\"routeId\")\nREFERENCES \"public\".\"route\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"dispatchIntervention_routeId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatchIntervention_routeId_fkey",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dispatch.audit-and-prestart-release",
+    "label": "Append-only ADMIN audit and narrowly audited pre-start releases",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "objectType": "table",
+        "schema": "public",
+        "name": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "require existing coherence guards",
+        "sql": "SELECT to_regprocedure('public.t1e_claim_history_guard()') IS NOT NULL AND to_regprocedure('public.dispatch_audit_actor_guard()') IS NULL AS result"
+      }
+    ],
+    "execute": [
+      {
+        "description": "install audit guards and preserve frozen-route release rules",
+        "sql": "CREATE FUNCTION public.dispatch_audit_actor_guard() RETURNS trigger\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE actor_role text;\nBEGIN\n  SELECT role::text INTO actor_role FROM public.\"user\" WHERE id = NEW.\"actorId\" FOR SHARE;\n  IF actor_role IS DISTINCT FROM 'ADMIN' OR NEW.\"recordedAt\" > clock_timestamp() THEN\n    RAISE EXCEPTION 'Current ADMIN and valid instant required' USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND $$;\nCREATE TRIGGER dispatch_audit_actor BEFORE INSERT ON public.\"dispatchIntervention\" FOR EACH ROW EXECUTE FUNCTION public.dispatch_audit_actor_guard();\nCREATE TRIGGER dispatch_audit_append_only BEFORE UPDATE OR DELETE ON public.\"dispatchIntervention\" FOR EACH ROW EXECUTE FUNCTION public.route_history_append_only();\nCREATE TRIGGER dispatch_audit_no_truncate BEFORE TRUNCATE ON public.\"dispatchIntervention\" FOR EACH STATEMENT EXECUTE FUNCTION public.route_history_append_only();\nCREATE OR REPLACE FUNCTION public.t1e_claim_history_guard() RETURNS trigger\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  route_status text;\n  completed_at timestamptz;\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    RAISE EXCEPTION 'Order claim history is immutable and cannot be deleted'\n      USING ERRCODE = '23514';\n  END IF;\n  IF NEW.id IS DISTINCT FROM OLD.id OR NEW.\"routeId\" IS DISTINCT FROM OLD.\"routeId\" OR\n     NEW.\"orderId\" IS DISTINCT FROM OLD.\"orderId\" OR\n     NEW.\"claimedAt\" IS DISTINCT FROM OLD.\"claimedAt\" THEN\n    RAISE EXCEPTION 'Order claim identity and claim time are immutable'\n      USING ERRCODE = '23514';\n  END IF;\n  IF OLD.\"releasedAt\" IS NOT NULL AND NEW.\"releasedAt\" IS DISTINCT FROM OLD.\"releasedAt\" THEN\n    RAISE EXCEPTION 'Released order claim history is immutable'\n      USING ERRCODE = '23514';\n  END IF;\n  IF OLD.\"releasedAt\" IS NULL AND NEW.\"releasedAt\" IS NOT NULL THEN\n    SELECT status::text, \"completedAt\" INTO route_status, completed_at\n    FROM public.route WHERE id = OLD.\"routeId\";\n    IF route_status = 'COMPLETED' AND completed_at = NEW.\"releasedAt\" THEN\n      RETURN NEW;\n    END IF;\n    IF route_status = 'DRAFT' AND NOT EXISTS (\n      SELECT 1 FROM public.\"routeStop\" s\n      WHERE s.\"routeId\" = OLD.\"routeId\" AND s.\"orderId\" = OLD.\"orderId\"\n    ) THEN\n      RETURN NEW;\n    END IF;\n    IF route_status = 'ASSIGNED' AND NOT EXISTS (\n      SELECT 1 FROM public.\"routeStop\" WHERE \"routeId\" = OLD.\"routeId\" AND \"orderId\" = OLD.\"orderId\"\n    ) AND EXISTS (\n      SELECT 1 FROM public.\"dispatchIntervention\" a\n      WHERE a.action = 'MOVE' AND a.outcome = 'APPLIED' AND a.\"orderId\" = OLD.\"orderId\"\n        AND a.payload::jsonb ->> 'routeId' = OLD.\"routeId\"\n        AND a.xmin = pg_current_xact_id()::text::xid\n    ) THEN RETURN NEW; END IF;\n    RAISE EXCEPTION 'Order claim may be released only at valid completion or pre-start draft stop removal'\n      USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND $$;\n\nCREATE OR REPLACE FUNCTION public.t1e_reservation_history_guard() RETURNS trigger\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  route_status text;\n  returned_at timestamptz;\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    RAISE EXCEPTION 'Driver reservation history is immutable and cannot be deleted'\n      USING ERRCODE = '23514';\n  END IF;\n  IF NEW.id IS DISTINCT FROM OLD.id OR NEW.\"routeId\" IS DISTINCT FROM OLD.\"routeId\" OR\n     NEW.\"driverId\" IS DISTINCT FROM OLD.\"driverId\" OR\n     NEW.\"reservedAt\" IS DISTINCT FROM OLD.\"reservedAt\" THEN\n    RAISE EXCEPTION 'Driver reservation identity and reserve time are immutable'\n      USING ERRCODE = '23514';\n  END IF;\n  IF OLD.\"releasedAt\" IS NOT NULL AND NEW.\"releasedAt\" IS DISTINCT FROM OLD.\"releasedAt\" THEN\n    RAISE EXCEPTION 'Released driver reservation history is immutable'\n      USING ERRCODE = '23514';\n  END IF;\n  IF OLD.\"releasedAt\" IS NULL AND NEW.\"releasedAt\" IS NOT NULL THEN\n    SELECT status::text, \"returnedAt\" INTO route_status, returned_at\n    FROM public.route WHERE id = OLD.\"routeId\";\n    IF route_status = 'COMPLETED' AND returned_at = NEW.\"releasedAt\" THEN\n      RETURN NEW;\n    END IF;\n    IF route_status IS NULL THEN\n      RETURN NEW;\n    END IF;\n    IF route_status = 'ASSIGNED' AND EXISTS (\n      SELECT 1 FROM public.\"dispatchIntervention\" a JOIN public.route r ON r.id = a.\"routeId\"\n      WHERE a.action = 'REASSIGN_DRIVER' AND a.outcome = 'APPLIED' AND a.\"routeId\" = OLD.\"routeId\"\n        AND a.payload::jsonb ->> 'driverId' = r.\"driverId\" AND r.\"driverId\" <> OLD.\"driverId\"\n        AND a.xmin = pg_current_xact_id()::text::xid\n    ) THEN RETURN NEW; END IF;\n    RAISE EXCEPTION 'Verified driver reservation may be released only at physical return'\n      USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND $$;\n\n"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "three audit guards enabled",
+        "sql": "SELECT COUNT(*) = 3 AS result FROM pg_trigger WHERE tgenabled = 'O' AND tgname IN ('dispatch_audit_actor', 'dispatch_audit_append_only', 'dispatch_audit_no_truncate')"
+      }
+    ]
+  }
+]

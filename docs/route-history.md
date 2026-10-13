@@ -4,7 +4,7 @@ Existing ADMIN `GET /api/v1/routes` and `/routes/:id`, and JWT-owned DRIVER
 `GET /api/v1/drivers/me/routes`, now share history fields with role-specific typed
 responses. ADMIN uses `AdminRouteHistoryResponseDto`; DRIVER retains restricted
 `RouteHistoryResponseDto`. No parallel
-endpoint or administrative rescheduling operation is added. These isolated
+history endpoint is added. ADMIN contact and explicit rescheduling are now available through [urgent dispatch](urgent-dispatch.md); prior stops and attempts remain intact. These isolated
 implementation bytes and their dependencies remain unreviewed.
 
 ## What each field means

@@ -7,7 +7,6 @@ import { historyHost } from './route-history.fixtures.js';
 import {
   startOwnedContainer,
   cleanupOwnedResources,
-  execPsqlCommand,
 } from './geolocation-migration.fixtures.js';
 import { PROPOSAL_DATE } from './route-assignment.fixtures.js';
 import { RouteProgressService } from '../src/modules/routes/route-progress.service.js';
@@ -64,11 +63,11 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
       .auth(host.token(sub, role), { type: 'bearer' })
       .set('Content-Type', 'application/json')
       .send(JSON.stringify(body));
-  async function startedRoute() {
+  async function startedRoute(orderId = 'one') {
     // Legacy holds deliberately stay intact; this unrelated operational route uses another driver.
     const drafted = await post('', {
       zoneId: 'zone',
-      orderIds: ['one'],
+      orderIds: [orderId],
       routeDate: PROPOSAL_DATE,
     }).expect(201);
     await post(`/${drafted.body.id}/assign`, {
@@ -117,7 +116,23 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
     ).toEqual(before);
   });
   it('preserves first failed visit after a later stable association and current commercial pointer move', async () => {
-    const { routeId, stopId } = await startedRoute();
+    const orderId = randomUUID();
+    // Classified retry fixtures use the real ADMIN workflow; no direct SQL
+    // bypass of agreement, claim or failure-review guards.
+    await host.db.orm.public.Zone.where({ id: 'zone' }).update({
+      depotLat: -1.24,
+      depotLng: -78.61,
+    });
+    await host.db.orm.public.Order.create({
+      id: orderId,
+      userId: 'client',
+      zoneId: 'zone',
+      deliveryAddress: 'Fixture',
+      scheduledDeliveryDate: Temporal.Instant.from(PROPOSAL_DATE),
+      deliveryLat: -1.25,
+      deliveryLng: -78.62,
+    });
+    const { routeId, stopId } = await startedRoute(orderId);
     const failure = await post(
       `/${routeId}/stops/${stopId}/failure`,
       {
@@ -128,26 +143,61 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
       'other',
       'DRIVER',
     ).expect(200);
-    const future = randomUUID();
-    // Fixture-only future association: no administrative rescheduling API is implemented.
-    execPsqlCommand(
-      host.database,
-      `
-      UPDATE public.route SET status='COMPLETED',"completedAt"='2026-10-10T12:00:00Z',"completedById"='other' WHERE id='${routeId}';
-      UPDATE public."orderClaim" SET "releasedAt"='2026-10-10T12:00:00Z' WHERE "routeId"='${routeId}';
-      INSERT INTO public.route (id,"driverId","zoneId",date,status) VALUES ('${future}','driver','zone','2026-10-20T00:00:00Z','ASSIGNED');
-      INSERT INTO public."driverReservation" (id,"routeId","driverId","reservedAt") VALUES ('future-res','${future}','driver',now());
-      INSERT INTO public."routeStop" (id,"routeId","orderId",sequence,outcome,"createdAt") VALUES ('future-stop','${future}','one',1,'PENDING','2026-10-20T00:00:00Z');
-      INSERT INTO public."orderClaim" (id,"routeId","orderId","claimedAt") VALUES ('future-claim','${future}','one',now());
-      UPDATE public."order" SET "routeId"='${future}',"stopOrder"=1,"deliveryAddress"='Current address',"scheduledDeliveryDate"='2026-10-20T00:00:00Z' WHERE id='one';
-    `,
-    );
+    await post(`/${routeId}/complete`, {}, 'other', 'DRIVER').expect(200);
+    const completed = (await get(`/routes/${routeId}`).expect(200)).body;
+    const scheduled = Temporal.Now.instant()
+      .add({ hours: 24 })
+      .round({ smallestUnit: 'microsecond' });
+    const dispatch = (body: object) =>
+      request(host.app.getHttpServer())
+        .post('/api/v1/dispatch/interventions')
+        .auth(host.token('admin', 'ADMIN'), { type: 'bearer' })
+        .send({
+          requestId: randomUUID(),
+          reason: 'Recipient agreed to a second visit',
+          ...body,
+        });
+    const contact = await dispatch({
+      action: 'CONTACT',
+      orderId,
+      attemptId: failure.body.id,
+      agreementConfirmed: true,
+      scheduledDeliveryDate: scheduled.toString(),
+      deliveryWindowStart: scheduled.subtract({ minutes: 10 }).toString(),
+      deliveryWindowEnd: scheduled.add({ minutes: 10 }).toString(),
+    }).expect(200);
+    await dispatch({
+      action: 'RESCHEDULE',
+      orderId,
+      agreementId: contact.body.id,
+    }).expect(200);
+    // Current-address projection remains distinct from immutable visit history.
+    await host.db.orm.public.Order.where({ id: orderId }).update({
+      deliveryAddress: 'Current address',
+    });
+    const user = await host.db.orm.public.User.create({
+      name: 'Future driver',
+      email: randomUUID() + '@fixture.invalid',
+      password: 'fixture',
+      role: 'DRIVER',
+    });
+    const driver = await host.db.orm.public.Driver.create({
+      userId: user.id,
+      vehicle: 'Fixture',
+    });
+    const futureRoute = await post('', {
+      zoneId: 'zone',
+      orderIds: [orderId],
+      routeDate: scheduled.toString(),
+    }).expect(201);
+    const future = futureRoute.body.id;
+    await post(`/${future}/assign`, { driverId: driver.id }).expect(200);
     const historic = (await get(`/routes/${routeId}`).expect(200)).body;
     expect(historic.date).toBe('2026-10-10T00:00:00Z');
     expect(historic.stops[0]).toMatchObject({
       id: stopId,
       routeId,
-      orderId: 'one',
+      orderId,
       sequence: 1,
       outcome: 'FAILED',
     });
@@ -158,15 +208,13 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
       failureReason: 'RECIPIENT_ABSENT',
       context: 'No recipient on first visit',
     });
-    expect(historic.events).toEqual([
-      { kind: 'STARTED', actorId: 'other', recordedAt: expect.any(String) },
-      { kind: 'COMPLETED', actorId: 'other', recordedAt: '2026-10-10T12:00:00Z' },
-    ]);
+    expect(historic.events).toEqual(completed.events);
+    expect(historic.stops).toEqual(completed.stops);
     expect(historic.orders[0]).toMatchObject({
-      id: 'one',
+      id: orderId,
       stopOrder: 1,
       deliveryAddress: 'Current address',
-      scheduledDeliveryDate: '2026-10-20T00:00:00Z',
+      scheduledDeliveryDate: scheduled.toString(),
     });
     const owned = (
       await get('/drivers/me/routes', 'other', 'DRIVER').expect(200)
@@ -181,13 +229,13 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
       ).body.some((route: any) => route.id === routeId),
     ).toBe(false);
     // Existing direct-order DRIVER authorization intentionally follows the live operational pointer.
-    await get('/orders/one', 'other', 'DRIVER').expect(403);
+    await get(`/orders/${orderId}`, 'other', 'DRIVER').expect(403);
     expect(
       (await get(`/routes/${future}`).expect(200)).body.stops[0].outcome,
     ).toBe('PENDING');
-    expect(
-      (await host.db.orm.public.Order.where({ id: 'one' }).first())?.routeId,
-    ).toBe(future);
+    expect((await get(`/orders/${orderId}`).expect(200)).body.routeId).toBe(
+      future,
+    );
   });
   it('preserves date query validation, role boundaries, empty results and missing-route 404', async () => {
     await get('/routes', 'driver-user', 'DRIVER').expect(403);
@@ -315,7 +363,8 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
       items: { $ref: '#/components/schemas/RouteHistoryResponseDto' },
     });
     const historySchema = doc.components!.schemas!.RouteHistoryResponseDto;
-    if ('$ref' in historySchema) throw new Error('Expected an inline RouteHistoryResponseDto schema');
+    if ('$ref' in historySchema)
+      throw new Error('Expected an inline RouteHistoryResponseDto schema');
     expect(historySchema.properties!.stops).toMatchObject({
       type: 'array',
       items: { $ref: '#/components/schemas/RouteHistoryStopDto' },
