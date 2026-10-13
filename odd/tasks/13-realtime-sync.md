@@ -28,8 +28,8 @@ Reconectar → autenticar de nuevo, suscribirse con autorización y consultar RE
 T0 | S1,S5,S10,S11 | inline baseline/dependency/protocol setup | done | commit a0cf3371fc4d83a451cacd2c1bfd8618debf0e31,dependencyimports4/typecheck/diff0; original-requestquote whitespacecorrected afterstagedcheck2; no functionalRED applicable
 T1 | S2,S5,S6,S7,S11 | delegated gateway/publisher | done | Commit d7e43bbede4fb17fa5433efb1640a96fe094e237; own13/full662 and independent7Socket/25unit/2probe/TSC PASS.
 T2 | S3,S4,S5,S11 | delegated domain hooks | done | Commit 0821194732374102b73cf69ac6b3ccb13ad3e751; own12/canaries48 and independent postcommit/rollback/rejection/return proof PASS.
-T3 | S2-S9,S11 | owned PostgreSQL/Socket.IO public proof | in_progress | Adopted two independent probes; affected existing suite9/9 PASS exit0, original7 retained; closing local test/docs commit.
-T4 | S7-S10 | regression and independent high-risk closure | pending | Functional verifier finished PASS, all own gates PASS; final matrix/ledger and coherent local commits remain, no live check.
+T3 | S2-S9,S11 | owned PostgreSQL/Socket.IO public proof | done | Commit 9084904e95589f8f19b89fece90d1be4802adcfd; original351/21 regression, independent7/25/2/TSC and final9case Socket.IO proof PASS.
+T4 | S7-S10 | regression and independent high-risk closure | in_progress | All proof PASS, T0-T3 committed; closing final docs and local ledger with protected human WIP intact.
 
 ## Log
 L1 — Original user request (verbatim)
@@ -123,3 +123,5 @@ L22 — T1 closed with observed local commit d7e43bbede4fb17fa5433efb1640a96fe09
 L23 — T2 closed with observed local commit 0821194732374102b73cf69ac6b3ccb13ad3e751: five producer services,12focused postcommit tests, transaction docs and T1 commit ledger evidence. Exact8paths staged, diffcheck0, commitexit0. T3 now adopts independent expired/wrong-key JWT and route.updated projection cases into existing test/realtime.e2e-spec.ts, reusing its owned fixture and public helpers; no original case or canonical suite removed. Recheck only this changed file once; no unchanged full regression or source review repeated.
 
 L24 — Adopted public probes are durable in existing realtime.e2e-spec.ts. Parent affected-file recheck job2 exit0:9/9 actual PostgreSQL/Socket.IO cases, scoped lint/diff0. Existing canonical21suite inventory unchanged and all original7cases retained; no suite exclusion or artificial extra suite. The complete earlier351/21 regression and later9case recheck are separate observed executions, not a fabricated single353-test full run. Production source unchanged from the independently approved candidate. T3 exact test/CI/verification-doc/ledger commit closes next; T4 final delivery record remains local only.
+
+L25 — T3 closed with observed local commit 9084904e95589f8f19b89fece90d1be4802adcfd: existing realtime suite9cases, CI inventory20→21, actual verification matrix and ledger. Exact4paths, stageddiffcheck0, commitexit0. No original suite/test dropped; independent probes retained. T4 final README/operating limits/Git-RDD record closes next; all current applicable checks already passed and no job or verifier remains active.

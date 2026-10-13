@@ -8,6 +8,7 @@ Backend modular de alto rendimiento para la gestión logística de despachos, pe
 
 - **Framework:** [NestJS 12](https://nestjs.com/) (ESM-first, arquitectura modular, inyección de dependencias).
 - **ORM / Base de Datos:** [Prisma 8](https://www.prisma.io/) (`@prisma/orm-postgres`) con PostgreSQL 16.
+- **Tiempo real:** Socket.IO con JWT, salas por recurso y resincronización REST tras reconectar.
 - **Autenticación & Autorización:** JWT con Passport (`@nestjs/jwt`, `passport-jwt`) y Guards por Roles (`ADMIN`, `DRIVER`, `CLIENT`).
 - **Validación de Datos:** `class-validator` y `class-transformer` con `ValidationPipe` global.
 - **Documentación Interactiva:** OpenAPI / Swagger (`@nestjs/swagger`) en `/api/docs`.
@@ -27,7 +28,8 @@ src/
 │   ├── zones/                    # Coberturas y zonas geográficas
 │   ├── products/                 # Catálogo y control de inventario
 │   ├── orders/                   # Creación atómica de pedidos y estados
-│   └── routes/                   # Asignación de pedidos a rutas (Regla <= 4 pedidos)
+│   ├── routes/                   # Asignación de pedidos a rutas (Regla <= 4 pedidos)
+│   └── realtime/                 # Gateway Socket.IO, autorización y eventos mínimos v1
 ├── prisma/
 │   ├── contract.prisma           # Contrato de datos Prisma 8
 │   ├── db.ts                     # Instancia del cliente PostgreSQL
@@ -167,6 +169,7 @@ http://localhost:3000/api/docs
 - **Migración y recuperación geográfica:** [`docs/geolocation-migration.md`](./docs/geolocation-migration.md).
 - **Diseño de Armado de Rutas (Clarke & Wright):** [`docs/clarke-wright.md`](./docs/clarke-wright.md).
 - **Propuestas de rutas (#7):** [`docs/route-planning.md`](./docs/route-planning.md) (`GET /api/v1/route-proposals`, solo lectura, solo ADMIN).
+- **Socket.IO y resincronización (#13):** [`docs/realtime.md`](./docs/realtime.md) (JWT, `REALTIME_ALLOWED_ORIGINS`, salas autorizadas, eventos v1, React/Flutter y Cloudflare Tunnel); [`docs/realtime-transactions.md`](./docs/realtime-transactions.md) (publicación solo después del commit); [`docs/issue-13-verification.md`](./docs/issue-13-verification.md) (matriz y evidencia real). REST GET sigue siendo autoritativo; sin replay/offline garantizado, GPS ni ETA. Los ejemplos frontend/tunnel no equivalen a integración ejecutada.
 - **Urgencias e intervención ADMIN (#12):** [`docs/urgent-dispatch.md`](./docs/urgent-dispatch.md) (propuestas sin escrituras, decisiones auditadas, acuerdo explícito y reintentos con historial intacto; verificación local e independiente PASS; commit E y PR autorizados; CI remoto se informa por separado, sin aprobación RDD).
 
 ---
@@ -207,19 +210,19 @@ env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm run test:api
 ```bash
 pnpm test --runInBand
 ```
-La verificación independiente final ejecutó 559 pruebas en 44 suites Jest con cobertura, incluida la compatibilidad downstream; cubre autenticación, pedidos, autorización, rutas y contratos de CI.
+La regresión local de #13 ejecutó **662 pruebas en 49 suites PASS**, incluida la compatibilidad downstream y Socket.IO; cubre autenticación, pedidos, autorización, rutas y contratos de CI. La prueba independiente y sus límites se registran por separado en [`docs/issue-13-verification.md`](./docs/issue-13-verification.md).
 
 ### Ejecutar Cobertura de Código (Umbral CI >= 80 %)
 ```bash
 env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm run test:cov --runInBand --coverageThreshold='{"global":{"statements":80,"branches":80,"functions":80,"lines":80}}'
 ```
-Verificación independiente final: **44 suites / 559 pruebas PASS**, con umbrales originales del 80 % cada uno. Statements 90.79 %, Branches 81.73 %, Functions 89.08 %, Lines 92.05 %.
+Regresión local #13: **49 suites / 662 pruebas PASS**, con umbrales originales del 80 % cada uno. Statements 91.46 %, Branches 84.07 %, Functions 89.75 %, Lines 93.13 %.
 
 ### Ejecutar Pruebas de Integración y Seguridad (E2E)
 ```bash
 env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm run test:e2e:isolated
 ```
-Runner canónico: 18 suites / 322 pruebas PASS. Ejecuta 15 suites con recursos propios y 3 legacy en bases PostgreSQL 16 propias, migradas/verificadas y con limpieza confirmada. Sin BD ambiental/compartida ni volúmenes persistentes de Compose. `test:e2e` sigue disponible como runner Jest directo, pero no sustituye este aislamiento integral.
+Runner canónico, regresión local #13: **21 suites / 351 pruebas PASS**. Ejecuta 18 suites con recursos propios y 3 legacy en bases PostgreSQL 16 propias, migradas/verificadas y con limpieza confirmada. La suite Socket.IO final conserva esos siete casos y agrega dos probes independientes: **9/9 PASS** en un recheck del archivo afectado. Cubre persistencia, rollback, aislamiento, reconexión e intervenciones; el recheck no se presenta como otra ejecución completa del manifiesto. Sin BD ambiental/compartida ni volúmenes persistentes de Compose. `test:e2e` sigue disponible como runner Jest directo, pero no sustituye este aislamiento integral.
 
 ### Validar Scripts Shell
 ```bash

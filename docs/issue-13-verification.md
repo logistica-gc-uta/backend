@@ -31,6 +31,13 @@ Current logs and source/config checksum manifest: `reports/issue13-recovery/`. I
 
 Earlier logs retain the root copied-test OOM exit134, owned PostgreSQL readiness timeout, fixture JWT without expiration, unstable invalid-signature mutation, wrong 409-vs400 expectation, incorrect CLIENT admin-review projection and CONTACT missing attemptId/privacy-regex false positive. Corrections only changed test fixtures/assertions to the existing public contract; runtime guards were not relaxed. Fresh authorized owned PostgreSQL readiness later passed with the unchanged 30-second limit and cleanup; the original transient timeout cause is not claimed proven.
 
+## Git and review state
+
+- One branch: `feat/13-realtime-sync`, directly based on updated main `232126c3588f8b2606d0e0d70088c6ea5a37157d`; coherent local work units are recorded in `odd/tasks/13-realtime-sync.md`.
+- No push, PR, merge or Issue 13 closure was performed. Remote CI was not run because no publication is authorized.
+- RDD remained **off**, unchanged. Native assessment was unassessable due the bounded local untracked inventory; the high-equivalent independent-verifier plan was followed. No native receipt/approval is invented, and functional PASS is not human review.
+- Source and approved/final checksum manifests bind the verification; the final production code is byte-identical to the independently verified code. Only the two durable E2E probes were added afterward and their affected suite passed.
+
 ## Limitations and risks
 
 - React/Flutter examples are contracts, not executed frontend integration; the issue's React-without-refresh acceptance is not falsely checked as a UI result.
