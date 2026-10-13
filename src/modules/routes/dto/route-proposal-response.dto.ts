@@ -53,6 +53,27 @@ export class RouteProposalDto {
   totalDistanceKm!: number;
 
   @ApiProperty({
+    description:
+      'Kilometres without optimizing: one independent depot -> order -> depot round trip per order of this proposal, in a straight line, with 3 decimals',
+    example: 18.52,
+  })
+  baselineKm!: number;
+
+  @ApiProperty({
+    description:
+      'baselineKm minus totalDistanceKm, computed from the displayed values so the subtraction holds exactly',
+    example: 14.307,
+  })
+  savingsKm!: number;
+
+  @ApiProperty({
+    description:
+      'Savings over the baseline in percent with 2 decimals; 0 when the baseline is 0 (never divides by zero)',
+    example: 77.25,
+  })
+  savingsPercent!: number;
+
+  @ApiProperty({
     type: [String],
     description:
       'Distinct scheduled instants among the orders of this proposal, in chronological order',
@@ -88,6 +109,25 @@ export class RouteProposalSummaryDto {
   @ApiProperty() plannedOrders!: number;
   @ApiProperty() excludedOrders!: number;
   @ApiProperty() routes!: number;
+
+  @ApiProperty({
+    description:
+      'Sum of the baselineKm of every proposal of the day (excluded orders are not counted)',
+  })
+  baselineKm!: number;
+
+  @ApiProperty({
+    description: 'Sum of the totalDistanceKm of every proposal of the day',
+  })
+  plannedKm!: number;
+
+  @ApiProperty({ description: 'baselineKm minus plannedKm' })
+  savingsKm!: number;
+
+  @ApiProperty({
+    description: 'Daily savings over the baseline in percent; 0 when the baseline is 0',
+  })
+  savingsPercent!: number;
 }
 
 export class RouteProposalResponseDto {

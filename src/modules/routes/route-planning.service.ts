@@ -12,6 +12,7 @@ import {
   type RoutingOrder,
 } from './algorithms/clarke-wright.js';
 import type { GeoPoint } from './algorithms/geo.util.js';
+import { independentTripsKm, savingsFigures } from './algorithms/route-metrics.js';
 import type { PlanRoutesQueryDto } from './dto/plan-routes-query.dto.js';
 import type {
   ExcludedOrderDto,
@@ -32,8 +33,6 @@ export const ExclusionReason = {
   ACTIVE_ROUTE_CLAIM: 'ACTIVE_ROUTE_CLAIM',
   ADMINISTRATIVE_REVIEW_REQUIRED: 'ADMINISTRATIVE_REVIEW_REQUIRED',
 } as const;
-
-const roundKm = (km: number) => Math.round(km * 1000) / 1000;
 
 /**
  * Builds TEMPORARY route proposals from PostgreSQL data. Read-only: it never
@@ -119,6 +118,13 @@ export class RoutePlanningService {
       const scheduledInstants = [
         ...new Set(route.orderIds.map((id) => instants.get(id)!)),
       ].sort((a, b) => Temporal.Instant.compare(Temporal.Instant.from(a), Temporal.Instant.from(b)));
+      const savings = savingsFigures(
+        independentTripsKm(
+          route.orderIds.map((id) => locations.get(id)!),
+          depots[route.zoneId]!,
+        ),
+        route.totalDistance,
+      );
       return {
         zoneId: route.zoneId,
         zoneCode: zones.get(route.zoneId)!.code,
@@ -130,7 +136,10 @@ export class RoutePlanningService {
           location: locations.get(orderId)!,
           scheduledDeliveryDate: instants.get(orderId)!,
         })),
-        totalDistanceKm: roundKm(route.totalDistance),
+        totalDistanceKm: savings.plannedKm,
+        baselineKm: savings.baselineKm,
+        savingsKm: savings.savingsKm,
+        savingsPercent: savings.savingsPercent,
         scheduledInstants,
         // Earliest scheduled instant: any instant of the business day is accepted by POST /routes.
         routeDate: scheduledInstants[0]!,
@@ -138,6 +147,11 @@ export class RoutePlanningService {
     });
 
     excluded.sort((a, b) => a.orderId.localeCompare(b.orderId));
+    // Daily totals add up the figures shown per proposal, so the sum on screen always matches.
+    const daily = savingsFigures(
+      proposals.reduce((sum, proposal) => sum + proposal.baselineKm, 0),
+      proposals.reduce((sum, proposal) => sum + proposal.totalDistanceKm, 0),
+    );
     return {
       date: query.date,
       timeZone: PLANNING_TIME_ZONE,
@@ -150,6 +164,10 @@ export class RoutePlanningService {
         plannedOrders: routable.length,
         excludedOrders: excluded.length,
         routes: proposals.length,
+        baselineKm: daily.baselineKm,
+        plannedKm: daily.plannedKm,
+        savingsKm: daily.savingsKm,
+        savingsPercent: daily.savingsPercent,
       },
     };
   }

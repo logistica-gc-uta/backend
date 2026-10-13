@@ -1,4 +1,6 @@
 import { BadRequestException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { haversineKm } from './algorithms/geo.util.js';
+import { roundKm } from './algorithms/route-metrics.js';
 import {
   DISTANCE_METHOD,
   ExclusionReason,
@@ -108,7 +110,7 @@ describe('RoutePlanningService', () => {
       expect(proposal.totalDistanceKm).toBeGreaterThan(0);
       expect(proposal.stops.map((s) => s.sequence)).toEqual(proposal.orderIds.map((_, i) => i + 1));
     }
-    expect(result.summary).toEqual({ candidateOrders: 5, plannedOrders: 5, excludedOrders: 0, routes: 2 });
+    expect(result.summary).toMatchObject({ candidateOrders: 5, plannedOrders: 5, excludedOrders: 0, routes: 2 });
   });
 
   it('cada pedido aparece en una sola ruta y ninguna supera 4 paradas', async () => {
@@ -165,6 +167,74 @@ describe('RoutePlanningService', () => {
     expect(proposals[0]!.routeDate).toBe('2030-02-14T09:30:15Z');
   });
 
+  describe('ahorro frente a la línea base (cada pedido por separado, ida y vuelta al depósito)', () => {
+    // Depósito en (0, 0) y pedidos en (0,1; 0): 11,1195 km en línea recta.
+    const ORIGIN = zone('z1', 'CEN-01', [0, 0]);
+    const at = (id: string, z = ORIGIN, lat = 0.1) => order(id, z, { deliveryLat: lat, deliveryLng: 0 });
+    const d = haversineKm({ lat: 0, lng: 0 }, { lat: 0.1, lng: 0 });
+
+    it('calcula la línea base, el ahorro en km y el porcentaje por propuesta', async () => {
+      orders = ['a', 'b', 'c', 'd'].map((id) => at(id));
+
+      const { proposals } = await service.propose({ date: DAY });
+
+      expect(proposals).toHaveLength(1);
+      expect(proposals[0]!.baselineKm).toBe(roundKm(8 * d)); // 4 viajes de ida y vuelta
+      expect(proposals[0]!.totalDistanceKm).toBe(roundKm(2 * d)); // una sola salida
+      expect(proposals[0]!.savingsKm).toBe(roundKm(roundKm(8 * d) - roundKm(2 * d)));
+      expect(proposals[0]!.savingsPercent).toBe(75);
+    });
+
+    it('una ruta de un solo pedido no ahorra y no divide entre 0', async () => {
+      orders = [at('solo')];
+
+      const { proposals, summary } = await service.propose({ date: DAY });
+
+      expect(proposals[0]!.savingsKm).toBe(0);
+      expect(proposals[0]!.savingsPercent).toBe(0);
+      expect(summary.savingsPercent).toBe(0);
+    });
+
+    it('con pedidos en el depósito la línea base es 0 y el ahorro es 0, nunca NaN', async () => {
+      orders = [at('x', ORIGIN, 0), at('y', ORIGIN, 0)];
+
+      const { proposals, summary } = await service.propose({ date: DAY });
+
+      expect(proposals.every((p) => p.baselineKm === 0 && p.savingsKm === 0 && p.savingsPercent === 0)).toBe(true);
+      expect(summary).toMatchObject({ baselineKm: 0, plannedKm: 0, savingsKm: 0, savingsPercent: 0 });
+    });
+
+    it('los totales del día son la suma de lo mostrado por propuesta y cuadran entre sí', async () => {
+      orders = ['a', 'b', 'c', 'd', 'e'].map((id) => at(id)); // 4 + 1
+
+      const { proposals, summary } = await service.propose({ date: DAY });
+
+      const sum = (pick: (p: (typeof proposals)[number]) => number) => roundKm(proposals.reduce((acc, p) => acc + pick(p), 0));
+      expect(proposals).toHaveLength(2);
+      expect(summary.baselineKm).toBe(sum((p) => p.baselineKm));
+      expect(summary.plannedKm).toBe(sum((p) => p.totalDistanceKm));
+      expect(summary.savingsKm).toBe(roundKm(summary.baselineKm - summary.plannedKm));
+      expect(summary.baselineKm).toBe(roundKm(10 * d));
+      expect(summary.plannedKm).toBe(roundKm(4 * d));
+      expect(summary.savingsPercent).toBe(60);
+    });
+
+    it('no cuenta los pedidos excluidos en la línea base del día', async () => {
+      orders = [at('ok'), order('sin-coords', ORIGIN, { deliveryLat: null, deliveryLng: null })];
+
+      const { summary } = await service.propose({ date: DAY });
+
+      expect(summary.plannedOrders).toBe(1);
+      expect(summary.baselineKm).toBe(roundKm(2 * d));
+    });
+
+    it('sin pedidos todas las cifras de ahorro son 0', async () => {
+      const { summary } = await service.propose({ date: DAY });
+
+      expect(summary).toMatchObject({ baselineKm: 0, plannedKm: 0, savingsKm: 0, savingsPercent: 0 });
+    });
+  });
+
   it('excluye y explica los pedidos no planificables en lugar de ocultarlos', async () => {
     const z = zone('z1', 'CEN-01');
     const noDepot = zone('z2', 'HUA-03', null);
@@ -187,7 +257,7 @@ describe('RoutePlanningService', () => {
     expect(byId['sin-depot']).toEqual(['MISSING_ZONE_DEPOT_COORDINATES']);
     expect(byId['reservado']).toEqual([ExclusionReason.ACTIVE_ROUTE_CLAIM]);
     expect(byId['revision']).toEqual([ExclusionReason.ADMINISTRATIVE_REVIEW_REQUIRED]);
-    expect(result.summary).toEqual({ candidateOrders: 6, plannedOrders: 1, excludedOrders: 5, routes: 1 });
+    expect(result.summary).toMatchObject({ candidateOrders: 6, plannedOrders: 1, excludedOrders: 5, routes: 1 });
     const excludedIds = result.excluded.map((e) => e.orderId);
     expect(excludedIds).toEqual(excludedIds.toSorted((a, b) => a.localeCompare(b)));
   });
@@ -211,7 +281,7 @@ describe('RoutePlanningService', () => {
 
     expect(result.proposals).toEqual([]);
     expect(result.excluded).toEqual([]);
-    expect(result.summary).toEqual({ candidateOrders: 0, plannedOrders: 0, excludedOrders: 0, routes: 0 });
+    expect(result.summary).toMatchObject({ candidateOrders: 0, plannedOrders: 0, excludedOrders: 0, routes: 0 });
     expect(claimQueryArgs).toEqual([]);
   });
 
