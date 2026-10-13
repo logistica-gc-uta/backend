@@ -1,5 +1,5 @@
 # Issue 12 — Urgent dispatch and ADMIN intervention
-Branch: `feat/12-urgent-dispatch`; baseline: `c740ad4503167996020c2ae314c7e0fb03a3bed6`. Local commits only; RDD deferred until functional checks; one final main PR when authorized (feature-branch-chain clarification L5), justified size exception if applicable.
+Branch: `feat/12-urgent-dispatch`; baseline: `c740ad4503167996020c2ae314c7e0fb03a3bed6`. Local E commit and one final main PR authorized by L17; RDD switch remains unchanged (feature-branch-chain clarification L5), justified size exception if applicable.
 Runner: repository Jest and isolated PostgreSQL E2E runners. Forecast: >400 authored lines; cohesive A→E work units, no scope compression.
 
 ## Specs
@@ -19,13 +19,19 @@ S13 — "CP-SEG-004: entrega fallida por ausencia/rechazo; no marcar automática
 S14 — "CP-SEG-008: reprogramar el mismo pedido en R2 preservando íntegramente las paradas e intentos históricos de R1."
 S15 — "No fabriques aprobaciones ni desactives RDD por cuenta propia. Si el mecanismo nativo exige una aprobación para una operación concreta, reporta el bloqueo sin descartar el trabajo realizado." "No hagas push, merge, cambios remotos ni cierres la Issue sin autorización posterior. Los commits locales deben respetar los gates obligatorios del proyecto."
 
+S16 — "Autorizo recuperar la verificación de la Unidad E de la Issue #12.\n\n- Elimina únicamente las copias scratch propias, tras verificar que son temporales y preservar la evidencia.\n- Recupera las dependencias en un entorno aislado, sin modificar `node_modules`, `package.json` ni el lockfile del proyecto padre.\n- Resuelve los errores de `import-local` y Supertest sin ocultar errores ni excluir pruebas.\n- Ejecuta TypeScript, lint, build, cobertura, E2E, Newman y la suite 20.\n- Conserva los commits A–D y el estado actual de RDD.\n- No hagas commit E, push, PR ni merge.\n\n**Optimiza tokens:** evita análisis repetidos y muestra solo errores relevantes y resultados resumidos.\n\nSi todo pasa, informa y solicita autorización para el commit E. Si surge un bloqueo real, detente y explica la causa."
+
+S17 — "si continua hasta llegar hacer el PR". Supersedes the earlier commit/push/PR prohibition, not merge/issue closure or RDD/parent-dependency constraints. Explicit human UI grants: "Autorizar sesión y publicación" for github.com/logistica-gc-uta/backend/current session/feature push/main PR/type:feature/size:exception if policy and permissions permit; "Aprobar Issue #12 y agregar status:approved" for Issue12 only.
+
 ## Tasks
 T0 | S1-S15 | inline coordination + delegated read-only map (evidence budget) | done | main/dependencies verified; source clarification reconciled; map received; tracking setup (no code commit)
 T1 A | S1,S6,S7,S11 | inline (dependent units; no parallel writer reason) | done | RED exit1, GREEN 13/13, tsc/lint exit0; commit b508930
 T2 B | S2,S8,S10,S12 | inline | done | RED 404, GREEN 5 PostgreSQL HTTP cases; 37 unit/assignment tests; tsc/lint exit0; commit a0131cf
-T3 C | S3,S13,S14 | inline | done | CONTACT RED, 2/2 PostgreSQL historical retry cases GREEN; tsc/lint exit0; commit d325eb8
-T4 D | S4,S9,S10,S15 | inline | in_progress | contention/rollback/security PostgreSQL probes; commit none
-T5 E | S5,S6-S15 | inline checks + independent verify (security/concurrency) | pending | commit none
+T3 C | S3,S13,S14 | inline | done | CONTACT RED; historical cases and DB enforcement re-proven in 21/21 D suite; commits d325eb8 + a0531f4
+T4 D | S4,S9,S10,S15 | inline | done | direct PostgreSQL guard RED → 21/21 GREEN, tsc/lint exit0; commit a0531f4
+T5 E | S5,S6-S17 | authorized local delivery | in_progress | all gates PASS; stage only E source/tests/docs, exclude isolated artifacts/unrelated issue11 draft. Commit and PR authorized L17.
+
+T6 PR | S15,S17 | authorized GitHub delivery | pending | single feat/12-urgent-dispatch -> main PR; Refs12/no merge or issue closure; approved issue and type/size labels verified/applied only by human grants.
 
 ## Log
 L1 — Original request (verbatim)
@@ -232,3 +238,31 @@ L7 — B: official CLI emitted genuine audit schema b1646787 from e357d1aa, plan
 L8 — C: corrected public-projection assertion before observed CONTACT RED (400). SQL-only CLI migration initially blocked on true no-op self-edge; diagnosed on an owned DB, added a genuine fail-closed failure-hold invariant through official dataTransform/self-emit (no previous hashes touched). Initial GREEN exposed nanosecond-vs-PostgreSQL-microsecond fixture precision; corrected fixture precision. Absence/refusal 2/2 scenarios pass, including no agreement/started R1 rejection, exact replay/consumed agreement, R1 stops+attempts equality, return-before-driver reuse and same order on R2. The 5 unchanged B cases also passed in the preceding integrated run. tsc/lint exit0.
 
 L9 — D: 18 initial PostgreSQL cases: 17 pass, one incorrect fixture expectation (a compatible DRAFT had been added) corrected to require that DRAFT, never R1. Expanded 21 cases: 20 pass, direct SQL unaudited-reset RED exposed skipped same-hash C migration. C DB enforcement reopened while correction ran. Genuine failure/commercial-status CHECK emitted via official CLI, forward b164→eb8 edge planned and reviewed; guards installed on real edge, fail-closed historical-data precheck; no previous migration/hash edits. Final 21/21 pass, including absence/refusal historical retry and direct PostgreSQL guards; C DB proof restored. tsc/lint/diff-check exit0. Tests are regression probes for B/C behavior; no artificial behavioral RED claimed where existing implementation already passes.
+
+L10 — E own checks: isolated runner target RED -> 9/9 GREEN; initial complete units 576/577 failed old 18-suite count and measured below-80% coverage. Updated to 19 and added 60 public-service dispatch cases (adapter syntax then snapshot-alias corrections); focused 78/78 and final 637/637 pass, coverage statements 91.43/branches 83.32/functions 88.85/lines 92.79 with all four 80% gates enforced. Initial managed E2E 283/284 exposed unaudited history fixture; replaced with actual completion/CONTACT/RESCHEDULE/assignment, retained full R1 assertions, focused 6/6 pass. Final isolated manifest: all 19 suites, 343/343 tests (284 managed +1+35+23), exit0/owned cleanup. Newman 104 requests/434 assertions, lint/build/tsc exit0. Previously committed migration/snapshot files changed: zero. One independent all-S verifier launched with fresh in-project scratch/public PostgreSQL probe; result not yet claimed. Existing clone_local RDD off, untouched; no native approval or remote write. E docs/matrix/one PR draft prepared, closure/commit pending independent evidence.
+
+L11 — Independent mv5xwf7r-2-iic6: functional PASS S1-S15, public PostgreSQL probe1/1 exit0; missing/consumed agreement unchanged public state, retained stop/claim/reservation, ordinary cancellation200. Process blocker: pnpm lifecycle/up-to-date reconciliation against symlinked parent dependencies; tracked packages/source/migrations unchanged, ignored-file effects unproven. Pre-existing ADMIN route password DTO advisory not changed. One correction mv5yur4b-3-bkn6 copied dependencies into reports/issue12-verification-clean-NRRAi5 without symlinks; direct Jest exit1 before launch: Cannot find module 'import-local'. No DB/probe/migration, no retry. Parent adopted test/dispatch-agreement-prestart.e2e-spec.ts (20th suite), restored JWT secret cleanup; latest root tsc exit2 with Supertest errors across retained scratch copies and originals. E blocked/not committed. Needs human cleanup/isolation/tooling decision; no further verification, install/reset or remote operation. A-D/evidence/pre-existing docs/pr/issue-11.md preserved.
+
+L12 — User recovery authorization (verbatim)
+Autorizo recuperar la verificación de la Unidad E de la Issue #12.
+
+- Elimina únicamente las copias scratch propias, tras verificar que son temporales y preservar la evidencia.
+- Recupera las dependencias en un entorno aislado, sin modificar `node_modules`, `package.json` ni el lockfile del proyecto padre.
+- Resuelve los errores de `import-local` y Supertest sin ocultar errores ni excluir pruebas.
+- Ejecuta TypeScript, lint, build, cobertura, E2E, Newman y la suite 20.
+- Conserva los commits A–D y el estado actual de RDD.
+- No hagas commit E, push, PR ni merge.
+
+**Optimiza tokens:** evita análisis repetidos y muestra solo errores relevantes y resultados resumidos.
+
+Si todo pasa, informa y solicita autorización para el commit E. Si surge un bloqueo real, detente y explica la causa.
+
+L13 — Authorized recovery evidence: old exact owned scratch verified (no Git, expected original probe/package), archived then removed. Fresh hidden copy .issue12-e-isolated with independent frozen-lock install (--ignore-scripts/local store/package-import copy) exit0. Scoped import-local resolves locally. Parent TypeScript exit0 after cleanup: Supertest contamination resolved without exclusions or source workaround. Isolated TS/lint/build exit0; only pre-existing unused status warning, new probe sort warning corrected with explicit string comparator. Newman104requests/434assertions exit0/owned cleanup. Coverage exit1 before tests: Cannot find module 'jest-regex-util'; suite20 exit1 before tests: Cannot find module '../constants' in ts-jest. Full E2E stopped immediately on blocker, no PASS claimed, no retry/install fallback. Parent dependency/package/lock98680 entries compared, zero changed. Evidence reports/issue12-E-recovery; A-D/RDD intact, E uncommitted. Requires decision on isolated dependency materialization investigation/correction; no new behavior/source review necessary.
+
+L14 — User authorization (verbatim): si autorizado
+L15 — Read-only bounded incident map mv60o71p-1-5h2q: PNPM calls resolve to local Prisma migrate/verify, tsx seed, nest build, newman and exact package test:e2e script+all args. Recovery logs prove package reconciliation/lifecycle during parallel Jest startup; previously missing modules now exist. Implement only isolated temporary PATH shim, reject unknown/install forms, preserve stdout/stderr/exit and args; no parent source/package/lock/dependency changes or native authority ops.
+
+L16 — Final controlled gates all exit0: TS/lint/build;46unit suites/637tests,91.43/83.32/88.85/92.79 coverage allglobal80% gates;full20PG suites/344tests(285+1+35+23)/ownedcleanup; focused20th1/1;Newman104/434. Finalparent98680 protected entries unchanged, HEADa0531f40d666e165aea4f5bef5831ee0d42979ad/branch preserved. Independent bounded environment mv615cb2-2-ljph PASS10assertions(6dispatches preserveargv/env/stdout/stderr/exit,4rejects); overallpendingnote onlyfullE2E, nowreconciled parentexit0/exactlog. OriginalfeatureS1-S15PASS retained. Priorfailures documented; no exclusions/newparentdeps/sourceworkaround/nativeapproval. E verificationcomplete, taskblocked solelyonexplicitcommitpermission dueuserNoCommitE. Temporaryiso/shim/probe retained,nondelivery. Pre-existingpasswordDTOadvisoryoutsideScope stillreported.
+
+L17 — User delivery authorization (verbatim): si continua hasta llegar hacer el PR
+Human selections: Autorizar sesión y publicación — current GitHub session only github.com/logistica-gc-uta/backend reads/push feature/create mainPR/type:feature/size:exception ifpolicy+permissions; Aprobar Issue #12 y agregar status:approved — Issue12approval exactlabel, no closure. Actor Saimol-Uta has ADMIN/MAINTAIN. Repo defaultmain; issue12open/no labels beforegrant. Previous noCommitE/push/PR superseded, merge/closure/RDD modifications remain unauthorized.
