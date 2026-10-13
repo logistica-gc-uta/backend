@@ -13,6 +13,7 @@ import {
 } from './algorithms/clarke-wright.js';
 import type { GeoPoint } from './algorithms/geo.util.js';
 import { independentTripsKm, savingsFigures } from './algorithms/route-metrics.js';
+import { ExclusionReason, type PlanningExclusionReason } from './planning-exclusion-reason.js';
 import type { PlanRoutesQueryDto } from './dto/plan-routes-query.dto.js';
 import type {
   ExcludedOrderDto,
@@ -29,10 +30,7 @@ export const DISTANCE_METHOD = 'HAVERSINE_STRAIGHT_LINE';
  */
 export const MAX_ORDERS_PER_ZONE = 2000;
 
-export const ExclusionReason = {
-  ACTIVE_ROUTE_CLAIM: 'ACTIVE_ROUTE_CLAIM',
-  ADMINISTRATIVE_REVIEW_REQUIRED: 'ADMINISTRATIVE_REVIEW_REQUIRED',
-} as const;
+export { ExclusionReason };
 
 /**
  * Builds TEMPORARY route proposals from PostgreSQL data. Read-only: it never
@@ -78,7 +76,7 @@ export class RoutePlanningService {
     for (const order of candidates) {
       const { deliveryLocation, planningEligibility } =
         evaluatePlanningEligibility(order, order.zone);
-      const reasons: string[] = [...planningEligibility.reasons];
+      const reasons: PlanningExclusionReason[] = [...planningEligibility.reasons];
       if (claimed.has(order.id)) reasons.push(ExclusionReason.ACTIVE_ROUTE_CLAIM);
       if (order.requiresAdministrativeReview) {
         reasons.push(ExclusionReason.ADMINISTRATIVE_REVIEW_REQUIRED);

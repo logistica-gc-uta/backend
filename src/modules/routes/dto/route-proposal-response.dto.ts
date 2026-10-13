@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { PLANNING_EXCLUSION_REASONS, type PlanningExclusionReason } from '../planning-exclusion-reason.js';
 
 export class GeoPointDto {
   @ApiProperty({ example: -1.24908 })
@@ -103,12 +104,14 @@ export class ExcludedOrderDto {
   zoneId!: string;
 
   @ApiProperty({
-    type: [String],
+    enum: [...PLANNING_EXCLUSION_REASONS],
+    enumName: 'PlanningExclusionReason',
+    isArray: true,
     description:
-      'Why the order was not planned: geographic readiness reasons, ACTIVE_ROUTE_CLAIM or ADMINISTRATIVE_REVIEW_REQUIRED',
+      'Why the order was not planned. MISSING_/INVALID_DELIVERY_COORDINATES: destination without or with malformed coordinates. MISSING_ZONE: no zone. MISSING_/INVALID_ZONE_DEPOT_COORDINATES: the zone has no valid depot. ACTIVE_ROUTE_CLAIM: already reserved by a confirmed proposal (DRAFT route). ADMINISTRATIVE_REVIEW_REQUIRED: an ADMIN must review it by hand (a failed delivery is not replanned until an ADMIN intervenes)',
     example: ['MISSING_DELIVERY_COORDINATES'],
   })
-  reasons!: string[];
+  reasons!: PlanningExclusionReason[];
 }
 
 export class RouteProposalSummaryDto {
