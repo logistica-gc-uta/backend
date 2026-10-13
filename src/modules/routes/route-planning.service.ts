@@ -70,6 +70,7 @@ export class RoutePlanningService {
     const excluded: ExcludedOrderDto[] = [];
     const routable: RoutingOrder[] = [];
     const instants = new Map<string, string>();
+    const addresses = new Map<string, string>();
     const depots: Record<string, GeoPoint> = {};
     const zones = new Map<string, { code: string }>();
     const perZone = new Map<string, number>();
@@ -101,6 +102,7 @@ export class RoutePlanningService {
       };
       zones.set(order.zoneId, { code: order.zone.code });
       instants.set(order.id, order.scheduledDeliveryDate!.toString());
+      addresses.set(order.id, order.deliveryAddress);
       routable.push({
         id: order.id,
         zoneId: order.zoneId,
@@ -134,6 +136,7 @@ export class RoutePlanningService {
           sequence: index + 1,
           orderId,
           location: locations.get(orderId)!,
+          deliveryAddress: addresses.get(orderId)!,
           scheduledDeliveryDate: instants.get(orderId)!,
         })),
         totalDistanceKm: savings.plannedKm,

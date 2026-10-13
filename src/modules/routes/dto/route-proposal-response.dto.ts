@@ -19,6 +19,13 @@ export class RouteProposalStopDto {
   location!: GeoPointDto;
 
   @ApiProperty({
+    description:
+      'Delivery address of the order, so the stop can be shown without requesting each order separately (ADMIN only)',
+    example: 'Av. Los Chasquis y Río Guayllabamba, Ambato',
+  })
+  deliveryAddress!: string;
+
+  @ApiProperty({
     format: 'date-time',
     description: 'Exact scheduled delivery instant of the order',
   })

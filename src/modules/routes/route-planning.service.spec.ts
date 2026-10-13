@@ -25,6 +25,7 @@ const order = (id: string, z: ReturnType<typeof zone>, overrides: Record<string,
   id,
   zoneId: z.id,
   zone: z,
+  deliveryAddress: `Calle ${id} y Av. Principal, Ambato`,
   status: 'PENDING',
   requiresAdministrativeReview: false,
   scheduledDeliveryDate: NOON,
@@ -111,6 +112,37 @@ describe('RoutePlanningService', () => {
       expect(proposal.stops.map((s) => s.sequence)).toEqual(proposal.orderIds.map((_, i) => i + 1));
     }
     expect(result.summary).toMatchObject({ candidateOrders: 5, plannedOrders: 5, excludedOrders: 0, routes: 2 });
+  });
+
+  it('cada parada trae la dirección de entrega de su pedido, sin datos del cliente', async () => {
+    const z = zone('z1', 'CEN-01');
+    orders = [
+      order('a', z, { deliveryAddress: 'Av. Los Chasquis y Río Guayllabamba, Ambato' }),
+      order('b', z, { deliveryAddress: 'Calle Bolívar 123, Ambato' }),
+    ];
+
+    const { proposals } = await service.propose({ date: DAY });
+
+    const stops = proposals.flatMap((p) => p.stops);
+    expect(stops).toHaveLength(2);
+    expect(Object.fromEntries(stops.map((s) => [s.orderId, s.deliveryAddress]))).toEqual({
+      a: 'Av. Los Chasquis y Río Guayllabamba, Ambato',
+      b: 'Calle Bolívar 123, Ambato',
+    });
+    for (const stop of stops) {
+      expect(Object.keys(stop).sort()).toEqual(['deliveryAddress', 'location', 'orderId', 'scheduledDeliveryDate', 'sequence']);
+    }
+  });
+
+  it('la dirección acompaña al pedido aunque cambie el orden de visita', async () => {
+    const z = zone('z1', 'CEN-01');
+    orders = ['a', 'b', 'c', 'd', 'e'].map((id, i) => order(id, z, { deliveryLat: -1.24 - i * 0.003, deliveryAddress: `Dirección de ${id}` }));
+
+    const { proposals } = await service.propose({ date: DAY });
+
+    for (const stop of proposals.flatMap((p) => p.stops)) {
+      expect(stop.deliveryAddress).toBe(`Dirección de ${stop.orderId}`);
+    }
   });
 
   it('cada pedido aparece en una sola ruta y ninguna supera 4 paradas', async () => {
