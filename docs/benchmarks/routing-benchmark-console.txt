@@ -1,0 +1,43 @@
+$ node --expose-gc --import tsx benchmarks/routing/run.ts --out docs/benchmarks
+Benchmark Haversine + Clarke & Wright · tamaños 4, 5, 20, 100, 500, 2000 · semillas 1, 2, 3 · 5 corrida(s)
+kind       orders seed   baseline km  planned km  ahorro %  rutas  util %   t mediana ms  ok
+uniform         4    1        39.13       25.29     35.37      1   100.0          0.00  OK
+uniform         4    2        23.36       16.34     30.06      1   100.0          0.00  OK
+uniform         4    3        34.26       15.62     54.39      1   100.0          0.00  OK
+uniform         5    1        50.26       28.86     42.59      2    62.5          0.00  OK
+uniform         5    2        33.99       21.15     37.78      2    62.5          0.00  OK
+uniform         5    3        39.65       21.02     46.99      2    62.5          0.00  OK
+uniform        20    1       165.63       70.60     57.37      6    83.3          0.03  OK
+uniform        20    2       187.36       77.70     58.53      5   100.0          0.03  OK
+uniform        20    3       169.89       70.81     58.32      6    83.3          0.03  OK
+uniform       100    1       886.60      279.08     68.52     25   100.0          1.01  OK
+uniform       100    2       888.31      277.44     68.77     25   100.0          0.98  OK
+uniform       100    3       855.63      268.92     68.57     25   100.0          0.96  OK
+uniform       500    1      4259.73     1189.96     72.06    125   100.0         44.97  OK
+uniform       500    2      4372.15     1217.90     72.14    125   100.0         44.25  OK
+uniform       500    3      4166.62     1164.44     72.05    125   100.0         42.91  OK
+uniform      2000    1     16947.11     4477.84     73.58    500   100.0       1167.01  OK
+uniform      2000    2     17109.25     4521.81     73.57    500   100.0       1189.64  OK
+uniform      2000    3     16786.97     4441.35     73.54    500   100.0       1203.69  OK
+clustered       4    1        49.34       13.65     72.34      1   100.0          0.00  OK
+clustered       4    2        27.53        7.85     71.47      1   100.0          0.00  OK
+clustered       4    3        44.27       12.51     71.75      1   100.0          0.00  OK
+clustered       5    1        60.71       24.75     59.24      2    62.5          0.00  OK
+clustered       5    2        35.53       14.95     57.93      2    62.5          0.00  OK
+clustered       5    3        55.55       22.91     58.75      2    62.5          0.00  OK
+clustered      20    1       229.48       61.78     73.08      5   100.0          0.03  OK
+clustered      20    2       132.94       38.47     71.06      5   100.0          0.03  OK
+clustered      20    3       227.77       61.27     73.10      5   100.0          0.02  OK
+clustered     100    1       994.52      268.30     73.02     25   100.0          0.98  OK
+clustered     100    2       596.28      175.48     70.57     25   100.0          0.95  OK
+clustered     100    3       843.90      234.63     72.20     26    96.2          0.96  OK
+clustered     500    1      4222.16     1141.43     72.97    125   100.0         46.42  OK
+clustered     500    2      4599.15     1245.77     72.91    125   100.0         43.84  OK
+clustered     500    3      4205.84     1135.64     73.00    125   100.0         45.52  OK
+clustered    2000    1     17850.65     4695.00     73.70    500   100.0       1192.78  OK
+clustered    2000    2     17699.47     4662.60     73.66    500   100.0       1132.26  OK
+clustered    2000    3     16993.91     4488.90     73.59    500   100.0       1127.83  OK
+Casos de borde: 12/12 cumplen lo esperado
+Brecha frente a la solución exacta (≤ 10 pedidos): uniform n=4: media 0.01 % · uniform n=5: media 0.00 % · uniform n=6: media 0.28 % · uniform n=8: media 1.85 % · uniform n=10: media 1.51 % · clustered n=4: media 0.30 % · clustered n=5: media 0.21 % · clustered n=6: media 1.04 % · clustered n=8: media 1.57 % · clustered n=10: media 1.15 %
+Checksum determinista: ccb8d6bdecd62580a12d9b681b5cd7f1bf96597bfc056b02aaa3b36e7383ff1d
+Artefactos en docs/benchmarks

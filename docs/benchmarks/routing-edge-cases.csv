@@ -1,0 +1,13 @@
+id,description,expected,pass,observed
+EDGE-01-empty,Sin pedidos,"0 rutas, 0 km y ahorro 0 % (sin NaN)",true,"0 rutas, 0 km, ahorro 0 %"
+EDGE-02-single-order,Un solo pedido,1 ruta de 1 parada y ahorro 0 %,true,"1 ruta(s), ahorro 0 %"
+EDGE-03-duplicate-coordinates,8 pedidos en las mismas coordenadas,2 rutas de 4 paradas y ahorro 75 %,true,"2 rutas (4+4), ahorro 75 %"
+EDGE-04-capacity-4-orders,4 pedidos cercanos (límite exacto de capacidad),1 ruta de 4 paradas,true,1 ruta(s): 4
+EDGE-05-capacity-5-orders,5 pedidos cercanos (uno por encima de la capacidad),"2 rutas (4 + 1), ninguna con más de 4",true,2 rutas (1+4)
+EDGE-06-zones-and-dates,18 pedidos en 3 zonas y 2 fechas,"6 rutas, ninguna mezcla zona o fecha, sin duplicados",true,"6 rutas, 0 violaciones"
+EDGE-07-missing-depot,Zona sin depósito,Error explícito (no se inventa un depósito),true,No hay depósito definido para la zona 'ZX'
+EDGE-08-orders-at-depot,Pedidos exactamente en el depósito (línea base de 0 km),ahorro 0 % finito: no se divide entre 0,true,"base 0 km, ahorro 0 %, 3 rutas"
+EDGE-09-opposite-sides,Dos pedidos en lados opuestos del depósito,2 rutas (unirlos no ahorra distancia),true,2 rutas
+EDGE-10-order-invariance,100 pedidos con la entrada en otro orden,resultado idéntico,true,idéntico
+EDGE-11-invalid-capacity,Capacidad 0,Error explícito,true,La capacidad por ruta debe ser un entero mayor o igual a 1
+EDGE-12-duplicate-order-id,Dos pedidos con el mismo id,Error explícito (sin duplicación silenciosa),true,Pedido duplicado en la entrada: 'a'

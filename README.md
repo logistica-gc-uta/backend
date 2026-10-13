@@ -170,6 +170,7 @@ http://localhost:3000/api/docs
 - **Diseño de Armado de Rutas (Clarke & Wright):** [`docs/clarke-wright.md`](./docs/clarke-wright.md).
 - **Propuestas de rutas (#7):** [`docs/route-planning.md`](./docs/route-planning.md) (`GET /api/v1/route-proposals`, solo lectura, solo ADMIN).
 - **Socket.IO y resincronización (#13):** [`docs/realtime.md`](./docs/realtime.md) (JWT, `REALTIME_ALLOWED_ORIGINS`, salas autorizadas, eventos v1, React/Flutter y Cloudflare Tunnel); [`docs/realtime-transactions.md`](./docs/realtime-transactions.md) (publicación solo después del commit); [`docs/issue-13-verification.md`](./docs/issue-13-verification.md) (matriz y evidencia real). REST GET sigue siendo autoritativo; sin replay/offline garantizado, GPS ni ETA. Los ejemplos frontend/tunnel no equivalen a integración ejecutada.
+- **Benchmark de rutas (#14):** [`docs/benchmark-routing.md`](./docs/benchmark-routing.md) (`pnpm run benchmark:routing`: Haversine + Clarke & Wright frente a una línea base, datasets reproducibles de 4 a 2 000 pedidos y artefactos CSV/JSON en `docs/benchmarks/`).
 - **Urgencias e intervención ADMIN (#12):** [`docs/urgent-dispatch.md`](./docs/urgent-dispatch.md) (propuestas sin escrituras, decisiones auditadas, acuerdo explícito y reintentos con historial intacto; verificación local e independiente PASS; commit E y PR autorizados; CI remoto se informa por separado, sin aprobación RDD).
 
 ---

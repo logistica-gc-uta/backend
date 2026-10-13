@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { PLANNING_EXCLUSION_REASONS, type PlanningExclusionReason } from '../planning-exclusion-reason.js';
 
 export class GeoPointDto {
   @ApiProperty({ example: -1.24908 })
@@ -17,6 +18,13 @@ export class RouteProposalStopDto {
 
   @ApiProperty({ type: GeoPointDto })
   location!: GeoPointDto;
+
+  @ApiProperty({
+    description:
+      'Delivery address of the order, so the stop can be shown without requesting each order separately (ADMIN only)',
+    example: 'Av. Los Chasquis y Río Guayllabamba, Ambato',
+  })
+  deliveryAddress!: string;
 
   @ApiProperty({
     format: 'date-time',
@@ -53,6 +61,27 @@ export class RouteProposalDto {
   totalDistanceKm!: number;
 
   @ApiProperty({
+    description:
+      'Kilometres without optimizing: one independent depot -> order -> depot round trip per order of this proposal, in a straight line, with 3 decimals',
+    example: 18.52,
+  })
+  baselineKm!: number;
+
+  @ApiProperty({
+    description:
+      'baselineKm minus totalDistanceKm, computed from the displayed values so the subtraction holds exactly',
+    example: 14.307,
+  })
+  savingsKm!: number;
+
+  @ApiProperty({
+    description:
+      'Savings over the baseline in percent with 2 decimals; 0 when the baseline is 0 (never divides by zero)',
+    example: 77.25,
+  })
+  savingsPercent!: number;
+
+  @ApiProperty({
     type: [String],
     description:
       'Distinct scheduled instants among the orders of this proposal, in chronological order',
@@ -75,12 +104,14 @@ export class ExcludedOrderDto {
   zoneId!: string;
 
   @ApiProperty({
-    type: [String],
+    enum: [...PLANNING_EXCLUSION_REASONS],
+    enumName: 'PlanningExclusionReason',
+    isArray: true,
     description:
-      'Why the order was not planned: geographic readiness reasons, ACTIVE_ROUTE_CLAIM or ADMINISTRATIVE_REVIEW_REQUIRED',
+      'Why the order was not planned. MISSING_/INVALID_DELIVERY_COORDINATES: destination without or with malformed coordinates. MISSING_ZONE: no zone. MISSING_/INVALID_ZONE_DEPOT_COORDINATES: the zone has no valid depot. ACTIVE_ROUTE_CLAIM: already reserved by a confirmed proposal (DRAFT route). ADMINISTRATIVE_REVIEW_REQUIRED: an ADMIN must review it by hand (a failed delivery is not replanned until an ADMIN intervenes)',
     example: ['MISSING_DELIVERY_COORDINATES'],
   })
-  reasons!: string[];
+  reasons!: PlanningExclusionReason[];
 }
 
 export class RouteProposalSummaryDto {
@@ -88,6 +119,25 @@ export class RouteProposalSummaryDto {
   @ApiProperty() plannedOrders!: number;
   @ApiProperty() excludedOrders!: number;
   @ApiProperty() routes!: number;
+
+  @ApiProperty({
+    description:
+      'Sum of the baselineKm of every proposal of the day (excluded orders are not counted)',
+  })
+  baselineKm!: number;
+
+  @ApiProperty({
+    description: 'Sum of the totalDistanceKm of every proposal of the day',
+  })
+  plannedKm!: number;
+
+  @ApiProperty({ description: 'baselineKm minus plannedKm' })
+  savingsKm!: number;
+
+  @ApiProperty({
+    description: 'Daily savings over the baseline in percent; 0 when the baseline is 0',
+  })
+  savingsPercent!: number;
 }
 
 export class RouteProposalResponseDto {
