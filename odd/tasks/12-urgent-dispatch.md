@@ -29,9 +29,9 @@ T1 A | S1,S6,S7,S11 | inline (dependent units; no parallel writer reason) | done
 T2 B | S2,S8,S10,S12 | inline | done | RED 404, GREEN 5 PostgreSQL HTTP cases; 37 unit/assignment tests; tsc/lint exit0; commit a0131cf
 T3 C | S3,S13,S14 | inline | done | CONTACT RED; historical cases and DB enforcement re-proven in 21/21 D suite; commits d325eb8 + a0531f4
 T4 D | S4,S9,S10,S15 | inline | done | direct PostgreSQL guard RED → 21/21 GREEN, tsc/lint exit0; commit a0531f4
-T5 E | S5,S6-S17 | authorized local delivery | in_progress | all gates PASS; stage only E source/tests/docs, exclude isolated artifacts/unrelated issue11 draft. Commit and PR authorized L17.
+T5 E | S5,S6-S17 | controlled isolated gates + independent checks | done | gates PASS,224source/test/migration files match verifiedcandidate; commit fcf843ed8d6b340797cdaad4594b22b4cbab89e9; exact11files, no temp/issue11 artifacts. Local shellcheck unavailable, hosted required gate pending.
 
-T6 PR | S15,S17 | authorized GitHub delivery | pending | single feat/12-urgent-dispatch -> main PR; Refs12/no merge or issue closure; approved issue and type/size labels verified/applied only by human grants.
+T6 PR | S15,S17 | authorized GitHub delivery | in_progress | Issue12 status:approved by explicithuman; actorADMIN, main unchangedc740ad4. Commit E observed exit0. Next push then one main PR with Refs12/type:feature/size:exception; hostedCI pending.
 
 ## Log
 L1 — Original request (verbatim)
@@ -266,3 +266,5 @@ L16 — Final controlled gates all exit0: TS/lint/build;46unit suites/637tests,9
 
 L17 — User delivery authorization (verbatim): si continua hasta llegar hacer el PR
 Human selections: Autorizar sesión y publicación — current GitHub session only github.com/logistica-gc-uta/backend reads/push feature/create mainPR/type:feature/size:exception ifpolicy+permissions; Aprobar Issue #12 y agregar status:approved — Issue12approval exactlabel, no closure. Actor Saimol-Uta has ADMIN/MAINTAIN. Repo defaultmain; issue12open/no labels beforegrant. Previous noCommitE/push/PR superseded, merge/closure/RDD modifications remain unauthorized.
+
+L18 — E work-unit commit fcf843ed8d6b340797cdaad4594b22b4cbab89e9 exit0,11explicit E files; A-D ancestors unchanged. Source/test/migration224files byte-identical to verifiedisolate; mainc740ad4 refreshedunchanged. bash-n/Node syntax/diffchecks0; shellcheck unavailable locally(no install/retry), hostedCI installs/runsit. Human statusapproval applied issue12open/status:approved. No temp modules/rawlogs/unrelated docs/pr/issue11 staged. No merge/issueclosure/RDDchange. Tracking evidence updated after actualcommit, publishingnext.
