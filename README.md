@@ -167,6 +167,7 @@ http://localhost:3000/api/docs
 - **Migración y recuperación geográfica:** [`docs/geolocation-migration.md`](./docs/geolocation-migration.md).
 - **Diseño de Armado de Rutas (Clarke & Wright):** [`docs/clarke-wright.md`](./docs/clarke-wright.md).
 - **Propuestas de rutas (#7):** [`docs/route-planning.md`](./docs/route-planning.md) (`GET /api/v1/route-proposals`, solo lectura, solo ADMIN).
+- **Benchmark de rutas (#14):** [`docs/benchmark-routing.md`](./docs/benchmark-routing.md) (`pnpm run benchmark:routing`: Haversine + Clarke & Wright frente a una línea base, datasets reproducibles de 4 a 2 000 pedidos y artefactos CSV/JSON en `docs/benchmarks/`).
 
 ---
 
