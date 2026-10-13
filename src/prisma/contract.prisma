@@ -147,6 +147,8 @@ model Order {
   createdAt             DateTime    @default(now())
 
   requiresAdministrativeReview Boolean @default(false)
+  // Unresolved failed visits are never commercially delivered/cancelled.
+  @@check(expression: "NOT \"requiresAdministrativeReview\" OR status NOT IN ('DELIVERED', 'CANCELLED')", name: "failed_order_commercial_hold")
 
   items                 OrderItem[]
 

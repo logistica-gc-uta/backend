@@ -48,3 +48,11 @@ RESCHEDULE uses `orderId` and `agreementId` (the CONTACT audit ID). It revalidat
 Driver reservations remain held through completion until DRIVER confirms depot return. R2 gets a new stable stop, while R1 retains all historical visits. The SQL-only `agreed_delivery_rescheduling` migration adds an audited review-resolution guard and a genuine data invariant (failure hold or matching audited reschedule). Its check fails closed on inconsistent legacy data; it never manufactures agreement evidence. No contract artifacts are re-emitted for this SQL-only step.
 
 C evidence: both absence/refusal R1→R2 PostgreSQL/JWT scenarios passed, including missing agreement, duplicate/conflicting schedule, original-history equality and pre-return driver rejection. Exact fixture instants use PostgreSQL microsecond precision.
+
+## PostgreSQL enforcement and contention
+
+The forward `failed_order_agreement_guards` migration advances the actual contract to `eb8ebd14…`, adds the unresolved-failure commercial-status CHECK and installs the agreement trigger on that real schema edge. This is required: the earlier same-hash SQL-only migration is retained for history, but default target resolution may skip it. Deployment must migrate to the latest contract; no old migration/snapshot/hash was edited. Forward prechecks refuse existing failed history with a cleared review hold and no matching audit. No audit evidence is fabricated.
+
+D verification: 21 real PostgreSQL/JWT HTTP cases passed. They cover last-slot insertion, concurrent order/driver allocation, duplicate and conflicting idempotency keys, simultaneous rescheduling, start/reorder serialization, frozen route rejection, complete rollback after injected structural and assignment writes, incompatible zone/date moves, no available driver, stale-role JWT, Swagger DTO boundaries, sensitive-context isolation, and direct SQL rejection of audit tampering, fabricated actor, frozen-stop changes and unaudited failure reset.
+
+Operational conflicts/invalid input leave business state and accepted decision counters unchanged; only committed APPLIED/REJECTED decisions are audit records. Failed transaction attempts are not represented as successful audits. Physical return is still required before driver reuse.
