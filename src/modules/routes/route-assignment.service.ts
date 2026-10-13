@@ -6,8 +6,10 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { isSameBusinessDay, nowInstant } from '../../common/temporal.util.js';
@@ -20,6 +22,11 @@ import {
 import { ConfirmDraftRouteDto } from './dto/confirm-draft-route.dto.js';
 import { AssignDraftRouteDto } from './dto/assign-draft-route.dto.js';
 import { RouteAssignmentResponseDto } from './dto/route-assignment-response.dto.js';
+import {
+  REALTIME_PUBLISHER,
+  type RealtimeChange,
+  type RealtimePublisher,
+} from '../realtime/realtime.contract.js';
 
 type Transaction = Parameters<
   Parameters<PrismaService['client']['transaction']>[0]
@@ -38,7 +45,19 @@ export class RouteAssignmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly availability: RouteAvailabilityService,
+    @Optional()
+    @Inject(REALTIME_PUBLISHER)
+    private readonly realtime?: RealtimePublisher,
   ) {}
+
+  private async publishCommitted(changes: readonly RealtimeChange[]) {
+    if (!changes.length || !this.realtime) return;
+    try {
+      await this.realtime.publish(changes);
+    } catch {
+      // A delivery fault cannot turn a committed REST operation into a failure.
+    }
+  }
 
   // Internal composition boundary: callers must keep all decisions/audit in this callback.
   async transaction<T>(
@@ -150,7 +169,12 @@ export class RouteAssignmentService {
 
   // Rebuild only verified pre-start stops, preserving their identities. Deletion
   // avoids transient unique-sequence collisions; deferred coherence sees final state.
-  async replaceStops(tx: Transaction, routeId: string, orderIds: string[]) {
+  async replaceStops(
+    tx: Transaction,
+    routeId: string,
+    orderIds: string[],
+    changes?: RealtimeChange[],
+  ) {
     this.validateOrderIds(orderIds);
     const route = await tx.orm.public.Route.where({ id: routeId }).update({
       id: routeId,
@@ -210,13 +234,27 @@ export class RouteAssignmentService {
       });
       if (!previous)
         await tx.orm.public.OrderClaim.create({ routeId, orderId, claimedAt });
-      if (route.status === 'ASSIGNED')
-        await tx.orm.public.Order.where({ id: orderId }).update({
+      if (route.status === 'ASSIGNED') {
+        const assignedOrder = await tx.orm.public.Order.where({
+          id: orderId,
+        }).update({
           routeId,
           status: 'ASSIGNED',
           stopOrder: index + 1,
         });
+        if (assignedOrder)
+          changes?.push({
+            type: 'order.status.updated',
+            orderId: assignedOrder.id,
+            status: assignedOrder.status,
+          });
+      }
     }
+    changes?.push({
+      type: 'route.updated',
+      routeId: route.id,
+      status: route.status ?? undefined,
+    });
     return route;
   }
 
@@ -225,7 +263,8 @@ export class RouteAssignmentService {
     actorId: string,
   ): Promise<RouteAssignmentResponseDto> {
     this.validateOrderIds(dto.orderIds);
-    return this.transaction(actorId, async (tx) => {
+    const changes: RealtimeChange[] = [];
+    const result = await this.transaction(actorId, async (tx) => {
       // Hold the shared driver before creating the route and locking sorted orders.
       await this.lockDriver(tx, dto.driverId);
       if (!(await tx.orm.public.Zone.where({ id: dto.zoneId }).first()))
@@ -260,8 +299,15 @@ export class RouteAssignmentService {
         date,
       );
       // These helpers use the same transaction; previously acquired locks stay held.
-      return this.assignInTransaction(tx, draft.id, { driverId: dto.driverId });
+      return this.assignInTransaction(
+        tx,
+        draft.id,
+        { driverId: dto.driverId },
+        changes,
+      );
     });
+    await this.publishCommitted(changes);
+    return result;
   }
 
   async confirmDraft(
@@ -275,9 +321,13 @@ export class RouteAssignmentService {
     } catch {
       throw new BadRequestException('Explicit route timestamp required');
     }
-    return this.transaction(actorId, (tx) =>
+    const result = await this.transaction(actorId, (tx) =>
       this.confirmInTransaction(tx, dto, date),
     );
+    await this.publishCommitted([
+      { type: 'route.updated', routeId: result.id, status: result.status },
+    ]);
+    return result;
   }
 
   async confirmInTransaction(
@@ -318,9 +368,12 @@ export class RouteAssignmentService {
     dto: AssignDraftRouteDto,
     actorId: string,
   ): Promise<RouteAssignmentResponseDto> {
-    return this.transaction(actorId, (tx) =>
-      this.assignInTransaction(tx, id, dto),
+    const changes: RealtimeChange[] = [];
+    const result = await this.transaction(actorId, (tx) =>
+      this.assignInTransaction(tx, id, dto, changes),
     );
+    await this.publishCommitted(changes);
+    return result;
   }
 
   async lockDriver(tx: Transaction, driverId: string) {
@@ -341,6 +394,7 @@ export class RouteAssignmentService {
     tx: Transaction,
     id: string,
     dto: AssignDraftRouteDto,
+    changes?: RealtimeChange[],
   ): Promise<RouteAssignmentResponseDto> {
     const driver = await this.lockDriver(tx, dto.driverId);
     const route = await tx.orm.public.Route.where({ id }).update({ id });
@@ -416,7 +470,17 @@ export class RouteAssignmentService {
       });
       if (!assignedOrder)
         throw new ConflictException('Order changed during assignment');
+      changes?.push({
+        type: 'order.status.updated',
+        orderId: assignedOrder.id,
+        status: assignedOrder.status,
+      });
     }
+    changes?.push({
+      type: 'route.updated',
+      routeId: assigned.id,
+      status: assigned.status ?? undefined,
+    });
     if (
       !(await tx.orm.public.Driver.where({
         id: driver.id,

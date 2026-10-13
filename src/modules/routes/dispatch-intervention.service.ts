@@ -8,8 +8,10 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { nowInstant } from '../../common/temporal.util.js';
@@ -24,6 +26,11 @@ import {
   DispatchAuditDto,
   DispatchInterventionDto,
 } from './dto/dispatch-intervention.dto.js';
+import {
+  REALTIME_PUBLISHER,
+  type RealtimeChange,
+  type RealtimePublisher,
+} from '../realtime/realtime.contract.js';
 
 type Transaction = Parameters<
   Parameters<PrismaService['client']['transaction']>[0]
@@ -51,7 +58,20 @@ export class DispatchInterventionService {
     private readonly assignment: RouteAssignmentService,
     private readonly availability: RouteAvailabilityService,
     private readonly urgency: RouteUrgencyService,
+    @Optional()
+    @Inject(REALTIME_PUBLISHER)
+    private readonly realtime?: RealtimePublisher,
   ) {}
+
+  private async publishCommitted(changes: readonly RealtimeChange[]) {
+    if (!changes.length || !this.realtime) return;
+    try {
+      await this.realtime.publish(changes);
+    } catch {
+      // A delivery fault cannot turn a committed REST operation into a failure.
+    }
+  }
+
   private response(a: Audit): DispatchAuditDto {
     return {
       id: a.id,
@@ -169,6 +189,7 @@ export class DispatchInterventionService {
     tx: Transaction,
     dto: DispatchInterventionDto,
     actorId: string,
+    changes: RealtimeChange[],
   ) {
     const db = tx.orm.public;
     const initial = await db.Order.where({ id: dto.orderId! }).first();
@@ -236,13 +257,18 @@ export class DispatchInterventionService {
         throw new BadRequestException(
           'Unconfirmed contact cannot record an agreed schedule',
         );
-      return this.response(
-        await this.createAudit(tx, dto, actorId, order.routeId, {
-          orderId: order.id,
-          routeId: order.routeId,
-          attemptId: latest?.id ?? null,
-        }),
-      );
+      const audit = await this.createAudit(tx, dto, actorId, order.routeId, {
+        orderId: order.id,
+        routeId: order.routeId,
+        attemptId: latest?.id ?? null,
+      });
+      changes.push({
+        type: 'dispatch.incident.updated',
+        orderId: order.id,
+        action: 'CONTACT',
+        requiresAdministrativeReview: order.requiresAdministrativeReview,
+      });
+      return this.response(audit);
     }
     const contact = await db.DispatchIntervention.where({
       id: dto.agreementId!,
@@ -340,18 +366,34 @@ export class DispatchInterventionService {
         .filter((s) => s.orderId !== order.id)
         .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
         .map((s) => s.orderId);
-      await this.assignment.replaceStops(tx, route.id, ids);
+      await this.assignment.replaceStops(tx, route.id, ids, changes);
       await db.OrderClaim.where({ id: claim.id }).update({
         releasedAt: nowInstant(),
       });
     }
-    await db.Order.where({ id: order.id }).update({
+    const rescheduled = await db.Order.where({ id: order.id }).update({
       ...timing,
       status: 'PENDING',
       requiresAdministrativeReview: false,
       routeId: null,
       stopOrder: null,
     });
+    if (!rescheduled)
+      throw new ConflictException('Order changed during reschedule');
+    changes.push(
+      {
+        type: 'order.status.updated',
+        orderId: rescheduled.id,
+        status: rescheduled.status,
+        requiresAdministrativeReview: rescheduled.requiresAdministrativeReview,
+      },
+      {
+        type: 'dispatch.incident.updated',
+        orderId: rescheduled.id,
+        action: 'RESCHEDULE',
+        requiresAdministrativeReview: rescheduled.requiresAdministrativeReview,
+      },
+    );
     assertDeliveryFuture(
       timing,
       await deliveryClock(tx, this.prisma.client.raw),
@@ -364,15 +406,16 @@ export class DispatchInterventionService {
     actorId: string,
   ): Promise<DispatchAuditDto> {
     this.validate(dto);
+    const changes: RealtimeChange[] = [];
     try {
-      return await this.assignment.transaction(actorId, async (tx) => {
+      const result = await this.assignment.transaction(actorId, async (tx) => {
         const db = tx.orm.public;
         const prior = await db.DispatchIntervention.where({
           requestId: dto.requestId,
         }).first();
         if (prior) return this.replay(prior, actorId, dto);
         if (dto.action === 'CONTACT' || dto.action === 'RESCHEDULE')
-          return this.schedule(tx, dto, actorId);
+          return this.schedule(tx, dto, actorId, changes);
         if (dto.action === 'CONFIRM' || dto.action === 'REJECT') {
           const initial = await this.urgency.propose(dto.orderId!, tx);
           const route = initial.routeId
@@ -398,16 +441,29 @@ export class DispatchInterventionService {
             );
           if (proposal.kind === 'INSERT' && dto.driverId)
             throw new BadRequestException('Insertion retains the route driver');
-          if (dto.action === 'REJECT')
-            return this.response(
-              await this.createAudit(tx, dto, actorId, proposal.routeId, {
-                orderId: dto.orderId!,
-                routeId: proposal.routeId,
-              }),
+          if (dto.action === 'REJECT') {
+            const audit = await this.createAudit(
+              tx,
+              dto,
+              actorId,
+              proposal.routeId,
+              { orderId: dto.orderId!, routeId: proposal.routeId },
             );
+            changes.push({
+              type: 'dispatch.incident.updated',
+              orderId: dto.orderId!,
+              action: 'REJECT',
+            });
+            return this.response(audit);
+          }
           let routeId = proposal.routeId;
           if (routeId)
-            await this.assignment.replaceStops(tx, routeId, proposal.orderIds);
+            await this.assignment.replaceStops(
+              tx,
+              routeId,
+              proposal.orderIds,
+              changes,
+            );
           else {
             if (
               !dto.driverId ||
@@ -426,16 +482,23 @@ export class DispatchInterventionService {
               Temporal.Instant.from(proposal.routeDate!),
             );
             routeId = draft.id;
-            await this.assignment.assignInTransaction(tx, routeId, {
-              driverId: dto.driverId,
-            });
-          }
-          return this.response(
-            await this.createAudit(tx, dto, actorId, routeId, {
-              orderId: dto.orderId!,
+            await this.assignment.assignInTransaction(
+              tx,
               routeId,
-            }),
-          );
+              { driverId: dto.driverId },
+              changes,
+            );
+          }
+          const audit = await this.createAudit(tx, dto, actorId, routeId, {
+            orderId: dto.orderId!,
+            routeId,
+          });
+          changes.push({
+            type: 'dispatch.incident.updated',
+            orderId: dto.orderId!,
+            action: 'CONFIRM',
+          });
+          return this.response(audit);
         }
         if (dto.action === 'PRIORITIZE') {
           await this.lockResources(tx, [], [], [dto.orderId!]);
@@ -451,12 +514,16 @@ export class DispatchInterventionService {
             throw new ConflictException(
               'Only an eligible unclaimed PENDING order may be prioritized',
             );
-          return this.response(
-            await this.createAudit(tx, dto, actorId, null, {
-              orderId: dto.orderId!,
-              routeId: null,
-            }),
-          );
+          const audit = await this.createAudit(tx, dto, actorId, null, {
+            orderId: dto.orderId!,
+            routeId: null,
+          });
+          changes.push({
+            type: 'dispatch.incident.updated',
+            orderId: dto.orderId!,
+            action: 'PRIORITIZE',
+          });
+          return this.response(audit);
         }
         const routeIds = [
           dto.routeId!,
@@ -517,11 +584,13 @@ export class DispatchInterventionService {
             routeId: route.id,
             driverId: next.id,
           });
-          await db.Route.where({
+          const reassigned = await db.Route.where({
             id: route.id,
             status: 'ASSIGNED',
             driverId: route.driverId,
           }).update({ driverId: next.id });
+          if (!reassigned)
+            throw new ConflictException('Route changed during reassignment');
           await db.DriverReservation.where({ id: reservation.id }).update({
             releasedAt: nowInstant(),
           });
@@ -541,6 +610,11 @@ export class DispatchInterventionService {
             tx,
           );
           await db.Driver.where({ id: next.id }).update({ isAvailable: false });
+          changes.push({
+            type: 'route.updated',
+            routeId: reassigned.id,
+            status: reassigned.status ?? undefined,
+          });
           return this.response(audit);
         }
         const stops = (
@@ -554,12 +628,16 @@ export class DispatchInterventionService {
             throw new ConflictException(
               'Reorder must contain exactly the current stops',
             );
-          await this.assignment.replaceStops(tx, route.id, dto.orderIds!);
-          return this.response(
-            await this.createAudit(tx, dto, actorId, route.id, {
-              routeId: route.id,
-            }),
+          await this.assignment.replaceStops(
+            tx,
+            route.id,
+            dto.orderIds!,
+            changes,
           );
+          const audit = await this.createAudit(tx, dto, actorId, route.id, {
+            routeId: route.id,
+          });
+          return this.response(audit);
         }
         if (
           dto.routeId === dto.targetRouteId ||
@@ -590,6 +668,7 @@ export class DispatchInterventionService {
           tx,
           route.id,
           stops.filter((s) => s.orderId !== dto.orderId).map((s) => s.orderId),
+          changes,
         );
         await db.OrderClaim.where({ id: claim.id }).update({
           releasedAt: nowInstant(),
@@ -599,12 +678,21 @@ export class DispatchInterventionService {
           routeId: null,
           stopOrder: null,
         });
-        await this.assignment.replaceStops(tx, dto.targetRouteId!, [
-          ...target.map((s) => s.orderId),
-          dto.orderId!,
-        ]);
+        await this.assignment.replaceStops(
+          tx,
+          dto.targetRouteId!,
+          [...target.map((s) => s.orderId), dto.orderId!],
+          changes,
+        );
+        changes.push({
+          type: 'dispatch.incident.updated',
+          orderId: dto.orderId!,
+          action: 'MOVE',
+        });
         return this.response(audit);
       });
+      await this.publishCommitted(changes);
+      return result;
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
       // Unique-key contenders reconcile once after rollback, never repeat mutation.

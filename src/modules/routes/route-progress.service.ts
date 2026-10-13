@@ -2,8 +2,10 @@ import { isDeepStrictEqual } from 'node:util';
 import {
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { nowInstant } from '../../common/temporal.util.js';
@@ -18,6 +20,11 @@ import {
   RouteStatus,
   VisitOutcome,
 } from './route-lifecycle.policy.js';
+import {
+  REALTIME_PUBLISHER,
+  type RealtimeChange,
+  type RealtimePublisher,
+} from '../realtime/realtime.contract.js';
 
 type Transaction = Parameters<
   Parameters<PrismaService['client']['transaction']>[0]
@@ -25,7 +32,21 @@ type Transaction = Parameters<
 
 @Injectable()
 export class RouteProgressService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    @Inject(REALTIME_PUBLISHER)
+    private readonly realtime?: RealtimePublisher,
+  ) {}
+
+  private async publishCommitted(changes: readonly RealtimeChange[]) {
+    if (!changes.length || !this.realtime) return;
+    try {
+      await this.realtime.publish(changes);
+    } catch {
+      // A delivery fault cannot turn a committed REST operation into a failure.
+    }
+  }
 
   private async lock(tx: Transaction, routeId: string, actorId: string) {
     const driver = await tx.orm.public.Driver.where({
@@ -129,7 +150,8 @@ export class RouteProgressService {
     actorId: string,
     dto: RecordFailedVisitDto,
   ) {
-    return this.prisma.client.transaction(async (tx) => {
+    const changes: RealtimeChange[] = [];
+    const result = await this.prisma.client.transaction(async (tx) => {
       const { route, driver } = await this.lock(tx, routeId, actorId);
       const stop = await tx.orm.public.RouteStop.where({
         id: stopId,
@@ -178,12 +200,28 @@ export class RouteProgressService {
       }).update({ requiresAdministrativeReview: true });
       if (!resolved || !flagged)
         throw new ConflictException('Concurrent visit resolution');
+      changes.push(
+        {
+          type: 'order.status.updated',
+          orderId: flagged.id,
+          status: flagged.status,
+          requiresAdministrativeReview: flagged.requiresAdministrativeReview,
+        },
+        {
+          type: 'dispatch.incident.updated',
+          orderId: flagged.id,
+          requiresAdministrativeReview: flagged.requiresAdministrativeReview,
+        },
+      );
       return this.response(attempt);
     });
+    await this.publishCommitted(changes);
+    return result;
   }
 
   async updateOrder(orderId: string, actorId: string, status: OrderStatus) {
-    return this.prisma.client.transaction(async (tx) => {
+    const changes: RealtimeChange[] = [];
+    const result = await this.prisma.client.transaction(async (tx) => {
       const initial = await tx.orm.public.Order.where({ id: orderId }).first();
       if (!initial) throw new NotFoundException('Order not found');
       if (!initial.routeId)
@@ -252,12 +290,20 @@ export class RouteProgressService {
         if (!resolved)
           throw new ConflictException('Concurrent visit resolution');
       }
+      changes.push({
+        type: 'order.status.updated',
+        orderId: updated.id,
+        status: updated.status,
+      });
       return updated;
     });
+    await this.publishCommitted(changes);
+    return result;
   }
 
   async cancelOrder(orderId: string) {
-    return this.prisma.client.transaction(async (tx) => {
+    const changes: RealtimeChange[] = [];
+    const result = await this.prisma.client.transaction(async (tx) => {
       const initial = await tx.orm.public.Order.where({ id: orderId }).first();
       if (!initial) throw new NotFoundException('Order not found');
       if (initial.routeId) {
@@ -306,12 +352,20 @@ export class RouteProgressService {
       }).update({ status: 'CANCELLED' });
       if (!updated)
         throw new ConflictException('Concurrent commercial transition');
+      changes.push({
+        type: 'order.status.updated',
+        orderId: updated.id,
+        status: updated.status,
+      });
       return updated;
     });
+    await this.publishCommitted(changes);
+    return result;
   }
 
   async complete(routeId: string, actorId: string) {
-    return this.prisma.client.transaction(async (tx) => {
+    const changes: RealtimeChange[] = [];
+    const result = await this.prisma.client.transaction(async (tx) => {
       const { route, driver } = await this.lock(tx, routeId, actorId);
       if (route.status === 'COMPLETED') {
         if (!route.completedAt || route.completedById !== actorId)
@@ -405,6 +459,11 @@ export class RouteProgressService {
       }).update({ status: 'COMPLETED', completedAt, completedById: actorId });
       if (!completed?.completedAt)
         throw new ConflictException('Concurrent completion');
+      changes.push({
+        type: 'route.updated',
+        routeId: completed.id,
+        status: completed.status ?? RouteStatus.COMPLETED,
+      });
       for (const claim of claims) {
         const released = await tx.orm.public.OrderClaim.where({
           id: claim.id,
@@ -419,5 +478,7 @@ export class RouteProgressService {
         completedAt: completed.completedAt.toString(),
       };
     });
+    await this.publishCommitted(changes);
+    return result;
   }
 }

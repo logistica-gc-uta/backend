@@ -8,6 +8,7 @@ import { OrdersModule } from './modules/orders/orders.module.js';
 import { ProductsModule } from './modules/products/products.module.js';
 import { RoutesModule } from './modules/routes/routes.module.js';
 import { ZonesModule } from './modules/zones/zones.module.js';
+import { GlobalRealtimeModule } from './modules/realtime/realtime.module.js';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ZonesModule } from './modules/zones/zones.module.js';
     ProductsModule,
     OrdersModule,
     RoutesModule,
+    GlobalRealtimeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
