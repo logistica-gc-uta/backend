@@ -1,20 +1,43 @@
 import {
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { nowInstant } from '../../common/temporal.util.js';
 import { RouteStartResponseDto } from './dto/route-start-response.dto.js';
 import { canTransitionRoute, RouteStatus } from './route-lifecycle.policy.js';
+import {
+  REALTIME_PUBLISHER,
+  type RealtimeChange,
+  type RealtimePublisher,
+} from '../realtime/realtime.contract.js';
 
 @Injectable()
 export class RouteExecutionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional()
+    @Inject(REALTIME_PUBLISHER)
+    private readonly realtime?: RealtimePublisher,
+  ) {}
+
+  private async publishCommitted(changes: readonly RealtimeChange[]) {
+    if (!changes.length || !this.realtime) return;
+    try {
+      await this.realtime.publish(changes);
+    } catch {
+      // A delivery fault cannot turn a committed REST operation into a failure.
+    }
+  }
 
   async start(id: string, actorId: string): Promise<RouteStartResponseDto> {
-    return this.prisma.client.transaction(async (tx) => {
+    const changes: RealtimeChange[] = [];
+    const result: RouteStartResponseDto =
+      await this.prisma.client.transaction(async (tx) => {
       const driver = await tx.orm.public.Driver.where({
         userId: actorId,
       }).first();
@@ -129,11 +152,18 @@ export class RouteExecutionService {
       });
       if (!started?.startedAt)
         throw new ConflictException('Concurrent route transition');
+      changes.push({
+        type: 'route.updated',
+        routeId: started.id,
+        status: started.status ?? RouteStatus.IN_PROGRESS,
+      });
       return {
         id,
         status: RouteStatus.IN_PROGRESS,
         startedAt: started.startedAt.toString(),
       };
     });
+    await this.publishCommitted(changes);
+    return result;
   }
 }
