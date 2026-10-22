@@ -11,6 +11,15 @@ Especificación: `odd/tasks/31-auth-client-only-registration.md` (T1, T2; S1–S
 | S3 | El login de ADMIN, CLIENT y DRIVER se conserva | Sin cambios en `AuthService.login` ni en `LoginDto`; verificado por prueba unitaria, E2E y comparación diferencial | `src/modules/auth/auth.service.spec.ts`, `test/issue31-auth.e2e-spec.ts` |
 | S4 | 201 con rol CLIENT, 400/403 en escalada, regresiones de autenticación y seguridad en verde | Ver tabla de comandos | suite completa + E2E |
 
+### Cambios de contrato (breaking changes)
+
+Estos dos cambios rompen consumidores existentes y hay que adaptarlos:
+
+1. **`POST /api/v1/auth/register` ya no acepta un campo `role` en el body.** Antes, un body con `role: "ADMIN"` o `role: "DRIVER"` devolvía 201 y creaba ese usuario; ahora devuelve **400 Bad Request** (`property role should not exist`) y no crea ninguna fila. El registro público solo puede crear CLIENT. Un cliente que envíe el rol debe dejar de enviarlo.
+2. **Los payloads ADMIN de repartidores y de rutas ya no incluyen `password`.** `GET /api/v1/drivers`, `GET /api/v1/routes` y `GET /api/v1/routes/:id` devuelven el usuario relacionado con `id, name, email, role, createdAt` y sin el hash. Un cliente que leyera ese campo debe dejar de leerlo.
+
+Ninguno de los dos cambios afecta el login de ADMIN, CLIENT ni DRIVER, ni la forma de su respuesta.
+
 ### Código de rechazo observado
 
 El `ValidationPipe` global de `src/main.ts` (`whitelist: true, forbidNonWhitelisted: true`) rechaza el campo `role` porque el DTO ya no lo declara. Estado observado: **400 Bad Request**.
