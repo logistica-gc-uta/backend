@@ -4,7 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import bcrypt from 'bcryptjs';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuthService } from './auth.service.js';
-import { Role } from './dto/register.dto.js';
+import { RegisterDto, Role } from './dto/register.dto.js';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -138,13 +138,44 @@ describe('AuthService', () => {
         name: 'Nuevo Cliente',
         email: 'nuevo@example.com',
         password: 'password123',
-        role: Role.CLIENT,
       });
 
       expect(result).toBeDefined();
       expect(result.id).toBe('new-user-id');
       expect(result.email).toBe('nuevo@example.com');
       expect((result as any).password).toBeUndefined();
+      expect(prismaMock.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({ role: Role.CLIENT }),
+      );
+    });
+
+    it('persiste siempre el rol CLIENT aunque el payload incluya un rol', async () => {
+      prismaMock.user.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(null),
+      });
+
+      prismaMock.user.create.mockImplementation((data: any) =>
+        Promise.resolve({
+          id: 'escalated-user-id',
+          ...data,
+          createdAt: new Date(),
+        }),
+      );
+
+      const result = await service.register({
+        name: 'Escalated Caller',
+        email: 'escalated@example.com',
+        password: 'password123',
+        role: Role.ADMIN,
+      } as RegisterDto);
+
+      expect(prismaMock.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({ role: Role.CLIENT }),
+      );
+      expect(prismaMock.user.create.mock.calls[0][0]).not.toMatchObject({
+        role: Role.ADMIN,
+      });
+      expect(result.role).toBe(Role.CLIENT);
     });
 
     it('debe lanzar ConflictException si el email ya existe', async () => {

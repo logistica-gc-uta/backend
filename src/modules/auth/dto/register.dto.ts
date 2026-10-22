@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 
 export enum Role {
   ADMIN = 'ADMIN',
@@ -22,15 +22,5 @@ export class RegisterDto {
   @IsString({ message: 'La contraseña debe ser una cadena de texto' })
   @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
   password!: string;
-
-  @ApiPropertyOptional({
-    description: 'Rol del usuario en el sistema',
-    enum: Role,
-    default: Role.CLIENT,
-    example: Role.CLIENT,
-  })
-  @IsOptional()
-  @IsEnum(Role, { message: 'El rol debe ser ADMIN, CLIENT o DRIVER' })
-  role?: Role;
 }
 

@@ -25,7 +25,8 @@ export class AuthService {
       name: dto.name,
       email: dto.email,
       password: hashedPassword,
-      role: dto.role ?? Role.CLIENT,
+      // Public registration is CLIENT-only; the role is never taken from the caller.
+      role: Role.CLIENT,
     });
 
     return {

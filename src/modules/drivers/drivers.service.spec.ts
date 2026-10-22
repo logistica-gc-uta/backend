@@ -33,16 +33,38 @@ describe('DriversService', () => {
     service = module.get<DriversService>(DriversService);
   });
 
-  it('findAll debe listar los repartidores incluyendo su usuario', async () => {
+  it('findAll lista los repartidores con su usuario y sin exponer el hash de contraseña', async () => {
     const drivers = [
-      { id: 'd1', isAvailable: true, user: { name: 'Carlos Chofer' } },
+      {
+        id: 'd1',
+        isAvailable: true,
+        user: {
+          id: 'u1',
+          name: 'Carlos Chofer',
+          email: 'carlos@delivery.com',
+          role: 'DRIVER',
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      },
     ];
     const allMock = jest.fn().mockResolvedValue(drivers);
     prismaMock.driver.include.mockReturnValue({ all: allMock });
 
     const result = await service.findAll();
 
-    expect(prismaMock.driver.include).toHaveBeenCalledWith('user');
+    expect(prismaMock.driver.include).toHaveBeenCalledWith(
+      'user',
+      expect.any(Function),
+    );
+    const userQuery = { select: jest.fn() };
+    prismaMock.driver.include.mock.calls[0][1](userQuery);
+    expect(userQuery.select).toHaveBeenCalledWith(
+      'id',
+      'name',
+      'email',
+      'role',
+      'createdAt',
+    );
     expect(result).toEqual(
       drivers.map((driver) => ({
         ...driver,

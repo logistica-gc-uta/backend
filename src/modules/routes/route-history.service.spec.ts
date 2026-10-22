@@ -1,5 +1,22 @@
 import { PrismaService } from '../../database/prisma.service.js';
+import { AdminRouteHistoryUserDto } from './dto/route-history-response.dto.js';
 import { RouteHistoryService } from './route-history.service.js';
+
+describe('Admin route history user DTO', () => {
+  it('no declara un miembro password en la relación de usuario', () => {
+    const dto = new AdminRouteHistoryUserDto();
+
+    expect(Object.keys(dto)).not.toContain('password');
+    expect('password' in dto).toBe(false);
+    expect(Object.keys(dto).sort()).toEqual([
+      'createdAt',
+      'email',
+      'id',
+      'name',
+      'role',
+    ]);
+  });
+});
 
 describe('Batched stable route history', () => {
   const timestamp = { toString: () => '2026-10-10T00:00:00Z' };

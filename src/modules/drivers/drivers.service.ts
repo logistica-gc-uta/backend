@@ -55,7 +55,11 @@ export class DriversService {
   }
 
   async findAll() {
-    const drivers = await this.prisma.driver.include('user').all();
+    const drivers = await this.prisma.driver
+      .include('user', (user) =>
+        user.select('id', 'name', 'email', 'role', 'createdAt'),
+      )
+      .all();
     return Promise.all(
       drivers.map(async (driver) => ({
         ...driver,

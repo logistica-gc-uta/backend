@@ -121,10 +121,6 @@ export class AdminRouteHistoryUserDto {
   @ApiProperty() id!: string;
   @ApiProperty() name!: string;
   @ApiProperty() email!: string;
-  @ApiProperty({
-    description: 'Existing ADMIN relation field; not exposed in DRIVER history',
-  })
-  password!: string;
   @ApiProperty({ enum: ['ADMIN', 'CLIENT', 'DRIVER'] }) role!: string;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
 }

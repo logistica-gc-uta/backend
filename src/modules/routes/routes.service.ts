@@ -28,7 +28,11 @@ export class RoutesService {
 
   async findAll() {
     const routes = await this.prisma.route
-      .include('driver', (d) => d.include('user'))
+      .include('driver', (d) =>
+        d.include('user', (user) =>
+          user.select('id', 'name', 'email', 'role', 'createdAt'),
+        ),
+      )
       .include('zone')
       .all();
     return this.history.project(routes, true);
@@ -37,7 +41,11 @@ export class RoutesService {
   async findOne(id: string) {
     const route = await this.prisma.route
       .where({ id })
-      .include('driver', (d) => d.include('user'))
+      .include('driver', (d) =>
+        d.include('user', (user) =>
+          user.select('id', 'name', 'email', 'role', 'createdAt'),
+        ),
+      )
       .include('zone')
       .first();
 
