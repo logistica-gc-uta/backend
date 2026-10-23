@@ -688,11 +688,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '404':
-          description: Resultado
+          description: CATEGORY_NOT_FOUND - categoría inexistente
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+              example:
+                error: { code: CATEGORY_NOT_FOUND, message: Category not found, details: {}, requestId: 00000000-0000-4000-8000-000000000000 }
         '409':
           description: Resultado
           content:
@@ -750,7 +752,7 @@ paths:
         schema:
           type: string
           format: uuid
-      description: Propuesto; debe implementarse y comprobarse con Swagger. JWT ADMIN obligatorio.
+      description: 'JWT ADMIN obligatorio. Categoría inexistente al editar: 404 CATEGORY_NOT_FOUND; no se aplican cambios parciales. Implementación pendiente de verificar con Swagger.'
   /admin/catalog/products:
     get:
       tags:
@@ -953,7 +955,7 @@ paths:
               $ref: '#/components/schemas/AdminCreateProduct'
       security:
       - bearerAuth: []
-      description: Propuesto; debe implementarse y comprobarse con Swagger. JWT ADMIN obligatorio.
+      description: 'JWT ADMIN obligatorio. Categoría inexistente: 404 CATEGORY_NOT_FOUND; isPublished:true sin principal confirmado: 409 PRODUCT_PUBLICATION_INVALID; no se crea producto. Implementación pendiente de verificar con Swagger.'
   /admin/catalog/products/{id}:
     get:
       tags:
@@ -1136,7 +1138,7 @@ paths:
         schema:
           type: string
           format: uuid
-      description: Propuesto; debe implementarse y comprobarse con Swagger. JWT ADMIN obligatorio.
+      description: 'JWT ADMIN obligatorio. PATCH producto: 404 CATEGORY_NOT_FOUND para referencia faltante, PRODUCT_NOT_FOUND para producto faltante; 409 PRODUCT_PUBLICATION_INVALID si falla publicación. Sin cambios parciales; pendiente de verificar con Swagger.'
   /admin/catalog/products/{id}/publication:
     patch:
       tags:
@@ -1169,17 +1171,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '404':
-          description: Resultado
+          description: PRODUCT_NOT_FOUND - producto inexistente
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '409':
-          description: Resultado
+          description: PRODUCT_PUBLICATION_INVALID - faltan condiciones de publicación
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+              example:
+                error: { code: PRODUCT_PUBLICATION_INVALID, message: Product publication requirements are not met, details: {}, requestId: 00000000-0000-4000-8000-000000000000 }
         '422':
           description: Resultado
           content:
@@ -1231,7 +1235,7 @@ paths:
         schema:
           type: string
           format: uuid
-      description: Propuesto; debe implementarse y comprobarse con Swagger. JWT ADMIN obligatorio.
+      description: 'JWT ADMIN obligatorio. 409 PRODUCT_PUBLICATION_INVALID sin categoría activa, datos completos o principal confirmado; no cambia publicación ni updatedAt. PRODUCT_UNPUBLISHED conserva su significado en checkout. Pendiente de verificar con Swagger.'
   /admin/catalog/uploads:
     post:
       tags:
@@ -1521,7 +1525,7 @@ paths:
         schema:
           type: string
           format: uuid
-      description: Propuesto; debe implementarse y comprobarse con Swagger. JWT ADMIN obligatorio.
+      description: 'JWT ADMIN obligatorio. 422 IMAGE_ASSOCIATION_FAILED si degrada la única principal publicada; sin cambios parciales. Una imagen asociada válida puede reemplazarla y degradar la anterior en la misma transacción. Un borrador puede perder principal. Pendiente de verificar con Swagger.'
     delete:
       tags:
       - Admin Upload
@@ -1611,7 +1615,7 @@ paths:
         schema:
           type: string
           format: uuid
-      description: Propuesto; debe implementarse y comprobarse con Swagger. JWT ADMIN obligatorio.
+      description: 'JWT ADMIN obligatorio. 422 IMAGE_ASSOCIATION_FAILED al eliminar principal publicada sin reemplazo previo; sin despublicar ni alterar imágenes, asset o updatedAt. Los borradores pueden perder principal. Pendiente de verificar con Swagger.'
   /shop/checkout/quote:
     post:
       tags:

@@ -131,7 +131,7 @@ Ruta base **`/api/v1/admin/catalog`** — JWT ADMIN, 401 sin token, 403 CLIENT/D
 ```json
 {"sku":"REG-NAV-001","name":"Caja sorpresa navideña","description":"Caja con detalles navideños","categoryId":"22222222-2222-4222-8222-222222222222","priceCents":3650,"stock":12,"isFeatured":false,"isPublished":false}
 ```
-Todos los campos obligatorios salvo `isFeatured` (default false), `isPublished` (default false). Un producto nuevo **no se publica** hasta tener categoría activa, descripción, precio, imagen principal y stock >=0. `PATCH` admite solo campo editables; `id,createdAt,price` legado, ventas y `soldCount` nunca editables desde el cliente. `sku` inmutable tras creación para proteger seed. `sku` duplicado 409 `SKU_ALREADY_EXISTS`.
+Todos los campos obligatorios salvo `isFeatured` (default false), `isPublished` (default false). Un producto nuevo **no se publica** hasta tener categoría activa, descripción, precio, imagen principal y stock >=0. `PATCH` admite solo campo editables; `id,createdAt,price` legado, ventas y `soldCount` nunca editables desde el cliente. `sku` inmutable tras creación para proteger seed. `sku` duplicado 409 `SKU_ALREADY_EXISTS`. Categoría referenciada/inexistente (alta o edición de producto, edición de categoría): 404 `CATEGORY_NOT_FOUND`; el producto inexistente sigue siendo 404 `PRODUCT_NOT_FOUND`. Publicar sin categoría activa, datos completos o imagen principal confirmada (también `isPublished:true` en POST/PATCH): 409 `PRODUCT_PUBLICATION_INVALID`; `PRODUCT_UNPUBLISHED` conserva su significado para checkout. La validación y cualquier edición combinada fallida son atómicas: no se cambia publicación, datos ni `updatedAt`.
 
 `CreateCategoryRequest`: `{name,slug,description?,isActive?,sortOrder?}`; default isActive true/sortOrder 0. `PATCH` no cambia `id` ni `slug` inicialmente. Slug repetido 409 `CATEGORY_ALREADY_EXISTS`. Desactivar categoría impide nueva venta de sus productos y ocultará sus fichas públicas; conservar pedidos previos.
 
@@ -150,7 +150,7 @@ Respuesta 201:
 ```
 El valor es de demostración.
 
-Luego `POST /products/:id/images` con `{uploadId,altText,isPrimary,position}`. Backend comprueba que `uploadId` pertenece al ámbito/admin autorizado, no ha sido usado y no está expirado; no acepta `secureUrl/publicId` arbitrario para asociar. Persistir Cloudinary `secure_url` + `public_id` tras verificar. Las cargas huérfanas se limpian por job (TTL sugerida 24 h). Si falla Cloudinary o DB, no devolver éxito: error `UPLOAD_FAILED` / `IMAGE_ASSOCIATION_FAILED`; reintento seguro, cleanup diferido. Las URLs son referencias, no almacenamiento binario en PostgreSQL.
+Luego `POST /products/:id/images` con `{uploadId,altText,isPrimary,position}`. Backend comprueba que `uploadId` pertenece al ámbito/admin autorizado, no ha sido usado y no está expirado; no acepta `secureUrl/publicId` arbitrario para asociar. Persistir Cloudinary `secure_url` + `public_id` tras verificar. Las cargas huérfanas se limpian por job (TTL sugerida 24 h). Si falla Cloudinary o DB, no devolver éxito: error `UPLOAD_FAILED` / `IMAGE_ASSOCIATION_FAILED`; reintento seguro, cleanup diferido. Las URLs son referencias, no almacenamiento binario en PostgreSQL. En un producto publicado se rechaza con 422 `IMAGE_ASSOCIATION_FAILED` borrar o degradar su única imagen principal sin reemplazo válido previo: no hay despublicación automática ni cambios parciales en galería, posiciones, metadata, estado de asset o `updatedAt`. `PATCH` de otra imagen asociada válida a `isPrimary:true` promueve la nueva y degrada la anterior en una sola transacción; después se puede borrar la antigua no principal. Un borrador despublicado puede perder su principal sin publicar el producto ni cambiar las demás imágenes.
 
 Seguridad inspirada en documentación Cloudinary (la API secreta nunca debe exponerse en JS): https://cloudinary.com/documentation/image_upload_api_reference ; https://cloudinary.com/documentation/authentication_signatures.
 
@@ -359,12 +359,14 @@ No incluir contraseña, token, número completo de tarjeta, CVV, firma Cloudinar
 | 400 | VALIDATION_ERROR | tipos, formato, campo desconocido, monto cliente, fecha sin offset | errores por campo sin perder inputs |
 | 401 | UNAUTHENTICATED | sin JWT/expirado | login Shop y retorno seguro |
 | 403 | FORBIDDEN | rol CLIENT en rutas ADMIN o acceso no permitido | acceso denegado, no filtrar secretos |
-| 404 | PRODUCT_NOT_FOUND | SKU/ID inexistente | volver al catálogo |
+| 404 | PRODUCT_NOT_FOUND | producto/imagen inexistente | volver al catálogo |
+| 404 | CATEGORY_NOT_FOUND | categoría inexistente en lookup/referencia ADMIN | elegir categoría válida |
 | 404 | ZONE_NOT_FOUND | zona inexistente | volver a selección de zona |
 | 404 | ORDER_NOT_FOUND | pedido ajeno/inexistente | no revelar recursos de terceros |
 | 404 | CHECKOUT_ATTEMPT_NOT_FOUND | clave de otro usuario/inexistente | indicar verificación asistida, nunca autorizar recobro automático |
 | 409 | STOCK_UNAVAILABLE | unidades insuficientes tras bloqueo concurrente | variante 06B agotado; conservar carrito, ajustar |
 | 409 | PRODUCT_UNPUBLISHED | producto/categoría no visible al checkout | retirar/actualizar selección |
+| 409 | PRODUCT_PUBLICATION_INVALID | precondición de publicación ADMIN incumplida | corregir categoría, datos o principal confirmado |
 | 409 | PRICE_CHANGED | precio de una línea difiere del snapshot firmado, aunque total coincidiera | refrescar quote y pedir nueva confirmación |
 | 409 | QUOTE_EXPIRED | token firmado de cotización expirado | generar nuevo quote y reconfirmar total |
 | 409 | IDEMPOTENCY_KEY_REUSED | misma clave con payload diferente | crear nueva intención solo tras resolución del anterior |
@@ -380,7 +382,7 @@ No incluir contraseña, token, número completo de tarjeta, CVV, firma Cloudinar
 | 409 | SETTINGS_VERSION_CONFLICT | ADMIN edita configuración a partir de versión desactualizada | refrescar ajustes antes de guardar |
 | 413 | IMAGE_TOO_LARGE | archivo > 5 MiB | reducir imagen |
 | 415 | IMAGE_UNSUPPORTED | contenido no es JPEG/PNG/WebP | cambiar archivo |
-| 422 | IMAGE_ASSOCIATION_FAILED | uploadId no autorizado, vencido, usado | volver a cargar/seleccionar |
+| 422 | IMAGE_ASSOCIATION_FAILED | asociación inválida o eliminación/degradación de única principal publicada | reemplazar la principal válida antes de retirar la anterior |
 | 502 | UPLOAD_FAILED | proveedor Cloudinary falló | reintentar subida sin duplicar producto |
 | 503 | PAYMENT_SIMULATION_DISABLED | entorno sin pagos DEMO habilitados | bloqueo explícito de checkout |
 | 500 | INTERNAL_ERROR | error no recuperable | mensaje neutro + requestId; nunca inventar éxito |
