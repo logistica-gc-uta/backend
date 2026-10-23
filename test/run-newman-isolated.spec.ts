@@ -111,7 +111,8 @@ exit 0
       'curl',
       `
 echo "curl $@" >> "${logFile}"
-exit 0
+# A healthy HTTP response requires the dedicated fake backend to have started.
+grep -q '^backend-started$' "${logFile}"
 `,
     );
 
@@ -223,6 +224,17 @@ exit ${newmanCode}
     // Docker must NOT have been called
     const calls = readCallLog();
     expect(calls.filter((c) => c.startsWith('docker run')).length).toBe(0);
+  });
+
+  it('reports fake HTTP readiness only after the backend has started', () => {
+    setupStandardFakeBinaries();
+    const env = { ...process.env, PATH: `${fakeBinDir}:${process.env.PATH}` };
+    const probe = () => spawnSync('curl', ['-f', 'http://127.0.0.1:48999/api/v1/zones'], {
+      env, encoding: 'utf8', timeout: 1000,
+    });
+    expect(probe().status).toBe(1);
+    fs.appendFileSync(logFile, 'backend-started\n');
+    expect(probe().status).toBe(0);
   });
 
   it('runs full lifecycle and terminates dedicated backend PID and container on exit', () => {
