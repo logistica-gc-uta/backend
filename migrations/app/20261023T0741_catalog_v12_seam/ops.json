@@ -1,0 +1,1221 @@
+[
+  {
+    "id": "table.category",
+    "label": "Create table \"category\"",
+    "summary": "Creates table \"category\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "category"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"category\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"category\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"category\"",
+        "sql": "CREATE TABLE \"public\".\"category\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"description\" text,\n  \"id\" text NOT NULL,\n  \"isActive\" bool DEFAULT true NOT NULL,\n  \"name\" text NOT NULL,\n  \"slug\" text NOT NULL,\n  \"sortOrder\" int4 DEFAULT 0 NOT NULL,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"category_catalog_valid_a3d92e40\" CHECK (length(name) BETWEEN 2 AND 80 AND length(slug) BETWEEN 2 AND 100 AND slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND (description IS NULL OR length(description) <= 300) AND \"sortOrder\" BETWEEN 0 AND 9999)\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"category\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"category\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.productImage",
+    "label": "Create table \"productImage\"",
+    "summary": "Creates table \"productImage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "productImage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"productImage\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productImage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"productImage\"",
+        "sql": "CREATE TABLE \"public\".\"productImage\" (\n  \"altText\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"isPrimary\" bool DEFAULT false NOT NULL,\n  \"position\" int4 NOT NULL,\n  \"productId\" text NOT NULL,\n  \"publicId\" text NOT NULL,\n  \"secureUrl\" text NOT NULL,\n  \"uploadId\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"product_image_valid_3fc3f514\" CHECK (position BETWEEN 0 AND 5 AND length(\"altText\") BETWEEN 1 AND 160 AND \"secureUrl\" LIKE 'https://%')\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"productImage\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productImage\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.uploadedAsset",
+    "label": "Create table \"uploadedAsset\"",
+    "summary": "Creates table \"uploadedAsset\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "uploadedAsset"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"uploadedAsset\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"uploadedAsset\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"uploadedAsset\"",
+        "sql": "CREATE TABLE \"public\".\"uploadedAsset\" (\n  \"actorId\" text NOT NULL,\n  \"attachedAt\" timestamptz,\n  \"bytes\" int4 NOT NULL,\n  \"cleanupAt\" timestamptz,\n  \"cleanupAttempts\" int4 DEFAULT 0 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"expiresAt\" timestamptz NOT NULL,\n  \"format\" text NOT NULL,\n  \"height\" int4 NOT NULL,\n  \"id\" text NOT NULL,\n  \"lastCleanupError\" text,\n  \"publicId\" text NOT NULL,\n  \"secureUrl\" text NOT NULL,\n  \"status\" text DEFAULT 'UPLOADED' NOT NULL,\n  \"width\" int4 NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"upload_asset_valid_5f740ac4\" CHECK (status IN ('UPLOADED', 'ATTACHED', 'CLEANUP_PENDING', 'DELETED') AND bytes BETWEEN 1 AND 5242880 AND width BETWEEN 1 AND 8192 AND height BETWEEN 1 AND 8192 AND format IN ('jpg', 'png', 'webp') AND \"cleanupAttempts\" >= 0 AND \"secureUrl\" LIKE 'https://%')\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"uploadedAsset\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"uploadedAsset\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.subtotalCents",
+    "label": "Add column \"subtotalCents\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "subtotalCents",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"subtotalCents\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "subtotalCents"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"subtotalCents\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"subtotalCents\" int8"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"subtotalCents\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "subtotalCents"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.orderItem.unitPriceCents",
+    "label": "Add column \"unitPriceCents\" to \"orderItem\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "unitPriceCents",
+        "table": "orderItem"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"unitPriceCents\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "orderItem",
+          "unitPriceCents"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"unitPriceCents\"",
+        "sql": "ALTER TABLE \"public\".\"orderItem\" ADD COLUMN \"unitPriceCents\" int8"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"unitPriceCents\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "orderItem",
+          "unitPriceCents"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.product.categoryId",
+    "label": "Add column \"categoryId\" to \"product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "categoryId",
+        "table": "product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"categoryId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "product",
+          "categoryId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"categoryId\"",
+        "sql": "ALTER TABLE \"public\".\"product\" ADD COLUMN \"categoryId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"categoryId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "product",
+          "categoryId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.product.isFeatured",
+    "label": "Add column \"isFeatured\" to \"product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "isFeatured",
+        "table": "product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"isFeatured\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "product",
+          "isFeatured"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"isFeatured\"",
+        "sql": "ALTER TABLE \"public\".\"product\" ADD COLUMN \"isFeatured\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"isFeatured\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "product",
+          "isFeatured"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.product.isPublished",
+    "label": "Add column \"isPublished\" to \"product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "isPublished",
+        "table": "product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"isPublished\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "product",
+          "isPublished"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"isPublished\"",
+        "sql": "ALTER TABLE \"public\".\"product\" ADD COLUMN \"isPublished\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"isPublished\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "product",
+          "isPublished"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.product.priceCents",
+    "label": "Add column \"priceCents\" to \"product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "priceCents",
+        "table": "product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"priceCents\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "product",
+          "priceCents"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"priceCents\"",
+        "sql": "ALTER TABLE \"public\".\"product\" ADD COLUMN \"priceCents\" int8"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"priceCents\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "product",
+          "priceCents"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.product.sku",
+    "label": "Add column \"sku\" to \"product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "sku",
+        "table": "product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"sku\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "product",
+          "sku"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"sku\"",
+        "sql": "ALTER TABLE \"public\".\"product\" ADD COLUMN \"sku\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"sku\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "product",
+          "sku"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.product.updatedAt",
+    "label": "Add column \"updatedAt\" to \"product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "updatedAt",
+        "table": "product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"updatedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "product",
+          "updatedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"updatedAt\"",
+        "sql": "ALTER TABLE \"public\".\"product\" ADD COLUMN \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"updatedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "product",
+          "updatedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.category.category_slug_key",
+    "label": "Add unique constraint on \"category\" (slug)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "category_slug_key",
+        "table": "category"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"category_slug_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "category_slug_key",
+          "public",
+          "\"public\".\"category\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"category_slug_key\"",
+        "sql": "ALTER TABLE \"public\".\"category\" ADD CONSTRAINT \"category_slug_key\" UNIQUE (\"slug\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"category_slug_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "category_slug_key",
+          "public",
+          "\"public\".\"category\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.product.product_catalog_amount_inventory_f7383703",
+    "label": "Add check constraint \"product_catalog_amount_inventory_f7383703\" on \"product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "product_catalog_amount_inventory_f7383703",
+        "table": "product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"product_catalog_amount_inventory_f7383703\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_catalog_amount_inventory_f7383703",
+          "public",
+          "\"public\".\"product\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"product_catalog_amount_inventory_f7383703\"",
+        "sql": "ALTER TABLE \"public\".\"product\" ADD CONSTRAINT \"product_catalog_amount_inventory_f7383703\" CHECK (stock >= 0 AND (\"priceCents\" IS NULL OR \"priceCents\" BETWEEN 1 AND 9007199254740991))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"product_catalog_amount_inventory_f7383703\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_catalog_amount_inventory_f7383703",
+          "public",
+          "\"public\".\"product\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.product.product_publish_fields_0565da4d",
+    "label": "Add check constraint \"product_publish_fields_0565da4d\" on \"product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "product_publish_fields_0565da4d",
+        "table": "product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"product_publish_fields_0565da4d\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_publish_fields_0565da4d",
+          "public",
+          "\"public\".\"product\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"product_publish_fields_0565da4d\"",
+        "sql": "ALTER TABLE \"public\".\"product\" ADD CONSTRAINT \"product_publish_fields_0565da4d\" CHECK (NOT \"isPublished\" OR (\"categoryId\" IS NOT NULL AND \"priceCents\" IS NOT NULL AND sku IS NOT NULL AND description IS NOT NULL AND length(description) BETWEEN 1 AND 2000 AND length(name) BETWEEN 3 AND 160))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"product_publish_fields_0565da4d\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_publish_fields_0565da4d",
+          "public",
+          "\"public\".\"product\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.product.product_sku_key",
+    "label": "Add unique constraint on \"product\" (sku)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "product_sku_key",
+        "table": "product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"product_sku_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_sku_key",
+          "public",
+          "\"public\".\"product\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"product_sku_key\"",
+        "sql": "ALTER TABLE \"public\".\"product\" ADD CONSTRAINT \"product_sku_key\" UNIQUE (\"sku\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"product_sku_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_sku_key",
+          "public",
+          "\"public\".\"product\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.productImage.productImage_uploadId_key",
+    "label": "Add unique constraint on \"productImage\" (uploadId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "productImage_uploadId_key",
+        "table": "productImage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"productImage_uploadId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productImage_uploadId_key",
+          "public",
+          "\"public\".\"productImage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"productImage_uploadId_key\"",
+        "sql": "ALTER TABLE \"public\".\"productImage\" ADD CONSTRAINT \"productImage_uploadId_key\" UNIQUE (\"uploadId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"productImage_uploadId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productImage_uploadId_key",
+          "public",
+          "\"public\".\"productImage\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.productImage.productImage_productId_position_key",
+    "label": "Add unique constraint on \"productImage\" (productId, position)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "productImage_productId_position_key",
+        "table": "productImage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"productImage_productId_position_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productImage_productId_position_key",
+          "public",
+          "\"public\".\"productImage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"productImage_productId_position_key\"",
+        "sql": "ALTER TABLE \"public\".\"productImage\" ADD CONSTRAINT \"productImage_productId_position_key\" UNIQUE (\"productId\", \"position\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"productImage_productId_position_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productImage_productId_position_key",
+          "public",
+          "\"public\".\"productImage\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.uploadedAsset.uploadedAsset_publicId_key",
+    "label": "Add unique constraint on \"uploadedAsset\" (publicId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "uploadedAsset_publicId_key",
+        "table": "uploadedAsset"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"uploadedAsset_publicId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "uploadedAsset_publicId_key",
+          "public",
+          "\"public\".\"uploadedAsset\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"uploadedAsset_publicId_key\"",
+        "sql": "ALTER TABLE \"public\".\"uploadedAsset\" ADD CONSTRAINT \"uploadedAsset_publicId_key\" UNIQUE (\"publicId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"uploadedAsset_publicId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "uploadedAsset_publicId_key",
+          "public",
+          "\"public\".\"uploadedAsset\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.category.category_isActive_sortOrder_name_idx_43d1bbe8",
+    "label": "Create index \"category_isActive_sortOrder_name_idx_43d1bbe8\" on \"category\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "category_isActive_sortOrder_name_idx_43d1bbe8",
+        "table": "category"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"category_isActive_sortOrder_name_idx_43d1bbe8\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"category_isActive_sortOrder_name_idx_43d1bbe8\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"category_isActive_sortOrder_name_idx_43d1bbe8\"",
+        "sql": "CREATE INDEX \"category_isActive_sortOrder_name_idx_43d1bbe8\" ON \"public\".\"category\" (\"isActive\", \"sortOrder\", \"name\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"category_isActive_sortOrder_name_idx_43d1bbe8\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"category_isActive_sortOrder_name_idx_43d1bbe8\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.product.product_categoryId_idx_15c304f2",
+    "label": "Create index \"product_categoryId_idx_15c304f2\" on \"product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "product_categoryId_idx_15c304f2",
+        "table": "product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"product_categoryId_idx_15c304f2\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"product_categoryId_idx_15c304f2\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"product_categoryId_idx_15c304f2\"",
+        "sql": "CREATE INDEX \"product_categoryId_idx_15c304f2\" ON \"public\".\"product\" (\"categoryId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"product_categoryId_idx_15c304f2\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"product_categoryId_idx_15c304f2\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.product.product_categoryId_isPublished_idx_00525e08",
+    "label": "Create index \"product_categoryId_isPublished_idx_00525e08\" on \"product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "product_categoryId_isPublished_idx_00525e08",
+        "table": "product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"product_categoryId_isPublished_idx_00525e08\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"product_categoryId_isPublished_idx_00525e08\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"product_categoryId_isPublished_idx_00525e08\"",
+        "sql": "CREATE INDEX \"product_categoryId_isPublished_idx_00525e08\" ON \"public\".\"product\" (\"categoryId\", \"isPublished\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"product_categoryId_isPublished_idx_00525e08\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"product_categoryId_isPublished_idx_00525e08\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.product.product_isPublished_isFeatured_idx_7b878b80",
+    "label": "Create index \"product_isPublished_isFeatured_idx_7b878b80\" on \"product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "product_isPublished_isFeatured_idx_7b878b80",
+        "table": "product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"product_isPublished_isFeatured_idx_7b878b80\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"product_isPublished_isFeatured_idx_7b878b80\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"product_isPublished_isFeatured_idx_7b878b80\"",
+        "sql": "CREATE INDEX \"product_isPublished_isFeatured_idx_7b878b80\" ON \"public\".\"product\" (\"isPublished\", \"isFeatured\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"product_isPublished_isFeatured_idx_7b878b80\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"product_isPublished_isFeatured_idx_7b878b80\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.productImage.one_primary_image_per_product_a7598f0a",
+    "label": "Create index \"one_primary_image_per_product_a7598f0a\" on \"productImage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "one_primary_image_per_product_a7598f0a",
+        "table": "productImage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"one_primary_image_per_product_a7598f0a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"one_primary_image_per_product_a7598f0a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"one_primary_image_per_product_a7598f0a\"",
+        "sql": "CREATE UNIQUE INDEX \"one_primary_image_per_product_a7598f0a\" ON \"public\".\"productImage\" (\"productId\") WHERE ((\"isPrimary\" = true))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"one_primary_image_per_product_a7598f0a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"one_primary_image_per_product_a7598f0a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.uploadedAsset.uploadedAsset_actorId_idx_a58f6b4b",
+    "label": "Create index \"uploadedAsset_actorId_idx_a58f6b4b\" on \"uploadedAsset\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "uploadedAsset_actorId_idx_a58f6b4b",
+        "table": "uploadedAsset"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"uploadedAsset_actorId_idx_a58f6b4b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"uploadedAsset_actorId_idx_a58f6b4b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"uploadedAsset_actorId_idx_a58f6b4b\"",
+        "sql": "CREATE INDEX \"uploadedAsset_actorId_idx_a58f6b4b\" ON \"public\".\"uploadedAsset\" (\"actorId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"uploadedAsset_actorId_idx_a58f6b4b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"uploadedAsset_actorId_idx_a58f6b4b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.uploadedAsset.uploadedAsset_status_expiresAt_idx_c206f415",
+    "label": "Create index \"uploadedAsset_status_expiresAt_idx_c206f415\" on \"uploadedAsset\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "uploadedAsset_status_expiresAt_idx_c206f415",
+        "table": "uploadedAsset"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"uploadedAsset_status_expiresAt_idx_c206f415\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"uploadedAsset_status_expiresAt_idx_c206f415\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"uploadedAsset_status_expiresAt_idx_c206f415\"",
+        "sql": "CREATE INDEX \"uploadedAsset_status_expiresAt_idx_c206f415\" ON \"public\".\"uploadedAsset\" (\"status\", \"expiresAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"uploadedAsset_status_expiresAt_idx_c206f415\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"uploadedAsset_status_expiresAt_idx_c206f415\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.product.product_categoryId_fkey",
+    "label": "Add foreign key \"product_categoryId_fkey\" on \"product\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "product_categoryId_fkey",
+        "table": "product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"product_categoryId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_categoryId_fkey",
+          "public",
+          "\"public\".\"product\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"product_categoryId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"product\"\nADD CONSTRAINT \"product_categoryId_fkey\"\nFOREIGN KEY (\"categoryId\")\nREFERENCES \"public\".\"category\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"product_categoryId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_categoryId_fkey",
+          "public",
+          "\"public\".\"product\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.productImage.productImage_productId_fkey",
+    "label": "Add foreign key \"productImage_productId_fkey\" on \"productImage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "productImage_productId_fkey",
+        "table": "productImage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"productImage_productId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productImage_productId_fkey",
+          "public",
+          "\"public\".\"productImage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"productImage_productId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"productImage\"\nADD CONSTRAINT \"productImage_productId_fkey\"\nFOREIGN KEY (\"productId\")\nREFERENCES \"public\".\"product\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"productImage_productId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productImage_productId_fkey",
+          "public",
+          "\"public\".\"productImage\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.productImage.productImage_uploadId_fkey",
+    "label": "Add foreign key \"productImage_uploadId_fkey\" on \"productImage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "productImage_uploadId_fkey",
+        "table": "productImage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"productImage_uploadId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productImage_uploadId_fkey",
+          "public",
+          "\"public\".\"productImage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"productImage_uploadId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"productImage\"\nADD CONSTRAINT \"productImage_uploadId_fkey\"\nFOREIGN KEY (\"uploadId\")\nREFERENCES \"public\".\"uploadedAsset\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"productImage_uploadId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productImage_uploadId_fkey",
+          "public",
+          "\"public\".\"productImage\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.uploadedAsset.uploadedAsset_actorId_fkey",
+    "label": "Add foreign key \"uploadedAsset_actorId_fkey\" on \"uploadedAsset\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "uploadedAsset_actorId_fkey",
+        "table": "uploadedAsset"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"uploadedAsset_actorId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "uploadedAsset_actorId_fkey",
+          "public",
+          "\"public\".\"uploadedAsset\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"uploadedAsset_actorId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"uploadedAsset\"\nADD CONSTRAINT \"uploadedAsset_actorId_fkey\"\nFOREIGN KEY (\"actorId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"uploadedAsset_actorId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "uploadedAsset_actorId_fkey",
+          "public",
+          "\"public\".\"uploadedAsset\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "catalog-v12-exact-legacy-backfill",
+    "label": "Assign traceable legacy SKUs and backfill only exact representable cents",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "objectType": "table",
+        "schema": "public",
+        "name": "product"
+      }
+    },
+    "precheck": [
+      {
+        "description": "Legacy-derived SKU collisions must abort, not conflate rows",
+        "sql": "SELECT NOT EXISTS (SELECT 1 FROM public.product GROUP BY md5(id) HAVING count(*) > 1) AS result"
+      }
+    ],
+    "execute": [
+      {
+        "description": "Backfill without mutating Float or assigning categories; invalid amounts remain NULL",
+        "sql": "UPDATE public.product SET sku = 'LEGACY-' || md5(id) WHERE sku IS NULL;\nUPDATE public.product SET \"priceCents\" = CASE\n  WHEN price::text ~ '^[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$'\n    AND price::text::numeric > 0\n    AND price::text::numeric * 100 = trunc(price::text::numeric * 100)\n    AND price::text::numeric * 100 <= 9007199254740991\n  THEN (price::text::numeric * 100)::bigint ELSE NULL END;\nUPDATE public.\"orderItem\" SET \"unitPriceCents\" = CASE\n  WHEN price::text ~ '^[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$'\n    AND price::text::numeric > 0\n    AND price::text::numeric * 100 = trunc(price::text::numeric * 100)\n    AND price::text::numeric * 100 <= 9007199254740991\n  THEN (price::text::numeric * 100)::bigint ELSE NULL END;\nUPDATE public.\"order\" SET \"subtotalCents\" = CASE\n  WHEN total::text ~ '^[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$'\n    AND total::text::numeric >= 0\n    AND total::text::numeric * 100 = trunc(total::text::numeric * 100)\n    AND total::text::numeric * 100 <= 9007199254740991\n  THEN (total::text::numeric * 100)::bigint ELSE NULL END;"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "Every legacy product has its deterministic immutable SKU",
+        "sql": "SELECT NOT EXISTS (SELECT 1 FROM public.product WHERE sku IS DISTINCT FROM 'LEGACY-' || md5(id)) AS result"
+      }
+    ]
+  }
+]

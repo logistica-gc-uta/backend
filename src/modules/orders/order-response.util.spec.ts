@@ -29,6 +29,16 @@ describe('order response allowlist', () => {
     expect(response.items![0].product).not.toHaveProperty('private');
   });
 
+  it('never exposes additive cent or catalog columns through nested legacy orders', () => {
+    const response = projectOrder({ ...source, subtotalCents: 1000n,
+      items: [{ ...source.items[0], unitPriceCents: 1000n,
+        product: { ...source.items[0].product, priceCents: 1000n, sku: 'REG-001', isPublished: true } }],
+    } as Parameters<typeof projectOrder>[0], true);
+    expect(Object.keys(response.items![0].product!).sort()).toEqual(['id', 'name', 'description', 'price', 'stock', 'createdAt'].sort());
+    expect(response).not.toHaveProperty('subtotalCents');
+    expect(response.items![0]).not.toHaveProperty('unitPriceCents');
+  });
+
   it('omits contact for CLIENT rather than implying that a stored contact is absent', () => {
     expect(projectOrder(source, false)).not.toHaveProperty('recipientPhone');
   });

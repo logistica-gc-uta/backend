@@ -4,6 +4,10 @@
   "target": "postgres",
   "profileHash": "3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2",
   "roots": {
+    "category": {
+      "model": "Category",
+      "namespace": "public"
+    },
     "deliveryAttempt": {
       "model": "DeliveryAttempt",
       "namespace": "public"
@@ -40,12 +44,20 @@
       "model": "Product",
       "namespace": "public"
     },
+    "productImage": {
+      "model": "ProductImage",
+      "namespace": "public"
+    },
     "route": {
       "model": "Route",
       "namespace": "public"
     },
     "routeStop": {
       "model": "RouteStop",
+      "namespace": "public"
+    },
+    "uploadedAsset": {
+      "model": "UploadedAsset",
       "namespace": "public"
     },
     "user": {
@@ -182,6 +194,113 @@
           }
         },
         "models": {
+          "Category": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "description": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "isActive": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "name": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "slug": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "sortOrder": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "products": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "categoryId"
+                  ]
+                },
+                "to": {
+                  "model": "Product",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "description": {
+                  "column": "description"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "isActive": {
+                  "column": "isActive"
+                },
+                "name": {
+                  "column": "name"
+                },
+                "slug": {
+                  "column": "slug"
+                },
+                "sortOrder": {
+                  "column": "sortOrder"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "category"
+            }
+          },
           "DeliveryAttempt": {
             "fields": {
               "context": {
@@ -925,6 +1044,13 @@
                   "kind": "scalar"
                 }
               },
+              "subtotalCents": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
               "total": {
                 "nullable": false,
                 "type": {
@@ -1078,6 +1204,9 @@
                 "stopOrder": {
                   "column": "stopOrder"
                 },
+                "subtotalCents": {
+                  "column": "subtotalCents"
+                },
                 "total": {
                   "column": "total"
                 },
@@ -1222,6 +1351,13 @@
                   "codecId": "pg/int4@1",
                   "kind": "scalar"
                 }
+              },
+              "unitPriceCents": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
               }
             },
             "relations": {
@@ -1274,6 +1410,9 @@
                 },
                 "quantity": {
                   "column": "quantity"
+                },
+                "unitPriceCents": {
+                  "column": "unitPriceCents"
                 }
               },
               "namespaceId": "public",
@@ -1282,6 +1421,13 @@
           },
           "Product": {
             "fields": {
+              "categoryId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -1303,6 +1449,20 @@
                   "kind": "scalar"
                 }
               },
+              "isFeatured": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "isPublished": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
               "name": {
                 "nullable": false,
                 "type": {
@@ -1317,15 +1477,67 @@
                   "kind": "scalar"
                 }
               },
+              "priceCents": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
+              "sku": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "stock": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/int4@1",
                   "kind": "scalar"
                 }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
               }
             },
             "relations": {
+              "category": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "categoryId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Category",
+                  "namespace": "public"
+                }
+              },
+              "images": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "productId"
+                  ]
+                },
+                "to": {
+                  "model": "ProductImage",
+                  "namespace": "public"
+                }
+              },
               "orderItems": {
                 "cardinality": "1:N",
                 "on": {
@@ -1344,6 +1556,9 @@
             },
             "storage": {
               "fields": {
+                "categoryId": {
+                  "column": "categoryId"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -1353,18 +1568,157 @@
                 "id": {
                   "column": "id"
                 },
+                "isFeatured": {
+                  "column": "isFeatured"
+                },
+                "isPublished": {
+                  "column": "isPublished"
+                },
                 "name": {
                   "column": "name"
                 },
                 "price": {
                   "column": "price"
                 },
+                "priceCents": {
+                  "column": "priceCents"
+                },
+                "sku": {
+                  "column": "sku"
+                },
                 "stock": {
                   "column": "stock"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
                 }
               },
               "namespaceId": "public",
               "table": "product"
+            }
+          },
+          "ProductImage": {
+            "fields": {
+              "altText": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "isPrimary": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "position": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "productId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "publicId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "secureUrl": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "uploadId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "product": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "productId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Product",
+                  "namespace": "public"
+                }
+              },
+              "upload": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "uploadId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "UploadedAsset",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "altText": {
+                  "column": "altText"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "isPrimary": {
+                  "column": "isPrimary"
+                },
+                "position": {
+                  "column": "position"
+                },
+                "productId": {
+                  "column": "productId"
+                },
+                "publicId": {
+                  "column": "publicId"
+                },
+                "secureUrl": {
+                  "column": "secureUrl"
+                },
+                "uploadId": {
+                  "column": "uploadId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "productImage"
             }
           },
           "Route": {
@@ -1720,6 +2074,200 @@
               "table": "routeStop"
             }
           },
+          "UploadedAsset": {
+            "fields": {
+              "actorId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "attachedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "bytes": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "cleanupAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "cleanupAttempts": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "expiresAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "format": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "height": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "lastCleanupError": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "publicId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "secureUrl": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "width": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "actor": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "actorId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "image": {
+                "cardinality": "1:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "uploadId"
+                  ]
+                },
+                "to": {
+                  "model": "ProductImage",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "actorId": {
+                  "column": "actorId"
+                },
+                "attachedAt": {
+                  "column": "attachedAt"
+                },
+                "bytes": {
+                  "column": "bytes"
+                },
+                "cleanupAt": {
+                  "column": "cleanupAt"
+                },
+                "cleanupAttempts": {
+                  "column": "cleanupAttempts"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "expiresAt": {
+                  "column": "expiresAt"
+                },
+                "format": {
+                  "column": "format"
+                },
+                "height": {
+                  "column": "height"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "lastCleanupError": {
+                  "column": "lastCleanupError"
+                },
+                "publicId": {
+                  "column": "publicId"
+                },
+                "secureUrl": {
+                  "column": "secureUrl"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "width": {
+                  "column": "width"
+                }
+              },
+              "namespaceId": "public",
+              "table": "uploadedAsset"
+            }
+          },
           "User": {
             "fields": {
               "createdAt": {
@@ -1815,6 +2363,21 @@
                 },
                 "to": {
                   "model": "Order",
+                  "namespace": "public"
+                }
+              },
+              "uploadedAssets": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "actorId"
+                  ]
+                },
+                "to": {
+                  "model": "UploadedAsset",
                   "namespace": "public"
                 }
               }
@@ -1955,6 +2518,103 @@
       "public": {
         "entries": {
           "table": {
+            "category": {
+              "checks": [
+                {
+                  "expression": "length(name) BETWEEN 2 AND 80 AND length(slug) BETWEEN 2 AND 100 AND slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND (description IS NULL OR length(description) <= 300) AND \"sortOrder\" BETWEEN 0 AND 9999",
+                  "name": "category_catalog_valid_a3d92e40",
+                  "prefix": "category_catalog_valid"
+                }
+              ],
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "description": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "isActive": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "name": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "slug": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "sortOrder": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "isActive",
+                    "sortOrder",
+                    "name"
+                  ],
+                  "name": "category_isActive_sortOrder_name_idx_43d1bbe8",
+                  "prefix": "category_isActive_sortOrder_name_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "name"
+                  ]
+                },
+                {
+                  "columns": [
+                    "slug"
+                  ]
+                }
+              ]
+            },
             "deliveryAttempt": {
               "checks": [
                 {
@@ -2676,6 +3336,11 @@
                   "nativeType": "int4",
                   "nullable": true
                 },
+                "subtotalCents": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": true
+                },
                 "total": {
                   "codecId": "pg/float8@1",
                   "default": {
@@ -2939,6 +3604,11 @@
                   },
                   "nativeType": "int4",
                   "nullable": false
+                },
+                "unitPriceCents": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": true
                 }
               },
               "foreignKeys": [
@@ -3001,7 +3671,24 @@
               "uniques": []
             },
             "product": {
+              "checks": [
+                {
+                  "expression": "stock >= 0 AND (\"priceCents\" IS NULL OR \"priceCents\" BETWEEN 1 AND 9007199254740991)",
+                  "name": "product_catalog_amount_inventory_f7383703",
+                  "prefix": "product_catalog_amount_inventory"
+                },
+                {
+                  "expression": "NOT \"isPublished\" OR (\"categoryId\" IS NOT NULL AND \"priceCents\" IS NOT NULL AND sku IS NOT NULL AND description IS NOT NULL AND length(description) BETWEEN 1 AND 2000 AND length(name) BETWEEN 3 AND 160)",
+                  "name": "product_publish_fields_0565da4d",
+                  "prefix": "product_publish_fields"
+                }
+              ],
               "columns": {
+                "categoryId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-temporal@1",
                   "default": {
@@ -3021,6 +3708,24 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "isFeatured": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "isPublished": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
                 "name": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -3031,6 +3736,16 @@
                   "nativeType": "float8",
                   "nullable": false
                 },
+                "priceCents": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": true
+                },
+                "sku": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "stock": {
                   "codecId": "pg/int4@1",
                   "default": {
@@ -3039,16 +3754,193 @@
                   },
                   "nativeType": "int4",
                   "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
                 }
               },
-              "foreignKeys": [],
-              "indexes": [],
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "categoryId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "product"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "category"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "categoryId"
+                  ],
+                  "name": "product_categoryId_idx_15c304f2",
+                  "prefix": "product_categoryId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "categoryId",
+                    "isPublished"
+                  ],
+                  "name": "product_categoryId_isPublished_idx_00525e08",
+                  "prefix": "product_categoryId_isPublished_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "isPublished",
+                    "isFeatured"
+                  ],
+                  "name": "product_isPublished_isFeatured_idx_7b878b80",
+                  "prefix": "product_isPublished_isFeatured_idx",
+                  "unique": false
+                }
+              ],
               "primaryKey": {
                 "columns": [
                   "id"
                 ]
               },
-              "uniques": []
+              "uniques": [
+                {
+                  "columns": [
+                    "sku"
+                  ]
+                }
+              ]
+            },
+            "productImage": {
+              "checks": [
+                {
+                  "expression": "position BETWEEN 0 AND 5 AND length(\"altText\") BETWEEN 1 AND 160 AND \"secureUrl\" LIKE 'https://%'",
+                  "name": "product_image_valid_3fc3f514",
+                  "prefix": "product_image_valid"
+                }
+              ],
+              "columns": {
+                "altText": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "isPrimary": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "position": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "productId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "publicId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "secureUrl": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "uploadId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "productId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "productImage"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "product"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "uploadId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "productImage"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "uploadedAsset"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "productId"
+                  ],
+                  "name": "one_primary_image_per_product_a7598f0a",
+                  "prefix": "one_primary_image_per_product",
+                  "unique": true,
+                  "where": "(\"isPrimary\" = true)"
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "uploadId"
+                  ]
+                },
+                {
+                  "columns": [
+                    "productId",
+                    "position"
+                  ]
+                }
+              ]
             },
             "route": {
               "checks": [
@@ -3405,6 +4297,153 @@
                 }
               ]
             },
+            "uploadedAsset": {
+              "checks": [
+                {
+                  "expression": "status IN ('UPLOADING', 'UPLOADED', 'ATTACHED', 'CLEANUP_PENDING', 'DELETED') AND bytes BETWEEN 1 AND 5242880 AND width BETWEEN 1 AND 8192 AND height BETWEEN 1 AND 8192 AND format IN ('jpg', 'png', 'webp') AND \"cleanupAttempts\" >= 0 AND (\"secureUrl\" IS NULL OR \"secureUrl\" LIKE 'https://%') AND (status NOT IN ('UPLOADED', 'ATTACHED') OR \"secureUrl\" IS NOT NULL)",
+                  "name": "upload_asset_valid_0bca3c81",
+                  "prefix": "upload_asset_valid"
+                }
+              ],
+              "columns": {
+                "actorId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "attachedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "bytes": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "cleanupAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "cleanupAttempts": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "expiresAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "format": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "height": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "lastCleanupError": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "publicId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "secureUrl": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "UPLOADING"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "width": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "actorId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "uploadedAsset"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "actorId"
+                  ],
+                  "name": "uploadedAsset_actorId_idx_a58f6b4b",
+                  "prefix": "uploadedAsset_actorId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "status",
+                    "expiresAt"
+                  ],
+                  "name": "uploadedAsset_status_expiresAt_idx_c206f415",
+                  "prefix": "uploadedAsset_status_expiresAt_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "publicId"
+                  ]
+                }
+              ]
+            },
             "user": {
               "checks": [
                 {
@@ -3602,12 +4641,23 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "eb8ebd14b89f17eea5458cd12220be7bd572fa8f0e3771b68d2089c880e18f83"
+    "storageHash": "b263aff9f248d0da2ead5a0700a5b035ab3653ec79e1f8c651ab5f936e21e1ea"
   },
   "execution": {
-    "executionHash": "1ac42ce6b6e27434bbbc88106a10133062703cec38478d62b368698ffeff898e",
+    "executionHash": "9433b9b9235d63ce4d20173eb92fd237366ee6fb0fe4f8c27ddb057cd62b63a6",
     "mutations": {
       "defaults": [
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "category"
+          }
+        },
         {
           "onCreate": {
             "id": "uuidv4",
@@ -3715,6 +4765,17 @@
           "ref": {
             "column": "id",
             "namespace": "public",
+            "table": "productImage"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
             "table": "route"
           }
         },
@@ -3727,6 +4788,17 @@
             "column": "id",
             "namespace": "public",
             "table": "routeStop"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "uploadedAsset"
           }
         },
         {

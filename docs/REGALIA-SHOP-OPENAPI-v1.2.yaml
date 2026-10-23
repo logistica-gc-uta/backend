@@ -1,0 +1,3994 @@
+openapi: 3.1.0
+info:
+  title: REGALÍA — CI-SHOP-001 v1.2 CONSOLIDADO | contratos API
+  version: 1.2.0-consolidated-proposed
+  description: 'Contrato único consolidado de v1.0 + v1.1, 23-oct-2026. Decisiones de negocio vigentes:
+    envío GRATIS incluido en precios, IVA ficticio configurable (15% inicial), límite por SKU 10 inicial,
+    horario Ecuador 07:00–17:00 inicial; Figma solo referencia opcional. Rutas nuevas propuestos NO implementadas
+    en backend main; mantener contratos legacy. Requiere ratificación backend/frontend/QA.'
+servers:
+- url: http://localhost:3000/api/v1
+  description: Local (base real de NestJS)
+tags:
+- name: Auth
+- name: Existing
+- name: Shop Public
+- name: Shop Checkout
+- name: Shop Orders
+- name: Admin Catalog
+- name: Admin Upload
+- name: Shop Settings
+  description: Configuración pública de límites y calendario, y administración autenticada
+paths:
+  /auth/register:
+    post:
+      tags:
+      - Auth
+      summary: Registro público exclusivamente CLIENT
+      operationId: post__auth_register
+      responses:
+        '201':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+  /auth/login:
+    post:
+      tags:
+      - Auth
+      summary: Login JWT existente
+      operationId: post__auth_login
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+  /shop/categories:
+    get:
+      tags:
+      - Shop Public
+      summary: Categorías visibles
+      operationId: get__shop_categories
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryPublicList'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      description: Propuesto; no existe actualmente en main. Este contrato necesita PRs y pruebas.
+  /shop/products:
+    get:
+      tags:
+      - Shop Public
+      summary: Catálogo público con paginación
+      operationId: get__shop_products
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPage'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 48
+          default: 12
+      - name: search
+        in: query
+        schema:
+          type: string
+          maxLength: 100
+      - name: categoryId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: minPriceCents
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+      - name: maxPriceCents
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+      - name: inStock
+        in: query
+        schema:
+          type: boolean
+          default: false
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum:
+          - featured
+          - recent
+          - price_asc
+          - price_desc
+          - best_selling
+          default: featured
+      description: Propuesto; no existe actualmente en main. Este contrato necesita PRs y pruebas.
+  /shop/products/{id}:
+    get:
+      tags:
+      - Shop Public
+      summary: Detalle público de producto publicado
+      operationId: get__shop_products__id
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductShop'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: Propuesto; no existe actualmente en main. Este contrato necesita PRs y pruebas.
+  /admin/catalog/categories:
+    get:
+      tags:
+      - Admin Catalog
+      summary: Categorías ADMIN incluidas inactivas
+      operationId: get__admin_catalog_categories
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryList'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      description: Propuesto; debe implementarse y comprobarse con Swagger. JWT ADMIN obligatorio.
+    post:
+      tags:
+      - Admin Catalog
+      summary: Crear categoría
+      operationId: post__admin_catalog_categories
+      responses:
+        '201':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCreateCategory'
+      security:
+      - bearerAuth: []
+      description: Propuesto; debe implementarse y comprobarse con Swagger. JWT ADMIN obligatorio.
+  /admin/catalog/categories/{id}:
+    patch:
+      tags:
+      - Admin Catalog
+      summary: Editar/activar categoría
+      operationId: patch__admin_catalog_categories__id
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: CATEGORY_NOT_FOUND - categoría inexistente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error: { code: CATEGORY_NOT_FOUND, message: Category not found, details: {}, requestId: 00000000-0000-4000-8000-000000000000 }
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminPatchCategory'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: 'JWT ADMIN obligatorio. Categoría inexistente al editar: 404 CATEGORY_NOT_FOUND; no se aplican cambios parciales. Implementación pendiente de verificar con Swagger.'
+  /admin/catalog/products:
+    get:
+      tags:
+      - Admin Catalog
+      summary: Listado ADMIN de todos los productos
+      operationId: get__admin_catalog_products
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProductPage'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+      - name: search
+        in: query
+        schema:
+          type: string
+          maxLength: 100
+      - name: categoryId
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - all
+          - published
+          - unpublished
+          - out_of_stock
+          default: all
+      description: Propuesto; debe implementarse y comprobarse con Swagger. JWT ADMIN obligatorio.
+    post:
+      tags:
+      - Admin Catalog
+      summary: Crear producto sin publicación automática
+      operationId: post__admin_catalog_products
+      responses:
+        '201':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProduct'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCreateProduct'
+      security:
+      - bearerAuth: []
+      description: 'JWT ADMIN obligatorio. Categoría inexistente: 404 CATEGORY_NOT_FOUND; isPublished:true sin principal confirmado: 409 PRODUCT_PUBLICATION_INVALID; no se crea producto. Implementación pendiente de verificar con Swagger.'
+  /admin/catalog/products/{id}:
+    get:
+      tags:
+      - Admin Catalog
+      summary: Detalle ADMIN incluso sin stock
+      operationId: get__admin_catalog_products__id
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProduct'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: Propuesto; debe implementarse y comprobarse con Swagger. JWT ADMIN obligatorio.
+    patch:
+      tags:
+      - Admin Catalog
+      summary: Actualizar producto
+      operationId: patch__admin_catalog_products__id
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProduct'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminPatchProduct'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: 'JWT ADMIN obligatorio. PATCH producto: 404 CATEGORY_NOT_FOUND para referencia faltante, PRODUCT_NOT_FOUND para producto faltante; 409 PRODUCT_PUBLICATION_INVALID si falla publicación. Sin cambios parciales; pendiente de verificar con Swagger.'
+  /admin/catalog/products/{id}/publication:
+    patch:
+      tags:
+      - Admin Catalog
+      summary: Publicar/despublicar producto
+      operationId: patch__admin_catalog_products__id__publication
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminProduct'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: PRODUCT_NOT_FOUND - producto inexistente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: PRODUCT_PUBLICATION_INVALID - faltan condiciones de publicación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+              example:
+                error: { code: PRODUCT_PUBLICATION_INVALID, message: Product publication requirements are not met, details: {}, requestId: 00000000-0000-4000-8000-000000000000 }
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminPublication'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: 'JWT ADMIN obligatorio. 409 PRODUCT_PUBLICATION_INVALID sin categoría activa, datos completos o principal confirmado; no cambia publicación ni updatedAt. PRODUCT_UNPUBLISHED conserva su significado en checkout. Pendiente de verificar con Swagger.'
+  /admin/catalog/uploads:
+    post:
+      tags:
+      - Admin Upload
+      summary: Carga imagen proxy de backend, solo ADMIN
+      operationId: post__admin_catalog_uploads
+      responses:
+        '201':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadedAsset'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      security:
+      - bearerAuth: []
+      description: Propuesto; debe implementarse y comprobarse con Swagger. JWT ADMIN obligatorio.
+  /admin/catalog/products/{id}/images:
+    post:
+      tags:
+      - Admin Upload
+      summary: Vincular imagen Cloudinary cargada por ADMIN
+      operationId: post__admin_catalog_products__id__images
+      responses:
+        '201':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductImage'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttachImage'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: Propuesto; debe implementarse y comprobarse con Swagger. JWT ADMIN obligatorio.
+  /admin/catalog/products/{id}/images/{imageId}:
+    patch:
+      tags:
+      - Admin Upload
+      summary: Editar imagen asociada
+      operationId: patch__admin_catalog_products__id__images__imageId
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductImage'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchImage'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: imageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: 'JWT ADMIN obligatorio. 422 IMAGE_ASSOCIATION_FAILED si degrada la única principal publicada; sin cambios parciales. Una imagen asociada válida puede reemplazarla y degradar la anterior en la misma transacción. Un borrador puede perder principal. Pendiente de verificar con Swagger.'
+    delete:
+      tags:
+      - Admin Upload
+      summary: Desasociar imagen
+      operationId: delete__admin_catalog_products__id__images__imageId
+      responses:
+        '204':
+          description: Imagen desasociada; sin contenido
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: imageId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: 'JWT ADMIN obligatorio. 422 IMAGE_ASSOCIATION_FAILED al eliminar principal publicada sin reemplazo previo; sin despublicar ni alterar imágenes, asset o updatedAt. Los borradores pueden perder principal. Pendiente de verificar con Swagger.'
+  /shop/checkout/quote:
+    post:
+      tags:
+      - Shop Checkout
+      summary: Cotizar sin reservar inventario
+      operationId: post__shop_checkout_quote
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteResponse'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteRequest'
+      security:
+      - bearerAuth: []
+      description: Propuesto; no existe actualmente en main. Este contrato necesita PRs y pruebas. El
+        quoteToken incluye settingsVersion, tasa ficticia y límite/horario; total incluye IVA simulado
+        y envío cero.
+  /shop/checkout:
+    post:
+      tags:
+      - Shop Checkout
+      summary: Pago ficticio y pedido atómicos
+      operationId: post__shop_checkout
+      responses:
+        '201':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutSuccess'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutRequest'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: UUID v4 por intención de compra; se debe reutilizar en reintentos del mismo payload.
+      description: 'Propuesto; no existe actualmente en main. Este contrato necesita PRs y pruebas. quoteToken
+        es obligatorio y no autoriza por sí solo un cobro. El servidor vuelve a validar precio, stock
+        y saldo. Revalidar settingsVersion y precios bajo lock; si cambia => 409 SHOP_SETTINGS_CHANGED;
+        no descontar saldo sin aceptación del nuevo total. Idempotencia: antes de evaluar expiración del
+        quote, recuperar compra previa por (userId,Idempotency-Key); reintentos de una compra aprobada
+        retornan las mismas referencias aun si el quote venció después de commit. Hash canónico sin almacenar
+        PAN/CVV, usando identificador de fixture validado.'
+  /shop/checkout-attempts/{idempotencyKey}:
+    get:
+      tags:
+      - Shop Checkout
+      summary: Consultar estado seguro del intento
+      operationId: get__shop_checkout_attempts__idempotencyKey
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutAttemptStatus'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: idempotencyKey
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: Propuesto; no existe actualmente en main. Este contrato necesita PRs y pruebas.
+  /shop/orders:
+    get:
+      tags:
+      - Shop Orders
+      summary: Historial propio paginado
+      operationId: get__shop_orders
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderList'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - PENDING
+          - ASSIGNED
+          - IN_TRANSIT
+          - DELIVERED
+          - CANCELLED
+      description: Propuesto; no existe actualmente en main. Este contrato necesita PRs y pruebas.
+  /shop/orders/{id}:
+    get:
+      tags:
+      - Shop Orders
+      summary: Detalle completo del pedido propio
+      operationId: get__shop_orders__id
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetail'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: Propuesto; no existe actualmente en main. Este contrato necesita PRs y pruebas.
+  /shop/orders/{id}/receipt:
+    get:
+      tags:
+      - Shop Orders
+      summary: Comprobante simulado propio y único
+      operationId: get__shop_orders__id__receipt
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Receipt'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      description: Propuesto; no existe actualmente en main. Este contrato necesita PRs y pruebas.
+  /zones:
+    get:
+      tags:
+      - Existing
+      summary: Listado de zonas (API existente; respuesta tiene más campos)
+      operationId: get__zones
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ZoneSummary'
+        '400':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '413':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '415':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '502':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '503':
+          description: Resultado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /shop/settings:
+    get:
+      tags:
+      - Shop Settings
+      summary: 'Reglas públicas de compra: envío gratis, IVA ficticio, cantidad máxima y horario'
+      operationId: get_shop_settings
+      description: 'NUEVO/PROPUESTO: implementar backend y frontend. La configuración ADMIN se valida,
+        audita y versiona en PostgreSQL.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopSettingsPublic'
+        '400':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /admin/shop-settings:
+    get:
+      tags:
+      - Shop Settings
+      summary: Consultar configuración de tienda como ADMIN
+      operationId: get_admin_shop_settings
+      description: 'NUEVO/PROPUESTO: implementar backend y frontend. La configuración ADMIN se valida,
+        audita y versiona en PostgreSQL.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopSettingsAdmin'
+        '400':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+    patch:
+      tags:
+      - Shop Settings
+      summary: Actualizar tasa IVA simulada, límite SKU y horario mediante control optimista de versión
+      operationId: patch_admin_shop_settings
+      description: 'NUEVO/PROPUESTO: implementar backend y frontend. La configuración ADMIN se valida,
+        audita y versiona en PostgreSQL. La tasa de IVA no es fiscal. 00:00<startTime<endTime<=23:59;
+        horarios iniciales 07:00-17:00 inclusive America/Guayaquil. Sólo ADMIN; shipping no editable.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopSettingsAdmin'
+        '400':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '409':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '422':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Error de validación/permisos/regla comercial
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShopSettingsPatch'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    GeoPoint:
+      type: object
+      properties:
+        lat:
+          type: number
+          minimum: -90
+          maximum: 90
+        lng:
+          type: number
+          minimum: -180
+          maximum: 180
+      required:
+      - lat
+      - lng
+      additionalProperties: false
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+          - ADMIN
+          - CLIENT
+          - DRIVER
+      required:
+      - id
+      - name
+      - email
+      - role
+      additionalProperties: false
+    RegisterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required:
+      - name
+      - email
+      - password
+      additionalProperties: false
+    RegisterResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+          - CLIENT
+        createdAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - name
+      - email
+      - role
+      - createdAt
+      additionalProperties: false
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+      - email
+      - password
+      additionalProperties: false
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserSummary'
+      required:
+      - access_token
+      - user
+      additionalProperties: false
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        isActive:
+          type: boolean
+        sortOrder:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - name
+      - slug
+      - description
+      - isActive
+      - sortOrder
+      - createdAt
+      - updatedAt
+      additionalProperties: false
+    CategoryPublic:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type:
+          - string
+          - 'null'
+        productCount:
+          type: integer
+          minimum: 0
+        sortOrder:
+          type: integer
+          minimum: 0
+      required:
+      - id
+      - name
+      - slug
+      - description
+      - productCount
+      - sortOrder
+      additionalProperties: false
+    ProductImage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        secureUrl:
+          type: string
+          format: uri
+        publicId:
+          type: string
+        altText:
+          type: string
+          maxLength: 160
+        position:
+          type: integer
+          minimum: 0
+          maximum: 5
+        isPrimary:
+          type: boolean
+      required:
+      - id
+      - secureUrl
+      - publicId
+      - altText
+      - position
+      - isPrimary
+      additionalProperties: false
+    ProductShop:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sku:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          $ref: '#/components/schemas/CategoryPublic'
+        categoryId:
+          type: string
+          format: uuid
+        priceCents:
+          type: integer
+          minimum: 1
+        currency:
+          type: string
+          enum:
+          - USD
+        stock:
+          type: integer
+          minimum: 0
+        isPublished:
+          type: boolean
+        isFeatured:
+          type: boolean
+        isAvailable:
+          type: boolean
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductImage'
+        primaryImageUrl:
+          type:
+          - string
+          - 'null'
+          format: uri
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - sku
+      - name
+      - description
+      - category
+      - categoryId
+      - priceCents
+      - currency
+      - stock
+      - isPublished
+      - isFeatured
+      - isAvailable
+      - images
+      - primaryImageUrl
+      - createdAt
+      - updatedAt
+      additionalProperties: false
+    AdminProduct:
+      type: object
+      description: ADMIN-only representation; nullable fields identify unregularized legacy rows. Never expose as ProductShop.
+      properties:
+        id: { type: string, format: uuid }
+        sku: { type: string }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        categoryId: { type: [string, 'null'], format: uuid }
+        category:
+          oneOf:
+          - $ref: '#/components/schemas/CategoryPublic'
+          - type: 'null'
+        priceCents: { type: [integer, 'null'], minimum: 1 }
+        currency: { type: string, const: USD }
+        stock: { type: integer, minimum: 0 }
+        isPublished: { type: boolean }
+        isFeatured: { type: boolean }
+        isAvailable: { type: boolean }
+        images:
+          type: array
+          maxItems: 6
+          items:
+            $ref: '#/components/schemas/ProductImage'
+        primaryImageUrl: { type: [string, 'null'], format: uri }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, sku, name, description, categoryId, category, priceCents, currency, stock, isPublished, isFeatured, isAvailable, images, primaryImageUrl, createdAt, updatedAt]
+      additionalProperties: false
+    AdminProductPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminProduct'
+        total: { type: integer, minimum: 0 }
+        page: { type: integer, minimum: 1 }
+        pageSize: { type: integer, minimum: 1, maximum: 50, default: 10 }
+        totalPages: { type: integer, minimum: 0 }
+      required: [items, total, page, pageSize, totalPages]
+      additionalProperties: false
+    ProductPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductShop'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        totalPages:
+          type: integer
+          minimum: 0
+        sortApplied:
+          type: string
+          enum:
+          - featured
+          - recent
+          - price_asc
+          - price_desc
+          - best_selling
+      required:
+      - items
+      - total
+      - page
+      - pageSize
+      - totalPages
+      - sortApplied
+      additionalProperties: false
+    CategoryPublicList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryPublic'
+      required:
+      - items
+      additionalProperties: false
+    CategoryList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+      required:
+      - items
+      additionalProperties: false
+    AdminCreateProduct:
+      type: object
+      properties:
+        sku:
+          type: string
+          minLength: 3
+          maxLength: 50
+        name: &id001
+          type: string
+          minLength: 3
+          maxLength: 160
+        description: &id002
+          type: string
+          minLength: 1
+          maxLength: 2000
+        categoryId: &id003
+          type: string
+          format: uuid
+        priceCents: &id004
+          type: integer
+          minimum: 1
+        stock: &id005
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        isFeatured: &id006
+          type: boolean
+          default: false
+        isPublished: &id007
+          type: boolean
+          default: false
+      required:
+      - sku
+      - name
+      - description
+      - categoryId
+      - priceCents
+      - stock
+      additionalProperties: false
+    AdminPatchProduct:
+      type: object
+      properties:
+        name: *id001
+        description: *id002
+        categoryId: *id003
+        priceCents: *id004
+        stock: *id005
+        isFeatured: *id006
+        isPublished: *id007
+      required: []
+      additionalProperties: false
+    AdminPublication:
+      type: object
+      properties:
+        isPublished:
+          type: boolean
+      required:
+      - isPublished
+      additionalProperties: false
+    AdminCreateCategory:
+      type: object
+      properties:
+        name: &id008
+          type: string
+          minLength: 2
+          maxLength: 80
+        slug:
+          type: string
+          pattern: ^[a-z0-9]+(?:-[a-z0-9]+)*$
+          minLength: 2
+          maxLength: 100
+        description: &id009
+          type: [string, 'null']
+          maxLength: 300
+        isActive: &id010
+          type: boolean
+          default: true
+        sortOrder: &id011
+          type: integer
+          minimum: 0
+          maximum: 9999
+      required:
+      - name
+      - slug
+      additionalProperties: false
+    AdminPatchCategory:
+      type: object
+      properties:
+        name: *id008
+        description: *id009
+        isActive: *id010
+        sortOrder: *id011
+      required: []
+      additionalProperties: false
+    UploadedAsset:
+      type: object
+      properties:
+        uploadId:
+          type: string
+          format: uuid
+        secureUrl:
+          type: string
+          format: uri
+        publicId:
+          type: string
+        format:
+          type: string
+          enum:
+          - jpg
+          - png
+          - webp
+        bytes:
+          type: integer
+          minimum: 1
+          maximum: 5242880
+        width:
+          type: integer
+          minimum: 1
+          maximum: 8192
+        height:
+          type: integer
+          minimum: 1
+          maximum: 8192
+        status:
+          type: string
+          enum:
+          - UPLOADED
+      required:
+      - uploadId
+      - secureUrl
+      - publicId
+      - format
+      - bytes
+      - width
+      - height
+      - status
+      additionalProperties: false
+    AttachImage:
+      type: object
+      properties:
+        uploadId:
+          type: string
+          format: uuid
+        altText:
+          type: string
+          minLength: 1
+          maxLength: 160
+        isPrimary:
+          type: boolean
+        position:
+          type: integer
+          minimum: 0
+          maximum: 5
+      required:
+      - uploadId
+      - altText
+      - isPrimary
+      - position
+      additionalProperties: false
+    PatchImage:
+      type: object
+      properties:
+        altText:
+          type: string
+          minLength: 1
+          maxLength: 160
+        isPrimary:
+          type: boolean
+        position:
+          type: integer
+          minimum: 0
+          maximum: 5
+      required: []
+      additionalProperties: false
+    Recipient:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        phone:
+          type: string
+          minLength: 7
+          maxLength: 40
+      required:
+      - name
+      - phone
+      additionalProperties: false
+    Delivery:
+      type: object
+      properties:
+        recipient:
+          $ref: '#/components/schemas/Recipient'
+        zoneId:
+          type: string
+          format: uuid
+        deliveryAddress:
+          type: string
+          minLength: 5
+          maxLength: 250
+        deliveryLocation:
+          $ref: '#/components/schemas/GeoPoint'
+        scheduledDeliveryDate:
+          type: string
+          format: date-time
+          pattern: T.*(Z|[+-]\d{2}:\d{2})$
+        deliveryNotes:
+          type: string
+          maxLength: 500
+      required:
+      - recipient
+      - zoneId
+      - deliveryAddress
+      - deliveryLocation
+      - scheduledDeliveryDate
+      additionalProperties: false
+    CheckoutItem:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Máximo dinámico settings.limits.maxUnitsPerSkuPerOrder (default 10); backend consolida
+            líneas repetidas por SKU antes de validar.
+      required:
+      - productId
+      - quantity
+      additionalProperties: false
+    QuoteRequest:
+      type: object
+      properties:
+        items: &id012
+          type: array
+          items:
+            $ref: '#/components/schemas/CheckoutItem'
+          minItems: 1
+          maxItems: 50
+        delivery: &id013
+          $ref: '#/components/schemas/Delivery'
+      required:
+      - items
+      - delivery
+      additionalProperties: false
+    QuotedLine:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        unitPriceCents:
+          type: integer
+          minimum: 1
+        lineTotalCents:
+          type: integer
+          minimum: 1
+        availableStock:
+          type: integer
+          minimum: 0
+        available:
+          type: boolean
+      required:
+      - productId
+      - name
+      - quantity
+      - unitPriceCents
+      - lineTotalCents
+      - availableStock
+      - available
+      additionalProperties: false
+    Shipping:
+      type: object
+      required:
+      - status
+      - amountCents
+      - includedInPrices
+      properties:
+        status:
+          type: string
+          enum:
+          - FREE_INCLUDED
+        amountCents:
+          type: integer
+          const: 0
+        includedInPrices:
+          type: boolean
+          const: true
+      additionalProperties: false
+      description: 'Gratis para CLIENT: costo logístico absorbido por precio de productos, no se suma
+        cargo.'
+    QuoteResponse:
+      type: object
+      properties:
+        currency:
+          type: string
+          enum:
+          - USD
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuotedLine'
+        subtotalCents:
+          type: integer
+          minimum: 0
+        totalCents:
+          type: integer
+          minimum: 0
+          description: subtotalCents + tax.amountCents + shipping.amountCents, sumas exactas en centavos
+        shipping:
+          $ref: '#/components/schemas/Shipping'
+        validUntil:
+          type: string
+          format: date-time
+          description: Fin de vigencia de quoteToken, 15 minutos desde cotizar. No reserva inventario.
+        quoteToken:
+          type: string
+          minLength: 10
+          description: Token opaco firmado por backend, vinculado a líneas y precios, expira en 15 minutos.
+        tax:
+          $ref: '#/components/schemas/SimulatedTaxQuote'
+        settingsVersion:
+          type: integer
+          minimum: 1
+          description: Token vinculado a versión persistida de ShopSettings, cambios generan 409 SHOP_SETTINGS_CHANGED.
+      required:
+      - currency
+      - items
+      - subtotalCents
+      - totalCents
+      - shipping
+      - validUntil
+      - quoteToken
+      - tax
+      - settingsVersion
+      additionalProperties: false
+    CardInput:
+      type: object
+      properties:
+        number:
+          type: string
+          pattern: ^[0-9 ]{16,19}$
+        holderName:
+          type: string
+          minLength: 2
+          maxLength: 100
+        expiresMonth:
+          type: integer
+          minimum: 1
+          maximum: 12
+        expiresYear:
+          type: integer
+          minimum: 2026
+        cvv:
+          type: string
+          pattern: ^[0-9]{3}$
+      required:
+      - number
+      - holderName
+      - expiresMonth
+      - expiresYear
+      - cvv
+      additionalProperties: false
+    CheckoutRequest:
+      type: object
+      properties:
+        items: *id012
+        delivery: *id013
+        paymentCard:
+          $ref: '#/components/schemas/CardInput'
+        quoteToken:
+          type: string
+          minLength: 10
+          description: Token de última cotización; el backend recalcula y compara precios firmados antes
+            de cobrar.
+      required:
+      - items
+      - delivery
+      - paymentCard
+      - quoteToken
+      additionalProperties: false
+    OrderConfirmation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+        status:
+          type: string
+          enum:
+          - PENDING
+        totalCents:
+          type: integer
+          minimum: 0
+          description: subtotalCents + taxAmountCents + shippingAmountCents (shippingAmountCents=0)
+        currency:
+          type: string
+          enum:
+          - USD
+        scheduledDeliveryDate:
+          type: string
+          format: date-time
+        subtotalCents:
+          type: integer
+          minimum: 0
+        taxAmountCents:
+          type: integer
+          minimum: 0
+        taxRateBps:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        shippingAmountCents:
+          type: integer
+          const: 0
+        taxEnabled:
+          type: boolean
+          description: 'Copia inmutable: si estaba activo el IVA SIMULADO al aprobar la compra'
+      required:
+      - id
+      - number
+      - status
+      - totalCents
+      - currency
+      - scheduledDeliveryDate
+      - subtotalCents
+      - taxAmountCents
+      - taxRateBps
+      - shippingAmountCents
+      - taxEnabled
+      additionalProperties: false
+    PaymentConfirmation:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - APPROVED
+        amountCents:
+          type: integer
+          minimum: 0
+        cardLast4:
+          type: string
+          pattern: ^[0-9]{4}$
+        reference:
+          type: string
+      required:
+      - status
+      - amountCents
+      - cardLast4
+      - reference
+      additionalProperties: false
+    ReceiptReference:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+      required:
+      - id
+      - number
+      additionalProperties: false
+    CheckoutSuccess:
+      type: object
+      properties:
+        checkoutAttemptId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - SUCCEEDED
+        order:
+          $ref: '#/components/schemas/OrderConfirmation'
+        payment:
+          $ref: '#/components/schemas/PaymentConfirmation'
+        receipt:
+          $ref: '#/components/schemas/ReceiptReference'
+      required:
+      - checkoutAttemptId
+      - status
+      - order
+      - payment
+      - receipt
+      additionalProperties: false
+      description: Éxito confirmado y persistido; mismo resultado ante reintentos con la misma clave idempotente.
+    CheckoutAttemptStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - PROCESSING
+          - SUCCEEDED
+          - REJECTED
+          - FAILED
+        checkoutAttemptId:
+          type: string
+          format: uuid
+        orderId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        receiptId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        errorCode:
+          type:
+          - string
+          - 'null'
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - status
+      - checkoutAttemptId
+      - orderId
+      - receiptId
+      - errorCode
+      - updatedAt
+      additionalProperties: false
+    OrderSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        scheduledDeliveryDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - PENDING
+          - ASSIGNED
+          - IN_TRANSIT
+          - DELIVERED
+          - CANCELLED
+        totalCents:
+          type: integer
+          minimum: 0
+          description: subtotalCents + taxAmountCents + shippingAmountCents (shippingAmountCents=0)
+        currency:
+          type: string
+          enum:
+          - USD
+        paymentStatus:
+          type: string
+          enum:
+          - APPROVED
+        receiptId:
+          type: string
+          format: uuid
+        itemsCount:
+          type: integer
+          minimum: 1
+        primaryImageUrl:
+          type:
+          - string
+          - 'null'
+          format: uri
+        subtotalCents:
+          type: integer
+          minimum: 0
+        taxAmountCents:
+          type: integer
+          minimum: 0
+        taxRateBps:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        shippingAmountCents:
+          type: integer
+          const: 0
+        taxEnabled:
+          type: boolean
+          description: 'Copia inmutable: si estaba activo el IVA SIMULADO al aprobar la compra'
+      required:
+      - id
+      - number
+      - createdAt
+      - scheduledDeliveryDate
+      - status
+      - totalCents
+      - currency
+      - paymentStatus
+      - receiptId
+      - itemsCount
+      - primaryImageUrl
+      - subtotalCents
+      - taxAmountCents
+      - taxRateBps
+      - shippingAmountCents
+      - taxEnabled
+      additionalProperties: false
+    OrderList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderSummary'
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        totalPages:
+          type: integer
+          minimum: 0
+      required:
+      - items
+      - total
+      - page
+      - pageSize
+      - totalPages
+      additionalProperties: false
+    Buyer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+      required:
+      - id
+      - name
+      - email
+      additionalProperties: false
+    DeliveryRead:
+      type: object
+      properties:
+        zoneId:
+          type: string
+          format: uuid
+        zoneName:
+          type: string
+        address:
+          type: string
+        location:
+          $ref: '#/components/schemas/GeoPoint'
+        scheduledDeliveryDate:
+          type: string
+          format: date-time
+        notes:
+          type:
+          - string
+          - 'null'
+      required:
+      - zoneId
+      - zoneName
+      - address
+      - location
+      - scheduledDeliveryDate
+      - notes
+      additionalProperties: false
+    SoldItem:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        sku:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        unitPriceCents:
+          type: integer
+          minimum: 1
+        lineTotalCents:
+          type: integer
+          minimum: 1
+        imageUrl:
+          type:
+          - string
+          - 'null'
+          format: uri
+      required:
+      - productId
+      - sku
+      - name
+      - quantity
+      - unitPriceCents
+      - lineTotalCents
+      - imageUrl
+      additionalProperties: false
+    TimelineEntry:
+      type: object
+      properties:
+        code:
+          type: string
+        label:
+          type: string
+        at:
+          type: string
+          format: date-time
+      required:
+      - code
+      - label
+      - at
+      additionalProperties: false
+    OrderDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        scheduledDeliveryDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+          - PENDING
+          - ASSIGNED
+          - IN_TRANSIT
+          - DELIVERED
+          - CANCELLED
+        routeId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        currency:
+          type: string
+          enum:
+          - USD
+        totalCents:
+          type: integer
+          minimum: 0
+          description: subtotalCents + taxAmountCents + shippingAmountCents (shippingAmountCents=0)
+        paymentStatus:
+          type: string
+          enum:
+          - APPROVED
+          - PENDING
+          - REJECTED
+        buyer:
+          $ref: '#/components/schemas/Buyer'
+        recipient:
+          $ref: '#/components/schemas/Recipient'
+        delivery:
+          $ref: '#/components/schemas/DeliveryRead'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SoldItem'
+        timeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimelineEntry'
+        receiptId:
+          type: string
+          format: uuid
+        subtotalCents:
+          type: integer
+          minimum: 0
+        taxAmountCents:
+          type: integer
+          minimum: 0
+        taxRateBps:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        shippingAmountCents:
+          type: integer
+          const: 0
+        taxEnabled:
+          type: boolean
+          description: 'Copia inmutable: si estaba activo el IVA SIMULADO al aprobar la compra'
+      required:
+      - id
+      - number
+      - createdAt
+      - scheduledDeliveryDate
+      - status
+      - routeId
+      - currency
+      - totalCents
+      - paymentStatus
+      - buyer
+      - recipient
+      - delivery
+      - items
+      - timeline
+      - receiptId
+      - subtotalCents
+      - taxAmountCents
+      - taxRateBps
+      - shippingAmountCents
+      - taxEnabled
+      additionalProperties: false
+    ReceiptItem:
+      type: object
+      properties:
+        sku:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        unitPriceCents:
+          type: integer
+          minimum: 1
+        lineTotalCents:
+          type: integer
+          minimum: 1
+      required:
+      - sku
+      - name
+      - quantity
+      - unitPriceCents
+      - lineTotalCents
+      additionalProperties: false
+    ReceiptPayment:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - APPROVED
+        reference:
+          type: string
+        cardLast4:
+          type: string
+          pattern: ^[0-9]{4}$
+      required:
+      - status
+      - reference
+      - cardLast4
+      additionalProperties: false
+    Receipt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+        orderId:
+          type: string
+          format: uuid
+        issuedAt:
+          type: string
+          format: date-time
+        merchantName:
+          type: string
+        buyer:
+          type: object
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+          required:
+          - name
+          - email
+          additionalProperties: false
+        recipient:
+          type: object
+          properties:
+            name:
+              type: string
+          required:
+          - name
+          additionalProperties: false
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReceiptItem'
+        currency:
+          type: string
+          enum:
+          - USD
+        subtotalCents:
+          type: integer
+          minimum: 0
+        totalCents:
+          type: integer
+          minimum: 0
+          description: Incluye impuesto de DEMOSTRACIÓN calculado según tasa congelada de la compra, no
+            IVA oficial
+        payment:
+          $ref: '#/components/schemas/ReceiptPayment'
+        disclaimer:
+          type: string
+          enum:
+          - COMPROBANTE DE COMPRA SIMULADO — SIN VALIDEZ TRIBUTARIA
+        tax:
+          $ref: '#/components/schemas/SimulatedTaxQuote'
+        shipping:
+          $ref: '#/components/schemas/Shipping'
+      required:
+      - id
+      - number
+      - orderId
+      - issuedAt
+      - merchantName
+      - buyer
+      - recipient
+      - items
+      - currency
+      - subtotalCents
+      - totalCents
+      - payment
+      - disclaimer
+      - tax
+      - shipping
+      additionalProperties: false
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: Incluye SHOP_SETTINGS_CHANGED, SETTINGS_VERSION_CONFLICT, DELIVERY_OUTSIDE_HOURS,
+                QUANTITY_LIMIT_EXCEEDED, además de los errores existentes; frontend discrimina por code.
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+            requestId:
+              type: string
+          required:
+          - code
+          - message
+          - details
+          - requestId
+          additionalProperties: false
+      required:
+      - error
+      additionalProperties: false
+    ZoneSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        code:
+          type: string
+        depotLocation:
+          oneOf:
+          - $ref: '#/components/schemas/GeoPoint'
+          - type: 'null'
+      required:
+      - id
+      - name
+      - code
+      - depotLocation
+      additionalProperties: true
+    SimulatedTaxQuote:
+      type: object
+      required:
+      - mode
+      - enabled
+      - rateBps
+      - ratePercent
+      - amountCents
+      properties:
+        mode:
+          type: string
+          const: SIMULATED
+        enabled:
+          type: boolean
+        rateBps:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          description: 1500=15%; por defecto 1500, mutable solo ADMIN
+        ratePercent:
+          type: number
+          minimum: 0
+          maximum: 100
+        amountCents:
+          type: integer
+          minimum: 0
+          description: roundHalfUp(subtotalCents × rateBps / 10000) si enabled, sino 0
+      additionalProperties: false
+    ShopSettingsTax:
+      type: object
+      required:
+      - mode
+      - enabled
+      - rateBps
+      - ratePercent
+      properties:
+        mode:
+          type: string
+          const: SIMULATED
+        enabled:
+          type: boolean
+          default: true
+        rateBps:
+          type: integer
+          minimum: 0
+          maximum: 10000
+          default: 1500
+        ratePercent:
+          type: number
+          minimum: 0
+          maximum: 100
+          default: 15
+      additionalProperties: false
+    ShopLimits:
+      type: object
+      required:
+      - maxUnitsPerSkuPerOrder
+      properties:
+        maxUnitsPerSkuPerOrder:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: Máximo total de unidades por SKU por pedido; duplicados se consolidan
+      additionalProperties: false
+    DeliverySchedule:
+      type: object
+      required:
+      - timeZone
+      - startTime
+      - endTime
+      - boundariesInclusive
+      properties:
+        timeZone:
+          type: string
+          const: America/Guayaquil
+          description: Ambato (Ecuador continental); no debe inferirse TZ del navegador
+        startTime:
+          type: string
+          pattern: ^(?:[01][0-9]|2[0-3]):[0-5][0-9]$
+          default: 07:00
+        endTime:
+          type: string
+          pattern: ^(?:[01][0-9]|2[0-3]):[0-5][0-9]$
+          default: '17:00'
+        boundariesInclusive:
+          type: boolean
+          const: true
+      additionalProperties: false
+    ShopSettingsPublic:
+      type: object
+      required:
+      - version
+      - currency
+      - shipping
+      - tax
+      - limits
+      - deliverySchedule
+      - updatedAt
+      properties:
+        version:
+          type: integer
+          minimum: 1
+        currency:
+          type: string
+          const: USD
+        shipping:
+          $ref: '#/components/schemas/Shipping'
+        tax:
+          $ref: '#/components/schemas/ShopSettingsTax'
+        limits:
+          $ref: '#/components/schemas/ShopLimits'
+        deliverySchedule:
+          $ref: '#/components/schemas/DeliverySchedule'
+        updatedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+    ShopSettingsAdmin:
+      type: object
+      properties:
+        version:
+          type: integer
+          minimum: 1
+        currency:
+          type: string
+          const: USD
+        shipping:
+          $ref: '#/components/schemas/Shipping'
+        tax:
+          $ref: '#/components/schemas/ShopSettingsTax'
+        limits:
+          $ref: '#/components/schemas/ShopLimits'
+        deliverySchedule:
+          $ref: '#/components/schemas/DeliverySchedule'
+        updatedAt:
+          type: string
+          format: date-time
+        updatedById:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+      required:
+      - version
+      - currency
+      - shipping
+      - tax
+      - limits
+      - deliverySchedule
+      - updatedAt
+      - updatedById
+      - createdAt
+      additionalProperties: false
+    ShopSettingsTaxPatch:
+      type: object
+      minProperties: 1
+      properties:
+        enabled:
+          type: boolean
+        rateBps:
+          type: integer
+          minimum: 0
+          maximum: 10000
+      additionalProperties: false
+    ShopLimitsPatch:
+      type: object
+      required:
+      - maxUnitsPerSkuPerOrder
+      properties:
+        maxUnitsPerSkuPerOrder:
+          type: integer
+          minimum: 1
+          maximum: 100
+      additionalProperties: false
+    DeliverySchedulePatch:
+      type: object
+      minProperties: 1
+      properties:
+        startTime:
+          type: string
+          pattern: ^(?:[01][0-9]|2[0-3]):[0-5][0-9]$
+        endTime:
+          type: string
+          pattern: ^(?:[01][0-9]|2[0-3]):[0-5][0-9]$
+      additionalProperties: false
+    ShopSettingsPatch:
+      type: object
+      required:
+      - expectedVersion
+      minProperties: 2
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 1
+        tax:
+          $ref: '#/components/schemas/ShopSettingsTaxPatch'
+        limits:
+          $ref: '#/components/schemas/ShopLimitsPatch'
+        deliverySchedule:
+          $ref: '#/components/schemas/DeliverySchedulePatch'
+      additionalProperties: false
+      description: Update atómico de campos ADMIN. No se edita shipping ni timeZone. Incrementa version;
+        409 SETTINGS_VERSION_CONFLICT si expectedVersion es obsoleto.

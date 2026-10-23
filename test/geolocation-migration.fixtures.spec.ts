@@ -16,6 +16,7 @@ import {
   createScratchFile,
   cleanScratchFile,
   getOwnedDatabaseUrl,
+  maskDatabaseUrl,
 } from './geolocation-migration.fixtures.js';
 
 const MOCK_VALID_CONTAINER_ID = 'a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0';
@@ -117,6 +118,10 @@ exit 0
   }
 
   describe('Refusal of External and Unregistered Database URLs', () => {
+    it('continues to mask a single credentialed non-Postgres URI', () => {
+      expect(maskDatabaseUrl('mysql://user:private-value@localhost:3306/legacy'))
+        .toBe('mysql://***:***@localhost:3306/legacy');
+    });
     it('refuses external or shared DATABASE_URL in Prisma migrate helper', () => {
       setupFakeDocker();
       expect(() => {
@@ -143,6 +148,31 @@ exit 0
       expect(() => {
         runPrismaMigrate(dbUrl);
       }).not.toThrow();
+    });
+
+    it('preserves stdout CLI diagnostics alongside stderr notices on migration failure and masks every URL', () => {
+      setupFakeDocker();
+      const dbUrl = createOwnedDatabase('geo_diagnostic_test_db');
+      createFakeExecutable('pnpm', `
+echo '{"code":"MIGRATION.SCHEMA_VERIFY_FAILED","url":"postgresql://first:secret-one@localhost/db","second":"postgresql://second:secret-two@localhost/db"}'
+echo '◇ injected env (0) from /dev/null; postgresql://third:secret-three@localhost/db' >&2
+exit 2
+`);
+
+      let failure: Error | undefined;
+      try { runPrismaMigrate(dbUrl); } catch (error) { failure = error as Error; }
+      expect(failure).toBeDefined();
+      expect(failure?.message).toContain('MIGRATION.SCHEMA_VERIFY_FAILED');
+      expect(failure?.message).toContain('injected env (0)');
+      expect(failure?.message).not.toMatch(/secret-one|secret-two|secret-three|geo_pass_/);
+      expect(failure?.message.match(/:\/\/\*\*\*:\*\*\*@/g)).toHaveLength(3);
+    });
+
+    it('retains stderr-only failures from the migration helper', () => {
+      setupFakeDocker();
+      const dbUrl = createOwnedDatabase('geo_stderr_test_db');
+      createFakeExecutable('pnpm', `echo 'migration stderr failure' >&2\nexit 2`);
+      expect(() => runPrismaMigrate(dbUrl)).toThrow('migration stderr failure');
     });
 
     it('does not register URL when merely calling getOwnedDatabaseUrl without creation', () => {

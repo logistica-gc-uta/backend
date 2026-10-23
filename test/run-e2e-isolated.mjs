@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { resolve, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const target = 'eb8ebd14b89f17eea5458cd12220be7bd572fa8f0e3771b68d2089c880e18f83';
+const historicalTarget = 'eb8ebd14b89f17eea5458cd12220be7bd572fa8f0e3771b68d2089c880e18f83';
+const target = 'b263aff9f248d0da2ead5a0700a5b035ab3653ec79e1f8c651ab5f936e21e1ea';
 const legacyNames = ['app.e2e-spec.ts', 'orders-security.e2e-spec.ts', 'drivers-routes-security.e2e-spec.ts'];
 let activeChild;
 let interrupted = false;
@@ -69,6 +70,7 @@ export async function runIsolated({ env = process.env, command = execute, log = 
       const url = `postgresql://isolated_test:ephemeral_only@127.0.0.1:${port}/${db}?sslmode=disable`;
       owned.set(db, url); // Register only databases created in this owned container, before CLI use.
       const childEnv = { ...clean, DATABASE_URL: owned.get(db), JWT_SECRET: randomUUID() };
+      await command('pnpm', ['prisma', 'db', 'migrate', '--db', owned.get(db), '--to', historicalTarget], { env: childEnv, capture: true });
       await command('pnpm', ['prisma', 'db', 'migrate', '--db', owned.get(db), '--to', target], { env: childEnv, capture: true });
       await command('pnpm', ['prisma', 'db', 'verify', '--db', owned.get(db)], { env: childEnv, capture: true });
       log(`Verified owned ${db} at ${target}`);

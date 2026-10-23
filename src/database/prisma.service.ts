@@ -33,6 +33,18 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
         return this.client.orm.public.Product;
     }
 
+    get category(): typeof db.orm.public.Category {
+        return this.client.orm.public.Category;
+    }
+
+    get productImage(): typeof db.orm.public.ProductImage {
+        return this.client.orm.public.ProductImage;
+    }
+
+    get uploadedAsset(): typeof db.orm.public.UploadedAsset {
+        return this.client.orm.public.UploadedAsset;
+    }
+
     get route(): typeof db.orm.public.Route {
         return this.client.orm.public.Route;
     }

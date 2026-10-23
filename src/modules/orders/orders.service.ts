@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { BUSINESS_TIME_ZONE } from '../../common/temporal.util.js';
+import { legacyPriceCents, MAX_JSON_CENTS } from '../../common/money-cents.util.js';
 import { CreateAdminOrderDto } from './dto/create-admin-order.dto.js';
 import { assertDeliveryFuture, deliveryClock, parseDeliveryTiming } from './order-delivery.util.js';
 import { ListAdminOrdersDto } from './dto/list-admin-orders.dto.js';
@@ -107,19 +108,26 @@ export class OrdersService {
       // One authoritative advancing clock, including the initial deadline check.
       assertDeliveryFuture(timing, await deliveryClock(tx, this.prisma.client.raw));
       let totalOrder = 0;
+      let subtotalCents = 0n;
       const reserved = [];
       for (const { productId, quantity } of consolidated) {
         const product = await lockInventoryProduct(tx, this.prisma.client.raw, productId);
         // Every lock can wait, including later products after earlier reservations.
-        assertDeliveryFuture(timing, await deliveryClock(tx, this.prisma.client.raw));
+        const lockedAt = await deliveryClock(tx, this.prisma.client.raw);
+        assertDeliveryFuture(timing, lockedAt);
         if (product.stock < quantity) {
           throw new BadRequestException(
             `Stock insuficiente para el producto '${product.name}'. Solicitado: ${quantity}, Disponible: ${product.stock}`,
           );
         }
-        await tx.orm.public.Product.where({ id: productId }).update({ stock: product.stock - quantity });
+        await tx.orm.public.Product.where({ id: productId }).update({ stock: product.stock - quantity, updatedAt: lockedAt });
+        const unitPriceCents = legacyPriceCents(product.price);
+        subtotalCents += unitPriceCents * BigInt(quantity);
+        if (subtotalCents > BigInt(MAX_JSON_CENTS)) {
+          throw new BadRequestException('Order subtotal exceeds supported cent range');
+        }
         totalOrder += product.price * quantity;
-        reserved.push({ productId, quantity, price: product.price });
+        reserved.push({ productId, quantity, price: product.price, unitPriceCents });
       }
 
       // b. Crear la orden
@@ -132,6 +140,7 @@ export class OrdersService {
         scheduledDeliveryDate: timing.scheduledDeliveryDate,
         status: OrderStatus.PENDING,
         total: totalOrder,
+        subtotalCents,
       });
 
       // c. Crear items asociados

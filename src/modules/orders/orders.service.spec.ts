@@ -272,6 +272,7 @@ describe('OrdersService', () => {
         productId: 'prod-1',
         quantity: 2,
         price: 750.0,
+        unitPriceCents: 75000n,
       });
     });
 
@@ -288,8 +289,30 @@ describe('OrdersService', () => {
       expect(txMock.query.mock.calls.filter(([plan]: [{ clock: boolean }]) => !plan.clock)).toHaveLength(1);
       expect(result.total).toBe(100);
       expect(result.items).toHaveLength(1);
-      expect(txMock.orm.public.Product.where.mock.results[0].value.update).toHaveBeenCalledWith({ stock: 0 });
-      expect(txMock.orm.public.OrderItem.create).toHaveBeenCalledWith(expect.objectContaining({ quantity: 5, price: 20 }));
+      expect(txMock.orm.public.Product.where.mock.results[0].value.update).toHaveBeenCalledWith({
+        stock: 0, updatedAt: Temporal.Instant.from('2026-09-01T00:00:00Z'),
+      });
+      expect(txMock.orm.public.OrderItem.create).toHaveBeenCalledWith(expect.objectContaining({ quantity: 5, price: 20, unitPriceCents: 2000n }));
+      expect(txMock.orm.public.Order.create).toHaveBeenCalledWith(expect.objectContaining({ subtotalCents: 10000n }));
+    });
+
+    it('adds cents from locked unit lines, never from the accumulated Float total', async () => {
+      prismaMock.zone.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validZone) });
+      txMock.query.mockImplementation(async (plan: { clock: boolean; where: { id: string } }) => plan.clock
+        ? [{ instant: Temporal.Instant.from('2026-09-01T00:00:00Z') }]
+        : [{ ...validProduct, id: plan.where.id, price: plan.where.id === 'a' ? 0.1 : 0.2 }]);
+      await service.createOrder('user-1', { ...createDto, items: [{ productId: 'a', quantity: 1 }, { productId: 'b', quantity: 1 }] });
+      expect(txMock.orm.public.Order.create).toHaveBeenCalledWith(expect.objectContaining({ subtotalCents: 30n, total: 0.30000000000000004 }));
+      expect(txMock.orm.public.OrderItem.create.mock.calls.map(([item]: [{unitPriceCents: bigint}]) => item.unitPriceCents)).toEqual([10n, 20n]);
+    });
+
+    it('refuses a malformed locked legacy price without creating an order', async () => {
+      prismaMock.zone.where.mockReturnValue({ first: jest.fn().mockResolvedValue(validZone) });
+      txMock.query.mockImplementation(async (plan: { clock: boolean }) => plan.clock
+        ? [{ instant: Temporal.Instant.from('2026-09-01T00:00:00Z') }]
+        : [{ ...validProduct, price: 0.301 }]);
+      await expect(service.createOrder('user-1', createDto)).rejects.toThrow(BadRequestException);
+      expect(txMock.orm.public.Order.create).not.toHaveBeenCalled();
     });
 
     it('propagates a line failure without retrying an order transaction', async () => {

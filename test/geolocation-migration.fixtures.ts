@@ -34,11 +34,12 @@ const registeredScratchPaths = new Set<string>();
 let cleanupHandlersRegistered = false;
 
 export function maskDatabaseUrl(url: string): string {
-  return url.replace(/:\/\/[^:]+:[^@]+@/, '://***:***@');
+  return url.replace(/(:\/\/)[^:\s/]+:[^@\s/]+@/g, '$1***:***@');
 }
 
 function sanitizeError(error: any): Error {
-  const msg = error.stderr ? String(error.stderr) : error.message || String(error);
+  const diagnostics = [error.stdout, error.stderr].filter(value => value && String(value).trim());
+  const msg = diagnostics.length ? diagnostics.map(value => String(value)).join('\n') : error.message || String(error);
   return new Error(maskDatabaseUrl(msg.trim()));
 }
 
