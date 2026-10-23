@@ -56,6 +56,14 @@
       "model": "RouteStop",
       "namespace": "public"
     },
+    "shopBusinessSettings": {
+      "model": "ShopBusinessSettings",
+      "namespace": "public"
+    },
+    "shopSettingsAudit": {
+      "model": "ShopSettingsAudit",
+      "namespace": "public"
+    },
     "uploadedAsset": {
       "model": "UploadedAsset",
       "namespace": "public"
@@ -2072,6 +2080,353 @@
               },
               "namespaceId": "public",
               "table": "routeStop"
+            }
+          },
+          "ShopBusinessSettings": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "currency": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "deliveryBoundariesInclusive": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "deliveryEndTime": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "deliveryStartTime": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "deliveryTimeZone": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "maxUnitsPerSkuPerOrder": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "shippingAmountCents": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "shippingIncludedInPrices": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "shippingStatus": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "singletonKey": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "taxEnabled": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "taxMode": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "taxRateBps": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "version": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "audits": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "settingsId"
+                  ]
+                },
+                "to": {
+                  "model": "ShopSettingsAudit",
+                  "namespace": "public"
+                }
+              },
+              "updatedBy": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "updatedById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "currency": {
+                  "column": "currency"
+                },
+                "deliveryBoundariesInclusive": {
+                  "column": "deliveryBoundariesInclusive"
+                },
+                "deliveryEndTime": {
+                  "column": "deliveryEndTime"
+                },
+                "deliveryStartTime": {
+                  "column": "deliveryStartTime"
+                },
+                "deliveryTimeZone": {
+                  "column": "deliveryTimeZone"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "maxUnitsPerSkuPerOrder": {
+                  "column": "maxUnitsPerSkuPerOrder"
+                },
+                "shippingAmountCents": {
+                  "column": "shippingAmountCents"
+                },
+                "shippingIncludedInPrices": {
+                  "column": "shippingIncludedInPrices"
+                },
+                "shippingStatus": {
+                  "column": "shippingStatus"
+                },
+                "singletonKey": {
+                  "column": "singletonKey"
+                },
+                "taxEnabled": {
+                  "column": "taxEnabled"
+                },
+                "taxMode": {
+                  "column": "taxMode"
+                },
+                "taxRateBps": {
+                  "column": "taxRateBps"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                },
+                "updatedById": {
+                  "column": "updatedById"
+                },
+                "version": {
+                  "column": "version"
+                }
+              },
+              "namespaceId": "public",
+              "table": "shopBusinessSettings"
+            }
+          },
+          "ShopSettingsAudit": {
+            "fields": {
+              "actorId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "changedFields": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "expectedVersion": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "newVersion": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "recordedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "settingsId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "snapshot": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "actor": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "actorId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "settings": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "settingsId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "ShopBusinessSettings",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "actorId": {
+                  "column": "actorId"
+                },
+                "changedFields": {
+                  "column": "changedFields"
+                },
+                "expectedVersion": {
+                  "column": "expectedVersion"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "newVersion": {
+                  "column": "newVersion"
+                },
+                "recordedAt": {
+                  "column": "recordedAt"
+                },
+                "settingsId": {
+                  "column": "settingsId"
+                },
+                "snapshot": {
+                  "column": "snapshot"
+                }
+              },
+              "namespaceId": "public",
+              "table": "shopSettingsAudit"
             }
           },
           "UploadedAsset": {
@@ -4297,6 +4652,337 @@
                 }
               ]
             },
+            "shopBusinessSettings": {
+              "checks": [
+                {
+                  "expression": "\"singletonKey\" = 'GLOBAL'",
+                  "name": "shop_settings_singleton_23de2fff",
+                  "prefix": "shop_settings_singleton"
+                },
+                {
+                  "expression": "version >= 1 AND currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"shippingIncludedInPrices\" = true AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"maxUnitsPerSkuPerOrder\" BETWEEN 1 AND 100 AND \"deliveryTimeZone\" = 'America/Guayaquil' AND \"deliveryBoundariesInclusive\" = true AND \"deliveryStartTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryEndTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryStartTime\" < \"deliveryEndTime\"",
+                  "name": "shop_settings_valid_abaee184",
+                  "prefix": "shop_settings_valid"
+                }
+              ],
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "currency": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "USD"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "deliveryBoundariesInclusive": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "deliveryEndTime": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "17:00"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "deliveryStartTime": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "07:00"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "deliveryTimeZone": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "America/Guayaquil"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "maxUnitsPerSkuPerOrder": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 10
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "shippingAmountCents": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "shippingIncludedInPrices": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "shippingStatus": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "FREE_INCLUDED"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "singletonKey": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "GLOBAL"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "taxEnabled": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "taxMode": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "SIMULATED"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "taxRateBps": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 1500
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "updatedById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "version": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 1
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "updatedById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "shopBusinessSettings"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "updatedById"
+                  ],
+                  "name": "shopBusinessSettings_updatedById_idx_d0517c24",
+                  "prefix": "shopBusinessSettings_updatedById_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "singletonKey"
+                  ]
+                }
+              ]
+            },
+            "shopSettingsAudit": {
+              "checks": [
+                {
+                  "expression": "\"expectedVersion\" >= 1 AND \"newVersion\" = \"expectedVersion\" + 1",
+                  "name": "shop_settings_audit_version_step_ba9c3ee0",
+                  "prefix": "shop_settings_audit_version_step"
+                }
+              ],
+              "columns": {
+                "actorId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "changedFields": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "expectedVersion": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "newVersion": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "recordedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "settingsId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "snapshot": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "settingsId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "shopSettingsAudit"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "shopBusinessSettings"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "actorId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "shopSettingsAudit"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "actorId"
+                  ],
+                  "name": "shopSettingsAudit_actorId_idx_a58f6b4b",
+                  "prefix": "shopSettingsAudit_actorId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "recordedAt"
+                  ],
+                  "name": "shopSettingsAudit_recordedAt_idx_fd5b4732",
+                  "prefix": "shopSettingsAudit_recordedAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "settingsId"
+                  ],
+                  "name": "shopSettingsAudit_settingsId_idx_6654474f",
+                  "prefix": "shopSettingsAudit_settingsId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
             "uploadedAsset": {
               "checks": [
                 {
@@ -4641,10 +5327,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "b263aff9f248d0da2ead5a0700a5b035ab3653ec79e1f8c651ab5f936e21e1ea"
+    "storageHash": "d2724cd80d3f574f0e1fb083c0426dab7b696331f1ca7b50fb62a3473125576e"
   },
   "execution": {
-    "executionHash": "9433b9b9235d63ce4d20173eb92fd237366ee6fb0fe4f8c27ddb057cd62b63a6",
+    "executionHash": "81e117a542971e121474dbab57f373e449952bc2c9ea1a5f49f5c8180720a92c",
     "mutations": {
       "defaults": [
         {
@@ -4788,6 +5474,28 @@
             "column": "id",
             "namespace": "public",
             "table": "routeStop"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "shopBusinessSettings"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "shopSettingsAudit"
           }
         },
         {

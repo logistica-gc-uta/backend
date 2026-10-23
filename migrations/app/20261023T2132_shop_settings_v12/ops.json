@@ -1,0 +1,435 @@
+[
+  {
+    "id": "table.shopBusinessSettings",
+    "label": "Create table \"shopBusinessSettings\"",
+    "summary": "Creates table \"shopBusinessSettings\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "shopBusinessSettings"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"shopBusinessSettings\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shopBusinessSettings\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"shopBusinessSettings\"",
+        "sql": "CREATE TABLE \"public\".\"shopBusinessSettings\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"currency\" text DEFAULT 'USD' NOT NULL,\n  \"deliveryBoundariesInclusive\" bool DEFAULT true NOT NULL,\n  \"deliveryEndTime\" text DEFAULT '17:00' NOT NULL,\n  \"deliveryStartTime\" text DEFAULT '07:00' NOT NULL,\n  \"deliveryTimeZone\" text DEFAULT 'America/Guayaquil' NOT NULL,\n  \"id\" text NOT NULL,\n  \"maxUnitsPerSkuPerOrder\" int4 DEFAULT 10 NOT NULL,\n  \"shippingAmountCents\" int4 DEFAULT 0 NOT NULL,\n  \"shippingIncludedInPrices\" bool DEFAULT true NOT NULL,\n  \"shippingStatus\" text DEFAULT 'FREE_INCLUDED' NOT NULL,\n  \"singletonKey\" text DEFAULT 'GLOBAL' NOT NULL,\n  \"taxEnabled\" bool DEFAULT true NOT NULL,\n  \"taxMode\" text DEFAULT 'SIMULATED' NOT NULL,\n  \"taxRateBps\" int4 DEFAULT 1500 NOT NULL,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"updatedById\" text,\n  \"version\" int4 DEFAULT 1 NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"shop_settings_singleton_23de2fff\" CHECK (\"singletonKey\" = 'GLOBAL'),\n  CONSTRAINT \"shop_settings_valid_abaee184\" CHECK (version >= 1 AND currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"shippingIncludedInPrices\" = true AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"maxUnitsPerSkuPerOrder\" BETWEEN 1 AND 100 AND \"deliveryTimeZone\" = 'America/Guayaquil' AND \"deliveryBoundariesInclusive\" = true AND \"deliveryStartTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryEndTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryStartTime\" < \"deliveryEndTime\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"shopBusinessSettings\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shopBusinessSettings\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.shopSettingsAudit",
+    "label": "Create table \"shopSettingsAudit\"",
+    "summary": "Creates table \"shopSettingsAudit\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "shopSettingsAudit"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"shopSettingsAudit\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shopSettingsAudit\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"shopSettingsAudit\"",
+        "sql": "CREATE TABLE \"public\".\"shopSettingsAudit\" (\n  \"actorId\" text NOT NULL,\n  \"changedFields\" json NOT NULL,\n  \"expectedVersion\" int4 NOT NULL,\n  \"id\" text NOT NULL,\n  \"newVersion\" int4 NOT NULL,\n  \"recordedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"settingsId\" text NOT NULL,\n  \"snapshot\" json NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"shop_settings_audit_version_step_ba9c3ee0\" CHECK (\"expectedVersion\" >= 1 AND \"newVersion\" = \"expectedVersion\" + 1)\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"shopSettingsAudit\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shopSettingsAudit\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.shopBusinessSettings.shopBusinessSettings_singletonKey_key",
+    "label": "Add unique constraint on \"shopBusinessSettings\" (singletonKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "shopBusinessSettings_singletonKey_key",
+        "table": "shopBusinessSettings"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"shopBusinessSettings_singletonKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shopBusinessSettings_singletonKey_key",
+          "public",
+          "\"public\".\"shopBusinessSettings\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"shopBusinessSettings_singletonKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"shopBusinessSettings\" ADD CONSTRAINT \"shopBusinessSettings_singletonKey_key\" UNIQUE (\"singletonKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"shopBusinessSettings_singletonKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shopBusinessSettings_singletonKey_key",
+          "public",
+          "\"public\".\"shopBusinessSettings\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.shopBusinessSettings.shopBusinessSettings_updatedById_idx_d0517c24",
+    "label": "Create index \"shopBusinessSettings_updatedById_idx_d0517c24\" on \"shopBusinessSettings\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "shopBusinessSettings_updatedById_idx_d0517c24",
+        "table": "shopBusinessSettings"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"shopBusinessSettings_updatedById_idx_d0517c24\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shopBusinessSettings_updatedById_idx_d0517c24\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"shopBusinessSettings_updatedById_idx_d0517c24\"",
+        "sql": "CREATE INDEX \"shopBusinessSettings_updatedById_idx_d0517c24\" ON \"public\".\"shopBusinessSettings\" (\"updatedById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"shopBusinessSettings_updatedById_idx_d0517c24\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shopBusinessSettings_updatedById_idx_d0517c24\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.shopSettingsAudit.shopSettingsAudit_actorId_idx_a58f6b4b",
+    "label": "Create index \"shopSettingsAudit_actorId_idx_a58f6b4b\" on \"shopSettingsAudit\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "shopSettingsAudit_actorId_idx_a58f6b4b",
+        "table": "shopSettingsAudit"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"shopSettingsAudit_actorId_idx_a58f6b4b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shopSettingsAudit_actorId_idx_a58f6b4b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"shopSettingsAudit_actorId_idx_a58f6b4b\"",
+        "sql": "CREATE INDEX \"shopSettingsAudit_actorId_idx_a58f6b4b\" ON \"public\".\"shopSettingsAudit\" (\"actorId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"shopSettingsAudit_actorId_idx_a58f6b4b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shopSettingsAudit_actorId_idx_a58f6b4b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.shopSettingsAudit.shopSettingsAudit_recordedAt_idx_fd5b4732",
+    "label": "Create index \"shopSettingsAudit_recordedAt_idx_fd5b4732\" on \"shopSettingsAudit\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "shopSettingsAudit_recordedAt_idx_fd5b4732",
+        "table": "shopSettingsAudit"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"shopSettingsAudit_recordedAt_idx_fd5b4732\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shopSettingsAudit_recordedAt_idx_fd5b4732\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"shopSettingsAudit_recordedAt_idx_fd5b4732\"",
+        "sql": "CREATE INDEX \"shopSettingsAudit_recordedAt_idx_fd5b4732\" ON \"public\".\"shopSettingsAudit\" (\"recordedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"shopSettingsAudit_recordedAt_idx_fd5b4732\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shopSettingsAudit_recordedAt_idx_fd5b4732\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.shopSettingsAudit.shopSettingsAudit_settingsId_idx_6654474f",
+    "label": "Create index \"shopSettingsAudit_settingsId_idx_6654474f\" on \"shopSettingsAudit\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "shopSettingsAudit_settingsId_idx_6654474f",
+        "table": "shopSettingsAudit"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"shopSettingsAudit_settingsId_idx_6654474f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shopSettingsAudit_settingsId_idx_6654474f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"shopSettingsAudit_settingsId_idx_6654474f\"",
+        "sql": "CREATE INDEX \"shopSettingsAudit_settingsId_idx_6654474f\" ON \"public\".\"shopSettingsAudit\" (\"settingsId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"shopSettingsAudit_settingsId_idx_6654474f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"shopSettingsAudit_settingsId_idx_6654474f\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.shopBusinessSettings.shopBusinessSettings_updatedById_fkey",
+    "label": "Add foreign key \"shopBusinessSettings_updatedById_fkey\" on \"shopBusinessSettings\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "shopBusinessSettings_updatedById_fkey",
+        "table": "shopBusinessSettings"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"shopBusinessSettings_updatedById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shopBusinessSettings_updatedById_fkey",
+          "public",
+          "\"public\".\"shopBusinessSettings\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"shopBusinessSettings_updatedById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"shopBusinessSettings\"\nADD CONSTRAINT \"shopBusinessSettings_updatedById_fkey\"\nFOREIGN KEY (\"updatedById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"shopBusinessSettings_updatedById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shopBusinessSettings_updatedById_fkey",
+          "public",
+          "\"public\".\"shopBusinessSettings\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.shopSettingsAudit.shopSettingsAudit_settingsId_fkey",
+    "label": "Add foreign key \"shopSettingsAudit_settingsId_fkey\" on \"shopSettingsAudit\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "shopSettingsAudit_settingsId_fkey",
+        "table": "shopSettingsAudit"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"shopSettingsAudit_settingsId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shopSettingsAudit_settingsId_fkey",
+          "public",
+          "\"public\".\"shopSettingsAudit\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"shopSettingsAudit_settingsId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"shopSettingsAudit\"\nADD CONSTRAINT \"shopSettingsAudit_settingsId_fkey\"\nFOREIGN KEY (\"settingsId\")\nREFERENCES \"public\".\"shopBusinessSettings\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"shopSettingsAudit_settingsId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shopSettingsAudit_settingsId_fkey",
+          "public",
+          "\"public\".\"shopSettingsAudit\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.shopSettingsAudit.shopSettingsAudit_actorId_fkey",
+    "label": "Add foreign key \"shopSettingsAudit_actorId_fkey\" on \"shopSettingsAudit\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "shopSettingsAudit_actorId_fkey",
+        "table": "shopSettingsAudit"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"shopSettingsAudit_actorId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shopSettingsAudit_actorId_fkey",
+          "public",
+          "\"public\".\"shopSettingsAudit\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"shopSettingsAudit_actorId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"shopSettingsAudit\"\nADD CONSTRAINT \"shopSettingsAudit_actorId_fkey\"\nFOREIGN KEY (\"actorId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"shopSettingsAudit_actorId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shopSettingsAudit_actorId_fkey",
+          "public",
+          "\"public\".\"shopSettingsAudit\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "shop-settings-v12-seed-singleton",
+    "label": "Seed idempotent singleton shop settings default row",
+    "operationClass": "data",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "objectType": "table",
+        "schema": "public",
+        "name": "shopBusinessSettings"
+      }
+    },
+    "precheck": [
+      {
+        "description": "shopBusinessSettings table exists",
+        "sql": "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'shopBusinessSettings') AS result"
+      }
+    ],
+    "execute": [
+      {
+        "description": "Insert singleton settings row with explicit S4 defaults if not already present",
+        "sql": "INSERT INTO public.\"shopBusinessSettings\" (\n  id,\n  \"singletonKey\",\n  version,\n  currency,\n  \"shippingStatus\",\n  \"shippingAmountCents\",\n  \"shippingIncludedInPrices\",\n  \"taxMode\",\n  \"taxEnabled\",\n  \"taxRateBps\",\n  \"maxUnitsPerSkuPerOrder\",\n  \"deliveryTimeZone\",\n  \"deliveryStartTime\",\n  \"deliveryEndTime\",\n  \"deliveryBoundariesInclusive\",\n  \"updatedById\",\n  \"createdAt\",\n  \"updatedAt\"\n) VALUES (\n  '00000000-0000-4000-8000-000000000001',\n  'GLOBAL',\n  1,\n  'USD',\n  'FREE_INCLUDED',\n  0,\n  true,\n  'SIMULATED',\n  true,\n  1500,\n  10,\n  'America/Guayaquil',\n  '07:00',\n  '17:00',\n  true,\n  NULL,\n  now(),\n  now()\n) ON CONFLICT (\"singletonKey\") DO NOTHING;"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "Exactly one singleton row exists in shopBusinessSettings",
+        "sql": "SELECT count(*) = 1 AS result FROM public.\"shopBusinessSettings\" WHERE \"singletonKey\" = 'GLOBAL'"
+      }
+    ]
+  }
+]

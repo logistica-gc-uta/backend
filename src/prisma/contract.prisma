@@ -352,3 +352,50 @@ model DispatchIntervention {
   @@index([routeId])
   @@check(expression: "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500", name: "dispatch_audit_valid")
 }
+
+// Singleton commercial settings with optimistic CAS and full audit trail (#33-A)
+model ShopBusinessSettings {
+  id                          String   @id @default(uuid())
+  singletonKey                String   @unique @default("GLOBAL")
+  version                     Int      @default(1)
+  currency                    String   @default("USD")
+  shippingStatus              String   @default("FREE_INCLUDED")
+  shippingAmountCents         Int      @default(0)
+  shippingIncludedInPrices    Boolean  @default(true)
+  taxMode                     String   @default("SIMULATED")
+  taxEnabled                  Boolean  @default(true)
+  taxRateBps                  Int      @default(1500)
+  maxUnitsPerSkuPerOrder      Int      @default(10)
+  deliveryTimeZone            String   @default("America/Guayaquil")
+  deliveryStartTime           String   @default("07:00")
+  deliveryEndTime             String   @default("17:00")
+  deliveryBoundariesInclusive Boolean  @default(true)
+  updatedById                 String?
+  updatedBy                   User?    @relation(fields: [updatedById], references: [id])
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @default(now())
+
+  audits                      ShopSettingsAudit[]
+
+  @@check(expression: "\"singletonKey\" = 'GLOBAL'", name: "shop_settings_singleton")
+  @@check(expression: "version >= 1 AND currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"shippingIncludedInPrices\" = true AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"maxUnitsPerSkuPerOrder\" BETWEEN 1 AND 100 AND \"deliveryTimeZone\" = 'America/Guayaquil' AND \"deliveryBoundariesInclusive\" = true AND \"deliveryStartTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryEndTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryStartTime\" < \"deliveryEndTime\"", name: "shop_settings_valid")
+}
+
+// Append-only audit log for atomic shop settings CAS modifications
+model ShopSettingsAudit {
+  id              String               @id @default(uuid())
+  settingsId      String
+  settings        ShopBusinessSettings @relation(fields: [settingsId], references: [id])
+  actorId         String
+  actor           User                 @relation(fields: [actorId], references: [id])
+  expectedVersion Int
+  newVersion      Int
+  changedFields   Json
+  snapshot        Json
+  recordedAt      DateTime             @default(now())
+
+  @@index([settingsId])
+  @@index([actorId])
+  @@index([recordedAt])
+  @@check(expression: "\"expectedVersion\" >= 1 AND \"newVersion\" = \"expectedVersion\" + 1", name: "shop_settings_audit_version_step")
+}
