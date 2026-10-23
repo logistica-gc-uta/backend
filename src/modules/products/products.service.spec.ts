@@ -12,6 +12,7 @@ describe('ProductsService', () => {
       product: {
         where: jest.fn().mockReturnThis(),
         all: jest.fn(),
+        select: jest.fn().mockReturnThis(),
         first: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
@@ -19,9 +20,10 @@ describe('ProductsService', () => {
     };
 
     prismaMock.client = {
-      raw: { sql: (...[_strings, id]: Parameters<PrismaService['client']['raw']['sql']>) => ({ returnsRow: () => ({ build: () => ({ id }) }) }) },
+      raw: { sql: (...[strings, id]: Parameters<PrismaService['client']['raw']['sql']>) => ({ returnsRow: () => ({ build: () => ({ id, clock: strings[0].includes('clock_timestamp') }) }) }) },
       transaction: jest.fn((callback) => callback({
-        query: jest.fn(async () => {
+        query: jest.fn(async (plan: { clock: boolean }) => {
+          if (plan.clock) return [{ instant: Temporal.Instant.from('2026-10-23T00:00:00Z') }];
           const row = await prismaMock.product.first();
           return row ? [row] : [];
         }),
@@ -58,7 +60,7 @@ describe('ProductsService', () => {
       const result = await service.findAll();
 
       expect(prismaMock.product.where).toHaveBeenCalled();
-      expect(result).toEqual(mockProducts);
+      expect(result).toEqual(mockProducts.map(p => ({ ...p, description: undefined, createdAt: undefined })));
       expect(result.every((p: any) => p.stock > 0)).toBe(true);
     });
   });
@@ -70,7 +72,7 @@ describe('ProductsService', () => {
 
       const result = await service.findOne('prod-1');
 
-      expect(result).toEqual(mockProduct);
+      expect(result).toEqual({ ...mockProduct, description: undefined, createdAt: undefined });
     });
 
     it('debe lanzar NotFoundException si el producto no existe', async () => {
@@ -100,13 +102,11 @@ describe('ProductsService', () => {
 
       const result = await service.create(dto);
 
-      expect(prismaMock.product.create).toHaveBeenCalledWith({
-        name: dto.name,
-        description: dto.description,
-        price: dto.price,
-        stock: dto.stock,
-      });
-      expect(result).toEqual(createdProduct);
+      expect(prismaMock.product.create).toHaveBeenCalledWith(expect.objectContaining({
+        name: dto.name, description: dto.description, price: dto.price,
+        priceCents: 6000n, stock: dto.stock, isPublished: false,
+      }));
+      expect(result).toMatchObject(createdProduct);
     });
 
     it('debe crear un producto con descripción null si no se proporciona', async () => {
@@ -122,14 +122,21 @@ describe('ProductsService', () => {
 
       const result = await service.create(dto);
 
-      expect(prismaMock.product.create).toHaveBeenCalledWith({
-        name: dto.name,
-        description: null,
-        price: dto.price,
-        stock: dto.stock,
-      });
+      expect(prismaMock.product.create).toHaveBeenCalledWith(expect.objectContaining({
+        name: dto.name, description: null, price: dto.price, priceCents: 1000n, stock: dto.stock,
+      }));
       expect(result.description).toBeNull();
     });
+  });
+
+  it('rejects non-cent legacy prices without writing a product', async () => {
+    await expect(service.create({ name: 'Invalid', price: 1.001, stock: 0 })).rejects.toThrow(BadRequestException);
+    expect(prismaMock.product.create).not.toHaveBeenCalled();
+  });
+
+  it('projects only legacy product keys even if persistence adds Shop fields', async () => {
+    prismaMock.product.first.mockResolvedValue({ id: 'p', name: 'N', description: null, price: 1, stock: 2, createdAt: 'date', sku: 'internal', priceCents: 100n });
+    expect(await service.findOne('p')).toEqual({ id: 'p', name: 'N', description: null, price: 1, stock: 2, createdAt: 'date' });
   });
 
   describe('updateStock', () => {
@@ -148,7 +155,9 @@ describe('ProductsService', () => {
       const result = await service.updateStock('prod-1', { stock: 25 });
 
       expect(prismaMock.product.where).toHaveBeenCalledWith({ id: 'prod-1' });
-      expect(prismaMock.product.update).toHaveBeenCalledWith({ stock: 25 });
+      expect(prismaMock.product.update).toHaveBeenCalledWith({
+        stock: 25, updatedAt: Temporal.Instant.from('2026-10-23T00:00:00Z'),
+      });
       if (result === null) throw new Error('Expected the updated product to exist');
       expect(result.stock).toBe(25);
     });

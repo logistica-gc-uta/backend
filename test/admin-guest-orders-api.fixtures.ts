@@ -25,8 +25,10 @@ export function prepareOwnedApiDatabase(database: AdminOrdersDatabase): string {
   if (process.env.DATABASE_URL) throw new Error('Refusing inherited DATABASE_URL before app imports');
   database.start();
   database.create('unit_b');
+  // Preserve the historical fixture origin, then exercise the current additive edge.
   database.prisma('unit_b', 'migrate', 'e357d1aa2fdc74464e729ec7cd8bb087b979a13b22e0f88aa005b60be4c16427');
   seedAdminApi(database);
+  database.prisma('unit_b', 'migrate', 'b263aff9f248d0da2ead5a0700a5b035ab3653ec79e1f8c651ab5f936e21e1ea');
   process.env.DOTENV_CONFIG_PATH = '/dev/null';
   process.env.DATABASE_URL = database.ownedUrl('unit_b');
   process.env.JWT_SECRET = randomUUID();

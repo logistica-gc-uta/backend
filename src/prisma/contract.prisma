@@ -53,6 +53,7 @@ model User {
   driver    Driver?
   orders        Order[] @relation("OrderOwner")
   createdOrders Order[] @relation("OrderCreator")
+  uploadedAssets UploadedAsset[] @relation("UploadActor")
 }
 
 model Driver {
@@ -80,15 +81,85 @@ model Zone {
   @@check(expression: "(\"depotLat\" IS NULL AND \"depotLng\" IS NULL) OR (\"depotLat\" IS NOT NULL AND \"depotLng\" IS NOT NULL AND \"depotLat\" >= -90 AND \"depotLat\" <= 90 AND \"depotLng\" >= -180 AND \"depotLng\" <= 180)", name: "zone_depot_coordinates_valid")
 }
 
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+  products    Product[]
+
+  @@check(expression: "length(name) BETWEEN 2 AND 80 AND length(slug) BETWEEN 2 AND 100 AND slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND (description IS NULL OR length(description) <= 300) AND \"sortOrder\" BETWEEN 0 AND 9999", name: "category_catalog_valid")
+  @@index([isActive, sortOrder, name])
+}
+
 model Product {
   id          String   @id @default(uuid())
   name        String
   description String?
   price       Float
+  priceCents  BigInt?
+  sku         String?  @unique
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  isPublished Boolean @default(false)
+  isFeatured  Boolean @default(false)
+  updatedAt   DateTime @default(now())
   stock       Int      @default(0)
   createdAt   DateTime @default(now())
 
   orderItems  OrderItem[]
+  images      ProductImage[]
+
+  @@check(expression: "stock >= 0 AND (\"priceCents\" IS NULL OR \"priceCents\" BETWEEN 1 AND 9007199254740991)", name: "product_catalog_amount_inventory")
+  @@check(expression: "NOT \"isPublished\" OR (\"categoryId\" IS NOT NULL AND \"priceCents\" IS NOT NULL AND sku IS NOT NULL AND description IS NOT NULL AND length(description) BETWEEN 1 AND 2000 AND length(name) BETWEEN 3 AND 160)", name: "product_publish_fields")
+  @@index([categoryId, isPublished])
+  @@index([isPublished, isFeatured])
+}
+
+model ProductImage {
+  id          String @id @default(uuid())
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  uploadId    String @unique
+  upload      UploadedAsset @relation(fields: [uploadId], references: [id])
+  publicId    String
+  secureUrl   String
+  altText     String
+  position    Int
+  isPrimary   Boolean @default(false)
+
+  @@unique([productId, position])
+  @@index([productId], unique: true, where: "(\"isPrimary\" = true)", name: "one_primary_image_per_product")
+  @@check(expression: "position BETWEEN 0 AND 5 AND length(\"altText\") BETWEEN 1 AND 160 AND \"secureUrl\" LIKE 'https://%'", name: "product_image_valid")
+}
+
+// Provider object is retained after detach until the audited cleanup succeeds.
+model UploadedAsset {
+  id             String @id @default(uuid())
+  actorId        String
+  actor          User @relation("UploadActor", fields: [actorId], references: [id])
+  publicId       String @unique
+  secureUrl      String?
+  format         String
+  bytes          Int
+  width          Int
+  height         Int
+  status         String @default("UPLOADING")
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  attachedAt     DateTime?
+  cleanupAt      DateTime?
+  cleanupAttempts Int @default(0)
+  lastCleanupError String?
+  image          ProductImage?
+
+  @@index([status, expiresAt])
+  @@index([actorId])
+  @@check(expression: "status IN ('UPLOADING', 'UPLOADED', 'ATTACHED', 'CLEANUP_PENDING', 'DELETED') AND bytes BETWEEN 1 AND 5242880 AND width BETWEEN 1 AND 8192 AND height BETWEEN 1 AND 8192 AND format IN ('jpg', 'png', 'webp') AND \"cleanupAttempts\" >= 0 AND (\"secureUrl\" IS NULL OR \"secureUrl\" LIKE 'https://%') AND (status NOT IN ('UPLOADED', 'ATTACHED') OR \"secureUrl\" IS NOT NULL)", name: "upload_asset_valid")
 }
 
 model Route {
@@ -139,6 +210,7 @@ model Order {
   route                 Route?      @relation(fields: [routeId], references: [id])
   status                OrderStatus @default(PENDING)
   total                 Float       @default(0)
+  subtotalCents         BigInt?
   deliveryAddress       String
   scheduledDeliveryDate DateTime?
   stopOrder             Int?
@@ -174,6 +246,7 @@ model OrderItem {
   product   Product  @relation(fields: [productId], references: [id])
   quantity  Int      @default(1)
   price     Float
+  unitPriceCents BigInt?
 }
 
 
