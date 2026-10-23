@@ -27,12 +27,12 @@ Resultados locales registrados en ejecuciones enfocadas, no una afirmación de i
 
 | Prueba | Resultado | Evidencia |
 |---|---|---|
-| Análisis estático | PASS, 7 advertencias | `oxlint --type-aware src/ test/ benchmarks/`, exit 0. Las advertencias no se presentan como cero. |
-| Pruebas unitarias | PASS enfocadas | 7 suites/91 casos de dinero, productos, pedidos, proyecciones, runner, uploads y seguridad CI; helper de migraciones 24/24 tras corregir redacción y stdout/stderr. |
+| Análisis estático | PASS con advertencias | Lint global previo exit 0/7 advertencias; lint focal de los tests nuevos exit 0/7 advertencias. No se afirma cero advertencias. |
+| Pruebas unitarias | PASS global local | 69 suites/810 casos; cobertura: sentencias 88,84 %, ramas 81,10 %, funciones 83,22 %, líneas 91,76 %. Umbral global de 80 % intacto; pruebas de comportamiento añadidas, sin excluir código ni cambiar producción. |
 | Pruebas de integración | PASS enfocadas | Catálogo HTTP 5/5, uploads 7/7 y migración/backup/restore aislada 1/1. El proveedor doble se identifica como tal. |
 | Compilación | PASS | `nest build`, exit 0. |
 | Pruebas funcionales | PASS real | ADMIN → Cloudinary real → PostgreSQL propio → publicación → Shop anónimo → imagen decodificada → detach → `cleanupOnce` con proveedor real → confirmación `deleted`, DB `DELETED`, sin asociación. |
-| CI completa | PENDIENTE al preparar PR | El workflow remoto ejecuta cobertura, inventario E2E y Newman. Se publicará el resultado observado, no se infiere de los checks locales. |
+| CI completa | NUEVA EJECUCIÓN PENDIENTE | La [corrida anterior](https://github.com/logistica-gc-uta/backend/actions/runs/40000992024) pasó 776 tests pero falló cobertura; E2E/Newman quedaron omitidos. La corrección ya pasa localmente con 810 tests; todavía no se afirma CI remota verde. |
 | Flutter/dispositivo y aceptación frontend | NO EJECUTADO / PENDIENTE | La compatibilidad backend tiene pruebas enfocadas; no se afirma validación manual del cliente ni acuerdo humano del contrato. |
 
 ## Evidencias
