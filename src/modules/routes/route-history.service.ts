@@ -49,6 +49,10 @@ export class RouteHistoryService {
           order.routeId.in(routes.map((route) => route.id)),
         ).all()
       : [];
+    const legacyCommercialOrder = (order: (typeof directOrders)[number]) => {
+      const { subtotalCents: _subtotalCents, ...legacyOrder } = order;
+      return legacyOrder;
+    };
     const directByRoute = new Map<string, typeof directOrders>();
     for (const order of directOrders) {
       const group = directByRoute.get(order.routeId!) ?? [];
@@ -73,7 +77,7 @@ export class RouteHistoryService {
       }
       const orders = ordered.length
         ? ordered.map(({ order, sequence }) => ({
-            ...(fullCommercialFields ? order : {}),
+            ...(fullCommercialFields ? legacyCommercialOrder(order) : {}),
             id: order.id,
             deliveryAddress: order.deliveryAddress,
             status: order.status,
@@ -88,7 +92,7 @@ export class RouteHistoryService {
                 (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
             )
             .map((order) => ({
-              ...(fullCommercialFields ? order : {}),
+              ...(fullCommercialFields ? legacyCommercialOrder(order) : {}),
               id: order.id,
               deliveryAddress: order.deliveryAddress,
               status: order.status,

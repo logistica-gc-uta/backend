@@ -370,7 +370,15 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
       items: { $ref: '#/components/schemas/RouteHistoryStopDto' },
     });
     const schemas: any = doc.components!.schemas;
+    // Exercise nullable historical cents alongside a non-null BigInt through real HTTP JSON.
+    await host.db.orm.public.Order.where({ id: 'three' }).update({
+      subtotalCents: 1275n,
+    });
     const admin = (await get(`/routes/${LEGACY}`).expect(200)).body;
+    expect(admin.orders.map((order: any) => order.total)).toEqual([0, 0, 0]);
+    expect(
+      admin.orders.every((order: any) => !('subtotalCents' in order)),
+    ).toBe(true);
     const owned = (
       await get('/drivers/me/routes', 'driver-user', 'DRIVER').expect(200)
     ).body[0];

@@ -25,3 +25,9 @@ MD §3.1 permits category description null; YAML originally typed ADMIN create/p
 ## Frozen HTTP seam for both endpoint units
 
 `src/modules/shop/shop-http.filter.ts` exports `shopError(status, code, message, details?)` and controller-scoped `ShopHttpExceptionFilter`. Both new endpoint units must apply `@UseFilters(ShopHttpExceptionFilter)` to their controllers, keeping auth/legacy errors unchanged. The response is exactly `{error:{code,message,details,requestId}}` with server-generated trace IDs; guards retain HTTP401/403 and provider/DB messages are sanitized. Use explicit contract business codes from MD§12; no global filter/pipe changes. The endpoint units read this shared file but do not edit it; their authored tests cover error shapes.
+
+## Legacy route-history compatibility correction
+
+The additive `Order.subtotalCents` field must not enter the existing ADMIN route-history response. Both stop-backed and direct-order projections omit only this internal field, preserving the historical Float `total`, existing DTO keys, and restricted DRIVER payload. Unit regressions cover null/non-null BigInt and JSON serialization; the existing owned-PostgreSQL HTTP test retains exact Swagger-key assertions.
+
+Focused verification: units 7/7 and HTTP 6/6 passed, with an independent differential confirming 10 legacy/DRIVER outputs unchanged and 6 ADMIN cents inputs differing only by omission of the internal field. The fixture asserted container removal. The verifier did not retain the exact container ID/removal receipt because its bounded Docker-event query failed (exit 64); this audit-record limitation is not presented as an independently captured receipt. Full remote CI must still be observed for the corrected head.
