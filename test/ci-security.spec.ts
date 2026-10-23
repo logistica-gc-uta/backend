@@ -56,7 +56,7 @@ describe('CI Workflow Configuration & Security Contract', () => {
     );
   });
 
-  it('delegates all 22 suites to owned runners without a shared CI database or JWT', () => {
+  it('delegates all 25 suites to owned runners without a shared CI database or JWT', () => {
     expect(workflowContent).not.toMatch(/^\s*(services|DATABASE_URL|JWT_SECRET|POSTGRES_DB):/m);
     expect(workflowContent).not.toContain('secrets.');
     expect(workflowContent).toContain('run: docker pull postgres:16-alpine');
@@ -70,7 +70,7 @@ describe('CI Workflow Configuration & Security Contract', () => {
     const runner = fs.readFileSync(path.resolve(process.cwd(), 'test/run-e2e-isolated.mjs'), 'utf8');
     expect(fs.readdirSync(path.resolve(process.cwd(), 'test')).filter(
       (file) => file.endsWith('.e2e-spec.ts'),
-    )).toHaveLength(22);
+    )).toHaveLength(25);
     expect(runner).toContain("const jest = ['run', 'test:e2e', '--runInBand'];");
     expect(runner).toContain("[...jest, '--listTests', '--json']");
     expect(runner).toContain("[...jest, '--runTestsByPath', ...managed], { env: clean }");
