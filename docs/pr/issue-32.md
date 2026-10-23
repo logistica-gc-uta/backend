@@ -29,10 +29,10 @@ Resultados locales registrados en ejecuciones enfocadas, no una afirmación de i
 |---|---|---|
 | Análisis estático | PASS con advertencias | Lint global previo exit 0/7 advertencias; lint focal de los tests nuevos exit 0/7 advertencias. No se afirma cero advertencias. |
 | Pruebas unitarias | PASS global local | 69 suites/810 casos; cobertura: sentencias 88,84 %, ramas 81,10 %, funciones 83,22 %, líneas 91,76 %. Umbral global de 80 % intacto; pruebas de comportamiento añadidas, sin excluir código ni cambiar producción. |
-| Pruebas de integración | PASS enfocadas | Catálogo HTTP 5/5, uploads 7/7 y migración/backup/restore aislada 1/1. El proveedor doble se identifica como tal. |
+| Pruebas de integración | PASS enfocadas | Catálogo HTTP 5/5, uploads 7/7, migración/backup/restore aislada 1/1 y corrección de historial de rutas 6/6 (más 7 unitarios y diferencial independiente). El proveedor doble se identifica como tal. |
 | Compilación | PASS | `nest build`, exit 0. |
 | Pruebas funcionales | PASS real | ADMIN → Cloudinary real → PostgreSQL propio → publicación → Shop anónimo → imagen decodificada → detach → `cleanupOnce` con proveedor real → confirmación `deleted`, DB `DELETED`, sin asociación. |
-| CI completa | NUEVA EJECUCIÓN PENDIENTE | La [corrida anterior](https://github.com/logistica-gc-uta/backend/actions/runs/40000992024) pasó 776 tests pero falló cobertura; E2E/Newman quedaron omitidos. La corrección ya pasa localmente con 810 tests; todavía no se afirma CI remota verde. |
+| CI completa | NUEVA EJECUCIÓN PENDIENTE | La [última corrida](https://github.com/logistica-gc-uta/backend/actions/runs/40006176585) aprobó calidad/cobertura y pasó 341 casos E2E, pero falló uno por la exposición de subtotalCents en el historial ADMIN. La proyección ya está corregida con unitarios/HTTP/diferencial independientes; los runners legados restantes y Newman todavía no se dieron por aprobados. Falta CI del nuevo commit. |
 | Flutter/dispositivo y aceptación frontend | NO EJECUTADO / PENDIENTE | La compatibilidad backend tiene pruebas enfocadas; no se afirma validación manual del cliente ni acuerdo humano del contrato. |
 
 ## Evidencias
@@ -72,3 +72,7 @@ Resultados locales registrados en ejecuciones enfocadas, no una afirmación de i
 ## Observaciones para el revisor
 
 Revisar por commits: datos/contratos existentes; default de migración; diagnósticos/redacción del helper; catálogo HTTP y tests; servicios de uploads; wiring HTTP/galería y tests. Prestar atención a conservación de importes históricos, snapshots de lectura, orden de bloqueos y protección de la imagen primaria. Revertir por unidad, sin mezclar datos históricos con cambios de presentación. Mantener este PR condicionado hasta resolver #35 y el acuerdo frontend/QA.
+
+### Corrección de compatibilidad detectada por CI
+
+`e0f326c` conserva el contrato ADMIN/DRIVER de historial: excluye únicamente `subtotalCents` en ambas ramas, sin alterar el Float histórico ni ampliar Swagger. El fixture verificó remoción del contenedor; el ID exacto y un recibo independiente no quedaron capturados porque la consulta acotada de eventos Docker falló (exit 64). Esa limitación de auditoría se registra sin inventar evidencia ni repetir la batería.
