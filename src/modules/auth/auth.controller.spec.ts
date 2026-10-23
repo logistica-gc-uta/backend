@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
-import { Role } from './dto/register.dto.js';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -35,7 +34,6 @@ describe('AuthController', () => {
       name: 'Test',
       email: 'test@example.com',
       password: 'password',
-      role: Role.CLIENT,
     };
     const expected = { id: '1', ...dto };
     authServiceMock.register.mockResolvedValue(expected);

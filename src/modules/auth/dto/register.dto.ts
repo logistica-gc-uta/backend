@@ -1,5 +1,6 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
+import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
 
 export enum Role {
   ADMIN = 'ADMIN',
@@ -8,29 +9,41 @@ export enum Role {
 }
 
 export class RegisterDto {
-  @ApiProperty({ description: 'Nombre completo del usuario', example: 'Carlos Chofer' })
+  @ApiProperty({
+    description: 'Nombre recortado, entre 2 y 120 caracteres',
+    example: 'Carlos Chofer',
+    minLength: 2,
+    maxLength: 120,
+  })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString({ message: 'El nombre debe ser una cadena de texto' })
   @IsNotEmpty({ message: 'El nombre es obligatorio' })
+  @Length(2, 120, { message: 'El nombre debe tener entre 2 y 120 caracteres' })
   name!: string;
 
-  @ApiProperty({ description: 'Correo electrónico único', example: 'carlos@delivery.com' })
+  @ApiProperty({
+    description: 'Correo electrónico válido, recortado y normalizado a minúsculas',
+    example: 'carlos@delivery.com',
+    format: 'email',
+  })
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
   @IsEmail({}, { message: 'El correo electrónico no es válido' })
   @IsNotEmpty({ message: 'El correo electrónico es obligatorio' })
   email!: string;
 
-  @ApiProperty({ description: 'Contraseña con mínimo 6 caracteres', example: 'claveSegura123', minLength: 6 })
-  @IsString({ message: 'La contraseña debe ser una cadena de texto' })
-  @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
-  password!: string;
-
-  @ApiPropertyOptional({
-    description: 'Rol del usuario en el sistema',
-    enum: Role,
-    default: Role.CLIENT,
-    example: Role.CLIENT,
+  @ApiProperty({
+    description: 'Contraseña con entre 8 y 128 caracteres',
+    example: 'claveSegura123',
+    minLength: 8,
+    maxLength: 128,
   })
-  @IsOptional()
-  @IsEnum(Role, { message: 'El rol debe ser ADMIN, CLIENT o DRIVER' })
-  role?: Role;
+  @IsString({ message: 'La contraseña debe ser una cadena de texto' })
+  @IsNotEmpty({ message: 'La contraseña es obligatoria' })
+  @Length(8, 128, {
+    message: 'La contraseña debe tener entre 8 y 128 caracteres',
+  })
+  password!: string;
 }
 
