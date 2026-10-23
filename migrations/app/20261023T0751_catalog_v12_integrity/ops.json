@@ -85,6 +85,48 @@
     ]
   },
   {
+    "id": "dropDefault.uploadedAsset.status",
+    "label": "Drop default on \"uploadedAsset\".\"status\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "status",
+        "table": "uploadedAsset"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"status\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "uploadedAsset",
+          "status"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop default on \"status\"",
+        "sql": "ALTER TABLE \"public\".\"uploadedAsset\" ALTER COLUMN \"status\" DROP DEFAULT"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"status\" has no default",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"column_default\" IS NULL)) AS \"result\"",
+        "params": [
+          "public",
+          "uploadedAsset",
+          "status"
+        ]
+      }
+    ]
+  },
+  {
     "id": "setDefault.uploadedAsset.status",
     "label": "Set default on \"uploadedAsset\".\"status\"",
     "operationClass": "widening",

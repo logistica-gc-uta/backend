@@ -17,6 +17,9 @@ export default class M extends Migration<Start, End> {
         constraint: 'upload_asset_valid_5f740ac4',
       }),
       this.dropNotNull({ schema: 'public', table: 'uploadedAsset', column: 'secureUrl' }),
+      // In rc.11 setDefault's postcheck tests only whether any default exists.
+      // Drop the old default first so the runner cannot skip the replacement.
+      this.dropDefault({ schema: 'public', table: 'uploadedAsset', column: 'status' }),
       this.setDefault({
         schema: 'public',
         table: 'uploadedAsset',
