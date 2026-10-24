@@ -225,6 +225,99 @@ This document records the architectural decisions, contract reconciliation, sche
   - `pnpm lint`: clean on all touched files (0 errors, 0 warnings).
   - `git diff --check`: clean, exit code 0.
 
+## 8. Task #33-C2: Atomic Purchase Confirmation & Safe Idempotency Engine
+
+### 8.1 Scope & Design
+- **Endpoint:** `POST /api/v1/shop/checkout` restricted strictly to `Role.CLIENT` via `JwtAuthGuard` and `RolesGuard`.
+- **Idempotency Control & Advisory Lock Serialization:**
+  - Mandatory `Idempotency-Key` HTTP header validated as trimmed UUIDv4.
+  - Safe canonical intent constructed from consolidated lines (codepoint ascending order), trimmed delivery recipient/address/notes, normalized UTC delivery instant and coordinates, original `quoteToken`, and synthetic `cardFixtureId` (`'UNKNOWN_FIXTURE'` for unmapped cards).
+  - Zero storage, logging, or derivatization of PAN, CVV, or cardholder credentials in the database, hashes, or logs.
+  - Pre-lock fast path retrieves existing `CheckoutAttempt` for `(userId, idempotencyKey)`:
+    - Same key and matching hash: replays exact previous decision (`successSnapshot` with HTTP 201 or previous typed rejection) BEFORE simulation gating, quote expiration, current settings checks, or card calendar expiry.
+    - Same key with differing hash: returns HTTP 409 `IDEMPOTENCY_KEY_REUSED`.
+  - Transaction-level PostgreSQL advisory lock `SELECT 1 FROM pg_advisory_xact_lock(hashtext('checkout_intent'), hashtext(userId || ':' || idempotencyKey))` serializes concurrent requests per `(userId, idempotencyKey)` at the database level BEFORE product, category, or card checks. Losers block and recheck committed winner attempt under that serialization, eliminating non-existent row FOR UPDATE concurrency gaps.
+- **Global Deadlock-Free Locking Hierarchy:**
+  - **Level 0:** PostgreSQL Transaction Advisory Lock on `(userId, idempotencyKey)`.
+  - **Level 1:** `ShopBusinessSettings` locked `FOR SHARE` via `settingsService.getPublicSettings(tx)`. Multiple checkouts read settings concurrently without contention; concurrent ADMIN CAS (`FOR UPDATE`) cleanly serializes without circular wait.
+  - **Level 2:** `Category` rows in deterministic ascending codepoint order (`categoryId ASC`) locked `FOR SHARE`. Consistent with `CatalogService` (which always locks Category before Product), provably eliminating cross-module lock inversion deadlocks.
+  - **Level 3:** `Product` inventory rows locked in deterministic ascending codepoint order (`productId ASC`) via `lockInventoryProduct(tx, raw, productId) FOR UPDATE`.
+  - **Level 4:** `SimulatedCard` locked `FOR UPDATE` on `cardFixtureId`.
+- **Atomic Business Validation & Execution:**
+  - DB clock re-read after lock acquisition (`nowDb = await deliveryClock(tx, raw)`).
+  - In-ledger simulated card validation against authoritative `nowDb` clock (not application clock).
+  - Validation under locks: card active & calendar expiry; card `balanceCents >= totalCents` (exposing only `requiredCents` in rejection details; never `availableCents`); `verifyQuoteToken` verifying HMAC signature, buyer ownership, and expiration against `nowDb`.
+  - **Signed Intent Binding:** Compares canonical items (exact composition and quantities) and complete delivery snapshot (recipient name, phone, zoneId, address, coordinates, scheduled delivery instant, notes) against signed quotation payload BEFORE business mutations. Mismatch strictly rejects with HTTP 400 `VALIDATION_ERROR` with zero charges or state modifications.
+  - `settingsVersion` matching current settings; tax rules matching current settings; per-line unit price matching quoted snapshot; live product stock >= requested quantity; category active verified under share lock; dynamic SKU limits; future delivery instant and America/Guayaquil delivery operating hours; zone depot planning eligibility.
+  - Buyer existence check: fails closed with HTTP 401 `UNAUTHORIZED` if user row missing; never synthesizes fake `'Cliente Registrado'`.
+  - On business rejection: audits terminal `CheckoutAttempt` (`status = 'REJECTED'`, `errorCode`, `errorMessage`, `errorDetails`) under advisory lock serialization, resolving any committed winner decision, and never swallowing database record failures; returns typed error.
+  - On approval (all-or-nothing transaction):
+    - Decrements product stock and card balance in integer cents.
+    - Creates `Order` with `status = 'PENDING'`, `total = subtotalCents / 100` (preserving Float subtotal semantics), `subtotalCents = BigInt(subtotalCents)`. No new scalar columns added to `Order`.
+    - Creates `OrderItem` records with `unitPriceCents` and `price`.
+    - Creates approved `PaymentAttempt` with full integer money snapshots and unique `reference` (`PAY-DEMO-YYYY-` + 32-char UUID hex).
+    - Creates `PurchaseReceipt` with unique commercial order number (`RG-YYYY-` + 32-char UUID hex), receipt number (`CMP-RG-YYYY-` + 32-char UUID hex), and immutable minimal base (#34) `snapshot` JSON using `items[].productId` (not `id`).
+    - Creates `CheckoutAttempt` with `status = 'SUCCEEDED'` linking all entities and storing exact public `successSnapshot` (with `order.taxEnabled` required).
+  - Concurrent same-key race resolution: unique constraint on `("userId", "idempotencyKey")` safely catches code 23505, re-reads committed attempt, and returns winner's `successSnapshot` without double debiting.
+
+### 8.2 Error Envelope & Filter Hardening
+- Updated `ShopHttpExceptionFilter` to safely pass through explicit HTTP 503 `PAYMENT_SIMULATION_DISABLED` without widening or degrading unhandled server exceptions into generic leaks.
+- Baseline differential vs `693d243` proves that all status < 500 responses (400, 401, 403, 404, 409, 413, 415, 422) and 502 UPLOAD_FAILED remain completely unchanged in status and response envelope (excluding random UUID `requestId`). Explicit 503 `PAYMENT_SIMULATION_DISABLED` is the single requested addition.
+- Preserved all baseline error mappings (400, 401, 403, 404, 409, 413, 415, 422, 500, 502).
+
+### 8.3 Verification Evidence (#33-C2 Bounded Corrections)
+- **Unit Tests:**
+  - `src/modules/shop/shop-http.filter.spec.ts`: 5 passed, 5 total.
+  - `src/modules/shop/checkout/checkout-intent.util.spec.ts`: 4 passed, 4 total.
+  - `src/modules/shop/checkout/checkout-confirmation.service.spec.ts`: 5 passed, 5 total.
+  - `src/modules/shop/checkout/simulated-card.spec.ts`: 18 passed, 18 total.
+  - Full shop checkout unit suite (6 suites, 67 tests): 67 passed, 67 total.
+  - Full shop settings unit suite: 27 passed, 27 total.
+- **PostgreSQL Real Container E2E Tests:**
+  - `test/shop-checkout-v12.e2e-spec.ts`: 27 passed, 27 total (10.244 s).
+    - Authentication & RBAC: 401 unauthenticated, 403 admin, 403 driver.
+    - Request validation: 400 missing Idempotency-Key, 400 invalid UUIDv4, 400 unknown forbidden payload fields.
+    - Card synthetic validation: 422 `CARD_INVALID` (non-existent fixture), 422 `CARD_INVALID` (mismatched calendar expiry), 422 `INSUFFICIENT_DEMO_FUNDS` (verifying `availableCents` is NEVER exposed; card balance, stock, and orders intact).
+    - Signed Intent Binding Integrity: Real HTTP quote followed by tamper test:
+      - Tamper recipient name -> 400 `VALIDATION_ERROR` with reason `DELIVERY_MISMATCH` (no charge, no orders).
+      - Tamper recipient coordinates -> 400 `VALIDATION_ERROR` with reason `DELIVERY_MISMATCH` (no charge).
+      - Tamper delivery date -> 400 `VALIDATION_ERROR` with reason `DELIVERY_MISMATCH` (no charge).
+      - Tamper item composition using equal-price products ($73 total) -> 400 `VALIDATION_ERROR` with reason `ITEMS_MISMATCH` (no charge, stock untouched).
+    - DTO Contract & Array Limits:
+      - 25 product lines accepted and quoted (when settings limit fixture >= 50).
+      - 51 product lines rejected with 400 `VALIDATION_ERROR` before business execution.
+    - Base flow via real HTTP quote: 7300 subtotal, 1095 simulated tax, 8395 total cents ($73.00 + $10.95 = $83.95).
+      - Response envelope matching OpenAPI with full 32-char UUID entropy in commercial numbers (`RG-YYYY-[0-9A-Z]{32}`, `CMP-RG-YYYY-[0-9A-Z]{32}`, `PAY-DEMO-YYYY-[0-9A-Z]{32}`).
+      - Database side-effects: card balance decremented 50000 -> 41605; stock decremented 8 -> 6; exactly 1 Order (total 73.0, subtotalCents 7300n, PENDING), 1 OrderItem, 1 PaymentAttempt (APPROVED), 1 PurchaseReceipt (#34 minimal base snapshot with `items[0].productId`), 1 CheckoutAttempt (SUCCEEDED).
+    - Sequential idempotent replay: returns exact previous response and deep identical references (`expect(replayRes.body).toEqual(successBody)`) without double debiting balance or decrementing stock; order count strictly unchanged.
+    - Replay approved key after quote expiration: returns original 201 before quote expiry check.
+    - Replay with altered payload: returns 409 `IDEMPOTENCY_KEY_REUSED`.
+    - New unknown key with expired quote: returns 409 `QUOTE_EXPIRED`.
+    - Stock unavailable: 409 `STOCK_UNAVAILABLE`.
+    - Price change: modified in database after quote -> 409 `PRICE_CHANGED`.
+    - Settings version change: 409 `SHOP_SETTINGS_CHANGED`.
+    - Competitor concurrency race (stock=1): TWO CLIENTs with TWO DIFFERENT CARDS (`DEMO_APPROVED` and `DEMO_LIMITED`); exactly one gets 201 SUCCEEDED, the second gets 409 `STOCK_UNAVAILABLE` with stock=0; loser's card balance is COMPLETELY UNTOUCHED, zero loser orders or receipts.
+    - Same-key concurrent race with identical payload: both receive 201 with identical body, card debited ONCE.
+    - Same-key concurrent race with different payload: one original decision, other gets 409 `IDEMPOTENCY_KEY_REUSED`.
+    - Concurrent category under locks recheck regression: category deactivated concurrently during checkout lifecycle rejected with 409 `PRODUCT_UNPUBLISHED` with zero debits or row writes.
+    - Late write failure rollback probe: database-level fault trigger (`trg_test_fail_receipt` on `public."purchaseReceipt"` `BEFORE INSERT`) temporarily installed in owned test fixture and cleanly removed in `finally`; returns 500; asserts all stock, balance, orders, payment attempts, and receipts remain completely unchanged; subsequent request with those exact same delivery notes succeeds with 201 SUCCEEDED after trigger fault removal, proving zero production-path test branches or reserved notes.
+- **Docker Container Absence Verification:**
+  - Exact container IDs inspected via `docker inspect <id> --format '{{.Id}} {{.State.Status}} {{index .Config.Labels "owner"}}'`:
+    - `6da4a0e155cde39aa8e47383ed9fa563cedb722e4129b03791b3530a5d4d3dd6`: absent (`error: no such object`).
+    - `2b0c660a9046eb9b5301073cd7a2f5199fbcd596d8cb068bdcc4867bc3410569`: absent (`error: no such object`).
+    - `2058ae0c60de8d287ff5f52d0b03e497f03d28cb97cf4fb294649266f963dee1`: absent (`error: no such object`).
+    - `80f40b524d2548ed1d65bc7f421f2d661f676375f3cce0cdc550064ceddd0e68`: absent (`error: no such object`).
+    - `91f09aea36214fa5d4ad705e7311ae13db55c936e18d74edb2e2b4cb166723af`: absent (`error: no such object`).
+    - `1dba7b9d25c86930174d8d6fdf75a4bb7e38318a3e1687dd45fd3bcf6193836f`: absent (`error: no such object`).
+- **Differential & Regression Verification:**
+  - `test/shop-payments-foundation-v12.e2e-spec.ts`: 13 passed, 13 total (9.874 s).
+  - `test/shop-quote-v12.e2e-spec.ts`: 38 passed, 38 total (9.921 s).
+  - `test/shop-settings-v12.e2e-spec.ts`: 33 passed, 33 total (10.065 s).
+- **Build & Quality:**
+  - `pnpm build`: exit code 0.
+  - `pnpm lint`: clean on all touched files (0 errors, 0 warnings).
+  - `git diff --check`: clean, exit code 0.
+
 ## Key Learnings
 1. Preserving legacy Order schema integrity by projecting new commercial identifiers and receipt references from isolated order-linked tables prevents unintentional data leakage in endpoints that spread Order objects.
 2. Separate monetary snapshot columns on PaymentAttempt (`subtotalCents`, `taxEnabled`, `taxRateBps`, `taxAmountCents`, `shippingAmountCents`, `totalCents`) mirror PurchaseReceipt and enable strict database CHECK constraints that enforce mathematical integrity (`amountCents = totalCents = subtotalCents + taxAmountCents`) at persistence time.
@@ -233,3 +326,7 @@ This document records the architectural decisions, contract reconciliation, sche
 5. In Prisma 8, self-emitting migrations via `node migrations/app/<dir>/migration.ts` recalculates content-addressed hashes and regenerates `ops.json` and `migration.json` deterministically from the underlying TypeScript migration AST.
 6. In Prisma 8, raw parameterized queries constructed via `client.raw.sql` with `.affectedCount().build()` and executed within `client.transaction(async tx => await tx.execute(plan))` eliminate race conditions in fixture bootstrap operations by delegating uniqueness enforcement to PostgreSQL's atomic `ON CONFLICT ("fixtureId") DO NOTHING`, bypassing the read-before-insert races inherent in ORM `findUnique`/`create` sequences.
 7. Strict integer validation for month and year in financial/card DTOs must verify `typeof val === 'number' && Number.isInteger(val)` to prevent implicit numeric coercion of string or float payloads prior to calendar arithmetic.
+8. Enforcing a strict three-tier database lock hierarchy (Level 1: `ShopBusinessSettings` FOR SHARE -> Level 2: `Product` inventory rows in deterministic ascending codepoint order FOR UPDATE -> Level 3: `SimulatedCard` FOR UPDATE) guarantees that concurrent checkouts and administrative settings updates serialize without circular deadlocks.
+9. Constructing a canonical intent hash strictly from non-sensitive parameters (consolidated items, normalized recipient/address, UTC scheduled instant, quote token, and fixtureId) enables reliable idempotency tracking and reuse detection while strictly guaranteeing that PAN, CVV, or cardholder credentials are never persisted, hashed, or logged.
+10. Validating idempotency before checking quote token expiration allows clients that experienced network disconnects or timeouts after commit to safely replay their request and retrieve their confirmed order references, even if the original quotation token expired during the transport retry window.
+11. Handling concurrent identical idempotency key submissions by catching PostgreSQL unique constraint violations (code 23505) and reloading the committed attempt state ensures that loser transactions cleanly serialize and return the winner's confirmed decision without duplicating charges, balance deductions, or inventory decrements.

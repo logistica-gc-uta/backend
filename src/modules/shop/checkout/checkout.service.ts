@@ -285,14 +285,14 @@ export class CheckoutService {
           name: dto.delivery.recipient.name.trim(),
           phone: dto.delivery.recipient.phone.trim(),
         },
-        zoneId: dto.delivery.zoneId,
+        zoneId: dto.delivery.zoneId.trim(),
         deliveryAddress: dto.delivery.deliveryAddress.trim(),
         deliveryLocation: {
-          lat: dto.delivery.deliveryLocation.lat,
-          lng: dto.delivery.deliveryLocation.lng,
+          lat: Number(dto.delivery.deliveryLocation.lat),
+          lng: Number(dto.delivery.deliveryLocation.lng),
         },
         scheduledDeliveryDate: scheduledInstant.toString(),
-        ...(dto.delivery.deliveryNotes ? { deliveryNotes: dto.delivery.deliveryNotes.trim() } : {}),
+        ...(dto.delivery.deliveryNotes?.trim() ? { deliveryNotes: dto.delivery.deliveryNotes.trim() } : {}),
       },
     };
 

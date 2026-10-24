@@ -116,8 +116,8 @@ export class ShopSettingsService {
     };
   }
 
-  async getPublicSettings(): Promise<ShopSettingsPublicDto> {
-    const row = await this.loadSingletonRow();
+  async getPublicSettings(tx?: Transaction): Promise<ShopSettingsPublicDto> {
+    const row = await this.loadSingletonRow(tx);
     return this.mapToPublicDto(row);
   }
 
@@ -126,7 +126,38 @@ export class ShopSettingsService {
     return this.mapToAdminDto(row);
   }
 
-  private async loadSingletonRow(): Promise<RawSettingsRow> {
+  private async loadSingletonRow(tx?: Transaction): Promise<RawSettingsRow> {
+    if (tx) {
+      const lockPlan = this.prisma.client.raw.sql`
+        SELECT id
+        FROM public."shopBusinessSettings"
+        WHERE "singletonKey" = 'GLOBAL'
+        FOR SHARE
+      `
+        .returnsRow({ id: 'pg/text@1' })
+        .build();
+      const [locked] = await tx.query(lockPlan);
+      if (!locked) {
+        throw shopError(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          'SETTINGS_NOT_CONFIGURED',
+          'Shop business settings not initialized in database',
+        );
+      }
+      const row = (await tx.orm.public.ShopBusinessSettings.where({
+        singletonKey: 'GLOBAL',
+      }).first()) as RawSettingsRow | undefined;
+
+      if (!row) {
+        throw shopError(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          'SETTINGS_NOT_CONFIGURED',
+          'Shop business settings not initialized in database',
+        );
+      }
+      return row;
+    }
+
     const row = (await this.prisma.client.orm.public.ShopBusinessSettings.where({
       singletonKey: 'GLOBAL',
     }).first()) as RawSettingsRow | undefined;

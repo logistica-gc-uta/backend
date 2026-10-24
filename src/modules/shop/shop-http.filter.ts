@@ -25,7 +25,8 @@ export class ShopHttpExceptionFilter implements ExceptionFilter {
       415: ['IMAGE_UNSUPPORTED', 'Unsupported image content'],
     };
     const [fallbackCode, fallbackMessage] = defaults[status] ?? ['INTERNAL_ERROR', 'Request could not be completed'];
-    const safeExplicit = status < 500 && typeof explicit?.code === 'string' && typeof explicit?.message === 'string';
+    const isExplicitSimulationDisabled = status === 503 && explicit?.code === 'PAYMENT_SIMULATION_DISABLED';
+    const safeExplicit = (status < 500 || isExplicitSimulationDisabled) && typeof explicit?.code === 'string' && typeof explicit?.message === 'string';
     // Provider/DB exceptions never leak upstream messages or credentials. Explicit 502s remain generic.
     response.status(status).json({ error: {
       code: status === 502 ? 'UPLOAD_FAILED' : safeExplicit ? explicit.code : fallbackCode,
