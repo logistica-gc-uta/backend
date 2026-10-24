@@ -17,7 +17,7 @@ import {
 import { calculateMoneyAmounts, MoneyLineInput } from './checkout-money.util.js';
 import { CheckoutRequestDto } from './dto/checkout-request.dto.js';
 import { CheckoutSuccessDto } from './dto/checkout-response.dto.js';
-import { verifyQuoteToken } from './quote-token.util.js';
+import { verifyQuoteToken, QuoteTokenPayload } from './quote-token.util.js';
 import {
   assertPaymentSimulationEnabled,
   validateSimulatedCard,
@@ -78,6 +78,62 @@ interface CheckoutAttemptRow {
 
 const UUID_V4_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function assertCanonicalIntentMatchesQuote(
+  canonicalIntent: CanonicalIntent,
+  quotePayload: QuoteTokenPayload,
+): void {
+  const consolidatedItems = canonicalIntent.items;
+  if (quotePayload.items.length !== consolidatedItems.length) {
+    throw shopError(
+      HttpStatus.BAD_REQUEST,
+      'VALIDATION_ERROR',
+      'Los productos no coinciden con la cotización firmada',
+      { reason: 'ITEMS_MISMATCH' },
+    );
+  }
+
+  for (let i = 0; i < consolidatedItems.length; i++) {
+    const reqItem = consolidatedItems[i]!;
+    const qItem = quotePayload.items[i]!;
+    if (reqItem.productId !== qItem.productId || reqItem.quantity !== qItem.quantity) {
+      throw shopError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'La composición o cantidades de los productos no coinciden con la cotización firmada',
+        {
+          reason: 'ITEMS_MISMATCH',
+          requested: { productId: reqItem.productId, quantity: reqItem.quantity },
+          quoted: { productId: qItem.productId, quantity: qItem.quantity },
+        },
+      );
+    }
+  }
+
+  const reqDelivery = canonicalIntent.delivery;
+  const qDelivery = quotePayload.delivery;
+  const reqDate = toInstant(reqDelivery.scheduledDeliveryDate).toString();
+  const qDate = toInstant(qDelivery.scheduledDeliveryDate).toString();
+
+  const deliveryMismatch =
+    reqDelivery.recipient.name !== qDelivery.recipient.name ||
+    reqDelivery.recipient.phone !== qDelivery.recipient.phone ||
+    reqDelivery.zoneId !== qDelivery.zoneId ||
+    reqDelivery.deliveryAddress !== qDelivery.deliveryAddress ||
+    reqDelivery.deliveryLocation.lat !== qDelivery.deliveryLocation.lat ||
+    reqDelivery.deliveryLocation.lng !== qDelivery.deliveryLocation.lng ||
+    reqDate !== qDate ||
+    (reqDelivery.deliveryNotes ?? '') !== (qDelivery.deliveryNotes ?? '');
+
+  if (deliveryMismatch) {
+    throw shopError(
+      HttpStatus.BAD_REQUEST,
+      'VALIDATION_ERROR',
+      'Los datos de entrega no coinciden con la cotización firmada',
+      { reason: 'DELIVERY_MISMATCH' },
+    );
+  }
+}
 
 @Injectable()
 export class CheckoutConfirmationService {
@@ -174,10 +230,126 @@ export class CheckoutConfirmationService {
     });
   }
 
-  private async recordTerminalRejection(
+  private async acquireProcessingReservation(
     userId: string,
     idempotencyKey: string,
     requestHash: string,
+  ): Promise<{ acquired: boolean; attemptId: string }> {
+    const attemptId = randomUUID();
+    return this.prisma.client.transaction(async (tx) => {
+      const insertPlan = this.prisma.client.raw.sql`
+        INSERT INTO public."checkoutAttempt" (
+          "id", "userId", "idempotencyKey", "requestHash", "status",
+          "createdAt", "updatedAt"
+        ) VALUES (
+          ${attemptId}, ${userId}, ${idempotencyKey}, ${requestHash}, 'PROCESSING',
+          clock_timestamp(), clock_timestamp()
+        )
+        ON CONFLICT ("userId", "idempotencyKey") DO NOTHING
+      `
+        .affectedCount()
+        .build();
+
+      const stats = await tx.execute(insertPlan);
+      const affected = typeof stats === 'number' ? stats : (stats?.affectedRows ?? 0);
+      return { acquired: affected === 1, attemptId };
+    });
+  }
+
+  private async fetchAuthoritativeDeliveryClock(): Promise<Temporal.Instant> {
+    return this.prisma.client.transaction(async (tx) => {
+      return deliveryClock(tx, this.prisma.client.raw);
+    });
+  }
+
+  private async waitForProcessingAttempt(
+    userId: string,
+    idempotencyKey: string,
+    requestHash: string,
+  ): Promise<CheckoutSuccessDto> {
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      const attempt = await this.fetchExistingAttempt(userId, idempotencyKey);
+      if (attempt) {
+        if (attempt.requestHash !== requestHash) {
+          throw shopError(
+            HttpStatus.CONFLICT,
+            'IDEMPOTENCY_KEY_REUSED',
+            'Idempotency-Key has already been used with a different request payload',
+            { idempotencyKey },
+          );
+        }
+
+        if (attempt.status === 'SUCCEEDED' && attempt.successSnapshot) {
+          return attempt.successSnapshot as unknown as CheckoutSuccessDto;
+        }
+        if (attempt.status === 'REJECTED' && attempt.errorCode) {
+          throw shopError(
+            this.statusForCode(attempt.errorCode),
+            attempt.errorCode,
+            attempt.errorMessage ?? 'Solicitud rechazada previamente',
+            attempt.errorDetails ?? {},
+          );
+        }
+        if (attempt.status === 'FAILED') {
+          throw shopError(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            'INTERNAL_ERROR',
+            'Error interno al procesar el intento de compra',
+            {},
+          );
+        }
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    const finalAttempt = await this.fetchExistingAttempt(userId, idempotencyKey);
+    if (finalAttempt) {
+      if (finalAttempt.requestHash !== requestHash) {
+        throw shopError(
+          HttpStatus.CONFLICT,
+          'IDEMPOTENCY_KEY_REUSED',
+          'Idempotency-Key has already been used with a different request payload',
+          { idempotencyKey },
+        );
+      }
+      if (finalAttempt.status === 'SUCCEEDED' && finalAttempt.successSnapshot) {
+        return finalAttempt.successSnapshot as unknown as CheckoutSuccessDto;
+      }
+      if (finalAttempt.status === 'REJECTED' && finalAttempt.errorCode) {
+        throw shopError(
+          this.statusForCode(finalAttempt.errorCode),
+          finalAttempt.errorCode,
+          finalAttempt.errorMessage ?? 'Solicitud rechazada previamente',
+          finalAttempt.errorDetails ?? {},
+        );
+      }
+      if (finalAttempt.status === 'FAILED') {
+        throw shopError(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          'INTERNAL_ERROR',
+          'Error interno al procesar el intento de compra',
+          {},
+        );
+      }
+    }
+
+    throw shopError(
+      HttpStatus.INTERNAL_SERVER_ERROR,
+      'INTERNAL_ERROR',
+      'El intento continúa en procesamiento, consulte el estado mediante GET /api/v1/shop/checkout-attempts/:idempotencyKey',
+      { idempotencyKey },
+    );
+  }
+
+
+  private async recordTerminalResolution(
+    userId: string,
+    idempotencyKey: string,
+    requestHash: string,
+    attemptId: string,
+    status: 'REJECTED' | 'FAILED',
     errorCode: string,
     errorMessage: string,
     errorDetails: Record<string, unknown>,
@@ -217,25 +389,47 @@ export class CheckoutConfirmationService {
         .build();
 
       const [existing] = await tx.query(checkPlan);
-      if (existing && (existing as any).status) {
-        return existing as unknown as CheckoutAttemptRow;
+      const existingRow = existing as unknown as CheckoutAttemptRow | undefined;
+      if (!existingRow || !existingRow.status) {
+        return null;
+      }
+      if (existingRow.status !== 'PROCESSING') {
+        return existingRow;
       }
 
-      // No winner: persist REJECTED attempt
-      const attemptId = randomUUID();
-      const insertPlan = this.prisma.client.raw.sql`
-        INSERT INTO public."checkoutAttempt" (\n          "id", "userId", "idempotencyKey", "requestHash", "status",
-          "errorCode", "errorMessage", "errorDetails", "createdAt", "updatedAt"
-        ) VALUES (
-          ${attemptId}, ${userId}, ${idempotencyKey}, ${requestHash}, 'REJECTED',
-          ${errorCode}, ${errorMessage}, ${JSON.stringify(errorDetails)}::jsonb, clock_timestamp(), clock_timestamp()
-        )
-      `.affectedCount().build();
+      if (
+        existingRow.status === 'PROCESSING' &&
+        existingRow.id === attemptId &&
+        existingRow.userId === userId &&
+        existingRow.requestHash === requestHash
+      ) {
+        const updatePlan = this.prisma.client.raw.sql`
+          UPDATE public."checkoutAttempt"
+          SET "status" = ${status},
+              "errorCode" = ${errorCode},
+              "errorMessage" = ${errorMessage},
+              "errorDetails" = ${JSON.stringify(errorDetails)}::jsonb,
+              "updatedAt" = clock_timestamp()
+          WHERE "id" = ${attemptId}
+            AND "userId" = ${userId}
+            AND "idempotencyKey" = ${idempotencyKey}
+            AND "requestHash" = ${requestHash}
+            AND "status" = 'PROCESSING'
+        `.affectedCount().build();
+        const stats = await tx.execute(updatePlan);
+        const affected = typeof stats === 'number' ? stats : (stats?.affectedRows ?? 0);
+        if (affected !== 1) {
+          const [recheck] = await tx.query(checkPlan);
+          const recheckRow = recheck as unknown as CheckoutAttemptRow | undefined;
+          return recheckRow && recheckRow.status ? recheckRow : null;
+        }
+        return null;
+      }
 
-      await tx.execute(insertPlan);
-      return null;
+      return existingRow;
     });
   }
+
 
   /**
    * Executes atomic purchase checkout confirmation:
@@ -302,6 +496,17 @@ export class CheckoutConfirmationService {
           existing.errorDetails ?? {},
         );
       }
+      if (existing.status === 'FAILED') {
+        throw shopError(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          'INTERNAL_ERROR',
+          'Error interno al procesar el intento de compra',
+          {},
+        );
+      }
+      if (existing.status === 'PROCESSING') {
+        return await this.waitForProcessingAttempt(buyerUserId, idempotencyKey, requestHash);
+      }
     }
 
     // New request: assert simulation gating before proceeding
@@ -335,6 +540,32 @@ export class CheckoutConfirmationService {
     const sortedProductIds = [...new Set(consolidatedItems.map((i) => i.productId))].sort(
       (a, b) => (a < b ? -1 : a > b ? 1 : 0),
     );
+
+    // Pre-flight verify quote signature, expiration, and full canonical binding using authoritative PostgreSQL clock
+    // BEFORE acquiring PROCESSING reservation (CI-SHOP-001 v1.2 S12)
+    const preflightClock = await this.fetchAuthoritativeDeliveryClock();
+    const preflightQuote = verifyQuoteToken(
+      dto.quoteToken,
+      buyerUserId,
+      preflightClock,
+    );
+    assertCanonicalIntentMatchesQuote(canonicalIntent, preflightQuote);
+
+    // Acquire unique PROCESSING reservation in a separate pre-purchase transaction
+    const reservation = await this.acquireProcessingReservation(
+      buyerUserId,
+      idempotencyKey,
+      requestHash,
+    );
+
+    if (!reservation.acquired) {
+      // Duplicate same key+hash waits/serializes and replays same 201, never starts second charge
+      return await this.waitForProcessingAttempt(
+        buyerUserId,
+        idempotencyKey,
+        requestHash,
+      );
+    }
 
     // 5. Execute single pinned business transaction
     try {
@@ -393,6 +624,22 @@ export class CheckoutConfirmationService {
               attemptRow.errorDetails ?? {},
             );
           }
+          if (attemptRow.status === 'FAILED') {
+            throw shopError(
+              HttpStatus.INTERNAL_SERVER_ERROR,
+              'INTERNAL_ERROR',
+              'Error interno al procesar el intento de compra',
+              {},
+            );
+          }
+        }
+
+        // A missing or replaced reservation cannot authorize any business mutation.
+        if (!lockedAttempt || !(lockedAttempt as CheckoutAttemptRow).status ||
+            (lockedAttempt as CheckoutAttemptRow).id !== reservation.attemptId ||
+            (lockedAttempt as CheckoutAttemptRow).status !== 'PROCESSING') {
+          throw shopError(HttpStatus.INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR',
+            'No se pudo verificar la propiedad del intento de compra');
         }
 
         // LOCK LEVEL 1: Settings locked FOR SHARE
@@ -497,57 +744,8 @@ export class CheckoutConfirmationService {
         // Verify quote token cryptographic signature, buyer ownership, and expiry against nowDb
         const quotePayload = verifyQuoteToken(dto.quoteToken, buyerUserId, nowDb);
 
-        // SIGNED INTENT BINDING: Enforce strict identity of items/quantities against signed quote
-        if (quotePayload.items.length !== consolidatedItems.length) {
-          throw shopError(
-            HttpStatus.BAD_REQUEST,
-            'VALIDATION_ERROR',
-            'Los productos no coinciden con la cotización firmada',
-            { reason: 'ITEMS_MISMATCH' },
-          );
-        }
-
-        for (let i = 0; i < consolidatedItems.length; i++) {
-          const reqItem = consolidatedItems[i]!;
-          const qItem = quotePayload.items[i]!;
-          if (reqItem.productId !== qItem.productId || reqItem.quantity !== qItem.quantity) {
-            throw shopError(
-              HttpStatus.BAD_REQUEST,
-              'VALIDATION_ERROR',
-              'La composición o cantidades de los productos no coinciden con la cotización firmada',
-              {
-                reason: 'ITEMS_MISMATCH',
-                requested: { productId: reqItem.productId, quantity: reqItem.quantity },
-                quoted: { productId: qItem.productId, quantity: qItem.quantity },
-              },
-            );
-          }
-        }
-
-        // SIGNED INTENT BINDING: Enforce strict identity of delivery fields against signed quote
-        const reqDelivery = canonicalIntent.delivery;
-        const qDelivery = quotePayload.delivery;
-        const reqDate = toInstant(reqDelivery.scheduledDeliveryDate).toString();
-        const qDate = toInstant(qDelivery.scheduledDeliveryDate).toString();
-
-        const deliveryMismatch =
-          reqDelivery.recipient.name !== qDelivery.recipient.name ||
-          reqDelivery.recipient.phone !== qDelivery.recipient.phone ||
-          reqDelivery.zoneId !== qDelivery.zoneId ||
-          reqDelivery.deliveryAddress !== qDelivery.deliveryAddress ||
-          reqDelivery.deliveryLocation.lat !== qDelivery.deliveryLocation.lat ||
-          reqDelivery.deliveryLocation.lng !== qDelivery.deliveryLocation.lng ||
-          reqDate !== qDate ||
-          (reqDelivery.deliveryNotes ?? '') !== (qDelivery.deliveryNotes ?? '');
-
-        if (deliveryMismatch) {
-          throw shopError(
-            HttpStatus.BAD_REQUEST,
-            'VALIDATION_ERROR',
-            'Los datos de entrega no coinciden con la cotización firmada',
-            { reason: 'DELIVERY_MISMATCH' },
-          );
-        }
+        // SIGNED INTENT BINDING: Enforce strict identity of items/quantities and delivery against signed quote
+        assertCanonicalIntentMatchesQuote(canonicalIntent, quotePayload);
 
         // Enforce settings version binding
         if (quotePayload.settingsVersion !== currentSettings.version) {
@@ -858,7 +1056,7 @@ export class CheckoutConfirmationService {
         const orderId = randomUUID();
         const receiptId = randomUUID();
         const paymentAttemptId = randomUUID();
-        const checkoutAttemptId = randomUUID();
+        const checkoutAttemptId = reservation.attemptId;
         const year = nowDb.toZonedDateTimeISO('America/Guayaquil').year;
         const nonce = randomUUID().replace(/-/g, '').toUpperCase();
         const commercialOrderNumber = `RG-${year}-${nonce}`;
@@ -1016,54 +1214,92 @@ export class CheckoutConfirmationService {
           },
         };
 
-        // J. Persist CheckoutAttempt SUCCEEDED
-        const insertAttemptPlan = this.prisma.client.raw.sql`
-          INSERT INTO public."checkoutAttempt" (
-            "id", "userId", "idempotencyKey", "requestHash", "status",
-            "orderId", "receiptId", "paymentAttemptId", "successSnapshot", "createdAt", "updatedAt"
-          ) VALUES (
-            ${checkoutAttemptId}, ${buyerUserId}, ${idempotencyKey}, ${requestHash}, 'SUCCEEDED',
-            ${orderId}, ${receiptId}, ${paymentAttemptId},
-            ${JSON.stringify(successResponse)}::jsonb, clock_timestamp(), clock_timestamp()
-          )
+        // J. Atomically UPDATE existing CheckoutAttempt PROCESSING to SUCCEEDED (CI-SHOP-001 v1.2 S12)
+        const updateAttemptPlan = this.prisma.client.raw.sql`
+          UPDATE public."checkoutAttempt"
+          SET "status" = 'SUCCEEDED',
+              "orderId" = ${orderId},
+              "receiptId" = ${receiptId},
+              "paymentAttemptId" = ${paymentAttemptId},
+              "successSnapshot" = ${JSON.stringify(successResponse)}::jsonb,
+              "updatedAt" = clock_timestamp()
+          WHERE "id" = ${reservation.attemptId}
+            AND "userId" = ${buyerUserId}
+            AND "idempotencyKey" = ${idempotencyKey}
+            AND "requestHash" = ${requestHash}
+            AND "status" = 'PROCESSING'
         `.affectedCount().build();
-        await tx.execute(insertAttemptPlan);
+        const updateStats = await tx.execute(updateAttemptPlan);
+        const affected = typeof updateStats === 'number' ? updateStats : (updateStats?.affectedRows ?? 0);
+
+        if (affected !== 1) {
+          throw shopError(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            'INTERNAL_ERROR',
+            'No se pudo verificar la propiedad del intento de compra',
+          );
+        }
 
         return successResponse;
       });
     } catch (err: any) {
-      // If business rejection, serialize and record/resolve terminal attempt
       const errorObj = err?.response?.error;
-      if (errorObj && typeof errorObj.code === 'string') {
-        const winnerOrResolved = await this.recordTerminalRejection(
-          buyerUserId,
-          idempotencyKey,
-          requestHash,
-          errorObj.code,
-          errorObj.message ?? err.message,
-          (errorObj.details as Record<string, unknown>) ?? {},
-        );
+      const isShopRejection = errorObj && typeof errorObj.code === 'string';
+      const errorCode = isShopRejection ? errorObj.code : 'INTERNAL_ERROR';
+      const errorMessage = isShopRejection && this.statusForCode(errorCode) < 500
+        ? (errorObj.message ?? err.message)
+        : 'Error interno al procesar el intento de compra';
+      const errorDetails = isShopRejection && this.statusForCode(errorCode) < 500
+        ? ((errorObj.details as Record<string, unknown>) ?? {})
+        : {};
+      const targetStatus: 'REJECTED' | 'FAILED' =
+        isShopRejection && this.statusForCode(errorCode) < 500 ? 'REJECTED' : 'FAILED';
 
-        if (winnerOrResolved) {
-          if (winnerOrResolved.requestHash !== requestHash) {
-            throw shopError(
-              HttpStatus.CONFLICT,
-              'IDEMPOTENCY_KEY_REUSED',
-              'Idempotency-Key has already been used with a different request payload',
-              { idempotencyKey },
-            );
-          }
-          if (winnerOrResolved.status === 'SUCCEEDED' && winnerOrResolved.successSnapshot) {
-            return winnerOrResolved.successSnapshot as unknown as CheckoutSuccessDto;
-          }
-          if (winnerOrResolved.status === 'REJECTED' && winnerOrResolved.errorCode) {
-            throw shopError(
-              this.statusForCode(winnerOrResolved.errorCode),
-              winnerOrResolved.errorCode,
-              winnerOrResolved.errorMessage ?? 'Solicitud rechazada previamente',
-              winnerOrResolved.errorDetails ?? {},
-            );
-          }
+      const winnerOrResolved = await this.recordTerminalResolution(
+        buyerUserId,
+        idempotencyKey,
+        requestHash,
+        reservation.attemptId,
+        targetStatus,
+        errorCode,
+        errorMessage,
+        errorDetails,
+      );
+
+
+      if (winnerOrResolved) {
+        if (winnerOrResolved.requestHash !== requestHash) {
+          throw shopError(
+            HttpStatus.CONFLICT,
+            'IDEMPOTENCY_KEY_REUSED',
+            'Idempotency-Key has already been used with a different request payload',
+            { idempotencyKey },
+          );
+        }
+        if (
+          winnerOrResolved.status === 'SUCCEEDED' &&
+          winnerOrResolved.successSnapshot
+        ) {
+          return winnerOrResolved.successSnapshot as unknown as CheckoutSuccessDto;
+        }
+        if (
+          winnerOrResolved.status === 'REJECTED' &&
+          winnerOrResolved.errorCode
+        ) {
+          throw shopError(
+            this.statusForCode(winnerOrResolved.errorCode),
+            winnerOrResolved.errorCode,
+            winnerOrResolved.errorMessage ?? 'Solicitud rechazada previamente',
+            winnerOrResolved.errorDetails ?? {},
+          );
+        }
+        if (winnerOrResolved.status === 'FAILED') {
+          throw shopError(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            'INTERNAL_ERROR',
+            'Error interno al procesar el intento de compra',
+            {},
+          );
         }
       }
 

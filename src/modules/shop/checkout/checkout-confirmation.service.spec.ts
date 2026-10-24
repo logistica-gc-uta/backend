@@ -13,16 +13,17 @@ describe('CheckoutConfirmationService unit tests', () => {
     mockPrisma = {
       client: {
         raw: {
-          sql: jest.fn().mockReturnValue({
-            returnsRow: jest.fn().mockReturnValue({
-              build: jest.fn().mockReturnValue({}),
-            }),
+          sql: jest.fn().mockImplementation(() => ({
+            returnsRow: jest.fn().mockImplementation((spec: any) => ({
+              build: jest.fn().mockReturnValue({ spec }),
+            })),
             affectedCount: jest.fn().mockReturnValue({
               build: jest.fn().mockReturnValue({}),
             }),
             build: jest.fn().mockReturnValue({}),
-          }),
+          })),
         },
+
         transaction: jest.fn().mockImplementation(async (cb: any) => {
           const tx = {
             execute: jest.fn().mockResolvedValue(1),
@@ -106,17 +107,69 @@ describe('CheckoutConfirmationService unit tests', () => {
   });
 
   it('rejects invalid card fixture with 422 CARD_INVALID', async () => {
+    const { signQuoteToken } = await import('./quote-token.util.js');
+    process.env.JWT_SECRET = 'supersecretlongenough12345678901234567890';
+    const prodId = '11111111-1111-4111-8111-111111111111';
+    const zoneId = '22222222-2222-4222-8222-222222222222';
+    const buyerUserId = 'user-1';
+
+    const quoteToken = signQuoteToken({
+      buyerUserId,
+      issuedAt: new Date().toISOString(),
+      validUntil: new Date(Date.now() + 600000).toISOString(),
+      settingsVersion: 1,
+      currency: 'USD',
+      items: [{ productId: prodId, quantity: 1, unitPriceCents: 1000, lineTotalCents: 1000 }],
+      delivery: {
+        zoneId,
+        recipient: { name: 'Juan', phone: '0991234567' },
+        deliveryAddress: 'Av. Cevallos 100',
+        deliveryLocation: { lat: -1.24, lng: -78.61 },
+        scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+      },
+      subtotalCents: 1000,
+      shippingAmountCents: 0,
+      tax: { mode: 'SIMULATED', enabled: true, rateBps: 1500, amountCents: 150 },
+      totalCents: 1150,
+    });
+
+    let queryCount = 0;
+    // The invalid fixture is rejected after ownership is verified.
+    const { buildCanonicalIntent, hashCanonicalIntent } = await import('./checkout-intent.util.js');
+    const invalidIntent = buildCanonicalIntent({
+      items: [{ productId: prodId, quantity: 1 }],
+      delivery: {
+        recipient: { name: 'Juan', phone: '0991234567' }, zoneId,
+        deliveryAddress: 'Av. Cevallos 100',
+        deliveryLocation: { lat: -1.24, lng: -78.61 },
+        scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+      }, quoteToken, cardFixtureId: 'UNKNOWN_FIXTURE',
+    });
+    const invalidHash = hashCanonicalIntent(invalidIntent);
+    mockPrisma.client.transaction.mockImplementation(async (cb: any) => cb({
+      execute: jest.fn().mockResolvedValue(1),
+      query: jest.fn().mockImplementation(async () => {
+        queryCount++;
+        if (queryCount === 1) return [];
+        if (queryCount === 2) return [{ instant: Temporal.Now.instant() }];
+        if (queryCount === 3) return [{ locked: 1 }];
+        if (queryCount === 4) return [{ id: 'attempt-1', status: 'PROCESSING', requestHash: invalidHash }];
+        return [{ instant: Temporal.Now.instant() }];
+      }),
+    }));
+    jest.spyOn(service as any, 'acquireProcessingReservation').mockResolvedValue({ acquired: true, attemptId: 'attempt-1' });
+
     await expect(
-      service.confirmCheckout('user-1', '77777777-7777-4777-8777-777777777777', {
-        items: [{ productId: 'p1', quantity: 1 }],
+      service.confirmCheckout(buyerUserId, '77777777-7777-4777-8777-777777777777', {
+        items: [{ productId: prodId, quantity: 1 }],
         delivery: {
           recipient: { name: 'Juan', phone: '0991234567' },
-          zoneId: 'z1',
-          deliveryAddress: 'Calle 1',
-          deliveryLocation: { lat: -1.2, lng: -78.6 },
+          zoneId,
+          deliveryAddress: 'Av. Cevallos 100',
+          deliveryLocation: { lat: -1.24, lng: -78.61 },
           scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
         },
-        quoteToken: 'tok',
+        quoteToken,
         paymentCard: {
           number: '4111 1111 1111 1111', // Not a demo fixture
           holderName: 'PRUEBA APROBADA',
@@ -134,6 +187,7 @@ describe('CheckoutConfirmationService unit tests', () => {
       },
     });
   });
+
 
   it('throws 409 IDEMPOTENCY_KEY_REUSED when same key was previously used with a different request hash', async () => {
     mockPrisma.client.transaction.mockImplementation(async (cb: any) => {
@@ -291,30 +345,49 @@ describe('CheckoutConfirmationService unit tests', () => {
       totalCents: 1150,
     });
 
+    const { buildCanonicalIntent, hashCanonicalIntent } = await import('./checkout-intent.util.js');
+    const intent = buildCanonicalIntent({
+      items: [{ productId: prodId, quantity: 1 }],
+      delivery: {
+        recipient: { name: 'Juan', phone: '0991234567' },
+        zoneId,
+        deliveryAddress: 'Av. Cevallos 100',
+        deliveryLocation: { lat: -1.24, lng: -78.61 },
+        scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+      },
+      quoteToken,
+      cardFixtureId: 'DEMO_APPROVED',
+    });
+    const matchingHash = hashCanonicalIntent(intent);
+
+    jest.spyOn(service as any, 'acquireProcessingReservation').mockResolvedValue({ acquired: true, attemptId: 'attempt-1' });
     let queryCall = 0;
     mockPrisma.client.transaction.mockImplementation(async (cb: any) => {
       const tx = {
         execute: jest.fn().mockResolvedValue(1),
-        query: jest.fn().mockImplementation(async () => {
-          queryCall++;
-          if (queryCall === 1) return []; // initial attempt check
-          if (queryCall === 2) {
-            // lock attempt
-            return [{ id: 'attempt-1', status: 'PROCESSING', requestHash: 'hash-1' }];
+        query: jest.fn().mockImplementation(async (plan: any) => {
+          if (plan?.spec?.instant) {
+            return [{ instant: Temporal.Now.instant() }];
           }
+          queryCall++;
+          if (queryCall === 1) return []; // no existing attempt
+          if (queryCall === 2) return []; // advisory lock Level 0
           if (queryCall === 3) {
+            return [{ id: 'attempt-1', status: 'PROCESSING', requestHash: matchingHash }];
+          }
+          if (queryCall === 4) {
             // discovery: product category was cat-A
             return [{ categoryId: 'cat-A' }];
           }
-          if (queryCall === 4) {
+          if (queryCall === 5) {
             // category lock: cat-A locked FOR SHARE
             return [{ id: 'cat-A', isActive: true }];
           }
-          if (queryCall === 5) {
+          if (queryCall === 6) {
             // lockInventoryProduct
             return [{ id: prodId, name: 'Rosas Rojas', price: 10, stock: 10 }];
           }
-          if (queryCall === 6) {
+          if (queryCall === 7) {
             // product lock: product category concurrently changed to cat-B (unlocked!)
             return [
               {
@@ -330,7 +403,7 @@ describe('CheckoutConfirmationService unit tests', () => {
               },
             ];
           }
-          if (queryCall === 7) {
+          if (queryCall === 8) {
             // card lock
             return [
               {
@@ -342,12 +415,9 @@ describe('CheckoutConfirmationService unit tests', () => {
               },
             ];
           }
-          if (queryCall === 8) {
-            // nowDb
-            return [{ instant: Temporal.Now.instant() }];
-          }
           return [];
         }),
+
       };
       return cb(tx);
     });
@@ -384,5 +454,62 @@ describe('CheckoutConfirmationService unit tests', () => {
         },
       },
     });
+  });
+
+  it.each([
+    ['missing', null],
+    ['different owner', { id: 'another-attempt', status: 'PROCESSING' }],
+  ])('fails closed before business work when reserved attempt is %s under key lock', async (_case, lockedRow) => {
+    const { signQuoteToken } = await import('./quote-token.util.js');
+    process.env.JWT_SECRET = 'unit-only-dummy-secret-12345678901234567890';
+    const buyerUserId = 'user-1';
+    const productId = '11111111-1111-4111-8111-111111111111';
+    const zoneId = '22222222-2222-4222-8222-222222222222';
+    const delivery = {
+      recipient: { name: 'Juan', phone: '0991234567' }, zoneId,
+      deliveryAddress: 'Av. Cevallos 100',
+      deliveryLocation: { lat: -1.24, lng: -78.61 },
+      scheduledDeliveryDate: '2030-11-15T15:00:00.000Z',
+    };
+    const quoteToken = signQuoteToken({
+      buyerUserId, issuedAt: new Date().toISOString(),
+      validUntil: new Date(Date.now() + 600000).toISOString(),
+      settingsVersion: 1, currency: 'USD',
+      items: [{ productId, quantity: 1, unitPriceCents: 1000, lineTotalCents: 1000 }],
+      delivery, subtotalCents: 1000, shippingAmountCents: 0,
+      tax: { mode: 'SIMULATED', enabled: true, rateBps: 1500, amountCents: 150 },
+      totalCents: 1150,
+    });
+    const { buildCanonicalIntent, hashCanonicalIntent } = await import('./checkout-intent.util.js');
+    const requestHash = hashCanonicalIntent(buildCanonicalIntent({
+      items: [{ productId, quantity: 1 }], delivery, quoteToken,
+      cardFixtureId: 'DEMO_APPROVED',
+    }));
+    let queryCount = 0;
+    const execute = jest.fn().mockResolvedValue(1);
+    mockPrisma.client.transaction.mockImplementation(async (cb: any) => cb({
+      execute,
+      query: jest.fn().mockImplementation(async () => {
+        queryCount++;
+        if (queryCount === 1) return []; // no existing attempt
+        if (queryCount === 2) return [{ instant: Temporal.Now.instant() }]; // DB preflight
+        if (queryCount === 3) return [{ locked: 1 }]; // advisory lock
+        if (queryCount === 4) return lockedRow ? [{ ...lockedRow, requestHash }] : []; // ownership read
+        return []; // terminal resolution after rollback
+      }),
+    }));
+
+    await expect(service.confirmCheckout(buyerUserId, '88888888-8888-4888-8888-888888888891', {
+      items: [{ productId, quantity: 1 }], delivery, quoteToken,
+      paymentCard: {
+        number: '9000 0000 0000 0001', holderName: 'PRUEBA APROBADA',
+        expiresMonth: 12, expiresYear: 2030, cvv: '111',
+      },
+    } as any)).rejects.toMatchObject({
+      status: HttpStatus.INTERNAL_SERVER_ERROR,
+      response: { error: { code: 'INTERNAL_ERROR', details: {} } },
+    });
+    expect(mockSettings.getPublicSettings).not.toHaveBeenCalled();
+    expect(execute).toHaveBeenCalledTimes(1); // only reservation INSERT, no stock/card writes
   });
 });
