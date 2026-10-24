@@ -336,6 +336,95 @@ This document records the architectural decisions, contract reconciliation, sche
     - Serialization of duplicates: Duplicate requests with identical key and payload wait on the transaction advisory lock and replay the winner's confirmed 201 response. Different payloads with the same key reject with HTTP 409 `IDEMPOTENCY_KEY_REUSED`.
     - Error resolution: Business rejections and failures atomically record terminal `REJECTED` or `FAILED` state under the advisory lock.
 
+### 9.2 Incident Diagnosis & Root Cause Analysis
+- **Historical account (not independently verified):** Previous Gemini D report attributed a stall to socket teardown; the actual cause of all ACP stalls is undetermined. The historical test counts and cleanup receipts below are not fresh execution evidence.
+- **Previously reported suspected causes (not a universal stall diagnosis):**
+  1. *Unbounded Socket Proxy Teardown in Recovery Test:* In `test/shop-checkout-recovery-v12.e2e-spec.ts`, the TCP socket proxy did not track active client/target sockets and invoked `proxyServer.close(callback)` without forcibly destroying open sockets. In Node.js, `server.close()` waits indefinitely for active keep-alive HTTP connections to close, causing the Jest test process and event loop to hang indefinitely. Combined with `jest.setTimeout(240_000)` (4 minutes) and no external command timeout, bash hung until the 30-minute harness stall watchdog fired.
+  2. *Prisma 8 Raw Codec & Type Errors:* `checkout-attempt.service.ts` attempted to use `'pg/timestamptz@1'` instead of the emitted contract codec `'pg/timestamptz-temporal@1'`, and compared `SqlStatementStats` directly against numeric primitives (`stats === 1` and `stats === 0`), failing `pnpm build` with 7 TypeScript compilation errors.
+  3. *Malformed Quote Payload in Concurrency Test:* `test/shop-checkout-concurrency-v12.e2e-spec.ts` signed tokens using incorrect property keys (`sub`, `version`, `pricing`) instead of the canonical `QuoteTokenPayload` (`buyerUserId`, `issuedAt`, `validUntil`, `settingsVersion`), causing intent validation to fail immediately with HTTP 400.
+- **Remediation Applied:**
+  - Tracked all active sockets in `Set<Socket>` and forcibly destroyed them before closing proxy server, with bounded timeouts and Superagent request deadlines.
+  - Corrected codecs to `'pg/timestamptz-temporal@1'` and extracted `affectedRows` from `SqlStatementStats`.
+  - Reconciled quote token payloads with canonical schema and ensured sorted item composition in test helpers.
+
+### 9.3 Historical worker report (unverified)
+
+The following original worker claims are retained for traceability, not accepted as current verification. Section 9.5 supersedes these counts and cleanup claims.
+- **Unit Test Execution:**
+  - Command: `node --experimental-vm-modules ./node_modules/jest/bin/jest.js --roots '<rootDir>/src' --runInBand --runTestsByPath src/modules/shop/checkout/*.spec.ts`
+  - Result: 7 passed suites, 74 passed tests, 0 failed (2.155 s).
+  - Suites:
+    - `checkout-attempt.controller.spec.ts`: 6 passed (UUIDv4 validation, 404 IDOR protection, exact projection, REJECTED state, FAILED state, stale reconciliation).
+    - `checkout-confirmation.service.spec.ts`: 6 passed.
+    - `checkout-intent.util.spec.ts`: 12 passed.
+    - `checkout-money.util.spec.ts`: 13 passed.
+    - `checkout.service.spec.ts`: 14 passed.
+    - `quote-token.util.spec.ts`: 13 passed.
+    - `simulated-card.spec.ts`: 10 passed.
+- **E2E Recovery & Durability Execution (Owned Real PostgreSQL Container):**
+  - Command: `node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-e2e.json --runInBand --runTestsByPath test/shop-checkout-recovery-v12.e2e-spec.ts`
+  - Result: 1 passed suite, 13 passed tests, 0 failed (10.223 s).
+  - Container receipt: `containerId=52c71dcf759888ac56547aaea534dd7a70dceb8890084e0f3e1efb5574f9ff7c`.
+  - Cleanup verified: `[TEST-CONTAINER-CLEANUP] containerId=52c71dcf759888ac56547aaea534dd7a70dceb8890084e0f3e1efb5574f9ff7c`.
+  - Verified cases:
+    - 401 unauthenticated
+    - 403 ADMIN / 403 DRIVER
+    - 400 VALIDATION_ERROR for non-UUIDv4
+    - 404 CHECKOUT_ATTEMPT_NOT_FOUND for unknown key
+    - 404 IDOR protection for key owned by another client
+    - Exact DTO projection matching OpenAPI without sensitive leakage
+    - Non-mutating GET: 5 repeated status queries produce zero changes to stock, card balance, or orders
+    - Observable `PROCESSING` state while attempt is active under advisory lock
+    - Stale orphan reconciler: marks stale (>15 min) unowned PROCESSING attempt FAILED with safe `INTERNAL_ERROR` without money/stock side-effects
+    - Replay of FAILED POST with identical key/payload does not create new purchase
+    - Real lost response after backend commit simulated via fixture-only socket proxy: socket abruptly severed upon commit; client recovers order/receipt IDs via GET and retries POST with identical Idempotency-Key receiving original 201 with identical body; card debited ONCE and stock decremented ONCE
+    - Snapshot immutability: PurchaseReceipt and OrderItem snapshots remain 100% frozen after admin updates product price, product name, and settings tax rate
+- **E2E Concurrency Protection Execution (Owned Real PostgreSQL Container):**
+  - Command: `node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-e2e.json --runInBand --runTestsByPath test/shop-checkout-concurrency-v12.e2e-spec.ts`
+  - Result: 1 passed suite, 2 passed tests, 0 failed (9.893 s).
+  - Container receipt: `containerId=ef944c14a43fd00c4014941fc52c034433021594e24b49e7d22303e06a0569eb`.
+  - Cleanup verified: `[TEST-CONTAINER-CLEANUP] containerId=ef944c14a43fd00c4014941fc52c034433021594e24b49e7d22303e06a0569eb`.
+  - Verified cases:
+    - Two CLIENTs on same LIMITED card with insufficient combined balance: exactly one succeeds (201 SUCCEEDED), the other rejected (422 INSUFFICIENT_DEMO_FUNDS); no overdraft, loser untouched, card debited only once.
+    - Two CLIENTs with opposite product input order: both succeed without deadlock; orders count increments by exactly 2.
+- **C2 Main Checkout Regression Execution (Owned Real PostgreSQL Container):**
+  - Command: `node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-e2e.json --runInBand --runTestsByPath test/shop-checkout-v12.e2e-spec.ts`
+  - Result: 1 passed suite, 28 passed tests, 0 failed (28.436 s).
+  - Container receipt: `containerId=63f1780fd9597f825c8f87dd5c9a5ecee7b7be912c1c9e234702be135ae6fa0c`.
+  - Cleanup verified: `[TEST-CONTAINER-CLEANUP] containerId=63f1780fd9597f825c8f87dd5c9a5ecee7b7be912c1c9e234702be135ae6fa0c`.
+- **Build & Quality Checks:**
+  - `pnpm build`: clean, exit code 0.
+  - `pnpm lint`: clean on all touched files (0 errors, 0 warnings).
+  - `git diff --check`: clean, exit code 0.
+
+### 9.4 Fresh native Pi correction (2026-10-24)
+- The previous D evidence above is historical and was not reproduced by its original worker's tracked Pi tools. This pass used `PI_MODEL=gpt-6-sol` (effort metadata not available from the tool).
+- New behavior-level RED: two ownership-guard cases (missing row and replaced owner row) failed before implementation, returning 404 from later business work and uncontracted `OWNERSHIP_LOST` respectively. After correction, both fail closed before settings/inventory work with safe HTTP 500 `INTERNAL_ERROR`; all 11 focused confirmation unit tests pass. Terminal FAILED replay also uses the neutral public code/message, and internal failures are recorded as FAILED rather than REJECTED.
+- Observed focused checkout units: 7 suites/80 tests passed. Type-check `pnpm exec tsc --noEmit --incremental false` initially found six pre-existing `clientUser.id` type errors in the attempt controller spec; after giving the test fixture a consistent `id`/`userId`, rerun exited 0. Targeted oxlint exited 0 with one existing unused-parameter warning in the confirmation spec. `git diff --check` exited 0.
+- Real-PostgreSQL recovery/concurrency/C2 and legacy regression, build and coverage gate were **not run in this pass**: the available Pi bash tool has no background execution capability for unknown-length commands; build and coverage also produce artifacts outside the authorized edit surfaces. No owned container was created or cleaned in this pass. Do not treat historical container IDs or counts as this pass's receipts.
+
+### 9.5 Current verified candidate (2026-10-24)
+
+- Global unit/coverage gate: **931 tests, 78 suites, exit 0**. Coverage: **87.20% statements, 80.06% branches, 84.07% functions, 89.16% lines**.
+  - Command: `env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null NODE_OPTIONS=--max-old-space-size=4096 pnpm run test:cov --runInBand --coverageThreshold='{"global":{"statements":80,"branches":80,"functions":80,"lines":80}}'`.
+  - The 4 GB heap limit applies only to this local process; CI configuration and coverage thresholds were not weakened. The manifest assertion now expects the actual 31 E2E suites.
+- Focused checkout units: **87 passed**, including stored-decision replay and deadline final-read cases through public `confirmCheckout(...)`; no private method invocation.
+- Real PostgreSQL checkout: **28 core + 2 concurrency + 14 recovery tests passed**. Each suite ran with `pnpm test:e2e --roots '<rootDir>' --runInBand --runTestsByPath test/<suite>.e2e-spec.ts`, ambient DB/JWT removed, and `DOTENV_CONFIG_PATH=/dev/null`.
+  - Recovery fixtures now eagerly start the POST, commit the durable reservation before simulating a held key, verify the actual owner's advisory lock, and await lock teardown.
+  - The bounded duplicate wait checks the unchanged public sanitized 500 envelope, 4.5–10 second elapsed bound, unchanged attempt DTO/timestamp, stock and card balance.
+  - Latest recovery container: `52dd652794c18d7938d43d6e96dd969a8a810ad2a61d6216780d21ec658064f7`; cleanup independently confirmed by Docker reporting no such object. Core and concurrency containers were also independently confirmed absent.
+- Legacy HTTP regression: **149 passed** — CLIENT orders 35, DRIVER routes 23, ADMIN guest orders 57, route assignment 28, route history 6. Legacy external-DB suites received separate freshly owned databases, never an ambient/shared URL.
+- `pnpm build`, strict `tsc --noEmit --incremental false`, and `git diff --check`: exit 0. Full lint: exit 0 with **13 warnings**; warnings were not hidden or treated as zero.
+- Prior failures are resolved, not counted as passes: fixture deadlock (300-second timeout), incorrect internal-message assertion, stale suite count, default-heap OOM, and a new parameterized test's missing TypeScript narrowing.
+- These local results do not claim remote CI approval or authorize merging.
+
+### 9.6 Independent bounded verification
+
+- The independent verifier found **no functional blocker** and personally reran the core checkout **28/28** and recovery **14/14** PostgreSQL suites (exit 0), then confirmed both owned containers absent. It made no source changes.
+- Its overall verdict was **PARTIAL**, not an unconditional feature/delivery approval: settings/quote/card and legacy acceptance used source review plus the recorded prior evidence; it did not repeat the global coverage gate, all acceptance suites, or remote CI.
+- Independently cleaned containers: `9d24bce7618baa5369556c567d4d803d0da619a6407efdb757e1d723ac0732d7` and `ad4e4658e4fc630172a3cd7eedc85a28a71b84640d0a35c24d2f4cc03ee8fa42`.
+- Advisory only: the passing recovery suite emits a `DEBUG 404 BODY` fixture log. No production credentials or payment data are included. This advisory did not trigger another correction or test sweep.
+- Remaining delivery steps: commit the reviewed D candidate, prepare the PR, and observe actual target-required remote CI. No merge is authorized.
 
 ## Key Learnings
 1. Preserving legacy Order schema integrity by projecting new commercial identifiers and receipt references from isolated order-linked tables prevents unintentional data leakage in endpoints that spread Order objects.
@@ -345,7 +434,7 @@ This document records the architectural decisions, contract reconciliation, sche
 5. In Prisma 8, self-emitting migrations via `node migrations/app/<dir>/migration.ts` recalculates content-addressed hashes and regenerates `ops.json` and `migration.json` deterministically from the underlying TypeScript migration AST.
 6. In Prisma 8, raw parameterized queries constructed via `client.raw.sql` with `.affectedCount().build()` and executed within `client.transaction(async tx => await tx.execute(plan))` eliminate race conditions in fixture bootstrap operations by delegating uniqueness enforcement to PostgreSQL's atomic `ON CONFLICT ("fixtureId") DO NOTHING`, bypassing the read-before-insert races inherent in ORM `findUnique`/`create` sequences.
 7. Strict integer validation for month and year in financial/card DTOs must verify `typeof val === 'number' && Number.isInteger(val)` to prevent implicit numeric coercion of string or float payloads prior to calendar arithmetic.
-8. Enforcing a strict three-tier database lock hierarchy (Level 1: `ShopBusinessSettings` FOR SHARE -> Level 2: `Product` inventory rows in deterministic ascending codepoint order FOR UPDATE -> Level 3: `SimulatedCard` FOR UPDATE) guarantees that concurrent checkouts and administrative settings updates serialize without circular deadlocks.
+8. Checkout follows a documented advisory/settings/category/product/card lock order; this is not a universal guarantee against deadlocks with every external transaction.
 9. Constructing a canonical intent hash strictly from non-sensitive parameters (consolidated items, normalized recipient/address, UTC scheduled instant, quote token, and fixtureId) enables reliable idempotency tracking and reuse detection while strictly guaranteeing that PAN, CVV, or cardholder credentials are never persisted, hashed, or logged.
 10. Validating idempotency before checking quote token expiration allows clients that experienced network disconnects or timeouts after commit to safely replay their request and retrieve their confirmed order references, even if the original quotation token expired during the transport retry window.
-11. Handling concurrent identical idempotency key submissions by catching PostgreSQL unique constraint violations (code 23505) and reloading the committed attempt state ensures that loser transactions cleanly serialize and return the winner's confirmed decision without duplicating charges, balance deductions, or inventory decrements.
+11. Acquire the durable intent with PostgreSQL INSERT ON CONFLICT DO NOTHING before the purchase transaction. A duplicate waits for the stored decision rather than creating another purchase; terminal updates require the original attempt ID, request hash and PROCESSING state.
