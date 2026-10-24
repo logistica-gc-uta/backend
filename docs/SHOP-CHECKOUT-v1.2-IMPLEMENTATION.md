@@ -318,6 +318,25 @@ This document records the architectural decisions, contract reconciliation, sche
   - `pnpm lint`: clean on all touched files (0 errors, 0 warnings).
   - `git diff --check`: clean, exit code 0.
 
+## 9. Task #33-D: Attempt Status, Durable Recovery & Concurrency Immunity Record
+
+### 9.1 Architectural Scope & Invariant Preservation
+- **Module Structure (`src/modules/shop/checkout/**`):**
+  - `checkout-attempt.controller.ts`: Exposes `GET /api/v1/shop/checkout-attempts/:idempotencyKey`. Protected with `JwtAuthGuard` and `RolesGuard`, restricted strictly to `Role.CLIENT`. Validates `idempotencyKey` as strict UUIDv4; throws HTTP 400 `VALIDATION_ERROR` for non-UUID strings. Returns exact `CheckoutAttemptStatusDto` projection. Returns HTTP 404 `CHECKOUT_ATTEMPT_NOT_FOUND` indistinguishably for both unknown keys and keys owned by another client (preventing IDOR enumeration).
+  - `dto/checkout-attempt-status.dto.ts`: Exact projection DTO defining `status` (`PROCESSING`, `SUCCEEDED`, `REJECTED`, `FAILED`), `checkoutAttemptId`, `orderId` (nullable), `receiptId` (nullable), `errorCode` (nullable), and `updatedAt` (ISO-8601 string). Strips `requestHash`, `paymentAttemptId`, `successSnapshot`, PAN, CVV, and internal balances.
+  - `checkout-attempt.service.ts`: Implements attempt status lookup and the internal bounded stale reconciler.
+    - Inspects PostgreSQL DB clock (`clock_timestamp()`) and evaluates conservative staleness (`>= 15 minutes`).
+    - Uses non-blocking `pg_try_advisory_xact_lock(hashtext('checkout_intent'), hashtext(userId || ':' || idempotencyKey))` in the identical namespace as the confirmation service.
+    - If the lock is acquired (proving no business transaction is actively running) and status remains `PROCESSING`, transitions the orphan attempt to `FAILED` with `INTERNAL_ERROR` and metadata `reason: STALE_PROCESSING_ORPHAN`.
+    - Never mutates inventory stock, never debits card balance, and never synthesizes orders or receipts.
+  - `checkout-confirmation.service.ts`:
+    - Pre-purchase durable reservation: Acquires unique `(userId, idempotencyKey)` reservation with status `PROCESSING` in a discrete transaction before the main business transaction.
+    - Lock serialization: Only the owner of the `PROCESSING` reservation proceeds to execute the business transaction.
+    - Atomic transition: The business transaction atomically updates the existing `PROCESSING` attempt to `SUCCEEDED` with `orderId`, `receiptId`, and frozen `successSnapshot`, ensuring `checkoutAttemptId` remains consistent across POST and GET.
+    - Serialization of duplicates: Duplicate requests with identical key and payload wait on the transaction advisory lock and replay the winner's confirmed 201 response. Different payloads with the same key reject with HTTP 409 `IDEMPOTENCY_KEY_REUSED`.
+    - Error resolution: Business rejections and failures atomically record terminal `REJECTED` or `FAILED` state under the advisory lock.
+
+
 ## Key Learnings
 1. Preserving legacy Order schema integrity by projecting new commercial identifiers and receipt references from isolated order-linked tables prevents unintentional data leakage in endpoints that spread Order objects.
 2. Separate monetary snapshot columns on PaymentAttempt (`subtotalCents`, `taxEnabled`, `taxRateBps`, `taxAmountCents`, `shippingAmountCents`, `totalCents`) mirror PurchaseReceipt and enable strict database CHECK constraints that enforce mathematical integrity (`amountCents = totalCents = subtotalCents + taxAmountCents`) at persistence time.
