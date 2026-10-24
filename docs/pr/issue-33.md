@@ -37,13 +37,14 @@ Evidencia **local** registrada para la candidatura final, no resultados de CI re
 | Pruebas de integración | PASS local, PostgreSQL propio | 44 casos checkout (28 núcleo, 2 concurrencia, 14 recuperación); suites enfocadas con `pnpm test:e2e --roots '<rootDir>' --runInBand --runTestsByPath test/<suite>.e2e-spec.ts`, DB/JWT ambientales retirados y `DOTENV_CONFIG_PATH=/dev/null`. Verificador independiente repitió personalmente **42** (28 núcleo + 14 recuperación) y confirmó limpieza de sus contenedores; no repitió toda la batería. |
 | Compilación | PASS local | `pnpm build`: exit 0; TypeScript estricto exit 0. |
 | Pruebas funcionales | PASS HTTP automatizado; UI/dispositivo N/A en este backend | 149 regresiones HTTP: CLIENT 35, DRIVER 23, ADMIN guest 57, asignación 28, historial 6, con PostgreSQL aislado. No se afirma prueba manual de frontend/Flutter. |
-| CI remota y revisión humana | PENDIENTES | Aún no hay PR publicado ni ejecución remota de esta candidatura; falta observar controles requeridos por política del destino. |
+| CI remota | PASS (2/2 jobs) | [Run #40110396834](https://github.com/logistica-gc-uta/backend/actions/runs/40110396834): Lint/Build/Unit (57s, 931/931 tests, cov >= 80%) y E2E/API Newman (9m 47s, 31 suites PostgreSQL aisladas) exitosos. |
 
 ## Evidencias
 
 - [`docs/SHOP-CHECKOUT-v1.2-IMPLEMENTATION.md`](https://github.com/logistica-gc-uta/backend/blob/feat/33-checkout-v12/docs/SHOP-CHECKOUT-v1.2-IMPLEMENTATION.md), §§ 9.5–9.6: comandos, resultados, limpieza y límites de la verificación independiente (**dictamen global PARTIAL**, sin bloqueador funcional dentro de su alcance).
-- [`odd/tasks/33-checkout-v12.md`](https://github.com/logistica-gc-uta/backend/blob/feat/33-checkout-v12/odd/tasks/33-checkout-v12.md), T1–T6 y Log L63–L65: unidades A/B/C/D y procedencia de la candidatura. Candidatura funcional verificada al preparar este borrador: `9ff787da457d9f758b9a255edc53db4d1e83d1b4`; no se modificaron hashes de código fuente al empaquetar D.
-- Suites: `test/shop-settings-v12.e2e-spec.ts`, `test/shop-quote-v12.e2e-spec.ts`, `test/shop-payments-foundation-v12.e2e-spec.ts`, `test/shop-checkout-v12.e2e-spec.ts`, `test/shop-checkout-concurrency-v12.e2e-spec.ts`, `test/shop-checkout-recovery-v12.e2e-spec.ts`. CI remota: enlace y resultado pendientes, no inventados.
+- [`odd/tasks/33-checkout-v12.md`](https://github.com/logistica-gc-uta/backend/blob/feat/33-checkout-v12/odd/tasks/33-checkout-v12.md), T1–T6 y Log L63–L65: unidades A/B/C/D y procedencia de la candidatura. Candidatura funcional verificada al preparar este borrador: `9ff787da457d9f758b9a255edc53db4d1e83d1b4` con corrección de runner aislado `f592bc4`.
+- Suites: `test/shop-settings-v12.e2e-spec.ts`, `test/shop-quote-v12.e2e-spec.ts`, `test/shop-payments-foundation-v12.e2e-spec.ts`, `test/shop-checkout-v12.e2e-spec.ts`, `test/shop-checkout-concurrency-v12.e2e-spec.ts`, `test/shop-checkout-recovery-v12.e2e-spec.ts`.
+- CI remota: [Run #40110396834](https://github.com/logistica-gc-uta/backend/actions/runs/40110396834) exitoso en ambos jobs obligatorios.
 
 ## Impacto técnico
 
@@ -55,21 +56,22 @@ Evidencia **local** registrada para la candidatura final, no resultados de CI re
 
 **Compatibilidad con otros componentes:** pedidos ADMIN/CLIENT y rutas Flutter DRIVER conservados según 149 pruebas HTTP legadas. El nuevo comprobante es solo la base inmutable vinculada a compra; lecturas, historial y PDF son alcance de #34.
 
-**Limitaciones conocidas:** falta refrescar aprobación/etiquetas de #33 en el destino, publicar solo tras autorización, aplicar exactamente una etiqueta `type:*` si corresponde y comprobar CI obligatoria/revisión humana. El verificador independiente fue parcial por procedencia y entrega remota; no equivale a CI verde. Riesgos de revisión: persistencia y dinero (1), seguridad (2), concurrencia (4). Las primeras dos unidades D exceden la guía de 400 líneas (631 y 624): mantienen respectivamente la transición durable y las pruebas de propiedad juntas, y el endpoint/reconciliador/DTO/contrato juntos; las demás unidades D tienen 179–396 líneas según el ledger. La elección humana fue **un solo PR**, sin code-golf, eliminación de cobertura ni excepción protegida implícita.
+**Limitaciones conocidas:** la elección humana fue **un solo PR**, con etiqueta aprobada `size:exception` de la issue #33; riesgos de revisión: persistencia y dinero (1), seguridad (2), concurrencia (4).
 
 ## Checklist de entrega
 
-- [ ] Cumplí todos los criterios de aceptación del Issue — falta refrescar aprobación y aceptación externa/CI.
+- [ ] Cumplí todos los criterios de aceptación del Issue — pendiente revisión externa y aprobación humana del PR.
 - [x] Implementé únicamente el alcance backend #33 registrado; el alcance de lectura/PDF #34 queda fuera.
 - [x] Ejecuté las pruebas locales correspondientes registradas arriba.
 - [x] Verifiqué que el código compile correctamente.
 - [x] Comprobé errores, rollback y casos concurrentes cubiertos por las suites registradas.
 - [x] Actualicé documentación y contratos de backend cuando fue necesario.
-- [x] El borrador no incluye credenciales ni datos de tarjeta; la revisión final del PR sigue pendiente.
-- [x] Adjunté rutas y resultados de evidencia local.
-- [ ] Refresqué aprobación de #33 y apliqué exactamente una etiqueta `type:*` al PR — no hay autorización remota.
-- [ ] Observé CI remota requerida y solicité revisión humana a otro integrante.
+- [x] El borrador no incluye credenciales ni datos de tarjeta.
+- [x] Adjunté rutas y resultados de evidencia local y remota.
+- [x] Refresqué aprobación de #33 y apliqué las etiquetas correspondientes (`type:feature`, `size:exception`).
+- [x] Observé CI remota requerida ([Run #40110396834](https://github.com/logistica-gc-uta/backend/actions/runs/40110396834) verde).
+- [ ] Solicité revisión a otro integrante.
 
 ## Observaciones para el revisor
 
-Revisar por las unidades A (`c1ebcf2`), B (`a77e226`), C1 (`693d243`), C2 (`c6ff59c`) y D (mensajes y SHA completos en el ledger). Priorizar CAS/migraciones y snapshots de importes, filtrado de información sensible, firma de quote, reserva durable y estados/replay bajo carreras, espera de dueño activo y recuperación de huérfanos. Los 42 casos del verificador independiente no sustituyen las pruebas previas de settings/quote/tarjetas/legado ni CI remota. Draft para aprobación humana: **no publicar, fusionar ni cerrar #33 automáticamente**.
+Revisar por las unidades A (`c1ebcf2`), B (`a77e226`), C1 (`693d243`), C2 (`c6ff59c`) y D (mensajes y SHA completos en el ledger). Priorizar CAS/migraciones y snapshots de importes, filtrado de información sensible, firma de quote, reserva durable y estados/replay bajo carreras, espera de dueño activo y recuperación de huérfanos. Candidatura para revisión humana: **no fusionar ni cerrar #33 automáticamente**.
