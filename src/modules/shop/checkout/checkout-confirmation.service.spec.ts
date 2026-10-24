@@ -456,6 +456,163 @@ describe('CheckoutConfirmationService unit tests', () => {
     });
   });
 
+
+  it('preflight verifies quote token against authoritative DB clock skew and acquires NO reservation when DB clock shows token expired', async () => {
+    const { signQuoteToken } = await import('./quote-token.util.js');
+    process.env.JWT_SECRET = 'supersecretlongenough12345678901234567890';
+    const prodId = '11111111-1111-4111-8111-111111111111';
+    const zoneId = '22222222-2222-4222-8222-222222222222';
+    const buyerUserId = 'user-1';
+
+    // Quote valid until 10 seconds in the future according to app clock
+    const validUntilIso = new Date(Date.now() + 10_000).toISOString();
+    const quoteToken = signQuoteToken({
+      buyerUserId,
+      issuedAt: new Date(Date.now() - 60_000).toISOString(),
+      validUntil: validUntilIso,
+      settingsVersion: 1,
+      currency: 'USD',
+      items: [{ productId: prodId, quantity: 1, unitPriceCents: 1000, lineTotalCents: 1000 }],
+      delivery: {
+        zoneId,
+        recipient: { name: 'Juan', phone: '0991234567' },
+        deliveryAddress: 'Av. Cevallos 100',
+        deliveryLocation: { lat: -1.24, lng: -78.61 },
+        scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+      },
+      subtotalCents: 1000,
+      shippingAmountCents: 0,
+      tax: { mode: 'SIMULATED', enabled: true, rateBps: 1500, amountCents: 150 },
+      totalCents: 1150,
+    });
+
+    let acquiredCalled = false;
+    // Mock DB clock returning a timestamp 20 seconds ahead of validUntil (DB clock skew!)
+    const dbClockInstant = Temporal.Instant.from(new Date(Date.now() + 30_000).toISOString());
+    mockPrisma.client.transaction.mockImplementation(async (cb: any) => {
+      const tx = {
+        execute: jest.fn().mockImplementation(async () => {
+          acquiredCalled = true;
+          return 1;
+        }),
+        query: jest.fn().mockImplementation(async (plan: any) => {
+          return [{ instant: dbClockInstant }];
+        }),
+      };
+      return cb(tx);
+    });
+
+    await expect(
+      service.confirmCheckout(
+        buyerUserId,
+        '88888888-8888-4888-8888-888888888888',
+        {
+          items: [{ productId: prodId, quantity: 1 }],
+          delivery: {
+            recipient: { name: 'Juan', phone: '0991234567' },
+            zoneId,
+            deliveryAddress: 'Av. Cevallos 100',
+            deliveryLocation: { lat: -1.24, lng: -78.61 },
+            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+          },
+          quoteToken,
+          paymentCard: {
+            number: '9000 0000 0000 0001',
+            holderName: 'PRUEBA APROBADA',
+            expiresMonth: 12,
+            expiresYear: 2030,
+            cvv: '111',
+          },
+        } as any,
+      ),
+    ).rejects.toMatchObject({
+      status: HttpStatus.CONFLICT,
+      response: {
+        error: {
+          code: 'QUOTE_EXPIRED',
+        },
+      },
+    });
+
+    // Verification: Reservation was NEVER acquired!
+    expect(acquiredCalled).toBe(false);
+  });
+
+  it('preflight validates full canonical delivery binding and acquires NO reservation on delivery mismatch', async () => {
+    const { signQuoteToken } = await import('./quote-token.util.js');
+    process.env.JWT_SECRET = 'supersecretlongenough12345678901234567890';
+    const prodId = '11111111-1111-4111-8111-111111111111';
+    const zoneId = '22222222-2222-4222-8222-222222222222';
+    const buyerUserId = 'user-1';
+
+    const quoteToken = signQuoteToken({
+      buyerUserId,
+      issuedAt: new Date().toISOString(),
+      validUntil: new Date(Date.now() + 600000).toISOString(),
+      settingsVersion: 1,
+      currency: 'USD',
+      items: [{ productId: prodId, quantity: 1, unitPriceCents: 1000, lineTotalCents: 1000 }],
+      delivery: {
+        zoneId,
+        recipient: { name: 'Juan Original', phone: '0991234567' },
+        deliveryAddress: 'Av. Cevallos 100',
+        deliveryLocation: { lat: -1.24, lng: -78.61 },
+        scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+      },
+      subtotalCents: 1000,
+      shippingAmountCents: 0,
+      tax: { mode: 'SIMULATED', enabled: true, rateBps: 1500, amountCents: 150 },
+      totalCents: 1150,
+    });
+
+    let acquiredCalled = false;
+    mockPrisma.client.transaction.mockImplementation(async (cb: any) => {
+      const tx = {
+        execute: jest.fn().mockImplementation(async () => {
+          acquiredCalled = true;
+          return 1;
+        }),
+        query: jest.fn().mockResolvedValue([{ instant: Temporal.Now.instant() }]),
+      };
+      return cb(tx);
+    });
+
+    // Request payload changes recipient name
+    await expect(
+      service.confirmCheckout(
+        buyerUserId,
+        '88888888-8888-4888-8888-888888888889',
+        {
+          items: [{ productId: prodId, quantity: 1 }],
+          delivery: {
+            recipient: { name: 'Juan Modificado', phone: '0991234567' },
+            zoneId,
+            deliveryAddress: 'Av. Cevallos 100',
+            deliveryLocation: { lat: -1.24, lng: -78.61 },
+            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+          },
+          quoteToken,
+          paymentCard: {
+            number: '9000 0000 0000 0001',
+            holderName: 'PRUEBA APROBADA',
+            expiresMonth: 12,
+            expiresYear: 2030,
+            cvv: '111',
+          },
+        } as any,
+      ),
+    ).rejects.toMatchObject({
+      status: HttpStatus.BAD_REQUEST,
+      response: {
+        error: {
+          code: 'VALIDATION_ERROR',
+        },
+      },
+    });
+
+    expect(acquiredCalled).toBe(false);
+  });
+
   it.each([
     ['missing', null],
     ['different owner', { id: 'another-attempt', status: 'PROCESSING' }],
@@ -511,5 +668,208 @@ describe('CheckoutConfirmationService unit tests', () => {
     });
     expect(mockSettings.getPublicSettings).not.toHaveBeenCalled();
     expect(execute).toHaveBeenCalledTimes(1); // only reservation INSERT, no stock/card writes
+  });
+
+  // Public replay: only the persisted attempt changes between polls; the purchase path stays untouched.
+  const replay = async (observations: Array<Record<string, unknown>>) => {
+    const { buildCanonicalIntent, hashCanonicalIntent } = await import('./checkout-intent.util.js');
+    const key = '88888888-8888-4888-8888-888888888892';
+    const dto = {
+      items: [{ productId: '11111111-1111-4111-8111-111111111111', quantity: 1 }],
+      delivery: {
+        recipient: { name: 'Juan', phone: '0991234567' },
+        zoneId: '22222222-2222-4222-8222-222222222222',
+        deliveryAddress: 'Av. Cevallos 100',
+        deliveryLocation: { lat: -1.24, lng: -78.61 },
+        scheduledDeliveryDate: '2030-11-15T15:00:00.000Z',
+      },
+      quoteToken: 'expired-but-replayable-token',
+      paymentCard: {
+        number: '9000 0000 0000 0001', holderName: 'PRUEBA APROBADA',
+        expiresMonth: 12, expiresYear: 2030, cvv: '111',
+      },
+    };
+    const requestHash = hashCanonicalIntent(buildCanonicalIntent({
+      items: dto.items, delivery: dto.delivery, quoteToken: dto.quoteToken,
+      cardFixtureId: 'DEMO_APPROVED',
+    }));
+    const execute = jest.fn();
+    const query = jest.fn().mockImplementation(async () => {
+      const next = observations.shift();
+      return next ? [{ id: 'attempt-1', requestHash, ...next }] : [];
+    });
+    mockPrisma.client.transaction.mockImplementation(async (cb: any) => cb({ query, execute }));
+    return { promise: service.confirmCheckout('user-1', key, dto as any), query, execute, key };
+  };
+
+  it('replays the exact stored success after observing PROCESSING, without any purchase work', async () => {
+    jest.useFakeTimers();
+    try {
+      const snapshot = {
+        checkoutAttemptId: 'attempt-1', status: 'SUCCEEDED',
+        order: { id: 'order-1', totalCents: 8395 },
+        payment: { status: 'APPROVED', reference: 'PAY-DEMO-0001' },
+        receipt: { id: 'receipt-1', number: 'CMP-1' },
+      };
+      const { promise, query, execute } = await replay([
+        { status: 'PROCESSING' }, { status: 'PROCESSING' },
+        { status: 'SUCCEEDED', successSnapshot: snapshot },
+      ]);
+      await jest.advanceTimersByTimeAsync(100);
+      expect(await promise).toBe(snapshot);
+      expect(query).toHaveBeenCalledTimes(3);
+      expect(execute).not.toHaveBeenCalled();
+      expect(mockSettings.getPublicSettings).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it.each([
+    ['STOCK_UNAVAILABLE', HttpStatus.CONFLICT, { productId: 'product-1', availableStock: 0 }],
+    ['INSUFFICIENT_DEMO_FUNDS', HttpStatus.UNPROCESSABLE_ENTITY, { requiredCents: 8395 }],
+  ])('replays a persisted %s rejection after PROCESSING, including original details', async (code, status, details) => {
+    jest.useFakeTimers();
+    try {
+      const { promise, execute } = await replay([
+        { status: 'PROCESSING' },
+        { status: 'REJECTED', errorCode: code, errorMessage: 'Decisión original', errorDetails: details },
+      ]);
+      const assertion = expect(promise).rejects.toMatchObject({
+        status, response: { error: { code, message: 'Decisión original', details } },
+      });
+      await jest.advanceTimersByTimeAsync(100);
+      await assertion;
+      expect(execute).not.toHaveBeenCalled();
+      expect(mockSettings.getPublicSettings).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('fails closed for a previously FAILED attempt after PROCESSING, without creating a purchase', async () => {
+    jest.useFakeTimers();
+    try {
+      const { promise, execute } = await replay([
+        { status: 'PROCESSING' }, { status: 'FAILED', errorCode: 'INTERNAL_ERROR' },
+      ]);
+      const assertion = expect(promise).rejects.toMatchObject({
+        status: HttpStatus.INTERNAL_SERVER_ERROR,
+        response: { error: { code: 'INTERNAL_ERROR', details: {} } },
+      });
+      await jest.advanceTimersByTimeAsync(100);
+      await assertion;
+      expect(execute).not.toHaveBeenCalled();
+      expect(mockSettings.getPublicSettings).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it.each([
+    ['SUCCEEDED', { successSnapshot: { checkoutAttemptId: 'attempt-1', status: 'SUCCEEDED', order: { id: 'order-1' }, receipt: { id: 'receipt-1' } } }],
+    ['REJECTED', { errorCode: 'PRICE_CHANGED', errorMessage: 'Precio original', errorDetails: { productId: 'product-1' } }],
+    ['PROCESSING', {}],
+  ])('makes the deadline final read authoritative when it observes %s', async (status, fields) => {
+    jest.useFakeTimers();
+    try {
+      const observations = [{ status: 'PROCESSING' }];
+      // Initial read plus all polling reads; the final read sees the terminal decision (or still PROCESSING).
+      for (let i = 0; i < 50; i++) observations.push({ status: 'PROCESSING' });
+      observations.push({ status, ...fields });
+      const { promise, query, execute, key } = await replay(observations);
+      if (status === 'SUCCEEDED' && 'successSnapshot' in fields) {
+        const assertion = expect(promise).resolves.toBe(fields.successSnapshot);
+        await jest.advanceTimersByTimeAsync(5000);
+        await assertion;
+      } else {
+        const assertion = expect(promise).rejects.toMatchObject(status === 'REJECTED' ? {
+          status: HttpStatus.CONFLICT,
+          response: { error: { code: 'PRICE_CHANGED', message: 'Precio original', details: { productId: 'product-1' } } },
+        } : {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          response: { error: { code: 'INTERNAL_ERROR', details: { idempotencyKey: key } } },
+        });
+        await jest.advanceTimersByTimeAsync(5000);
+        await assertion;
+      }
+      expect(query).toHaveBeenCalledTimes(52);
+      expect(execute).not.toHaveBeenCalled();
+      expect(mockSettings.getPublicSettings).not.toHaveBeenCalled();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('rechecks attempt under key lock and throws immediately without falling through when attempt is FAILED', async () => {
+    const { buildCanonicalIntent, hashCanonicalIntent } = await import('./checkout-intent.util.js');
+    const prodId = '11111111-1111-4111-8111-111111111111';
+    const zoneId = '22222222-2222-4222-8222-222222222222';
+    const buyerUserId = 'user-1';
+    const idempotencyKey = '88888888-8888-4888-8888-888888888890';
+
+    const intent = buildCanonicalIntent({
+      items: [{ productId: prodId, quantity: 1 }],
+      delivery: {
+        recipient: { name: 'Juan', phone: '0991234567' },
+        zoneId,
+        deliveryAddress: 'Av. Cevallos 100',
+        deliveryLocation: { lat: -1.24, lng: -78.61 },
+        scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+      },
+      quoteToken: 'token1234567890',
+      cardFixtureId: 'DEMO_APPROVED',
+    });
+    const requestHash = hashCanonicalIntent(intent);
+
+    mockPrisma.client.transaction.mockImplementation(async (cb: any) => {
+      const tx = {
+        execute: jest.fn().mockResolvedValue(1),
+        query: jest.fn().mockResolvedValue([
+          {
+            id: 'attempt-failed-1',
+            userId: buyerUserId,
+            idempotencyKey,
+            requestHash,
+            status: 'FAILED',
+            errorCode: 'INTERNAL_ERROR',
+            errorMessage: 'Error interno previo',
+          },
+        ]),
+      };
+      return cb(tx);
+    });
+
+    await expect(
+      service.confirmCheckout(
+        buyerUserId,
+        idempotencyKey,
+        {
+          items: [{ productId: prodId, quantity: 1 }],
+          delivery: {
+            recipient: { name: 'Juan', phone: '0991234567' },
+            zoneId,
+            deliveryAddress: 'Av. Cevallos 100',
+            deliveryLocation: { lat: -1.24, lng: -78.61 },
+            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+          },
+          quoteToken: 'token1234567890',
+          paymentCard: {
+            number: '9000 0000 0000 0001',
+            holderName: 'PRUEBA APROBADA',
+            expiresMonth: 12,
+            expiresYear: 2030,
+            cvv: '111',
+          },
+        } as any,
+      ),
+    ).rejects.toMatchObject({
+      status: HttpStatus.INTERNAL_SERVER_ERROR,
+      response: {
+        error: {
+          code: 'INTERNAL_ERROR',
+        },
+      },
+    });
   });
 });
