@@ -1,0 +1,1142 @@
+[
+  {
+    "id": "table.checkoutAttempt",
+    "label": "Create table \"checkoutAttempt\"",
+    "summary": "Creates table \"checkoutAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "checkoutAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"checkoutAttempt\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"checkoutAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"checkoutAttempt\"",
+        "sql": "CREATE TABLE \"public\".\"checkoutAttempt\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"errorCode\" text,\n  \"errorDetails\" json,\n  \"errorMessage\" text,\n  \"id\" text NOT NULL,\n  \"idempotencyKey\" text NOT NULL,\n  \"orderId\" text,\n  \"paymentAttemptId\" text,\n  \"receiptId\" text,\n  \"requestHash\" text NOT NULL,\n  \"status\" text DEFAULT 'PROCESSING' NOT NULL,\n  \"successSnapshot\" json,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"userId\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"checkout_attempt_status_consistency_c207fec0\" CHECK (status IN ('PROCESSING', 'SUCCEEDED', 'REJECTED', 'FAILED') AND length(\"idempotencyKey\") BETWEEN 1 AND 128 AND length(\"requestHash\") BETWEEN 1 AND 128 AND ((status = 'PROCESSING' AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"paymentAttemptId\" IS NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NULL) OR (status = 'SUCCEEDED' AND \"orderId\" IS NOT NULL AND \"receiptId\" IS NOT NULL AND \"paymentAttemptId\" IS NOT NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NOT NULL AND json_typeof(\"successSnapshot\") = 'object') OR (status IN ('REJECTED', 'FAILED') AND \"errorCode\" IS NOT NULL AND length(\"errorCode\") BETWEEN 1 AND 64 AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"paymentAttemptId\" IS NULL AND \"successSnapshot\" IS NULL)))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"checkoutAttempt\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"checkoutAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.paymentAttempt",
+    "label": "Create table \"paymentAttempt\"",
+    "summary": "Creates table \"paymentAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "paymentAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"paymentAttempt\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"paymentAttempt\"",
+        "sql": "CREATE TABLE \"public\".\"paymentAttempt\" (\n  \"amountCents\" int8 NOT NULL,\n  \"buyerId\" text NOT NULL,\n  \"cardFixtureId\" text NOT NULL,\n  \"cardLast4\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"currency\" text DEFAULT 'USD' NOT NULL,\n  \"id\" text NOT NULL,\n  \"orderId\" text NOT NULL,\n  \"reference\" text NOT NULL,\n  \"shippingAmountCents\" int4 DEFAULT 0 NOT NULL,\n  \"status\" text DEFAULT 'APPROVED' NOT NULL,\n  \"subtotalCents\" int8 NOT NULL,\n  \"taxAmountCents\" int8 NOT NULL,\n  \"taxEnabled\" bool NOT NULL,\n  \"taxRateBps\" int4 NOT NULL,\n  \"totalCents\" int8 NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"payment_attempt_valid_f05855ef\" CHECK (status = 'APPROVED' AND currency = 'USD' AND \"shippingAmountCents\" = 0 AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"subtotalCents\" >= 0 AND \"subtotalCents\" <= 9007199254740991 AND \"taxAmountCents\" >= 0 AND \"taxAmountCents\" <= 9007199254740991 AND \"totalCents\" >= 0 AND \"totalCents\" <= 9007199254740991 AND \"amountCents\" >= 0 AND \"amountCents\" <= 9007199254740991 AND \"totalCents\" = \"subtotalCents\" + \"taxAmountCents\" AND \"amountCents\" = \"totalCents\" AND ((NOT \"taxEnabled\" AND \"taxAmountCents\" = 0) OR \"taxEnabled\") AND \"cardLast4\" ~ '^[0-9]{4}$' AND length(reference) BETWEEN 1 AND 64)\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"paymentAttempt\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.purchaseReceipt",
+    "label": "Create table \"purchaseReceipt\"",
+    "summary": "Creates table \"purchaseReceipt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "purchaseReceipt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"purchaseReceipt\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchaseReceipt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"purchaseReceipt\"",
+        "sql": "CREATE TABLE \"public\".\"purchaseReceipt\" (\n  \"buyerId\" text NOT NULL,\n  \"commercialOrderNumber\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"currency\" text DEFAULT 'USD' NOT NULL,\n  \"disclaimer\" text DEFAULT 'COMPROBANTE DE COMPRA SIMULADO — SIN VALIDEZ TRIBUTARIA' NOT NULL,\n  \"id\" text NOT NULL,\n  \"issuedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"merchantName\" text DEFAULT 'REGALÍA' NOT NULL,\n  \"number\" text NOT NULL,\n  \"orderId\" text NOT NULL,\n  \"shippingAmountCents\" int4 DEFAULT 0 NOT NULL,\n  \"shippingStatus\" text DEFAULT 'FREE_INCLUDED' NOT NULL,\n  \"snapshot\" json NOT NULL,\n  \"subtotalCents\" int8 NOT NULL,\n  \"taxAmountCents\" int8 NOT NULL,\n  \"taxEnabled\" bool NOT NULL,\n  \"taxMode\" text DEFAULT 'SIMULATED' NOT NULL,\n  \"taxRateBps\" int4 NOT NULL,\n  \"totalCents\" int8 NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"purchase_receipt_valid_f8f867fb\" CHECK (currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"subtotalCents\" >= 0 AND \"subtotalCents\" <= 9007199254740991 AND \"taxAmountCents\" >= 0 AND \"taxAmountCents\" <= 9007199254740991 AND \"totalCents\" >= 0 AND \"totalCents\" <= 9007199254740991 AND \"totalCents\" = \"subtotalCents\" + \"taxAmountCents\" AND ((NOT \"taxEnabled\" AND \"taxAmountCents\" = 0) OR \"taxEnabled\") AND length(number) BETWEEN 1 AND 64 AND length(\"commercialOrderNumber\") BETWEEN 1 AND 64 AND \"merchantName\" = 'REGALÍA' AND disclaimer = 'COMPROBANTE DE COMPRA SIMULADO — SIN VALIDEZ TRIBUTARIA')\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"purchaseReceipt\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchaseReceipt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.simulatedCard",
+    "label": "Create table \"simulatedCard\"",
+    "summary": "Creates table \"simulatedCard\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "simulatedCard"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"simulatedCard\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"simulatedCard\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"simulatedCard\"",
+        "sql": "CREATE TABLE \"public\".\"simulatedCard\" (\n  \"active\" bool DEFAULT true NOT NULL,\n  \"balanceCents\" int8 DEFAULT '0'::int8 NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"fixtureId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"last4\" text NOT NULL,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"simulated_card_valid_9eb17fd5\" CHECK (\"balanceCents\" >= 0 AND \"balanceCents\" <= 9007199254740991 AND \"last4\" ~ '^[0-9]{4}$' AND length(\"fixtureId\") BETWEEN 1 AND 64)\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"simulatedCard\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"simulatedCard\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.checkoutAttempt.checkoutAttempt_userId_idempotencyKey_key",
+    "label": "Add unique constraint on \"checkoutAttempt\" (userId, idempotencyKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "checkoutAttempt_userId_idempotencyKey_key",
+        "table": "checkoutAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"checkoutAttempt_userId_idempotencyKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "checkoutAttempt_userId_idempotencyKey_key",
+          "public",
+          "\"public\".\"checkoutAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"checkoutAttempt_userId_idempotencyKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"checkoutAttempt\" ADD CONSTRAINT \"checkoutAttempt_userId_idempotencyKey_key\" UNIQUE (\"userId\", \"idempotencyKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"checkoutAttempt_userId_idempotencyKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "checkoutAttempt_userId_idempotencyKey_key",
+          "public",
+          "\"public\".\"checkoutAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.paymentAttempt.paymentAttempt_orderId_key",
+    "label": "Add unique constraint on \"paymentAttempt\" (orderId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "paymentAttempt_orderId_key",
+        "table": "paymentAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"paymentAttempt_orderId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAttempt_orderId_key",
+          "public",
+          "\"public\".\"paymentAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"paymentAttempt_orderId_key\"",
+        "sql": "ALTER TABLE \"public\".\"paymentAttempt\" ADD CONSTRAINT \"paymentAttempt_orderId_key\" UNIQUE (\"orderId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"paymentAttempt_orderId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAttempt_orderId_key",
+          "public",
+          "\"public\".\"paymentAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.paymentAttempt.paymentAttempt_reference_key",
+    "label": "Add unique constraint on \"paymentAttempt\" (reference)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "paymentAttempt_reference_key",
+        "table": "paymentAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"paymentAttempt_reference_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAttempt_reference_key",
+          "public",
+          "\"public\".\"paymentAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"paymentAttempt_reference_key\"",
+        "sql": "ALTER TABLE \"public\".\"paymentAttempt\" ADD CONSTRAINT \"paymentAttempt_reference_key\" UNIQUE (\"reference\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"paymentAttempt_reference_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAttempt_reference_key",
+          "public",
+          "\"public\".\"paymentAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.purchaseReceipt.purchaseReceipt_orderId_key",
+    "label": "Add unique constraint on \"purchaseReceipt\" (orderId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "purchaseReceipt_orderId_key",
+        "table": "purchaseReceipt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"purchaseReceipt_orderId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchaseReceipt_orderId_key",
+          "public",
+          "\"public\".\"purchaseReceipt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"purchaseReceipt_orderId_key\"",
+        "sql": "ALTER TABLE \"public\".\"purchaseReceipt\" ADD CONSTRAINT \"purchaseReceipt_orderId_key\" UNIQUE (\"orderId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"purchaseReceipt_orderId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchaseReceipt_orderId_key",
+          "public",
+          "\"public\".\"purchaseReceipt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.purchaseReceipt.purchaseReceipt_number_key",
+    "label": "Add unique constraint on \"purchaseReceipt\" (number)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "purchaseReceipt_number_key",
+        "table": "purchaseReceipt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"purchaseReceipt_number_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchaseReceipt_number_key",
+          "public",
+          "\"public\".\"purchaseReceipt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"purchaseReceipt_number_key\"",
+        "sql": "ALTER TABLE \"public\".\"purchaseReceipt\" ADD CONSTRAINT \"purchaseReceipt_number_key\" UNIQUE (\"number\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"purchaseReceipt_number_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchaseReceipt_number_key",
+          "public",
+          "\"public\".\"purchaseReceipt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.purchaseReceipt.purchaseReceipt_commercialOrderNumber_key",
+    "label": "Add unique constraint on \"purchaseReceipt\" (commercialOrderNumber)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "purchaseReceipt_commercialOrderNumber_key",
+        "table": "purchaseReceipt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"purchaseReceipt_commercialOrderNumber_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchaseReceipt_commercialOrderNumber_key",
+          "public",
+          "\"public\".\"purchaseReceipt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"purchaseReceipt_commercialOrderNumber_key\"",
+        "sql": "ALTER TABLE \"public\".\"purchaseReceipt\" ADD CONSTRAINT \"purchaseReceipt_commercialOrderNumber_key\" UNIQUE (\"commercialOrderNumber\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"purchaseReceipt_commercialOrderNumber_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchaseReceipt_commercialOrderNumber_key",
+          "public",
+          "\"public\".\"purchaseReceipt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.simulatedCard.simulatedCard_fixtureId_key",
+    "label": "Add unique constraint on \"simulatedCard\" (fixtureId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "simulatedCard_fixtureId_key",
+        "table": "simulatedCard"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"simulatedCard_fixtureId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "simulatedCard_fixtureId_key",
+          "public",
+          "\"public\".\"simulatedCard\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"simulatedCard_fixtureId_key\"",
+        "sql": "ALTER TABLE \"public\".\"simulatedCard\" ADD CONSTRAINT \"simulatedCard_fixtureId_key\" UNIQUE (\"fixtureId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"simulatedCard_fixtureId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "simulatedCard_fixtureId_key",
+          "public",
+          "\"public\".\"simulatedCard\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.checkoutAttempt.checkoutAttempt_orderId_idx_d284871b",
+    "label": "Create index \"checkoutAttempt_orderId_idx_d284871b\" on \"checkoutAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "checkoutAttempt_orderId_idx_d284871b",
+        "table": "checkoutAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"checkoutAttempt_orderId_idx_d284871b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"checkoutAttempt_orderId_idx_d284871b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"checkoutAttempt_orderId_idx_d284871b\"",
+        "sql": "CREATE INDEX \"checkoutAttempt_orderId_idx_d284871b\" ON \"public\".\"checkoutAttempt\" (\"orderId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"checkoutAttempt_orderId_idx_d284871b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"checkoutAttempt_orderId_idx_d284871b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.checkoutAttempt.checkoutAttempt_paymentAttemptId_idx_e668f17f",
+    "label": "Create index \"checkoutAttempt_paymentAttemptId_idx_e668f17f\" on \"checkoutAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "checkoutAttempt_paymentAttemptId_idx_e668f17f",
+        "table": "checkoutAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"checkoutAttempt_paymentAttemptId_idx_e668f17f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"checkoutAttempt_paymentAttemptId_idx_e668f17f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"checkoutAttempt_paymentAttemptId_idx_e668f17f\"",
+        "sql": "CREATE INDEX \"checkoutAttempt_paymentAttemptId_idx_e668f17f\" ON \"public\".\"checkoutAttempt\" (\"paymentAttemptId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"checkoutAttempt_paymentAttemptId_idx_e668f17f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"checkoutAttempt_paymentAttemptId_idx_e668f17f\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.checkoutAttempt.checkoutAttempt_receiptId_idx_9b8e07be",
+    "label": "Create index \"checkoutAttempt_receiptId_idx_9b8e07be\" on \"checkoutAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "checkoutAttempt_receiptId_idx_9b8e07be",
+        "table": "checkoutAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"checkoutAttempt_receiptId_idx_9b8e07be\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"checkoutAttempt_receiptId_idx_9b8e07be\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"checkoutAttempt_receiptId_idx_9b8e07be\"",
+        "sql": "CREATE INDEX \"checkoutAttempt_receiptId_idx_9b8e07be\" ON \"public\".\"checkoutAttempt\" (\"receiptId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"checkoutAttempt_receiptId_idx_9b8e07be\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"checkoutAttempt_receiptId_idx_9b8e07be\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.checkoutAttempt.checkoutAttempt_userId_idx_a489d58a",
+    "label": "Create index \"checkoutAttempt_userId_idx_a489d58a\" on \"checkoutAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "checkoutAttempt_userId_idx_a489d58a",
+        "table": "checkoutAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"checkoutAttempt_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"checkoutAttempt_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"checkoutAttempt_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"checkoutAttempt_userId_idx_a489d58a\" ON \"public\".\"checkoutAttempt\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"checkoutAttempt_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"checkoutAttempt_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.paymentAttempt.paymentAttempt_buyerId_idx_80be0de9",
+    "label": "Create index \"paymentAttempt_buyerId_idx_80be0de9\" on \"paymentAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "paymentAttempt_buyerId_idx_80be0de9",
+        "table": "paymentAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"paymentAttempt_buyerId_idx_80be0de9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentAttempt_buyerId_idx_80be0de9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"paymentAttempt_buyerId_idx_80be0de9\"",
+        "sql": "CREATE INDEX \"paymentAttempt_buyerId_idx_80be0de9\" ON \"public\".\"paymentAttempt\" (\"buyerId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"paymentAttempt_buyerId_idx_80be0de9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentAttempt_buyerId_idx_80be0de9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.paymentAttempt.paymentAttempt_cardFixtureId_idx_d02511e9",
+    "label": "Create index \"paymentAttempt_cardFixtureId_idx_d02511e9\" on \"paymentAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "paymentAttempt_cardFixtureId_idx_d02511e9",
+        "table": "paymentAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"paymentAttempt_cardFixtureId_idx_d02511e9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentAttempt_cardFixtureId_idx_d02511e9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"paymentAttempt_cardFixtureId_idx_d02511e9\"",
+        "sql": "CREATE INDEX \"paymentAttempt_cardFixtureId_idx_d02511e9\" ON \"public\".\"paymentAttempt\" (\"cardFixtureId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"paymentAttempt_cardFixtureId_idx_d02511e9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"paymentAttempt_cardFixtureId_idx_d02511e9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.purchaseReceipt.purchaseReceipt_buyerId_idx_80be0de9",
+    "label": "Create index \"purchaseReceipt_buyerId_idx_80be0de9\" on \"purchaseReceipt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "purchaseReceipt_buyerId_idx_80be0de9",
+        "table": "purchaseReceipt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"purchaseReceipt_buyerId_idx_80be0de9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchaseReceipt_buyerId_idx_80be0de9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"purchaseReceipt_buyerId_idx_80be0de9\"",
+        "sql": "CREATE INDEX \"purchaseReceipt_buyerId_idx_80be0de9\" ON \"public\".\"purchaseReceipt\" (\"buyerId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"purchaseReceipt_buyerId_idx_80be0de9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchaseReceipt_buyerId_idx_80be0de9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.purchaseReceipt.purchaseReceipt_issuedAt_idx_a299a849",
+    "label": "Create index \"purchaseReceipt_issuedAt_idx_a299a849\" on \"purchaseReceipt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "purchaseReceipt_issuedAt_idx_a299a849",
+        "table": "purchaseReceipt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"purchaseReceipt_issuedAt_idx_a299a849\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchaseReceipt_issuedAt_idx_a299a849\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"purchaseReceipt_issuedAt_idx_a299a849\"",
+        "sql": "CREATE INDEX \"purchaseReceipt_issuedAt_idx_a299a849\" ON \"public\".\"purchaseReceipt\" (\"issuedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"purchaseReceipt_issuedAt_idx_a299a849\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchaseReceipt_issuedAt_idx_a299a849\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.checkoutAttempt.checkoutAttempt_userId_fkey",
+    "label": "Add foreign key \"checkoutAttempt_userId_fkey\" on \"checkoutAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "checkoutAttempt_userId_fkey",
+        "table": "checkoutAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"checkoutAttempt_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "checkoutAttempt_userId_fkey",
+          "public",
+          "\"public\".\"checkoutAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"checkoutAttempt_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"checkoutAttempt\"\nADD CONSTRAINT \"checkoutAttempt_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"checkoutAttempt_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "checkoutAttempt_userId_fkey",
+          "public",
+          "\"public\".\"checkoutAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.checkoutAttempt.checkoutAttempt_orderId_fkey",
+    "label": "Add foreign key \"checkoutAttempt_orderId_fkey\" on \"checkoutAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "checkoutAttempt_orderId_fkey",
+        "table": "checkoutAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"checkoutAttempt_orderId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "checkoutAttempt_orderId_fkey",
+          "public",
+          "\"public\".\"checkoutAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"checkoutAttempt_orderId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"checkoutAttempt\"\nADD CONSTRAINT \"checkoutAttempt_orderId_fkey\"\nFOREIGN KEY (\"orderId\")\nREFERENCES \"public\".\"order\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"checkoutAttempt_orderId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "checkoutAttempt_orderId_fkey",
+          "public",
+          "\"public\".\"checkoutAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.checkoutAttempt.checkoutAttempt_receiptId_fkey",
+    "label": "Add foreign key \"checkoutAttempt_receiptId_fkey\" on \"checkoutAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "checkoutAttempt_receiptId_fkey",
+        "table": "checkoutAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"checkoutAttempt_receiptId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "checkoutAttempt_receiptId_fkey",
+          "public",
+          "\"public\".\"checkoutAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"checkoutAttempt_receiptId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"checkoutAttempt\"\nADD CONSTRAINT \"checkoutAttempt_receiptId_fkey\"\nFOREIGN KEY (\"receiptId\")\nREFERENCES \"public\".\"purchaseReceipt\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"checkoutAttempt_receiptId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "checkoutAttempt_receiptId_fkey",
+          "public",
+          "\"public\".\"checkoutAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.checkoutAttempt.checkoutAttempt_paymentAttemptId_fkey",
+    "label": "Add foreign key \"checkoutAttempt_paymentAttemptId_fkey\" on \"checkoutAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "checkoutAttempt_paymentAttemptId_fkey",
+        "table": "checkoutAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"checkoutAttempt_paymentAttemptId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "checkoutAttempt_paymentAttemptId_fkey",
+          "public",
+          "\"public\".\"checkoutAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"checkoutAttempt_paymentAttemptId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"checkoutAttempt\"\nADD CONSTRAINT \"checkoutAttempt_paymentAttemptId_fkey\"\nFOREIGN KEY (\"paymentAttemptId\")\nREFERENCES \"public\".\"paymentAttempt\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"checkoutAttempt_paymentAttemptId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "checkoutAttempt_paymentAttemptId_fkey",
+          "public",
+          "\"public\".\"checkoutAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.paymentAttempt.paymentAttempt_orderId_fkey",
+    "label": "Add foreign key \"paymentAttempt_orderId_fkey\" on \"paymentAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "paymentAttempt_orderId_fkey",
+        "table": "paymentAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"paymentAttempt_orderId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAttempt_orderId_fkey",
+          "public",
+          "\"public\".\"paymentAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"paymentAttempt_orderId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"paymentAttempt\"\nADD CONSTRAINT \"paymentAttempt_orderId_fkey\"\nFOREIGN KEY (\"orderId\")\nREFERENCES \"public\".\"order\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"paymentAttempt_orderId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAttempt_orderId_fkey",
+          "public",
+          "\"public\".\"paymentAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.paymentAttempt.paymentAttempt_buyerId_fkey",
+    "label": "Add foreign key \"paymentAttempt_buyerId_fkey\" on \"paymentAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "paymentAttempt_buyerId_fkey",
+        "table": "paymentAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"paymentAttempt_buyerId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAttempt_buyerId_fkey",
+          "public",
+          "\"public\".\"paymentAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"paymentAttempt_buyerId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"paymentAttempt\"\nADD CONSTRAINT \"paymentAttempt_buyerId_fkey\"\nFOREIGN KEY (\"buyerId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"paymentAttempt_buyerId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAttempt_buyerId_fkey",
+          "public",
+          "\"public\".\"paymentAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.paymentAttempt.paymentAttempt_cardFixtureId_fkey",
+    "label": "Add foreign key \"paymentAttempt_cardFixtureId_fkey\" on \"paymentAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "paymentAttempt_cardFixtureId_fkey",
+        "table": "paymentAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"paymentAttempt_cardFixtureId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAttempt_cardFixtureId_fkey",
+          "public",
+          "\"public\".\"paymentAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"paymentAttempt_cardFixtureId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"paymentAttempt\"\nADD CONSTRAINT \"paymentAttempt_cardFixtureId_fkey\"\nFOREIGN KEY (\"cardFixtureId\")\nREFERENCES \"public\".\"simulatedCard\" (\"fixtureId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"paymentAttempt_cardFixtureId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentAttempt_cardFixtureId_fkey",
+          "public",
+          "\"public\".\"paymentAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.purchaseReceipt.purchaseReceipt_orderId_fkey",
+    "label": "Add foreign key \"purchaseReceipt_orderId_fkey\" on \"purchaseReceipt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "purchaseReceipt_orderId_fkey",
+        "table": "purchaseReceipt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"purchaseReceipt_orderId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchaseReceipt_orderId_fkey",
+          "public",
+          "\"public\".\"purchaseReceipt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"purchaseReceipt_orderId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"purchaseReceipt\"\nADD CONSTRAINT \"purchaseReceipt_orderId_fkey\"\nFOREIGN KEY (\"orderId\")\nREFERENCES \"public\".\"order\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"purchaseReceipt_orderId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchaseReceipt_orderId_fkey",
+          "public",
+          "\"public\".\"purchaseReceipt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.purchaseReceipt.purchaseReceipt_buyerId_fkey",
+    "label": "Add foreign key \"purchaseReceipt_buyerId_fkey\" on \"purchaseReceipt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "purchaseReceipt_buyerId_fkey",
+        "table": "purchaseReceipt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"purchaseReceipt_buyerId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchaseReceipt_buyerId_fkey",
+          "public",
+          "\"public\".\"purchaseReceipt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"purchaseReceipt_buyerId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"purchaseReceipt\"\nADD CONSTRAINT \"purchaseReceipt_buyerId_fkey\"\nFOREIGN KEY (\"buyerId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"purchaseReceipt_buyerId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "purchaseReceipt_buyerId_fkey",
+          "public",
+          "\"public\".\"purchaseReceipt\""
+        ]
+      }
+    ]
+  }
+]

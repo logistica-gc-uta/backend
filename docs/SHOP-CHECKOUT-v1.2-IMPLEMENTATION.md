@@ -146,3 +146,90 @@ This document records the architectural decisions, contract reconciliation, sche
   - `pnpm build`: clean, exit code 0.
   - `pnpm lint`: clean on all touched files (0 errors, 0 warnings).
   - `git diff --check`: clean, exit code 0.
+
+## 7. Task #33-C1: Versioned Payment, Card, Attempt & Receipt Schema Foundation
+
+### 7.1 Scope & Architectural Seam
+- **Delimitation:** Bounded foundation only (Task #33-C1); atomic checkout transactions, lock acquisition, inventory decrement, order creation, receipt generation, and HTTP endpoints remain deferred to Task #33-C2.
+- **Relational Integrity & Order Protection:**
+  - In accordance with Issue #33 S3/S5/S8, no scalar columns were added to `Order` to eliminate information leakage risks through existing endpoints that spread `Order` (e.g. legacy route histories).
+  - Reverse relations `paymentAttempt`, `receipt`, and `checkoutAttempts` added to `Order` allow downstream queries in C2 without mutating legacy default rows or adding unmigrated column defaults.
+  - Reverse relations `checkoutAttempts`, `payments`, and `receipts` added to `User` bind buyer identity across payment records.
+
+### 7.2 Persisted Data Models & Constraints
+- **Model `SimulatedCard`:**
+  - Synthetic card table storing `fixtureId` (unique text), `last4` (4 digits text), `active` (boolean, default true), `balanceCents` (int8, default 0), and timestamps (`createdAt`, `updatedAt`).
+  - Plaintext PAN and CVV exist strictly in backend in-memory fixtures; the database NEVER stores PAN, CVV, hash of CVV, or raw card payload.
+  - PostgreSQL CHECK constraint `simulated_card_valid`: validates `balanceCents >= 0 AND balanceCents <= 9007199254740991` (safe JavaScript integer boundary), `last4 ~ '^[0-9]{4}$'`, and fixture identifier length between 1 and 64 characters.
+- **Model `CheckoutAttempt`:**
+  - Intention tracking table ensuring idempotency under composite unique key `(userId, idempotencyKey)`.
+  - Captures `requestHash`, `status` (`PROCESSING`, `SUCCEEDED`, `REJECTED`, `FAILED`), nullable references to `orderId`, `receiptId`, and `paymentAttemptId`, error details (`errorCode`, `errorMessage`, `errorDetails`), `successSnapshot`, and timestamps.
+  - PostgreSQL CHECK constraint `checkout_attempt_status_consistency`: strictly enforces link consistency and nullability across states:
+    - `PROCESSING`: requires null `orderId`, `receiptId`, `paymentAttemptId`, null error (`errorCode`, `errorMessage`, `errorDetails`), and null `successSnapshot`.
+    - `SUCCEEDED`: mandates non-null `orderId`, `receiptId`, `paymentAttemptId`, non-null `successSnapshot` (distinguishing SQL null from JSON null via `json_typeof("successSnapshot") = 'object'`), and null error fields (`errorCode`, `errorMessage`, `errorDetails`).
+    - `REJECTED` and `FAILED`: mandate safe non-null `errorCode` (`length BETWEEN 1 AND 64`), null sale links (`orderId`, `receiptId`, `paymentAttemptId`), and null `successSnapshot`.
+- **Model `PaymentAttempt`:**
+  - Transaction record representing approved simulated charges linked uniquely to `orderId`.
+  - Foreign keys: `orderId` -> `Order(id)`, `buyerId` -> `User(id)`, `cardFixtureId` -> `SimulatedCard(fixtureId)`.
+  - Captures separate money snapshots: `subtotalCents` (int8), `taxEnabled` (bool), `taxRateBps` (int4, 0..10000), `taxAmountCents` (int8), `shippingAmountCents` (int4, default 0), `totalCents` (int8), and `amountCents` (int8).
+  - Also captures `cardLast4` (4 digits), `reference` (unique text, e.g. `PAY-DEMO-XXXXXX`), `currency = 'USD'`, and `status = 'APPROVED'`.
+  - PostgreSQL CHECK constraint `payment_attempt_valid`: bounds all monetary values in [0, 9007199254740991], enforces `shippingAmountCents = 0`, `totalCents = subtotalCents + taxAmountCents`, `amountCents = totalCents`, `((NOT taxEnabled AND taxAmountCents = 0) OR taxEnabled)`, `cardLast4 ~ '^[0-9]{4}$'`, and reference length between 1 and 64 characters.
+- **Model `PurchaseReceipt`:**
+  - Immutable purchase snapshot and commercial numbering model linked uniquely to `orderId`.
+  - Enforces individual uniqueness on `orderId`, receipt `number` (`CMP-RG-XXXXXX`), and `commercialOrderNumber` (`RG-XXXXXX`).
+  - Stores monetary snapshots: `subtotalCents`, `taxMode` (`SIMULATED`), `taxEnabled`, `taxRateBps`, `taxAmountCents`, `shippingStatus` (`FREE_INCLUDED`), `shippingAmountCents` (`0`), `totalCents`, and immutable `snapshot` JSON.
+  - PostgreSQL CHECK constraint `purchase_receipt_valid`: validates `totalCents = subtotalCents + taxAmountCents`, zero shipping amount, safe integer bounds, simulated disclaimer, and tax enablement consistency.
+
+### 7.3 Prisma 8 Migration Record
+- **Migration Package:** `migrations/app/20261023T2325_shop_payments_foundation_v12`
+- **Origin Contract:** `d2724cd80d3f574f0e1fb083c0426dab7b696331f1ca7b50fb62a3473125576e` (settings baseline).
+- **Target Contract:** `70a695f73c329e3d06c6ee0a3d8b301de993c376613442e431adde1392ca8710`.
+- **Migration Hash:** `df620cd4b6f7db2058dc2164ababf39b852d238b86e10e665acd04d5a0c7e2e8`.
+- **Planned Operations:** 28 operations (all additive: 4 tables, 7 unique constraints, 9 indices, 8 foreign keys, and 4 check constraints). Zero data operations on production/shared DB; foundation starts empty.
+
+### 7.4 In-Memory Fixtures & Synthetic Card Gating
+- **Module:** `src/modules/shop/checkout/simulated-card.ts`
+- **In-Memory Fixtures:**
+  - `DEMO_APPROVED`: `9000 0000 0000 0001` / `PRUEBA APROBADA` / `12/2030` / `111` / Initial Balance: `50000n` cents ($500.00).
+  - `DEMO_LIMITED`: `9000 0000 0000 0002` / `PRUEBA LIMITADA` / `12/2030` / `222` / Initial Balance: `2000n` cents ($20.00).
+  - `DEMO_EMPTY`: `9000 0000 0000 0003` / `PRUEBA SIN SALDO` / `12/2030` / `333` / Initial Balance: `0n` cents ($0.00).
+- **Environment Gating:** `assertPaymentSimulationEnabled()` fails closed with HTTP 503 `PAYMENT_SIMULATION_DISABLED` unless `NODE_ENV` is `'test'` or `'demo'` AND `SIMULATED_PAYMENTS_ENABLED` is `'true'`.
+- **Card Validation:** `validateSimulatedCard(input, authoritativeNow)` normalizes spaces and holder casing, performs constant-time in-memory matching, enforces strict integer validation on `expiresMonth` and `expiresYear` (rejecting string coercion and non-integer floats), enforces calendar expiration against authoritative `Temporal.Instant`, and returns only safe identity `{ fixtureId, last4 }`. Throws controlled HTTP 422 `CARD_INVALID` or `CARD_EXPIRED` without logging or leaking sensitive fields.
+- **Idempotent Bootstrap:** `bootstrapSimulatedCards(db)` checks environment gating, accepts typed Prisma 8 handle (`PrismaService` or `db.client`), and executes parameterized `raw.sql` with `INSERT INTO public."simulatedCard" ... ON CONFLICT ("fixtureId") DO NOTHING` in a pinned transaction (`client.transaction`). Inserts missing fixtures only, completely eliminates read-before-insert race conditions under concurrency, and strictly preserves existing cards, spent balances, and deactivated states.
+
+### 7.5 Verification Evidence
+- **TDD RED / GREEN Execution:**
+  - RED: In `test/shop-payments-foundation-v12.e2e-spec.ts`, adding assertions for `CheckoutAttempt` status consistency produced an observed test failure: creating a `PROCESSING` attempt with a non-null `orderId` resolved instead of rejecting with `/checkout_attempt_status_consistency/i` on the baseline constraint.
+  - GREEN: Updated `contract.prisma` with exhaustive status consistency check and separate `PaymentAttempt` money snapshots; regenerated contract artifacts and re-emitted official migration package; all 12 tests passed cleanly.
+- **Owned PostgreSQL Container Execution:**
+  - Test suite: `test/shop-payments-foundation-v12.e2e-spec.ts`.
+  - Container receipt: `containerId=ccf324a6f281f54400dec989ef6e0e4ddf5be85cfaaee49e30902dd1a0de2fb4`.
+  - Cleanup verified: `docker inspect ccf324a6f281f54400dec989ef6e0e4ddf5be85cfaaee49e30902dd1a0de2fb4` returned `error: no such object` (exit code 1).
+  - Results: 1 passed suite, 12 passed tests, 0 failed.
+  - Verified assertions:
+    - Empty foundation on migration: 0 simulated cards, 0 checkout attempts, 0 payments, 0 receipts.
+    - Explicit bootstrap: exactly 3 simulated cards created with correct balances and last4 identifiers.
+    - Idempotent bootstrap: spent balance on `DEMO_LIMITED` (updated to 450n) and deactivated status on `DEMO_EMPTY` remained unaltered upon repeated bootstrap invocation.
+    - SimulatedCard integrity: negative balance and overflow balance (> `MAX_SAFE_INTEGER`) rejected by PostgreSQL CHECK constraint.
+    - Idempotency uniqueness: duplicate `(userId, idempotencyKey)` rejected by unique constraint.
+    - Purchase receipt uniqueness: duplicate `orderId`, duplicate `number`, and duplicate `commercialOrderNumber` rejected by unique constraints.
+    - PurchaseReceipt calculation invariant: mismatched `totalCents != subtotalCents + taxAmountCents` rejected by CHECK constraint.
+    - PaymentAttempt calculation & money invariants: mismatched `amountCents != totalCents` rejected; mismatched `totalCents != subtotalCents + taxAmountCents` rejected; disabled tax with non-zero tax amount rejected; non-zero shipping amount rejected; valid paymentAttempt with separate money snapshots succeeds.
+    - CheckoutAttempt status consistency: `PROCESSING` with orderId, errorCode, or successSnapshot rejected; valid `PROCESSING` succeeds; `SUCCEEDED` with missing links, null successSnapshot, or errorCode rejected; valid `SUCCEEDED` with all 3 links and object snapshot succeeds; `REJECTED` and `FAILED` with orderId or successSnapshot rejected; valid `REJECTED` and `FAILED` succeed.
+    - Concurrent card bootstrap: two simultaneous bootstrap executions on real PostgreSQL both resolve cleanly without unique constraint collisions, verifying exact 3 fixtures and preserving spent balances.
+    - Legacy compatibility: `Order` preserves existing scalar fields (`total`, `subtotalCents`) without default leaks.
+- **Build & Quality Checks:**
+  - `pnpm test --roots '<rootDir>/src' --runInBand --runTestsByPath src/modules/shop/checkout/simulated-card.spec.ts`: 18 passed, 18 total.
+  - `env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm test:e2e --roots '<rootDir>' --runInBand --runTestsByPath test/shop-payments-foundation-v12.e2e-spec.ts`: 13 passed, 13 total.
+  - `pnpm build`: clean, exit code 0.
+  - `pnpm lint`: clean on all touched files (0 errors, 0 warnings).
+  - `git diff --check`: clean, exit code 0.
+
+## Key Learnings
+1. Preserving legacy Order schema integrity by projecting new commercial identifiers and receipt references from isolated order-linked tables prevents unintentional data leakage in endpoints that spread Order objects.
+2. Separate monetary snapshot columns on PaymentAttempt (`subtotalCents`, `taxEnabled`, `taxRateBps`, `taxAmountCents`, `shippingAmountCents`, `totalCents`) mirror PurchaseReceipt and enable strict database CHECK constraints that enforce mathematical integrity (`amountCents = totalCents = subtotalCents + taxAmountCents`) at persistence time.
+3. In PostgreSQL CHECK constraints on JSON columns, `col IS NOT NULL` is satisfied even if `col` contains the JSON literal `'null'::json`; using `json_typeof(col) = 'object'` strictly guarantees that snapshot fields hold structured object payloads rather than JSON null primitives.
+4. Exhaustive composite CHECK constraints partitioning status states (`PROCESSING`, `SUCCEEDED`, `REJECTED`, `FAILED`) ensure that transition linkages (orderId, receiptId, paymentAttemptId), error payloads, and success snapshots remain strictly coherent with no ambiguous intermediate states.
+5. In Prisma 8, self-emitting migrations via `node migrations/app/<dir>/migration.ts` recalculates content-addressed hashes and regenerates `ops.json` and `migration.json` deterministically from the underlying TypeScript migration AST.
+6. In Prisma 8, raw parameterized queries constructed via `client.raw.sql` with `.affectedCount().build()` and executed within `client.transaction(async tx => await tx.execute(plan))` eliminate race conditions in fixture bootstrap operations by delegating uniqueness enforcement to PostgreSQL's atomic `ON CONFLICT ("fixtureId") DO NOTHING`, bypassing the read-before-insert races inherent in ORM `findUnique`/`create` sequences.
+7. Strict integer validation for month and year in financial/card DTOs must verify `typeof val === 'number' && Number.isInteger(val)` to prevent implicit numeric coercion of string or float payloads prior to calendar arithmetic.

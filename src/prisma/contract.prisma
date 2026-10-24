@@ -54,6 +54,9 @@ model User {
   orders        Order[] @relation("OrderOwner")
   createdOrders Order[] @relation("OrderCreator")
   uploadedAssets UploadedAsset[] @relation("UploadActor")
+  checkoutAttempts CheckoutAttempt[]
+  payments         PaymentAttempt[] @relation("PaymentBuyer")
+  receipts         PurchaseReceipt[] @relation("ReceiptBuyer")
 }
 
 model Driver {
@@ -223,6 +226,9 @@ model Order {
   @@check(expression: "NOT \"requiresAdministrativeReview\" OR status NOT IN ('DELIVERED', 'CANCELLED')", name: "failed_order_commercial_hold")
 
   items                 OrderItem[]
+  paymentAttempt        PaymentAttempt?
+  receipt               PurchaseReceipt?
+  checkoutAttempts      CheckoutAttempt[]
 
   @@index([userId])
   @@index([createdById])
@@ -398,4 +404,109 @@ model ShopSettingsAudit {
   @@index([actorId])
   @@index([recordedAt])
   @@check(expression: "\"expectedVersion\" >= 1 AND \"newVersion\" = \"expectedVersion\" + 1", name: "shop_settings_audit_version_step")
+}
+
+// Synthetic card fixtures for test/demo environments (#33-C1)
+// Plaintext PAN and CVV exist only in backend in-memory fixtures, never persisted.
+model SimulatedCard {
+  id           String           @id @default(uuid())
+  fixtureId    String           @unique
+  last4        String
+  active       Boolean          @default(true)
+  balanceCents BigInt           @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @default(now())
+
+  paymentAttempts PaymentAttempt[]
+
+  @@check(expression: "\"balanceCents\" >= 0 AND \"balanceCents\" <= 9007199254740991 AND \"last4\" ~ '^[0-9]{4}$' AND length(\"fixtureId\") BETWEEN 1 AND 64", name: "simulated_card_valid")
+}
+
+// Immutable purchase receipt snapshot and commercial numbering (#33-C1/S8)
+model PurchaseReceipt {
+  id                    String           @id @default(uuid())
+  orderId               String           @unique
+  order                 Order            @relation(fields: [orderId], references: [id])
+  number                String           @unique
+  commercialOrderNumber String           @unique
+  buyerId               String
+  buyer                 User             @relation("ReceiptBuyer", fields: [buyerId], references: [id])
+  issuedAt              DateTime         @default(now())
+  merchantName          String           @default("REGALÍA")
+  currency              String           @default("USD")
+  subtotalCents         BigInt
+  taxMode               String           @default("SIMULATED")
+  taxEnabled            Boolean
+  taxRateBps            Int
+  taxAmountCents        BigInt
+  shippingStatus        String           @default("FREE_INCLUDED")
+  shippingAmountCents   Int              @default(0)
+  totalCents            BigInt
+  snapshot              Json
+  disclaimer            String           @default("COMPROBANTE DE COMPRA SIMULADO — SIN VALIDEZ TRIBUTARIA")
+  createdAt             DateTime         @default(now())
+
+  checkoutAttempts      CheckoutAttempt[]
+
+  @@index([buyerId])
+  @@index([issuedAt])
+  @@check(expression: "currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"subtotalCents\" >= 0 AND \"subtotalCents\" <= 9007199254740991 AND \"taxAmountCents\" >= 0 AND \"taxAmountCents\" <= 9007199254740991 AND \"totalCents\" >= 0 AND \"totalCents\" <= 9007199254740991 AND \"totalCents\" = \"subtotalCents\" + \"taxAmountCents\" AND ((NOT \"taxEnabled\" AND \"taxAmountCents\" = 0) OR \"taxEnabled\") AND length(number) BETWEEN 1 AND 64 AND length(\"commercialOrderNumber\") BETWEEN 1 AND 64 AND \"merchantName\" = 'REGALÍA' AND disclaimer = 'COMPROBANTE DE COMPRA SIMULADO — SIN VALIDEZ TRIBUTARIA'", name: "purchase_receipt_valid")
+}
+
+// Approved simulated payment attempt with integer money snapshots (#33-C1/S8)
+model PaymentAttempt {
+  id                  String           @id @default(uuid())
+  orderId             String           @unique
+  order               Order            @relation(fields: [orderId], references: [id])
+  buyerId             String
+  buyer               User             @relation("PaymentBuyer", fields: [buyerId], references: [id])
+  cardFixtureId       String
+  cardFixture         SimulatedCard    @relation(fields: [cardFixtureId], references: [fixtureId])
+  status              String           @default("APPROVED")
+  currency            String           @default("USD")
+  subtotalCents       BigInt
+  taxEnabled          Boolean
+  taxRateBps          Int
+  taxAmountCents      BigInt
+  shippingAmountCents Int              @default(0)
+  totalCents          BigInt
+  amountCents         BigInt
+  cardLast4           String
+  reference           String           @unique
+  createdAt           DateTime         @default(now())
+
+  checkoutAttempts CheckoutAttempt[]
+
+  @@index([buyerId])
+  @@index([cardFixtureId])
+  @@check(expression: "status = 'APPROVED' AND currency = 'USD' AND \"shippingAmountCents\" = 0 AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"subtotalCents\" >= 0 AND \"subtotalCents\" <= 9007199254740991 AND \"taxAmountCents\" >= 0 AND \"taxAmountCents\" <= 9007199254740991 AND \"totalCents\" >= 0 AND \"totalCents\" <= 9007199254740991 AND \"amountCents\" >= 0 AND \"amountCents\" <= 9007199254740991 AND \"totalCents\" = \"subtotalCents\" + \"taxAmountCents\" AND \"amountCents\" = \"totalCents\" AND ((NOT \"taxEnabled\" AND \"taxAmountCents\" = 0) OR \"taxEnabled\") AND \"cardLast4\" ~ '^[0-9]{4}$' AND length(reference) BETWEEN 1 AND 64", name: "payment_attempt_valid")
+}
+
+// Idempotent client checkout intention tracking and safe replay lookup (#33-C1/S8)
+model CheckoutAttempt {
+  id               String           @id @default(uuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id])
+  idempotencyKey   String
+  requestHash      String
+  status           String           @default("PROCESSING")
+  orderId          String?
+  order            Order?           @relation(fields: [orderId], references: [id])
+  receiptId        String?
+  receipt          PurchaseReceipt? @relation(fields: [receiptId], references: [id])
+  paymentAttemptId String?
+  paymentAttempt   PaymentAttempt?  @relation(fields: [paymentAttemptId], references: [id])
+  errorCode        String?
+  errorMessage     String?
+  errorDetails     Json?
+  successSnapshot  Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @default(now())
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId])
+  @@index([orderId])
+  @@index([receiptId])
+  @@index([paymentAttemptId])
+  @@check(expression: "status IN ('PROCESSING', 'SUCCEEDED', 'REJECTED', 'FAILED') AND length(\"idempotencyKey\") BETWEEN 1 AND 128 AND length(\"requestHash\") BETWEEN 1 AND 128 AND ((status = 'PROCESSING' AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"paymentAttemptId\" IS NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NULL) OR (status = 'SUCCEEDED' AND \"orderId\" IS NOT NULL AND \"receiptId\" IS NOT NULL AND \"paymentAttemptId\" IS NOT NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NOT NULL AND json_typeof(\"successSnapshot\") = 'object') OR (status IN ('REJECTED', 'FAILED') AND \"errorCode\" IS NOT NULL AND length(\"errorCode\") BETWEEN 1 AND 64 AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"paymentAttemptId\" IS NULL AND \"successSnapshot\" IS NULL))", name: "checkout_attempt_status_consistency")
 }
