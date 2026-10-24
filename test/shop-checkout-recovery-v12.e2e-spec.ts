@@ -357,4 +357,324 @@ describe('Shop Checkout v1.2 Recovery, Attempt GET & Durability E2E (owned Postg
       expect(orderCountAfter).toBe(orderCountBefore);
     });
   });
+
+  describe('Observable PROCESSING & Stale Orphan Reconciliation', () => {
+    it('real HTTP checkout blocked on owned product lock: observes DURABLE reservation via GET, remains PROCESSING when stale under active key lock with no changed money, and resolves to original 201 same attemptId upon release', async () => {
+      const inFlightKey = randomUUID();
+      const token = await getValidQuoteToken(clientUserId, publishedProductId, 1);
+      const payload = buildCheckoutPayload(token);
+
+      const balanceBefore = (
+        await db.client.orm.public.SimulatedCard.where({ fixtureId: 'DEMO_APPROVED' }).first()
+      ).balanceCents;
+      const stockBefore = (
+        await db.client.orm.public.Product.where({ id: publishedProductId }).first()
+      ).stock;
+
+      let releaseProductLock!: () => void;
+      let signalProductLock!: () => void;
+      let rejectProductLock!: (error: unknown) => void;
+      const productLockHeld = new Promise<void>((resolve) => { releaseProductLock = resolve; });
+      const productLockAcquired = new Promise<void>((resolve, reject) => {
+        signalProductLock = resolve;
+        rejectProductLock = reject;
+      });
+      const productLockTask = db.client.transaction(async (tx: any) => {
+        await tx.query(
+          db.client.raw.sql`
+            SELECT id FROM public.product WHERE id = ${publishedProductId} FOR UPDATE
+          `.returnsRow({ id: 'pg/text@1' }).build(),
+        );
+        signalProductLock();
+        await productLockHeld;
+      });
+      void productLockTask.catch(rejectProductLock);
+
+      await productLockAcquired;
+
+      let postPromise: Promise<any> | null = null;
+      try {
+        postPromise = http()
+          .post('/api/v1/shop/checkout')
+          .set(auth(clientToken))
+          .set('Idempotency-Key', inFlightKey)
+          .timeout({ response: 15000, deadline: 20000 })
+          .send(payload)
+          .then((response) => response);
+
+        // Bounded async barrier: poll GET until DURABLE reservation is observed
+        let observedAttemptId: string | null = null;
+        const deadline = Date.now() + 5000;
+        while (Date.now() < deadline) {
+          const getRes = await http()
+            .get(`/api/v1/shop/checkout-attempts/${inFlightKey}`)
+            .set(auth(clientToken));
+          if (getRes.status === 200 && getRes.body.status === 'PROCESSING') {
+            observedAttemptId = getRes.body.checkoutAttemptId;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 50));
+        }
+
+        expect(observedAttemptId).toBeTruthy();
+
+        // A visible reservation alone does not prove that its owner has acquired the key lock.
+        let ownerHoldsKey = false;
+        const ownerDeadline = Date.now() + 5000;
+        while (Date.now() < ownerDeadline) {
+          ownerHoldsKey = await db.client.transaction(async (tx: any) => {
+            const [probe] = await tx.query(
+              db.client.raw.sql`
+                SELECT pg_try_advisory_xact_lock(
+                  hashtext('checkout_intent'), hashtext(${clientUserId} || ':' || ${inFlightKey})
+                ) AS available
+              `.returnsRow({ available: 'pg/bool@1' }).build(),
+            );
+            return probe.available === false;
+          });
+          if (ownerHoldsKey) break;
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        expect(ownerHoldsKey).toBe(true);
+
+        // Make createdAt stale (25 minutes ago) only in owned fixture
+        await db.client.transaction(async (tx: any) => {
+          await tx.execute(
+            db.client.raw.sql`
+              UPDATE public."checkoutAttempt"
+              SET "createdAt" = clock_timestamp() - INTERVAL '25 minutes',
+                  "updatedAt" = clock_timestamp() - INTERVAL '25 minutes'
+              WHERE "idempotencyKey" = ${inFlightKey}
+            `.affectedCount().build(),
+          );
+        });
+
+        // While owner actively holds PostgreSQL advisory key lock, GET must REMAIN PROCESSING (active owner not reconciled)
+        const staleGetRes = await http()
+          .get(`/api/v1/shop/checkout-attempts/${inFlightKey}`)
+          .set(auth(clientToken));
+
+        expect(staleGetRes.status).toBe(200);
+        expect(staleGetRes.body.status).toBe('PROCESSING');
+        expect(staleGetRes.body.checkoutAttemptId).toBe(observedAttemptId);
+
+        // Money and stock remain unchanged
+        const balanceDuring = (
+          await db.client.orm.public.SimulatedCard.where({ fixtureId: 'DEMO_APPROVED' }).first()
+        ).balanceCents;
+        const stockDuring = (
+          await db.client.orm.public.Product.where({ id: publishedProductId }).first()
+        ).stock;
+        expect(balanceDuring).toBe(balanceBefore);
+        expect(stockDuring).toBe(stockBefore);
+
+        // Release product lock so HTTP checkout unblocks and completes
+        releaseProductLock();
+        await productLockTask;
+
+        const postRes = await postPromise;
+        expect(postRes.status).toBe(201);
+        expect(postRes.body.checkoutAttemptId).toBe(observedAttemptId);
+
+        // GET confirms SUCCEEDED with identical attemptId
+        const finalGetRes = await http()
+          .get(`/api/v1/shop/checkout-attempts/${inFlightKey}`)
+          .set(auth(clientToken));
+
+        expect(finalGetRes.status).toBe(200);
+        expect(finalGetRes.body.status).toBe('SUCCEEDED');
+        expect(finalGetRes.body.checkoutAttemptId).toBe(observedAttemptId);
+      } finally {
+        releaseProductLock();
+        await productLockTask;
+        if (postPromise) await postPromise.catch(() => {});
+      }
+    });
+
+
+    it('stale orphan reconciler: marks stale (>15 min) unowned PROCESSING attempt FAILED with safe INTERNAL_ERROR', async () => {
+      const staleKey = randomUUID();
+      const attemptId = randomUUID();
+
+      // Insert an orphan attempt with createdAt 25 minutes in the past
+      await db.client.transaction(async (tx: any) => {
+        await tx.execute(
+          db.client.raw.sql`
+            INSERT INTO public."checkoutAttempt" (
+              "id", "userId", "idempotencyKey", "requestHash", "status",
+              "createdAt", "updatedAt"
+            ) VALUES (
+              ${attemptId}, ${clientUserId}, ${staleKey}, 'test-stale-hash', 'PROCESSING',
+              clock_timestamp() - INTERVAL '25 minutes', clock_timestamp() - INTERVAL '25 minutes'
+            )
+          `.affectedCount().build()
+        );
+      });
+
+      const stockBefore = (await db.client.orm.public.Product.where({ id: publishedProductId }).first()).stock;
+      const balanceBefore = (await db.client.orm.public.SimulatedCard.where({ fixtureId: 'DEMO_APPROVED' }).first()).balanceCents;
+      const ordersBefore = (await db.client.orm.public.Order.all()).length;
+
+      // GET triggers internal bounded stale reconciler
+      const getRes = await http()
+        .get(`/api/v1/shop/checkout-attempts/${staleKey}`)
+        .set(auth(clientToken));
+
+      expect(getRes.status).toBe(200);
+      expect(getRes.body).toMatchObject({
+        status: 'FAILED',
+        checkoutAttemptId: attemptId,
+        orderId: null,
+        receiptId: null,
+        errorCode: 'INTERNAL_ERROR',
+      });
+
+      // Verify no money/stock/order side-effects
+      const stockAfter = (await db.client.orm.public.Product.where({ id: publishedProductId }).first()).stock;
+      const balanceAfter = (await db.client.orm.public.SimulatedCard.where({ fixtureId: 'DEMO_APPROVED' }).first()).balanceCents;
+      const ordersAfter = (await db.client.orm.public.Order.all()).length;
+
+      expect(stockAfter).toBe(stockBefore);
+      expect(balanceAfter).toBe(balanceBefore);
+      expect(ordersAfter).toBe(ordersBefore);
+    });
+
+    it('FAILED POST never creates a new purchase or charges', async () => {
+      const failedKey = randomUUID();
+      const attemptId = randomUUID();
+      const token = await getValidQuoteToken(clientUserId, publishedProductId, 1);
+      const payload = buildCheckoutPayload(token);
+      const { buildCanonicalIntent, hashCanonicalIntent } = await import(
+        '../src/modules/shop/checkout/checkout-intent.util.js'
+      );
+      const requestHash = hashCanonicalIntent(
+        buildCanonicalIntent({
+          items: payload.items,
+          delivery: payload.delivery,
+          quoteToken: payload.quoteToken,
+          cardFixtureId: 'DEMO_APPROVED',
+        }),
+      );
+
+      await db.client.transaction(async (tx: any) => {
+        await tx.execute(
+          db.client.raw.sql`
+            INSERT INTO public."checkoutAttempt" (
+              "id", "userId", "idempotencyKey", "requestHash", "status",
+              "errorCode", "errorMessage", "createdAt", "updatedAt"
+            ) VALUES (
+              ${attemptId}, ${clientUserId}, ${failedKey}, ${requestHash}, 'FAILED',
+              'INTERNAL_ERROR', 'Error interno simulado', clock_timestamp(), clock_timestamp()
+            )
+          `.affectedCount().build()
+        );
+      });
+
+      const postRes = await http()
+        .post('/api/v1/shop/checkout')
+        .set(auth(clientToken))
+        .set('Idempotency-Key', failedKey)
+        .send(payload);
+
+      expect(postRes.status).toBe(500);
+      expect(postRes.body.error.code).toBe('INTERNAL_ERROR');
+    });
+
+    it('bounded wait under held key lock: duplicate times out with INTERNAL_ERROR without changing its durable PROCESSING state', async () => {
+      const waitKey = randomUUID();
+      const attemptId = randomUUID();
+      const token = await getValidQuoteToken(clientUserId, publishedProductId, 1);
+      const payload = buildCheckoutPayload(token);
+      const { buildCanonicalIntent, hashCanonicalIntent } = await import(
+        '../src/modules/shop/checkout/checkout-intent.util.js'
+      );
+      const requestHash = hashCanonicalIntent(
+        buildCanonicalIntent({
+          items: payload.items,
+          delivery: payload.delivery,
+          quoteToken: payload.quoteToken,
+          cardFixtureId: 'DEMO_APPROVED',
+        }),
+      );
+
+      // The reservation must be committed and visible before simulating its active owner.
+      await db.client.transaction(async (tx: any) => {
+        await tx.execute(
+          db.client.raw.sql`
+            INSERT INTO public."checkoutAttempt" (
+              "id", "userId", "idempotencyKey", "requestHash", "status",
+              "createdAt", "updatedAt"
+            ) VALUES (
+              ${attemptId}, ${clientUserId}, ${waitKey}, ${requestHash}, 'PROCESSING',
+              clock_timestamp(), clock_timestamp()
+            )
+          `.affectedCount().build(),
+        );
+      });
+
+      let releaseKeyLock!: () => void;
+      let signalKeyLock!: () => void;
+      let rejectKeyLock!: (error: unknown) => void;
+      const keyLockHeld = new Promise<void>((resolve) => { releaseKeyLock = resolve; });
+      const keyLockAcquired = new Promise<void>((resolve, reject) => {
+        signalKeyLock = resolve;
+        rejectKeyLock = reject;
+      });
+      const keyLockTask = db.client.transaction(async (tx: any) => {
+        await tx.query(
+          db.client.raw.sql`
+            SELECT 1 AS locked
+            FROM pg_advisory_xact_lock(hashtext('checkout_intent'), hashtext(${clientUserId} || ':' || ${waitKey}))
+          `.returnsRow({ locked: 'pg/int4@1' }).build(),
+        );
+        signalKeyLock();
+        await keyLockHeld;
+      });
+      void keyLockTask.catch(rejectKeyLock);
+
+      await keyLockAcquired;
+
+      try {
+        const before = await http()
+          .get(`/api/v1/shop/checkout-attempts/${waitKey}`)
+          .set(auth(clientToken))
+          .expect(200);
+        const balanceBefore = (await db.client.orm.public.SimulatedCard.where({ fixtureId: 'DEMO_APPROVED' }).first()).balanceCents;
+        const stockBefore = (await db.client.orm.public.Product.where({ id: publishedProductId }).first()).stock;
+
+        // While the owner holds the key, a duplicate waits without taking ownership.
+        const started = performance.now();
+        const postRes = await http()
+          .post('/api/v1/shop/checkout')
+          .set(auth(clientToken))
+          .set('Idempotency-Key', waitKey)
+          .timeout({ response: 15000, deadline: 20000 })
+          .send(payload);
+        const elapsed = performance.now() - started;
+
+        expect(elapsed).toBeGreaterThanOrEqual(4500);
+        expect(elapsed).toBeLessThan(10000);
+        expect(postRes.status).toBe(500);
+        expect(postRes.body.error).toEqual({
+          code: 'INTERNAL_ERROR',
+          message: 'Request could not be completed',
+          details: {},
+          requestId: expect.any(String),
+        });
+
+        // Neither the durable decision/timestamp nor financial state may change.
+        const inFlightCheck = await http()
+          .get(`/api/v1/shop/checkout-attempts/${waitKey}`)
+          .set(auth(clientToken));
+        expect(inFlightCheck.status).toBe(200);
+        expect(inFlightCheck.body).toEqual(before.body);
+        expect(inFlightCheck.body.status).toBe('PROCESSING');
+        expect((await db.client.orm.public.SimulatedCard.where({ fixtureId: 'DEMO_APPROVED' }).first()).balanceCents).toBe(balanceBefore);
+        expect((await db.client.orm.public.Product.where({ id: publishedProductId }).first()).stock).toBe(stockBefore);
+      } finally {
+        releaseKeyLock();
+        await keyLockTask;
+      }
+    });
+  });
 });
