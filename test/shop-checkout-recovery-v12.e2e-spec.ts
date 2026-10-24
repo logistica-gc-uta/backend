@@ -677,4 +677,186 @@ describe('Shop Checkout v1.2 Recovery, Attempt GET & Durability E2E (owned Postg
       }
     });
   });
+
+
+  describe('Real Lost Response After Backend Commit (Fixture-Only Socket Proxy)', () => {
+    it('simulates lost HTTP response after backend commit; GET recovers SUCCEEDED and POST replays exact 201', async () => {
+      // 1. Create a fixture TCP proxy in front of Nest HTTP server
+      const serverAddress = app.getHttpServer().address();
+      const targetPort = typeof serverAddress === 'object' ? serverAddress.port : 3000;
+
+      let proxySeverCutDone = false;
+      let interceptedCommit = false;
+      let clientObservedNetworkFailure = false;
+      const activeSockets = new Set<Socket>();
+      let proxyServer: ReturnType<typeof createServer> | null = null;
+
+      const lostKey = randomUUID();
+      const token = await getValidQuoteToken(clientUserId, publishedProductId, 1);
+      const payload = buildCheckoutPayload(token);
+
+      const balanceBefore = (
+        await db.client.orm.public.SimulatedCard.where({ fixtureId: 'DEMO_APPROVED' }).first()
+      ).balanceCents;
+      const stockBefore = (
+        await db.client.orm.public.Product.where({ id: publishedProductId }).first()
+      ).stock;
+
+      try {
+        proxyServer = createServer((clientSock: Socket) => {
+          activeSockets.add(clientSock);
+          const targetSock = new Socket();
+          activeSockets.add(targetSock);
+
+          targetSock.connect(targetPort, '127.0.0.1', () => {
+            clientSock.pipe(targetSock);
+          });
+
+          targetSock.on('data', (chunk: Buffer) => {
+            const text = chunk.toString();
+            // Backend responded with 201 Created (commit succeeded!)
+            if (text.includes('201') && !proxySeverCutDone) {
+              interceptedCommit = true;
+              proxySeverCutDone = true;
+              // Abruptly destroy client socket before client receives response bytes
+              setTimeout(() => {
+                clientSock.destroy();
+                targetSock.destroy();
+              }, 20);
+            } else {
+              clientSock.write(chunk);
+            }
+          });
+
+          clientSock.on('error', () => {});
+          targetSock.on('error', () => {});
+          clientSock.on('close', () => activeSockets.delete(clientSock));
+          targetSock.on('close', () => activeSockets.delete(targetSock));
+        });
+
+        await new Promise<void>((resolve) => proxyServer!.listen(0, '127.0.0.1', resolve));
+        const proxyPort = (proxyServer.address() as any).port;
+
+        // 2. Client issues POST via proxy; expects socket reset/hang up
+        try {
+          await request(`http://127.0.0.1:${proxyPort}`)
+            .post('/api/v1/shop/checkout')
+            .set(auth(clientToken))
+            .set('Idempotency-Key', lostKey)
+            .timeout({ response: 5000, deadline: 10000 })
+            .send(payload);
+        } catch {
+          clientObservedNetworkFailure = true;
+        }
+      } finally {
+        for (const sock of activeSockets) {
+          try {
+            sock.destroy();
+          } catch {}
+        }
+        activeSockets.clear();
+
+        if (proxyServer) {
+          await new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, 1000);
+            proxyServer!.close(() => {
+              clearTimeout(timer);
+              resolve();
+            });
+          });
+        }
+      }
+
+      expect(interceptedCommit).toBe(true);
+      expect(clientObservedNetworkFailure).toBe(true);
+
+
+      // 3. Client recovers status via GET /checkout-attempts/:key
+      const recoveryGet = await http()
+        .get(`/api/v1/shop/checkout-attempts/${lostKey}`)
+        .set(auth(clientToken));
+
+      expect(recoveryGet.status).toBe(200);
+      expect(recoveryGet.body.status).toBe('SUCCEEDED');
+      expect(recoveryGet.body.orderId).toBeTruthy();
+      expect(recoveryGet.body.receiptId).toBeTruthy();
+
+      const recoveredOrderId = recoveryGet.body.orderId;
+      const recoveredReceiptId = recoveryGet.body.receiptId;
+
+      // 4. Client retries original POST with same Idempotency-Key
+      const retryPost = await http()
+        .post('/api/v1/shop/checkout')
+        .set(auth(clientToken))
+        .set('Idempotency-Key', lostKey)
+        .send(payload);
+
+      expect(retryPost.status).toBe(201);
+      expect(retryPost.body.status).toBe('SUCCEEDED');
+      expect(retryPost.body.order.id).toBe(recoveredOrderId);
+      expect(retryPost.body.receipt.id).toBe(recoveredReceiptId);
+
+      // 5. Verify card was debited ONLY once and stock was decremented ONLY once!
+      const balanceAfter = (
+        await db.client.orm.public.SimulatedCard.where({ fixtureId: 'DEMO_APPROVED' }).first()
+      ).balanceCents;
+      const stockAfter = (
+        await db.client.orm.public.Product.where({ id: publishedProductId }).first()
+      ).stock;
+
+      expect(balanceBefore - balanceAfter).toBe(BigInt(retryPost.body.order.totalCents));
+      expect(stockBefore - stockAfter).toBe(1);
+    });
+  });
+
+  describe('Snapshot Immutability After Admin Catalog & Tax Changes', () => {
+    it('preserves immutable PurchaseReceipt and Order snapshot after admin updates product price, name and tax', async () => {
+      const key = randomUUID();
+      const token = await getValidQuoteToken(clientUserId, publishedProductId, 1);
+      const postRes = await http()
+        .post('/api/v1/shop/checkout')
+        .set(auth(clientToken))
+        .set('Idempotency-Key', key)
+        .send(buildCheckoutPayload(token));
+
+      expect(postRes.status).toBe(201);
+      const receiptId = postRes.body.receipt.id;
+      const orderId = postRes.body.order.id;
+
+      // Read initial receipt snapshot
+      const receiptBefore = await db.client.orm.public.PurchaseReceipt.where({ id: receiptId }).first();
+      const snapshotBefore = receiptBefore.snapshot as any;
+      expect(snapshotBefore.items[0].unitPriceCents).toBe(3650);
+      expect(snapshotBefore.pricing.totalCents).toBe(4198);
+
+      // Admin updates product price to $50.00 and alters product name
+      await db.client.orm.public.Product.where({ id: publishedProductId }).update({
+        price: 50.0,
+        priceCents: 5000n,
+        name: 'Cesta Modificada Post Compra',
+      });
+
+      // Admin modifies shop settings tax rate to 1200 bps
+      const settingsRow = (await db.client.orm.public.ShopBusinessSettings.all())[0];
+      await db.client.orm.public.ShopBusinessSettings.where({ id: settingsRow.id }).update({
+        taxRateBps: 1200,
+        version: settingsRow.version + 1,
+      });
+
+      // Verify PurchaseReceipt snapshot in PostgreSQL remains 100% immutable
+      const receiptAfter = await db.client.orm.public.PurchaseReceipt.where({ id: receiptId }).first();
+      const snapshotAfter = receiptAfter.snapshot as any;
+
+      expect(snapshotAfter.items[0].name).toBe('Cesta Gourmet Navideña');
+      expect(snapshotAfter.items[0].unitPriceCents).toBe(3650);
+      expect(snapshotAfter.pricing.subtotalCents).toBe(3650);
+      expect(snapshotAfter.pricing.tax.rateBps).toBe(1500);
+      expect(snapshotAfter.pricing.tax.amountCents).toBe(548);
+      expect(snapshotAfter.pricing.totalCents).toBe(4198);
+
+      // Verify Order items snapshot
+      const orderItems = await db.client.orm.public.OrderItem.where({ orderId }).all();
+      expect(orderItems[0].unitPriceCents).toBe(3650n);
+    });
+  });
 });
