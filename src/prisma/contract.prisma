@@ -54,6 +54,9 @@ model User {
   orders        Order[] @relation("OrderOwner")
   createdOrders Order[] @relation("OrderCreator")
   uploadedAssets UploadedAsset[] @relation("UploadActor")
+  checkoutAttempts CheckoutAttempt[]
+  payments         PaymentAttempt[] @relation("PaymentBuyer")
+  receipts         PurchaseReceipt[] @relation("ReceiptBuyer")
 }
 
 model Driver {
@@ -223,6 +226,9 @@ model Order {
   @@check(expression: "NOT \"requiresAdministrativeReview\" OR status NOT IN ('DELIVERED', 'CANCELLED')", name: "failed_order_commercial_hold")
 
   items                 OrderItem[]
+  paymentAttempt        PaymentAttempt?
+  receipt               PurchaseReceipt?
+  checkoutAttempts      CheckoutAttempt[]
 
   @@index([userId])
   @@index([createdById])
@@ -351,4 +357,156 @@ model DispatchIntervention {
   @@index([orderId])
   @@index([routeId])
   @@check(expression: "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500", name: "dispatch_audit_valid")
+}
+
+// Singleton commercial settings with optimistic CAS and full audit trail (#33-A)
+model ShopBusinessSettings {
+  id                          String   @id @default(uuid())
+  singletonKey                String   @unique @default("GLOBAL")
+  version                     Int      @default(1)
+  currency                    String   @default("USD")
+  shippingStatus              String   @default("FREE_INCLUDED")
+  shippingAmountCents         Int      @default(0)
+  shippingIncludedInPrices    Boolean  @default(true)
+  taxMode                     String   @default("SIMULATED")
+  taxEnabled                  Boolean  @default(true)
+  taxRateBps                  Int      @default(1500)
+  maxUnitsPerSkuPerOrder      Int      @default(10)
+  deliveryTimeZone            String   @default("America/Guayaquil")
+  deliveryStartTime           String   @default("07:00")
+  deliveryEndTime             String   @default("17:00")
+  deliveryBoundariesInclusive Boolean  @default(true)
+  updatedById                 String?
+  updatedBy                   User?    @relation(fields: [updatedById], references: [id])
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @default(now())
+
+  audits                      ShopSettingsAudit[]
+
+  @@check(expression: "\"singletonKey\" = 'GLOBAL'", name: "shop_settings_singleton")
+  @@check(expression: "version >= 1 AND currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"shippingIncludedInPrices\" = true AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"maxUnitsPerSkuPerOrder\" BETWEEN 1 AND 100 AND \"deliveryTimeZone\" = 'America/Guayaquil' AND \"deliveryBoundariesInclusive\" = true AND \"deliveryStartTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryEndTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryStartTime\" < \"deliveryEndTime\"", name: "shop_settings_valid")
+}
+
+// Append-only audit log for atomic shop settings CAS modifications
+model ShopSettingsAudit {
+  id              String               @id @default(uuid())
+  settingsId      String
+  settings        ShopBusinessSettings @relation(fields: [settingsId], references: [id])
+  actorId         String
+  actor           User                 @relation(fields: [actorId], references: [id])
+  expectedVersion Int
+  newVersion      Int
+  changedFields   Json
+  snapshot        Json
+  recordedAt      DateTime             @default(now())
+
+  @@index([settingsId])
+  @@index([actorId])
+  @@index([recordedAt])
+  @@check(expression: "\"expectedVersion\" >= 1 AND \"newVersion\" = \"expectedVersion\" + 1", name: "shop_settings_audit_version_step")
+}
+
+// Synthetic card fixtures for test/demo environments (#33-C1)
+// Plaintext PAN and CVV exist only in backend in-memory fixtures, never persisted.
+model SimulatedCard {
+  id           String           @id @default(uuid())
+  fixtureId    String           @unique
+  last4        String
+  active       Boolean          @default(true)
+  balanceCents BigInt           @default(0)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @default(now())
+
+  paymentAttempts PaymentAttempt[]
+
+  @@check(expression: "\"balanceCents\" >= 0 AND \"balanceCents\" <= 9007199254740991 AND \"last4\" ~ '^[0-9]{4}$' AND length(\"fixtureId\") BETWEEN 1 AND 64", name: "simulated_card_valid")
+}
+
+// Immutable purchase receipt snapshot and commercial numbering (#33-C1/S8)
+model PurchaseReceipt {
+  id                    String           @id @default(uuid())
+  orderId               String           @unique
+  order                 Order            @relation(fields: [orderId], references: [id])
+  number                String           @unique
+  commercialOrderNumber String           @unique
+  buyerId               String
+  buyer                 User             @relation("ReceiptBuyer", fields: [buyerId], references: [id])
+  issuedAt              DateTime         @default(now())
+  merchantName          String           @default("REGALÍA")
+  currency              String           @default("USD")
+  subtotalCents         BigInt
+  taxMode               String           @default("SIMULATED")
+  taxEnabled            Boolean
+  taxRateBps            Int
+  taxAmountCents        BigInt
+  shippingStatus        String           @default("FREE_INCLUDED")
+  shippingAmountCents   Int              @default(0)
+  totalCents            BigInt
+  snapshot              Json
+  disclaimer            String           @default("COMPROBANTE DE COMPRA SIMULADO — SIN VALIDEZ TRIBUTARIA")
+  createdAt             DateTime         @default(now())
+
+  checkoutAttempts      CheckoutAttempt[]
+
+  @@index([buyerId])
+  @@index([issuedAt])
+  @@check(expression: "currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"subtotalCents\" >= 0 AND \"subtotalCents\" <= 9007199254740991 AND \"taxAmountCents\" >= 0 AND \"taxAmountCents\" <= 9007199254740991 AND \"totalCents\" >= 0 AND \"totalCents\" <= 9007199254740991 AND \"totalCents\" = \"subtotalCents\" + \"taxAmountCents\" AND ((NOT \"taxEnabled\" AND \"taxAmountCents\" = 0) OR \"taxEnabled\") AND length(number) BETWEEN 1 AND 64 AND length(\"commercialOrderNumber\") BETWEEN 1 AND 64 AND \"merchantName\" = 'REGALÍA' AND disclaimer = 'COMPROBANTE DE COMPRA SIMULADO — SIN VALIDEZ TRIBUTARIA'", name: "purchase_receipt_valid")
+}
+
+// Approved simulated payment attempt with integer money snapshots (#33-C1/S8)
+model PaymentAttempt {
+  id                  String           @id @default(uuid())
+  orderId             String           @unique
+  order               Order            @relation(fields: [orderId], references: [id])
+  buyerId             String
+  buyer               User             @relation("PaymentBuyer", fields: [buyerId], references: [id])
+  cardFixtureId       String
+  cardFixture         SimulatedCard    @relation(fields: [cardFixtureId], references: [fixtureId])
+  status              String           @default("APPROVED")
+  currency            String           @default("USD")
+  subtotalCents       BigInt
+  taxEnabled          Boolean
+  taxRateBps          Int
+  taxAmountCents      BigInt
+  shippingAmountCents Int              @default(0)
+  totalCents          BigInt
+  amountCents         BigInt
+  cardLast4           String
+  reference           String           @unique
+  createdAt           DateTime         @default(now())
+
+  checkoutAttempts CheckoutAttempt[]
+
+  @@index([buyerId])
+  @@index([cardFixtureId])
+  @@check(expression: "status = 'APPROVED' AND currency = 'USD' AND \"shippingAmountCents\" = 0 AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"subtotalCents\" >= 0 AND \"subtotalCents\" <= 9007199254740991 AND \"taxAmountCents\" >= 0 AND \"taxAmountCents\" <= 9007199254740991 AND \"totalCents\" >= 0 AND \"totalCents\" <= 9007199254740991 AND \"amountCents\" >= 0 AND \"amountCents\" <= 9007199254740991 AND \"totalCents\" = \"subtotalCents\" + \"taxAmountCents\" AND \"amountCents\" = \"totalCents\" AND ((NOT \"taxEnabled\" AND \"taxAmountCents\" = 0) OR \"taxEnabled\") AND \"cardLast4\" ~ '^[0-9]{4}$' AND length(reference) BETWEEN 1 AND 64", name: "payment_attempt_valid")
+}
+
+// Idempotent client checkout intention tracking and safe replay lookup (#33-C1/S8)
+model CheckoutAttempt {
+  id               String           @id @default(uuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id])
+  idempotencyKey   String
+  requestHash      String
+  status           String           @default("PROCESSING")
+  orderId          String?
+  order            Order?           @relation(fields: [orderId], references: [id])
+  receiptId        String?
+  receipt          PurchaseReceipt? @relation(fields: [receiptId], references: [id])
+  paymentAttemptId String?
+  paymentAttempt   PaymentAttempt?  @relation(fields: [paymentAttemptId], references: [id])
+  errorCode        String?
+  errorMessage     String?
+  errorDetails     Json?
+  successSnapshot  Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @default(now())
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId])
+  @@index([orderId])
+  @@index([receiptId])
+  @@index([paymentAttemptId])
+  @@check(expression: "status IN ('PROCESSING', 'SUCCEEDED', 'REJECTED', 'FAILED') AND length(\"idempotencyKey\") BETWEEN 1 AND 128 AND length(\"requestHash\") BETWEEN 1 AND 128 AND ((status = 'PROCESSING' AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"paymentAttemptId\" IS NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NULL) OR (status = 'SUCCEEDED' AND \"orderId\" IS NOT NULL AND \"receiptId\" IS NOT NULL AND \"paymentAttemptId\" IS NOT NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NOT NULL AND json_typeof(\"successSnapshot\") = 'object') OR (status IN ('REJECTED', 'FAILED') AND \"errorCode\" IS NOT NULL AND length(\"errorCode\") BETWEEN 1 AND 64 AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"paymentAttemptId\" IS NULL AND \"successSnapshot\" IS NULL))", name: "checkout_attempt_status_consistency")
 }

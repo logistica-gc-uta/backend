@@ -8,6 +8,10 @@
       "model": "Category",
       "namespace": "public"
     },
+    "checkoutAttempt": {
+      "model": "CheckoutAttempt",
+      "namespace": "public"
+    },
     "deliveryAttempt": {
       "model": "DeliveryAttempt",
       "namespace": "public"
@@ -40,6 +44,10 @@
       "model": "OrderItem",
       "namespace": "public"
     },
+    "paymentAttempt": {
+      "model": "PaymentAttempt",
+      "namespace": "public"
+    },
     "product": {
       "model": "Product",
       "namespace": "public"
@@ -48,12 +56,28 @@
       "model": "ProductImage",
       "namespace": "public"
     },
+    "purchaseReceipt": {
+      "model": "PurchaseReceipt",
+      "namespace": "public"
+    },
     "route": {
       "model": "Route",
       "namespace": "public"
     },
     "routeStop": {
       "model": "RouteStop",
+      "namespace": "public"
+    },
+    "shopBusinessSettings": {
+      "model": "ShopBusinessSettings",
+      "namespace": "public"
+    },
+    "shopSettingsAudit": {
+      "model": "ShopSettingsAudit",
+      "namespace": "public"
+    },
+    "simulatedCard": {
+      "model": "SimulatedCard",
       "namespace": "public"
     },
     "uploadedAsset": {
@@ -299,6 +323,222 @@
               },
               "namespaceId": "public",
               "table": "category"
+            }
+          },
+          "CheckoutAttempt": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "errorCode": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "errorDetails": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "errorMessage": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "idempotencyKey": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "orderId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "paymentAttemptId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "receiptId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "requestHash": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "successSnapshot": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "userId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "order": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "orderId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Order",
+                  "namespace": "public"
+                }
+              },
+              "paymentAttempt": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "paymentAttemptId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "PaymentAttempt",
+                  "namespace": "public"
+                }
+              },
+              "receipt": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "receiptId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "PurchaseReceipt",
+                  "namespace": "public"
+                }
+              },
+              "user": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "userId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "errorCode": {
+                  "column": "errorCode"
+                },
+                "errorDetails": {
+                  "column": "errorDetails"
+                },
+                "errorMessage": {
+                  "column": "errorMessage"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "idempotencyKey": {
+                  "column": "idempotencyKey"
+                },
+                "orderId": {
+                  "column": "orderId"
+                },
+                "paymentAttemptId": {
+                  "column": "paymentAttemptId"
+                },
+                "receiptId": {
+                  "column": "receiptId"
+                },
+                "requestHash": {
+                  "column": "requestHash"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "successSnapshot": {
+                  "column": "successSnapshot"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                },
+                "userId": {
+                  "column": "userId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "checkoutAttempt"
             }
           },
           "DeliveryAttempt": {
@@ -1074,6 +1314,21 @@
               }
             },
             "relations": {
+              "checkoutAttempts": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "orderId"
+                  ]
+                },
+                "to": {
+                  "model": "CheckoutAttempt",
+                  "namespace": "public"
+                }
+              },
               "createdBy": {
                 "cardinality": "N:1",
                 "nullable": true,
@@ -1102,6 +1357,38 @@
                 },
                 "to": {
                   "model": "OrderItem",
+                  "namespace": "public"
+                }
+              },
+              "paymentAttempt": {
+                "cardinality": "1:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "orderId"
+                  ]
+                },
+                "to": {
+                  "model": "PaymentAttempt",
+                  "namespace": "public"
+                }
+              },
+              "receipt": {
+                "cardinality": "1:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "orderId"
+                  ]
+                },
+                "to": {
+                  "model": "PurchaseReceipt",
                   "namespace": "public"
                 }
               },
@@ -1419,6 +1706,241 @@
               "table": "orderItem"
             }
           },
+          "PaymentAttempt": {
+            "fields": {
+              "amountCents": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
+              "buyerId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "cardFixtureId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "cardLast4": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "currency": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "orderId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "reference": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "shippingAmountCents": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "subtotalCents": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
+              "taxAmountCents": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
+              "taxEnabled": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "taxRateBps": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "totalCents": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "buyer": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "buyerId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "cardFixture": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "cardFixtureId"
+                  ],
+                  "targetFields": [
+                    "fixtureId"
+                  ]
+                },
+                "to": {
+                  "model": "SimulatedCard",
+                  "namespace": "public"
+                }
+              },
+              "checkoutAttempts": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "paymentAttemptId"
+                  ]
+                },
+                "to": {
+                  "model": "CheckoutAttempt",
+                  "namespace": "public"
+                }
+              },
+              "order": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "orderId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Order",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "amountCents": {
+                  "column": "amountCents"
+                },
+                "buyerId": {
+                  "column": "buyerId"
+                },
+                "cardFixtureId": {
+                  "column": "cardFixtureId"
+                },
+                "cardLast4": {
+                  "column": "cardLast4"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "currency": {
+                  "column": "currency"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "orderId": {
+                  "column": "orderId"
+                },
+                "reference": {
+                  "column": "reference"
+                },
+                "shippingAmountCents": {
+                  "column": "shippingAmountCents"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "subtotalCents": {
+                  "column": "subtotalCents"
+                },
+                "taxAmountCents": {
+                  "column": "taxAmountCents"
+                },
+                "taxEnabled": {
+                  "column": "taxEnabled"
+                },
+                "taxRateBps": {
+                  "column": "taxRateBps"
+                },
+                "totalCents": {
+                  "column": "totalCents"
+                }
+              },
+              "namespaceId": "public",
+              "table": "paymentAttempt"
+            }
+          },
           "Product": {
             "fields": {
               "categoryId": {
@@ -1719,6 +2241,255 @@
               },
               "namespaceId": "public",
               "table": "productImage"
+            }
+          },
+          "PurchaseReceipt": {
+            "fields": {
+              "buyerId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "commercialOrderNumber": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "currency": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "disclaimer": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "issuedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "merchantName": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "number": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "orderId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "shippingAmountCents": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "shippingStatus": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "snapshot": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "subtotalCents": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
+              "taxAmountCents": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
+              "taxEnabled": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "taxMode": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "taxRateBps": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "totalCents": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "buyer": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "buyerId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "checkoutAttempts": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "receiptId"
+                  ]
+                },
+                "to": {
+                  "model": "CheckoutAttempt",
+                  "namespace": "public"
+                }
+              },
+              "order": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "orderId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Order",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "buyerId": {
+                  "column": "buyerId"
+                },
+                "commercialOrderNumber": {
+                  "column": "commercialOrderNumber"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "currency": {
+                  "column": "currency"
+                },
+                "disclaimer": {
+                  "column": "disclaimer"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "issuedAt": {
+                  "column": "issuedAt"
+                },
+                "merchantName": {
+                  "column": "merchantName"
+                },
+                "number": {
+                  "column": "number"
+                },
+                "orderId": {
+                  "column": "orderId"
+                },
+                "shippingAmountCents": {
+                  "column": "shippingAmountCents"
+                },
+                "shippingStatus": {
+                  "column": "shippingStatus"
+                },
+                "snapshot": {
+                  "column": "snapshot"
+                },
+                "subtotalCents": {
+                  "column": "subtotalCents"
+                },
+                "taxAmountCents": {
+                  "column": "taxAmountCents"
+                },
+                "taxEnabled": {
+                  "column": "taxEnabled"
+                },
+                "taxMode": {
+                  "column": "taxMode"
+                },
+                "taxRateBps": {
+                  "column": "taxRateBps"
+                },
+                "totalCents": {
+                  "column": "totalCents"
+                }
+              },
+              "namespaceId": "public",
+              "table": "purchaseReceipt"
             }
           },
           "Route": {
@@ -2074,6 +2845,450 @@
               "table": "routeStop"
             }
           },
+          "ShopBusinessSettings": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "currency": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "deliveryBoundariesInclusive": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "deliveryEndTime": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "deliveryStartTime": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "deliveryTimeZone": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "maxUnitsPerSkuPerOrder": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "shippingAmountCents": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "shippingIncludedInPrices": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "shippingStatus": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "singletonKey": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "taxEnabled": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "taxMode": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "taxRateBps": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "version": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "audits": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "settingsId"
+                  ]
+                },
+                "to": {
+                  "model": "ShopSettingsAudit",
+                  "namespace": "public"
+                }
+              },
+              "updatedBy": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "updatedById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "currency": {
+                  "column": "currency"
+                },
+                "deliveryBoundariesInclusive": {
+                  "column": "deliveryBoundariesInclusive"
+                },
+                "deliveryEndTime": {
+                  "column": "deliveryEndTime"
+                },
+                "deliveryStartTime": {
+                  "column": "deliveryStartTime"
+                },
+                "deliveryTimeZone": {
+                  "column": "deliveryTimeZone"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "maxUnitsPerSkuPerOrder": {
+                  "column": "maxUnitsPerSkuPerOrder"
+                },
+                "shippingAmountCents": {
+                  "column": "shippingAmountCents"
+                },
+                "shippingIncludedInPrices": {
+                  "column": "shippingIncludedInPrices"
+                },
+                "shippingStatus": {
+                  "column": "shippingStatus"
+                },
+                "singletonKey": {
+                  "column": "singletonKey"
+                },
+                "taxEnabled": {
+                  "column": "taxEnabled"
+                },
+                "taxMode": {
+                  "column": "taxMode"
+                },
+                "taxRateBps": {
+                  "column": "taxRateBps"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                },
+                "updatedById": {
+                  "column": "updatedById"
+                },
+                "version": {
+                  "column": "version"
+                }
+              },
+              "namespaceId": "public",
+              "table": "shopBusinessSettings"
+            }
+          },
+          "ShopSettingsAudit": {
+            "fields": {
+              "actorId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "changedFields": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "expectedVersion": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "newVersion": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "recordedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "settingsId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "snapshot": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "actor": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "actorId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "settings": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "settingsId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "ShopBusinessSettings",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "actorId": {
+                  "column": "actorId"
+                },
+                "changedFields": {
+                  "column": "changedFields"
+                },
+                "expectedVersion": {
+                  "column": "expectedVersion"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "newVersion": {
+                  "column": "newVersion"
+                },
+                "recordedAt": {
+                  "column": "recordedAt"
+                },
+                "settingsId": {
+                  "column": "settingsId"
+                },
+                "snapshot": {
+                  "column": "snapshot"
+                }
+              },
+              "namespaceId": "public",
+              "table": "shopSettingsAudit"
+            }
+          },
+          "SimulatedCard": {
+            "fields": {
+              "active": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "balanceCents": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int8@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "fixtureId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "last4": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "paymentAttempts": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "fixtureId"
+                  ],
+                  "targetFields": [
+                    "cardFixtureId"
+                  ]
+                },
+                "to": {
+                  "model": "PaymentAttempt",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "active": {
+                  "column": "active"
+                },
+                "balanceCents": {
+                  "column": "balanceCents"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "fixtureId": {
+                  "column": "fixtureId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "last4": {
+                  "column": "last4"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "simulatedCard"
+            }
+          },
           "UploadedAsset": {
             "fields": {
               "actorId": {
@@ -2320,6 +3535,21 @@
               }
             },
             "relations": {
+              "checkoutAttempts": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "userId"
+                  ]
+                },
+                "to": {
+                  "model": "CheckoutAttempt",
+                  "namespace": "public"
+                }
+              },
               "createdOrders": {
                 "cardinality": "1:N",
                 "on": {
@@ -2363,6 +3593,36 @@
                 },
                 "to": {
                   "model": "Order",
+                  "namespace": "public"
+                }
+              },
+              "payments": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "buyerId"
+                  ]
+                },
+                "to": {
+                  "model": "PaymentAttempt",
+                  "namespace": "public"
+                }
+              },
+              "receipts": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "buyerId"
+                  ]
+                },
+                "to": {
+                  "model": "PurchaseReceipt",
                   "namespace": "public"
                 }
               },
@@ -2611,6 +3871,212 @@
                 {
                   "columns": [
                     "slug"
+                  ]
+                }
+              ]
+            },
+            "checkoutAttempt": {
+              "checks": [
+                {
+                  "expression": "status IN ('PROCESSING', 'SUCCEEDED', 'REJECTED', 'FAILED') AND length(\"idempotencyKey\") BETWEEN 1 AND 128 AND length(\"requestHash\") BETWEEN 1 AND 128 AND ((status = 'PROCESSING' AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"paymentAttemptId\" IS NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NULL) OR (status = 'SUCCEEDED' AND \"orderId\" IS NOT NULL AND \"receiptId\" IS NOT NULL AND \"paymentAttemptId\" IS NOT NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NOT NULL AND json_typeof(\"successSnapshot\") = 'object') OR (status IN ('REJECTED', 'FAILED') AND \"errorCode\" IS NOT NULL AND length(\"errorCode\") BETWEEN 1 AND 64 AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"paymentAttemptId\" IS NULL AND \"successSnapshot\" IS NULL))",
+                  "name": "checkout_attempt_status_consistency_c207fec0",
+                  "prefix": "checkout_attempt_status_consistency"
+                }
+              ],
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "errorCode": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "errorDetails": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": true
+                },
+                "errorMessage": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "idempotencyKey": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "orderId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "paymentAttemptId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "receiptId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "requestHash": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "PROCESSING"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "successSnapshot": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": true
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "userId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "userId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "checkoutAttempt"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "orderId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "checkoutAttempt"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "order"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "receiptId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "checkoutAttempt"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "purchaseReceipt"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "paymentAttemptId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "checkoutAttempt"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "paymentAttempt"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "orderId"
+                  ],
+                  "name": "checkoutAttempt_orderId_idx_d284871b",
+                  "prefix": "checkoutAttempt_orderId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "paymentAttemptId"
+                  ],
+                  "name": "checkoutAttempt_paymentAttemptId_idx_e668f17f",
+                  "prefix": "checkoutAttempt_paymentAttemptId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "receiptId"
+                  ],
+                  "name": "checkoutAttempt_receiptId_idx_9b8e07be",
+                  "prefix": "checkoutAttempt_receiptId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "userId"
+                  ],
+                  "name": "checkoutAttempt_userId_idx_a489d58a",
+                  "prefix": "checkoutAttempt_userId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "userId",
+                    "idempotencyKey"
                   ]
                 }
               ]
@@ -3670,6 +5136,198 @@
               },
               "uniques": []
             },
+            "paymentAttempt": {
+              "checks": [
+                {
+                  "expression": "status = 'APPROVED' AND currency = 'USD' AND \"shippingAmountCents\" = 0 AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"subtotalCents\" >= 0 AND \"subtotalCents\" <= 9007199254740991 AND \"taxAmountCents\" >= 0 AND \"taxAmountCents\" <= 9007199254740991 AND \"totalCents\" >= 0 AND \"totalCents\" <= 9007199254740991 AND \"amountCents\" >= 0 AND \"amountCents\" <= 9007199254740991 AND \"totalCents\" = \"subtotalCents\" + \"taxAmountCents\" AND \"amountCents\" = \"totalCents\" AND ((NOT \"taxEnabled\" AND \"taxAmountCents\" = 0) OR \"taxEnabled\") AND \"cardLast4\" ~ '^[0-9]{4}$' AND length(reference) BETWEEN 1 AND 64",
+                  "name": "payment_attempt_valid_f05855ef",
+                  "prefix": "payment_attempt_valid"
+                }
+              ],
+              "columns": {
+                "amountCents": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": false
+                },
+                "buyerId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "cardFixtureId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "cardLast4": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "currency": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "USD"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "orderId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "reference": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "shippingAmountCents": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "APPROVED"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "subtotalCents": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": false
+                },
+                "taxAmountCents": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": false
+                },
+                "taxEnabled": {
+                  "codecId": "pg/bool@1",
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "taxRateBps": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "totalCents": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "orderId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "paymentAttempt"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "order"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "buyerId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "paymentAttempt"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "cardFixtureId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "paymentAttempt"
+                  },
+                  "target": {
+                    "columns": [
+                      "fixtureId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "simulatedCard"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "buyerId"
+                  ],
+                  "name": "paymentAttempt_buyerId_idx_80be0de9",
+                  "prefix": "paymentAttempt_buyerId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "cardFixtureId"
+                  ],
+                  "name": "paymentAttempt_cardFixtureId_idx_d02511e9",
+                  "prefix": "paymentAttempt_cardFixtureId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "orderId"
+                  ]
+                },
+                {
+                  "columns": [
+                    "reference"
+                  ]
+                }
+              ]
+            },
             "product": {
               "checks": [
                 {
@@ -3938,6 +5596,218 @@
                   "columns": [
                     "productId",
                     "position"
+                  ]
+                }
+              ]
+            },
+            "purchaseReceipt": {
+              "checks": [
+                {
+                  "expression": "currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"subtotalCents\" >= 0 AND \"subtotalCents\" <= 9007199254740991 AND \"taxAmountCents\" >= 0 AND \"taxAmountCents\" <= 9007199254740991 AND \"totalCents\" >= 0 AND \"totalCents\" <= 9007199254740991 AND \"totalCents\" = \"subtotalCents\" + \"taxAmountCents\" AND ((NOT \"taxEnabled\" AND \"taxAmountCents\" = 0) OR \"taxEnabled\") AND length(number) BETWEEN 1 AND 64 AND length(\"commercialOrderNumber\") BETWEEN 1 AND 64 AND \"merchantName\" = 'REGALÍA' AND disclaimer = 'COMPROBANTE DE COMPRA SIMULADO — SIN VALIDEZ TRIBUTARIA'",
+                  "name": "purchase_receipt_valid_f8f867fb",
+                  "prefix": "purchase_receipt_valid"
+                }
+              ],
+              "columns": {
+                "buyerId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "commercialOrderNumber": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "currency": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "USD"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "disclaimer": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "COMPROBANTE DE COMPRA SIMULADO — SIN VALIDEZ TRIBUTARIA"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "issuedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "merchantName": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "REGALÍA"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "number": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "orderId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "shippingAmountCents": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "shippingStatus": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "FREE_INCLUDED"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "snapshot": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "subtotalCents": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": false
+                },
+                "taxAmountCents": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": false
+                },
+                "taxEnabled": {
+                  "codecId": "pg/bool@1",
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "taxMode": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "SIMULATED"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "taxRateBps": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "totalCents": {
+                  "codecId": "pg/int8@1",
+                  "nativeType": "int8",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "orderId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "purchaseReceipt"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "order"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "buyerId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "purchaseReceipt"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "buyerId"
+                  ],
+                  "name": "purchaseReceipt_buyerId_idx_80be0de9",
+                  "prefix": "purchaseReceipt_buyerId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "issuedAt"
+                  ],
+                  "name": "purchaseReceipt_issuedAt_idx_a299a849",
+                  "prefix": "purchaseReceipt_issuedAt_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "orderId"
+                  ]
+                },
+                {
+                  "columns": [
+                    "number"
+                  ]
+                },
+                {
+                  "columns": [
+                    "commercialOrderNumber"
                   ]
                 }
               ]
@@ -4297,6 +6167,413 @@
                 }
               ]
             },
+            "shopBusinessSettings": {
+              "checks": [
+                {
+                  "expression": "\"singletonKey\" = 'GLOBAL'",
+                  "name": "shop_settings_singleton_23de2fff",
+                  "prefix": "shop_settings_singleton"
+                },
+                {
+                  "expression": "version >= 1 AND currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"shippingIncludedInPrices\" = true AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"maxUnitsPerSkuPerOrder\" BETWEEN 1 AND 100 AND \"deliveryTimeZone\" = 'America/Guayaquil' AND \"deliveryBoundariesInclusive\" = true AND \"deliveryStartTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryEndTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryStartTime\" < \"deliveryEndTime\"",
+                  "name": "shop_settings_valid_abaee184",
+                  "prefix": "shop_settings_valid"
+                }
+              ],
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "currency": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "USD"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "deliveryBoundariesInclusive": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "deliveryEndTime": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "17:00"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "deliveryStartTime": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "07:00"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "deliveryTimeZone": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "America/Guayaquil"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "maxUnitsPerSkuPerOrder": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 10
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "shippingAmountCents": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "shippingIncludedInPrices": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "shippingStatus": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "FREE_INCLUDED"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "singletonKey": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "GLOBAL"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "taxEnabled": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "taxMode": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "SIMULATED"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "taxRateBps": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 1500
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "updatedById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "version": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 1
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "updatedById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "shopBusinessSettings"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "updatedById"
+                  ],
+                  "name": "shopBusinessSettings_updatedById_idx_d0517c24",
+                  "prefix": "shopBusinessSettings_updatedById_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "singletonKey"
+                  ]
+                }
+              ]
+            },
+            "shopSettingsAudit": {
+              "checks": [
+                {
+                  "expression": "\"expectedVersion\" >= 1 AND \"newVersion\" = \"expectedVersion\" + 1",
+                  "name": "shop_settings_audit_version_step_ba9c3ee0",
+                  "prefix": "shop_settings_audit_version_step"
+                }
+              ],
+              "columns": {
+                "actorId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "changedFields": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "expectedVersion": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "newVersion": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "recordedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "settingsId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "snapshot": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "settingsId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "shopSettingsAudit"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "shopBusinessSettings"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "actorId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "shopSettingsAudit"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "actorId"
+                  ],
+                  "name": "shopSettingsAudit_actorId_idx_a58f6b4b",
+                  "prefix": "shopSettingsAudit_actorId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "recordedAt"
+                  ],
+                  "name": "shopSettingsAudit_recordedAt_idx_fd5b4732",
+                  "prefix": "shopSettingsAudit_recordedAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "settingsId"
+                  ],
+                  "name": "shopSettingsAudit_settingsId_idx_6654474f",
+                  "prefix": "shopSettingsAudit_settingsId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
+            "simulatedCard": {
+              "checks": [
+                {
+                  "expression": "\"balanceCents\" >= 0 AND \"balanceCents\" <= 9007199254740991 AND \"last4\" ~ '^[0-9]{4}$' AND length(\"fixtureId\") BETWEEN 1 AND 64",
+                  "name": "simulated_card_valid_9eb17fd5",
+                  "prefix": "simulated_card_valid"
+                }
+              ],
+              "columns": {
+                "active": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "balanceCents": {
+                  "codecId": "pg/int8@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "0"
+                  },
+                  "nativeType": "int8",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "fixtureId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "last4": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "fixtureId"
+                  ]
+                }
+              ]
+            },
             "uploadedAsset": {
               "checks": [
                 {
@@ -4641,10 +6918,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "b263aff9f248d0da2ead5a0700a5b035ab3653ec79e1f8c651ab5f936e21e1ea"
+    "storageHash": "70a695f73c329e3d06c6ee0a3d8b301de993c376613442e431adde1392ca8710"
   },
   "execution": {
-    "executionHash": "9433b9b9235d63ce4d20173eb92fd237366ee6fb0fe4f8c27ddb057cd62b63a6",
+    "executionHash": "c68023e2175bd784e4e7ecda87b1c9fa7ece194cbd3559e5407558de6f1eca5f",
     "mutations": {
       "defaults": [
         {
@@ -4656,6 +6933,17 @@
             "column": "id",
             "namespace": "public",
             "table": "category"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "checkoutAttempt"
           }
         },
         {
@@ -4754,6 +7042,17 @@
           "ref": {
             "column": "id",
             "namespace": "public",
+            "table": "paymentAttempt"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
             "table": "product"
           }
         },
@@ -4776,6 +7075,17 @@
           "ref": {
             "column": "id",
             "namespace": "public",
+            "table": "purchaseReceipt"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
             "table": "route"
           }
         },
@@ -4788,6 +7098,39 @@
             "column": "id",
             "namespace": "public",
             "table": "routeStop"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "shopBusinessSettings"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "shopSettingsAudit"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "simulatedCard"
           }
         },
         {
