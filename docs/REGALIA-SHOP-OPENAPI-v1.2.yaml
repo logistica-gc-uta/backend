@@ -2002,7 +2002,7 @@ paths:
           - IN_TRANSIT
           - DELIVERED
           - CANCELLED
-      description: Propuesto; no existe actualmente en main. Este contrato necesita PRs y pruebas.
+      description: Implementado v1.2; historial propio paginado CLIENT con precios y datos congelados.
   /shop/orders/{id}:
     get:
       tags:
@@ -2091,7 +2091,7 @@ paths:
         schema:
           type: string
           format: uuid
-      description: Propuesto; no existe actualmente en main. Este contrato necesita PRs y pruebas.
+      description: Implementado v1.2; detalle propio CLIENT con datos congelados y timeline de eventos reales.
   /shop/orders/{id}/receipt:
     get:
       tags:
@@ -2180,7 +2180,7 @@ paths:
         schema:
           type: string
           format: uuid
-      description: Propuesto; no existe actualmente en main. Este contrato necesita PRs y pruebas.
+      description: Implementado v1.2; comprobante de compra simulado inmutable CLIENT con proyección segura.
   /zones:
     get:
       tags:

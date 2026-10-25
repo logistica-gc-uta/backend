@@ -310,14 +310,14 @@ Para `SUCCEEDED`, retorna orderId/receiptId; `REJECTED`, errorCode y orderId nul
 
 **GET `/api/v1/shop/orders?page=1&pageSize=10&status=PENDING|ASSIGNED|IN_TRANSIT|DELIVERED|CANCELLED`** — CLIENT JWT, orden `createdAt desc,id desc`, envelope paginado. Resumen por pedido:
 ```json
-{"id":"77777777-7777-4777-8777-777777777777","number":"RG-2026-0125","createdAt":"2026-10-22T12:00:00.000Z","scheduledDeliveryDate":"2026-11-15T15:00:00.000Z","status":"PENDING","subtotalCents":7300,"taxAmountCents":1095,"taxRateBps":1500,"shippingAmountCents":0,"totalCents":8395,"currency":"USD","paymentStatus":"APPROVED","receiptId":"88888888-8888-4888-8888-888888888888","itemsCount":2,"primaryImageUrl":"https://res.cloudinary.com/demo/image/upload/v1/regalia/products/foto.jpg"}
+{"id":"77777777-7777-4777-8777-777777777777","number":"RG-2026-0125","createdAt":"2026-10-22T12:00:00.000Z","scheduledDeliveryDate":"2026-11-15T15:00:00.000Z","status":"PENDING","subtotalCents":7300,"taxAmountCents":1095,"taxRateBps":1500,"shippingAmountCents":0,"totalCents":8395,"currency":"USD","paymentStatus":"APPROVED","receiptId":"88888888-8888-4888-8888-888888888888","itemsCount":2,"primaryImageUrl":"https://res.cloudinary.com/demo/image/upload/v1/regalia/products/foto.jpg","taxEnabled":true}
 ```
 
 **GET `/api/v1/shop/orders/:id`** — CLIENT JWT, dueño exclusivamente, 404 a ajenos. Respuesta
 ```json
 {
  "id":"77777777-7777-4777-8777-777777777777","number":"RG-2026-0125","createdAt":"2026-10-22T12:00:00.000Z","scheduledDeliveryDate":"2026-11-15T15:00:00.000Z",
- "status":"PENDING","routeId":null,"currency":"USD","subtotalCents":7300,"taxAmountCents":1095,"taxRateBps":1500,"shippingAmountCents":0,"totalCents":8395,"paymentStatus":"APPROVED",
+ "status":"PENDING","routeId":null,"currency":"USD","subtotalCents":7300,"taxAmountCents":1095,"taxRateBps":1500,"shippingAmountCents":0,"totalCents":8395,"paymentStatus":"APPROVED","taxEnabled":true,
  "buyer":{"id":"99999999-9999-4999-8999-999999999999","name":"María Pérez","email":"maria@example.test"},
  "recipient":{"name":"Ana Regalo","phone":"0991234567"},
  "delivery":{"zoneId":"55555555-5555-4555-8555-555555555555","zoneName":"Centro","address":"Av. Cevallos y Montalvo, Ambato","location":{"lat":-1.2425,"lng":-78.6188},"scheduledDeliveryDate":"2026-11-15T15:00:00.000Z","notes":null},
@@ -334,7 +334,7 @@ Timeline refleja eventos persistidos y verificables; **no inventar marcas tempor
  "id":"88888888-8888-4888-8888-888888888888","number":"CMP-RG-2026-0125","orderId":"77777777-7777-4777-8777-777777777777","issuedAt":"2026-10-22T12:00:00.000Z",
  "merchantName":"REGALÍA","buyer":{"name":"María Pérez","email":"maria@example.test"},
  "recipient":{"name":"Ana Regalo"},"items":[{"sku":"REG-NAV-001","name":"Caja sorpresa navideña","quantity":2,"unitPriceCents":3650,"lineTotalCents":7300}],
- "currency":"USD","subtotalCents":7300,"tax":{"mode":"SIMULATED","rateBps":1500,"amountCents":1095},"shipping":{"status":"FREE_INCLUDED","amountCents":0,"includedInPrices":true},"totalCents":8395,"payment":{"status":"APPROVED","reference":"PAY-DEMO-000125","cardLast4":"0001"},
+ "currency":"USD","subtotalCents":7300,"tax":{"mode":"SIMULATED","enabled":true,"rateBps":1500,"ratePercent":15,"amountCents":1095},"shipping":{"status":"FREE_INCLUDED","amountCents":0,"includedInPrices":true},"totalCents":8395,"payment":{"status":"APPROVED","reference":"PAY-DEMO-000125","cardLast4":"0001"},
  "disclaimer":"COMPROBANTE DE COMPRA SIMULADO — SIN VALIDEZ TRIBUTARIA"
 }
 ```
