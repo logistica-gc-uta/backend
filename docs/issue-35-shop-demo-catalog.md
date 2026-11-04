@@ -50,10 +50,12 @@ pnpm seed:shop-demo            # siembra categorías, regalos, imágenes y tarje
 | `tsc --noEmit` | PASS |
 | `pnpm lint` | 0 errores (advertencias previas ajenas a estos archivos) |
 | 3 imágenes (primera, intermedia, última) con `HEAD` público | 200 `image/png` |
+| `seed:shop-demo` dos veces sobre la base local migrada | 1ª: 10/200/200/200 creados; 2ª: todo en 0 |
+| API real (`GET /shop/products?page=17&pageSize=12`) | `total 200`, 17 páginas, última con 8; `GET /shop/categories` con 20 por categoría |
 
 El e2e cubre: 10 categorías y 200 regalos sin publicar; segunda ejecución sin cambios; 30 imágenes ⇒ 30 públicos; no pisa stock/precio/publicación; no reinicia el saldo de una tarjeta; con las 200 imágenes pagina en 17 páginas (última de 8) y las 200 son alcanzables.
 
 ## Limitaciones
 
-- No se ejecutó `seed:shop-demo` contra la base de desarrollo local (puerto 5434) porque no tenía aplicadas las migraciones de la tienda; la verificación se hizo en una base efímera propia.
+- En la base de desarrollo local hay que aplicar antes las migraciones (`pnpm exec prisma db migrate`); sin ellas el seed falla con `relation "public.category" does not exist`.
 - Las tarjetas demo no se crean fuera de `test`/`demo`.

@@ -22,7 +22,7 @@ Refs #35
 | Pruebas unitarias | PASS (34) | dataset 13, manifiesto 17, PNG 4 |
 | Pruebas de integración | PASS (7) | `test/shop-demo-seed.e2e-spec.ts`, PostgreSQL real en contenedor propio |
 | Compilación | PASS | `tsc --noEmit` |
-| Pruebas funcionales | PASS | 3 imágenes públicas responden 200 `image/png`; catálogo público de 17 páginas, última de 8 |
+| Pruebas funcionales | PASS | 3 imágenes públicas responden 200 `image/png`; API real con 200 regalos, 17 páginas, última de 8; seed repetido sin cambios |
 
 ## Evidencias
 
@@ -38,7 +38,7 @@ Salida de Jest del e2e y de los scripts en el comentario del PR.
 
 **Compatibilidad con otros componentes:** el catálogo público muestra los 200 regalos una vez ejecutado el seed.
 
-**Limitaciones conocidas:** las imágenes son ilustraciones generadas, no fotos del producto; `seed:shop-demo` no se ejecutó contra la base de desarrollo local por falta de migraciones.
+**Limitaciones conocidas:** las imágenes son ilustraciones generadas, no fotos del producto.
 
 ## Checklist de entrega
 
