@@ -55,7 +55,7 @@ describe('Seeder de volumen (#15) sobre PostgreSQL real: reproducible, idempoten
 
     expect(result).toMatchObject({ zonesCreated: 5, clientsCreated: 10, driversCreated: 20, ordersCreated: 100, ordersSkipped: 0 });
     expect(await modules.seed.countPerf(client)).toEqual({
-      zones: 5, clients: 10, drivers: 20, driverRows: 20, orders: 100, orderItems: 100, products: 1,
+      zones: 5, clients: 10, drivers: 20, driverRows: 20, orders: 100, orderItems: 100, products: 50,
     });
   });
 

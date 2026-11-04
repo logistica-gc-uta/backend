@@ -138,7 +138,7 @@
               <collectionProp name="Arguments.arguments">
                 <elementProp name="" elementType="HTTPArgument">
                   <boolProp name="HTTPArgument.always_encode">false</boolProp>
-                  <stringProp name="Argument.value">{"zoneId":"${zoneId}","deliveryAddress":"PERF/load/${__UUID()}","scheduledDeliveryDate":"${__P(date,2030-02-14)}T15:00:00.000Z","deliveryLat":${lat},"deliveryLng":${lng},"items":[{"productId":"${productId}","quantity":1}]}</stringProp>
+                  <stringProp name="Argument.value">{"zoneId":"${zoneId}","deliveryAddress":"PERF/load/${__UUID()}","scheduledDeliveryDate":"${__P(postdate,2030-03-01)}T15:00:00.000Z","deliveryLat":${lat},"deliveryLng":${lng},"items":[{"productId":"${productId}","quantity":1}]}</stringProp>
                   <stringProp name="Argument.metadata">=</stringProp>
                 </elementProp>
               </collectionProp>

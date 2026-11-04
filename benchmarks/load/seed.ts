@@ -5,8 +5,14 @@ import { type PerfDataset, PERF_TAG } from './dataset.js';
 type Client = PrismaService['client'];
 type Tx = Parameters<Parameters<Client['transaction']>[0]>[0];
 
-/** Producto de carga: stock enorme para que POST /orders (que reserva inventario) no se agote. */
-export const PERF_PRODUCT = { sku: 'PERF-LOAD-001', name: 'Regalo de prueba de carga', price: 10, stock: 1_000_000 } as const;
+/**
+ * Productos de carga, con stock enorme para que POST /orders (que reserva inventario) no se agote.
+ * Son 50 para que los pedidos no compitan todos por el bloqueo de una sola fila de inventario.
+ */
+export const PERF_PRODUCT_COUNT = 50;
+export const PERF_PRODUCT_PRICE = 10;
+export const PERF_PRODUCT_STOCK = 1_000_000;
+export const perfSku = (n: number) => `PERF-LOAD-${String(n).padStart(3, '0')}`;
 /** Valor que no corresponde a ninguna contraseña: estos usuarios nunca inician sesión (se firma su token). */
 const NO_LOGIN_PASSWORD = 'perf-fixture-no-login';
 
@@ -61,9 +67,6 @@ export async function seedPerf(client: Client, dataset: PerfDataset): Promise<Se
     .toInstant();
 
   await client.transaction(async (tx: Tx) => {
-    const idOf = async (plan: unknown): Promise<string | undefined> =>
-      ((await tx.query(plan as never)) as { id: string }[])[0]?.id;
-
     for (const zone of dataset.zones) {
       result.zonesCreated += affected(await tx.execute(client.raw.sql`
         INSERT INTO public.zone ("id", "name", "code", "depotLat", "depotLng", "createdAt")
@@ -89,12 +92,15 @@ export async function seedPerf(client: Client, dataset: PerfDataset): Promise<Se
       }
     }
 
-    await tx.execute(client.raw.sql`
-      INSERT INTO public.product ("id", "name", "description", "price", "sku", "stock", "isPublished", "isFeatured", "createdAt", "updatedAt")
-      VALUES (${randomUUID()}, ${PERF_PRODUCT.name}, 'Producto sintético para pruebas de rendimiento', ${PERF_PRODUCT.price},
-              ${PERF_PRODUCT.sku}, ${PERF_PRODUCT.stock}, false, false, clock_timestamp(), clock_timestamp())
-      ON CONFLICT ("sku") DO NOTHING`.affectedCount().build());
-    const productId = await idOf(client.raw.sql`SELECT id FROM public.product WHERE sku = ${PERF_PRODUCT.sku}`.returnsRow({ id: 'pg/text@1' }).build());
+    for (let n = 1; n <= PERF_PRODUCT_COUNT; n++) {
+      await tx.execute(client.raw.sql`
+        INSERT INTO public.product ("id", "name", "description", "price", "sku", "stock", "isPublished", "isFeatured", "createdAt", "updatedAt")
+        VALUES (${randomUUID()}, ${`Regalo de prueba de carga ${n}`}, 'Producto sintético para pruebas de rendimiento', ${PERF_PRODUCT_PRICE},
+                ${perfSku(n)}, ${PERF_PRODUCT_STOCK}, false, false, clock_timestamp(), clock_timestamp())
+        ON CONFLICT ("sku") DO NOTHING`.affectedCount().build());
+    }
+    const productIds = ((await tx.query(client.raw.sql`SELECT id FROM public.product WHERE sku LIKE 'PERF-LOAD-%' ORDER BY sku`
+      .returnsRow({ id: 'pg/text@1' }).build())) as { id: string }[]).map((row) => row.id);
 
     const existing = new Set(
       ((await tx.query(client.raw.sql`SELECT "deliveryAddress" AS a FROM public."order" WHERE "deliveryAddress" LIKE ${`${PERF_TAG.addressPrefix}%`}`
@@ -110,12 +116,12 @@ export async function seedPerf(client: Client, dataset: PerfDataset): Promise<Se
       result.ordersCreated += affected(await tx.execute(client.raw.sql`
         INSERT INTO public."order" ("id", "userId", "zoneId", "status", "total", "deliveryAddress", "scheduledDeliveryDate",
                                     "deliveryLat", "deliveryLng", "createdAt")
-        SELECT ${orderId}, u.id, z.id, 'PENDING', ${PERF_PRODUCT.price}, ${order.deliveryAddress}, ${scheduled.toString()}::timestamptz,
+        SELECT ${orderId}, u.id, z.id, 'PENDING', ${PERF_PRODUCT_PRICE}, ${order.deliveryAddress}, ${scheduled.toString()}::timestamptz,
                ${order.lat}, ${order.lng}, clock_timestamp()
         FROM public."user" u, public.zone z WHERE u.email = ${order.clientEmail} AND z.code = ${order.zoneCode}`.affectedCount().build()));
       await tx.execute(client.raw.sql`
         INSERT INTO public."orderItem" ("id", "orderId", "productId", "quantity", "price")
-        VALUES (${randomUUID()}, ${orderId}, ${productId!}, 1, ${PERF_PRODUCT.price})`.affectedCount().build());
+        VALUES (${randomUUID()}, ${orderId}, ${productIds[result.ordersCreated % productIds.length]!}, 1, ${PERF_PRODUCT_PRICE})`.affectedCount().build());
     }
   });
   return result;
