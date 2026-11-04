@@ -223,14 +223,14 @@ describe('Shop Checkout v1.2 Concurrency Protection E2E (owned PostgreSQL fixtur
         zoneId: validZoneId,
         deliveryAddress: 'Av. Cevallos 1',
         deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-        scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+        scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
       };
       const delivery2 = {
         recipient: { name: 'Cliente Dos', phone: '0992222222' },
         zoneId: validZoneId,
         deliveryAddress: 'Av. Cevallos 2',
         deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-        scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+        scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
       };
 
       const token1 = await getQuoteToken(
@@ -329,14 +329,14 @@ describe('Shop Checkout v1.2 Concurrency Protection E2E (owned PostgreSQL fixtur
         zoneId: validZoneId,
         deliveryAddress: 'Av. Cevallos 10',
         deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-        scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+        scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
       };
       const delivery2 = {
         recipient: { name: 'Cliente Dos', phone: '0992222222' },
         zoneId: validZoneId,
         deliveryAddress: 'Av. Cevallos 20',
         deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-        scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+        scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
       };
 
       const token1 = await getQuoteToken(client1UserId, itemsAFirst, delivery1);

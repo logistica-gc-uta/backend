@@ -328,7 +328,7 @@ describe('Shop Orders v1.2 History, Detail & Immutable Receipt E2E (owned Postgr
         .send({
           zoneId: catalog.zoneId,
           orderIds: [order1.orderId, order2.orderId],
-          routeDate: '2026-11-15T15:00:00Z',
+          routeDate: '2030-06-14T15:00:00Z',
         });
       expect(createRouteRes.status).toBe(201);
       const routeId = createRouteRes.body.id;
@@ -575,7 +575,7 @@ describe('Shop Orders v1.2 History, Detail & Immutable Receipt E2E (owned Postgr
             zoneId: catalog.zoneId,
             deliveryAddress: 'Dirección Test',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T10:00:00-05:00',
+            scheduledDeliveryDate: '2030-06-14T10:00:00-05:00',
           },
         });
       expect(quoteRes12.status).toBe(200);
@@ -593,7 +593,7 @@ describe('Shop Orders v1.2 History, Detail & Immutable Receipt E2E (owned Postgr
             zoneId: catalog.zoneId,
             deliveryAddress: 'Dirección Test',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T10:00:00-05:00',
+            scheduledDeliveryDate: '2030-06-14T10:00:00-05:00',
           },
           quoteToken: quoteRes12.body.quoteToken,
           paymentCard: {
@@ -647,7 +647,7 @@ describe('Shop Orders v1.2 History, Detail & Immutable Receipt E2E (owned Postgr
             zoneId: catalog.zoneId,
             deliveryAddress: 'Dirección Test',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T10:00:00-05:00',
+            scheduledDeliveryDate: '2030-06-14T10:00:00-05:00',
           },
         });
       expect(quoteResDisabled.status).toBe(200);
@@ -666,7 +666,7 @@ describe('Shop Orders v1.2 History, Detail & Immutable Receipt E2E (owned Postgr
             zoneId: catalog.zoneId,
             deliveryAddress: 'Dirección Test',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T10:00:00-05:00',
+            scheduledDeliveryDate: '2030-06-14T10:00:00-05:00',
           },
           quoteToken: quoteResDisabled.body.quoteToken,
           paymentCard: {

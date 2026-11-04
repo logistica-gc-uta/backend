@@ -200,7 +200,7 @@ describe('Shop Checkout v1.2 Recovery, Attempt GET & Durability E2E (owned Postg
         zoneId: validZoneId,
         deliveryAddress: 'Av. Cevallos 123, Ambato',
         deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-        scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+        scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
       },
       ...overrides,
     };
@@ -214,7 +214,7 @@ describe('Shop Checkout v1.2 Recovery, Attempt GET & Durability E2E (owned Postg
       zoneId: validZoneId,
       deliveryAddress: 'Av. Cevallos 123, Ambato',
       deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-      scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+      scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
     },
     quoteToken: token,
     paymentCard: {
