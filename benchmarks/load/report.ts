@@ -17,8 +17,10 @@ const median = (values: number[]) => {
   return sorted[Math.floor(sorted.length / 2)] ?? Number.NaN;
 };
 
-/** Un núcleo completo ocupado = 100 %. El % de la herramienta está normalizado al total de núcleos. */
+/** API: el monitor normaliza al total de núcleos, así que 100 % = todos los hilos. Se convierte a núcleos. */
 export const coreEquivalent = (cpuPctOfAllCores: number, cores: number) => (cpuPctOfAllCores / 100) * cores;
+/** PostgreSQL: `docker stats` ya reporta % de UN núcleo (200 % = dos núcleos). */
+export const dockerCores = (dockerCpuPct: number) => dockerCpuPct / 100;
 
 /**
  * Punto de saturación observado: primera etapa donde el rendimiento (req/s) deja de crecer más de un 10 %
@@ -62,7 +64,7 @@ export function buildCharts(results: RunResults): Record<string, string> {
       title: 'Uso de CPU por etapa (núcleos equivalentes)', yLabel: 'núcleos (1 = un núcleo completo)', xLabels: labels,
       series: [
         { name: 'API (máx.)', values: results.stages.map((s) => coreEquivalent(s.resources.apiCpuMax, cores)), color: PALETTE[1] },
-        { name: 'PostgreSQL (máx.)', values: results.stages.map((s) => coreEquivalent(s.resources.dbCpuMax, cores)), color: PALETTE[2] },
+        { name: 'PostgreSQL (máx.)', values: results.stages.map((s) => dockerCores(s.resources.dbCpuMax)), color: PALETTE[2] },
       ],
     }),
     'planificacion-por-volumen.svg': barChart({
@@ -92,7 +94,7 @@ export function buildMarkdown(results: RunResults, notes = ''): string {
   out.push('## 2. Metodología', '');
   out.push('- **Datos:** semilla fija; mismos pedidos en cada corrida (huella SHA-256 en la tabla de volumen). Todo lo creado lleva la marca `PERF` y se elimina al final con verificación.');
   out.push('- **Volumen:** se siembran 100, 500 y 2000 pedidos y se mide la planificación Clarke & Wright (`GET /route-proposals`) sin otra carga, repetida varias veces.');
-  out.push('- **Carga:** JMeter en modo no GUI con 25, 50 y 100 usuarios concurrentes (rampa y duración en la tabla), mezcla aleatoria uniforme de 5 operaciones con 0–300 ms de reflexión.');
+  out.push('- **Carga:** JMeter en modo no GUI con 25, 50 y 100 usuarios concurrentes, y 200 porque los recursos lo permitieron (60 s por etapa), mezcla aleatoria uniforme de 5 operaciones con 0–300 ms de reflexión.');
   out.push('- **Estrés:** escalones de +100 usuarios hasta el máximo o hasta un **límite seguro** (tasa de errores > 50 %, memoria de la API > 3000 MB o p95 > 30 s). Esos límites protegen el equipo; no son criterios de aprobación.');
   out.push('- **Recuperación:** tras el estrés, una carga baja de 10 usuarios para comparar contra las latencias de reposo.');
   out.push('- **Métricas:** p50/p95/p99 por rango más cercano, rendimiento = peticiones / ventana medida, errores = respuestas no 2xx; CPU y memoria de la API y de PostgreSQL cada ~2 s.', '');
@@ -110,7 +112,7 @@ export function buildMarkdown(results: RunResults, notes = ''): string {
   out.push(row(...Array<string>(12).fill('---')));
   for (const s of results.stages) {
     out.push(row(s.stage.name, s.stage.users, s.http.samples, round(s.http.throughput), ms(s.http.overall.p50), ms(s.http.overall.p95), ms(s.http.overall.p99), pct(s.http.errorRate),
-      round(coreEquivalent(s.resources.apiCpuMax, cores), 2), ms(s.resources.apiRssMaxMb), round(coreEquivalent(s.resources.dbCpuMax, cores), 2), s.resources.dbConnectionsMax));
+      round(coreEquivalent(s.resources.apiCpuMax, cores), 2), ms(s.resources.apiRssMaxMb), round(dockerCores(s.resources.dbCpuMax), 2), s.resources.dbConnectionsMax));
   }
   out.push('', '![Latencia por etapa](charts/latencia-por-etapa.svg)', '', '![Rendimiento por etapa](charts/rendimiento-por-etapa.svg)', '', '![CPU por etapa](charts/recursos-por-etapa.svg)', '');
 

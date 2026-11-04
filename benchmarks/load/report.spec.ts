@@ -1,5 +1,5 @@
 import { barChart, lineChart, niceMax } from './charts.js';
-import { buildCharts, buildMarkdown, coreEquivalent, findSaturation, type RunResults } from './report.js';
+import { buildCharts, buildMarkdown, coreEquivalent, dockerCores, findSaturation, type RunResults } from './report.js';
 import type { StageResult } from './run.js';
 
 const summary = (p95: number) => ({ count: 100, min: 1, mean: 50, p50: p95 / 2, p95, p99: p95 * 1.2, max: p95 * 2 });
@@ -52,6 +52,7 @@ describe('gráficos SVG', () => {
 describe('reporte Markdown', () => {
   it('convierte el CPU normalizado a núcleos equivalentes', () => {
     expect(coreEquivalent(3.125, 32)).toBeCloseTo(1);
+    expect(dockerCores(150)).toBe(1.5); // docker stats: 100 % = un núcleo
   });
 
   it('detecta la saturación cuando el rendimiento deja de crecer', () => {

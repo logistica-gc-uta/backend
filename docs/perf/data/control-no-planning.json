@@ -1,0 +1,311 @@
+{
+  "environment": {
+    "commit": "52dbc9591a160b4fb485432a57e32e29bb62ca8b",
+    "dirty": true,
+    "date": "2026-11-04T22:09:55.143Z",
+    "os": "Windows_NT 10.0.26200 (x64)",
+    "cpu": "Intel(R) Core(TM) i9-14900HX",
+    "cores": 32,
+    "totalMemGb": 31.7,
+    "node": "v26.11.1",
+    "postgres": "postgres:16-alpine (Docker, contenedor desechable, tmpfs)",
+    "jmeter": "apache-jmeter-5.6.3",
+    "api": "node dist/main.js (un solo proceso, sin clúster)",
+    "loadVolume": 2000,
+    "quick": false,
+    "cleanupVerified": true,
+    "note": "API, PostgreSQL, JMeter y el monitor comparten la misma laptop; JMeter compite por CPU con la API.",
+    "planningInMix": false
+  },
+  "volumes": [],
+  "stages": [
+    {
+      "stage": {
+        "name": "carga-25",
+        "kind": "load",
+        "users": 25,
+        "rampupSeconds": 15,
+        "durationSeconds": 60
+      },
+      "startedAt": 1793829994061,
+      "endedAt": 1793830056461,
+      "http": {
+        "samples": 6371,
+        "errors": 0,
+        "errorRate": 0,
+        "durationSeconds": 59.773,
+        "throughput": 106.58658591671825,
+        "maxThreads": 25,
+        "overall": {
+          "count": 6371,
+          "min": 3,
+          "mean": 49.71009260712604,
+          "p50": 36,
+          "p95": 139,
+          "p99": 226,
+          "max": 389
+        },
+        "byLabel": [
+          {
+            "label": "GET catalogo publico",
+            "count": 1621,
+            "min": 3,
+            "mean": 38.59592843923504,
+            "p50": 28,
+            "p95": 110,
+            "p99": 143,
+            "max": 230,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 27.119267896876515
+          },
+          {
+            "label": "GET mis pedidos CLIENT",
+            "count": 1590,
+            "min": 10,
+            "mean": 47.24528301886792,
+            "p50": 41,
+            "p95": 98,
+            "p99": 130,
+            "max": 243,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 26.600639084536496
+          },
+          {
+            "label": "GET pedidos ADMIN paginado",
+            "count": 1590,
+            "min": 5,
+            "mean": 35.125786163522015,
+            "p50": 26,
+            "p95": 96,
+            "p99": 134,
+            "max": 173,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 26.600639084536496
+          },
+          {
+            "label": "POST crear pedido CLIENT",
+            "count": 1570,
+            "min": 8,
+            "mean": 78.4515923566879,
+            "p50": 57,
+            "p95": 209,
+            "p99": 266,
+            "max": 389,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 26.266039850768742
+          }
+        ],
+        "responseCodes": {
+          "200": 4801,
+          "201": 1570
+        }
+      },
+      "resources": {
+        "samples": 30,
+        "apiCpuAvg": 2.1586666666666665,
+        "apiCpuMax": 3.15,
+        "apiRssMaxMb": 424.5,
+        "dbCpuAvg": 28.18533333333333,
+        "dbCpuMax": 36.49,
+        "dbMemMaxMb": 88.74,
+        "dbConnectionsMax": 13
+      }
+    },
+    {
+      "stage": {
+        "name": "carga-50",
+        "kind": "load",
+        "users": 50,
+        "rampupSeconds": 15,
+        "durationSeconds": 60
+      },
+      "startedAt": 1793830059499,
+      "endedAt": 1793830122096,
+      "http": {
+        "samples": 6007,
+        "errors": 0,
+        "errorRate": 0,
+        "durationSeconds": 59.941,
+        "throughput": 100.21521162476435,
+        "maxThreads": 50,
+        "overall": {
+          "count": 6007,
+          "min": 4,
+          "mean": 280.27135009155984,
+          "p50": 242,
+          "p95": 658,
+          "p99": 839,
+          "max": 1144
+        },
+        "byLabel": [
+          {
+            "label": "GET catalogo publico",
+            "count": 1496,
+            "min": 4,
+            "mean": 147.51671122994654,
+            "p50": 138,
+            "p95": 297,
+            "p99": 385,
+            "max": 439,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 24.95787524398992
+          },
+          {
+            "label": "GET mis pedidos CLIENT",
+            "count": 1450,
+            "min": 17,
+            "mean": 224.32413793103447,
+            "p50": 220,
+            "p95": 415,
+            "p99": 493,
+            "max": 556,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 24.190453946380607
+          },
+          {
+            "label": "GET pedidos ADMIN paginado",
+            "count": 1458,
+            "min": 6,
+            "mean": 275.5294924554184,
+            "p50": 273,
+            "p95": 545,
+            "p99": 646,
+            "max": 780,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 24.32391851987788
+          },
+          {
+            "label": "POST crear pedido CLIENT",
+            "count": 1603,
+            "min": 8,
+            "mean": 459.08484092326887,
+            "p50": 462,
+            "p95": 814,
+            "p99": 931,
+            "max": 1144,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 26.74296391451594
+          }
+        ],
+        "responseCodes": {
+          "200": 4404,
+          "201": 1603
+        }
+      },
+      "resources": {
+        "samples": 31,
+        "apiCpuAvg": 2.833225806451613,
+        "apiCpuMax": 3.79,
+        "apiRssMaxMb": 567,
+        "dbCpuAvg": 33.406451612903226,
+        "dbCpuMax": 45.48,
+        "dbMemMaxMb": 86.25,
+        "dbConnectionsMax": 11
+      }
+    },
+    {
+      "stage": {
+        "name": "carga-100",
+        "kind": "load",
+        "users": 100,
+        "rampupSeconds": 15,
+        "durationSeconds": 60
+      },
+      "startedAt": 1793830125113,
+      "endedAt": 1793830188436,
+      "http": {
+        "samples": 5391,
+        "errors": 0,
+        "errorRate": 0,
+        "durationSeconds": 60.646,
+        "throughput": 88.892919566006,
+        "maxThreads": 100,
+        "overall": {
+          "count": 5391,
+          "min": 4,
+          "mean": 828.9066963457615,
+          "p50": 747,
+          "p95": 1796,
+          "p99": 2092,
+          "max": 2231
+        },
+        "byLabel": [
+          {
+            "label": "GET catalogo publico",
+            "count": 1373,
+            "min": 4,
+            "mean": 389.80772032046616,
+            "p50": 396,
+            "p95": 677,
+            "p99": 850,
+            "max": 968,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 22.639580516439665
+          },
+          {
+            "label": "GET mis pedidos CLIENT",
+            "count": 1355,
+            "min": 25,
+            "mean": 663.809594095941,
+            "p50": 712,
+            "p95": 1083,
+            "p99": 1195,
+            "max": 1299,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 22.342776110543152
+          },
+          {
+            "label": "GET pedidos ADMIN paginado",
+            "count": 1335,
+            "min": 5,
+            "mean": 930.4352059925094,
+            "p50": 1020,
+            "p95": 1472,
+            "p99": 1577,
+            "max": 1650,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 22.012993437324802
+          },
+          {
+            "label": "POST crear pedido CLIENT",
+            "count": 1328,
+            "min": 9,
+            "mean": 1349.2748493975903,
+            "p50": 1514,
+            "p95": 2074,
+            "p99": 2179,
+            "max": 2231,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 21.89756950169838
+          }
+        ],
+        "responseCodes": {
+          "200": 4063,
+          "201": 1328
+        }
+      },
+      "resources": {
+        "samples": 31,
+        "apiCpuAvg": 3.117741935483871,
+        "apiCpuMax": 3.91,
+        "apiRssMaxMb": 612.8,
+        "dbCpuAvg": 38.55483870967741,
+        "dbCpuMax": 73.3,
+        "dbMemMaxMb": 88.24,
+        "dbConnectionsMax": 11
+      }
+    }
+  ]
+}

@@ -14,6 +14,7 @@ import { DEFAULT_SAFETY_LIMITS, type Stage, loadStages, recoveryStage, safetySto
 
 /**
  *   pnpm perf:run --jmeter <ruta a jmeter(.bat)> [--volume 2000] [--include-200] [--max-users 400] [--quick] [--out <dir>]
+ *   Diagnóstico: [--no-planning] quita la propuesta de rutas de la mezcla; [--skip-volume]; [--only carga-25,carga-100]
  *
  * Todo ocurre en la máquina local: PostgreSQL desechable en Docker, API en 127.0.0.1 y JMeter en modo no GUI.
  * Nunca se conecta a un servidor público ni a datos reales. Ejecútalo con la laptop conectada a la corriente.
@@ -67,12 +68,12 @@ async function waitForApi(): Promise<void> {
   throw new Error('La API no respondió en 60 s');
 }
 
-function runJmeter(jmeter: string, stage: Stage, dirs: { out: string; fixture: string }, date: string): Promise<void> {
+function runJmeter(jmeter: string, stage: Stage, dirs: { out: string; fixture: string }, date: string, planning: boolean): Promise<void> {
   const jtl = path.join(dirs.out, `${stage.name}.jtl`);
   const args = [
     '-n', '-t', PLAN, '-l', jtl, '-j', path.join(dirs.out, `${stage.name}.jmeter.log`),
     `-Jhost=127.0.0.1`, `-Jport=${PORT}`, `-Jusers=${stage.users}`, `-Jrampup=${stage.rampupSeconds}`,
-    `-Jduration=${stage.durationSeconds}`, `-Jfixture=${dirs.fixture}`, `-Jdate=${date}`,
+    `-Jduration=${stage.durationSeconds}`, `-Jfixture=${dirs.fixture}`, `-Jdate=${date}`, `-Jplanning=${planning}`,
   ];
   return new Promise((resolve, reject) => {
     const child = spawn(`"${jmeter}"`, args.map((a) => (a.includes(' ') ? `"${a}"` : a)), {
@@ -133,7 +134,7 @@ async function main() {
     const authed = { headers: { Authorization: `Bearer ${adminToken}` } };
 
     // ── Volumen: 100 / 500 / 2000 pedidos, sin carga concurrente ───────────────────────────
-    for (const size of VOLUME_SIZES) {
+    for (const size of flag('skip-volume') ? [] : VOLUME_SIZES) {
       await cleanupPerf(db);
       await ensureAdmin();
       const dataset = buildDataset(size);
@@ -179,11 +180,13 @@ async function main() {
       ...stressStages({ maxUsers: Number(arg('max-users', '400')), durationSeconds: quick ? 15 : 45 }),
     ];
     let stopReason: string | undefined;
+    const only = arg('only')?.split(',');
     for (const stage of [...plan, recoveryStage(10, quick ? 15 : 30)]) {
+      if (only && !only.includes(stage.name)) continue;
       if (stopReason && stage.kind === 'stress') continue;
       const startedAt = Date.now();
       log(`Etapa ${stage.name}: ${stage.users} usuarios, ${stage.durationSeconds} s`);
-      await runJmeter(jmeter, stage, { out, fixture }, buildDataset(volume).date);
+      await runJmeter(jmeter, stage, { out, fixture }, buildDataset(volume).date, !flag('no-planning'));
       const endedAt = Date.now();
       const http = summarizeJtl(parseJtl(readFileSync(path.join(out, `${stage.name}.jtl`), 'utf8')));
       const slice: ResourceSample[] = monitor.samples.filter((s) => s.t >= startedAt && s.t <= endedAt + 2000);
@@ -218,6 +221,7 @@ async function main() {
     postgres: 'postgres:16-alpine (Docker, contenedor desechable, tmpfs)', jmeter: path.basename(path.dirname(path.dirname(jmeter))),
     api: 'node dist/main.js (un solo proceso, sin clúster)', loadVolume: volume, quick, cleanupVerified,
     note: 'API, PostgreSQL, JMeter y el monitor comparten la misma laptop; JMeter compite por CPU con la API.',
+    planningInMix: !flag('no-planning'),
   };
   writeFileSync(path.join(out, 'results.json'), JSON.stringify({ environment, volumes, stages }, null, 2));
   log(`Resultados en ${out}`);
