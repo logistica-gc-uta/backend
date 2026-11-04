@@ -100,13 +100,13 @@ Sin la planificación, con 25 usuarios el rendimiento es 6.4 veces mayor y el p9
 
 ## 7. Recomendaciones
 
-Son propuestas para decidir con el equipo; ninguna se aplicó en este PR y no hay un umbral aprobado contra el cual medirlas.
+Son propuestas para decidir con el equipo; la recomendación 1 se aplicó en este PR (ver sección 10); el resto sigue pendiente y no hay un umbral aprobado contra el cual medirlas.
 
 1. **Sacar el cálculo de rutas del hilo principal** (hilo de trabajo o tarea en segundo plano) y/o **guardar la propuesta** por día y zona mientras no cambien los pedidos. Es la mejora con mayor efecto medido (P-1).
 2. **Ejecutar más de un proceso de la API** (clúster o varias instancias) tras confirmar que el estado en memoria, como las conexiones en tiempo real, se puede compartir (P-2).
 3. **Definir tiempos máximos de respuesta y un límite de peticiones simultáneas** para rechazar a tiempo con un error claro en vez de acumular espera (P-3).
 4. **Repetir la corrida en el hardware del servidor de destino**, en un entorno aislado, antes de fijar umbrales; estas cifras son de una laptop de 32 hilos y no se pueden extrapolar.
-5. Una vez aplicada cualquiera de las mejoras, **repetir este mismo plan con el mismo comando** para el re-test (`pnpm perf:run`).
+5. Tras aplicar cualquier otra mejora, **repetir este mismo plan con el mismo comando** para el re-test (`pnpm perf:run`).
 
 ## 8. Limitaciones y riesgos conocidos
 
@@ -126,3 +126,25 @@ pnpm perf:report test-results/perf/<corrida>/results.json docs/perf
 ```
 
 Requiere Docker y JMeter 5.6.3 (el script no lo instala). Solo corre contra una base local desechable.
+
+## 10. Re-test tras la corrección de P-1
+
+Se aplicó la corrección de P-1 (commit `53d6ed9`: cálculo de rutas en un worker thread, memoizado por contenido y con peticiones idénticas unificadas) y se repitió **el mismo plan y el mismo comando**. Detalle y gráficos: [`retest/REPORT.md`](retest/REPORT.md); datos crudos: `data/retest-after-p1.json`.
+
+| Etapa | req/s antes | req/s después | p95 antes (ms) | p95 después (ms) | Errores |
+|---|---|---|---|---|---|
+| carga-25 | 16,7 | 48,7 | 2667 | 784 | 0 % |
+| carga-50 | 14,1 | 49,9 | 5732 | 1565 | 0 % |
+| carga-100 | 14,0 | 46,0 | 11560 | 3230 | 0 % |
+| carga-200 | 14,5 | 48,0 | 21677 | 6311 | 0 % |
+| estres-200 | 14,4 | 29,6 | 21671 | 13015 | 0 % |
+| estres-300 | 16,1 | 44,1 | 30492 (parada por límite) | 9568 | 0 % |
+| estres-400 | no corrió | 38,8 | — | 15452 | 0 % |
+| recuperacion-10 | 17,3 | 28,8 | 1195 | 424 | 0 % |
+
+**Lectura**
+- El rendimiento sube unas 3 veces (de ~14–17 a ~46–50 req/s) y el p95 baja unas 3,5 veces con 25–200 usuarios. Con la corrección el escalón de 300 usuarios ya no activa el límite seguro y el de 400 llegó a correr.
+- **No alcanza el máximo del experimento de control** (~107 req/s sin planificación): la API sigue usando ~1,1 núcleos, o sea que el hilo principal continúa saturado. Lo que queda por petición es la consulta de ~2000 pedidos, la evaluación de elegibilidad, armar y serializar la respuesta con 501 propuestas y copiar el resultado de la caché. P-2 (un solo núcleo) sigue abierto y es el siguiente paso.
+- `estres-200` es un valor atípico (29,6 req/s, p95 13 s) con una sola corrida por etapa; no se debe leer como tendencia.
+- **Limitación de lo medido:** la carga pide siempre la misma fecha, por lo que casi todas las consultas de rutas salen de la memoización. Esta comparación vale para consultas repetidas; el primer cálculo con datos nuevos ahora corre en el worker (no bloquea), pero su costo no se aisló en esta corrida.
+- Estado de los hallazgos: **P-1 mitigado** (medido arriba), P-2 y P-3 siguen abiertos, P-4..P-7 sin cambio.
