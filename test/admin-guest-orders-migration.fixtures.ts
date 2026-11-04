@@ -14,17 +14,26 @@ export class AdminOrdersDatabase {
   private readonly databases = new Set<string>();
 
   private exec(file: string, args: string[]): string {
+    const options = {
+      encoding: 'utf8' as const,
+      stdio: 'pipe' as const,
+      env: {
+        ...process.env,
+        DATABASE_URL: '',
+        DOTENV_CONFIG_PATH: '/dev/null',
+        PRISMA_DISABLE_TELEMETRY: '1',
+      },
+    };
     try {
-      return execFileSync(file, args, {
-        encoding: 'utf8',
-        stdio: 'pipe',
-        env: {
-          ...process.env,
-          DATABASE_URL: '',
-          DOTENV_CONFIG_PATH: '/dev/null',
-          PRISMA_DISABLE_TELEMETRY: '1',
-        },
-      }).trim();
+      try {
+        return execFileSync(file, args, options).trim();
+      } catch (error) {
+        // En Windows pnpm suele ser un script (pnpm.cmd) y execFileSync no lo resuelve sin shell (ENOENT).
+        if (process.platform === 'win32' && file === 'pnpm' && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+          return execFileSync('pnpm.cmd', args, { ...options, shell: true }).trim();
+        }
+        throw error;
+      }
     } catch (error) {
       const failure = error as { stderr?: Buffer; message?: string };
       throw new Error(String(failure.stderr ?? failure.message)
