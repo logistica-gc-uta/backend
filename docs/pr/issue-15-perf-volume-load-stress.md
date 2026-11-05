@@ -1,6 +1,6 @@
 ## Descripción
 
-Escenarios reproducibles de volumen, carga y estrés con reporte no funcional: seeder de 100/500/2000 pedidos con semilla fija y limpieza verificable, plan JMeter en modo no GUI, monitor de recursos, orquestador aislado y generador del reporte con gráficos. Incluye la corrida real y sus hallazgos.
+Escenarios reproducibles de volumen, carga y estrés con reporte no funcional: seeder de 100/500/2000 pedidos con semilla fija y limpieza verificable, plan JMeter en modo no GUI, monitor de recursos, orquestador aislado y generador del reporte con gráficos. Incluye la corrida real, sus hallazgos, la corrección del principal (P-1) y el re-test.
 
 ## Issue relacionado
 
@@ -20,10 +20,10 @@ Closes #15
 | Prueba | Resultado | Evidencia |
 |---|---|---|
 | Análisis estático | PASS | `pnpm lint`, `tsc --noEmit` |
-| Pruebas unitarias | PASS (33 + 8 nuevas del planificador; 23 suites de `routes` en verde) | percentiles, JTL, dataset, monitor, etapas, gráficos y reporte |
+| Pruebas unitarias | PASS (33 + 8 nuevas del planificador; 23 suites de `routes` en verde) | percentiles, JTL, dataset, monitor, etapas, gráficos, reporte y planificador |
 | Pruebas de integración | PASS (5 nuevas) | `test/perf-seed.e2e-spec.ts`: siembra, idempotencia, 2000 pedidos y limpieza en PostgreSQL real |
 | Compilación | PASS | `pnpm build` |
-| Pruebas funcionales | Corrida real ejecutada | `docs/perf/REPORT.md` (commit `52dbc95`): 8 etapas, 0 % de errores, limpieza verificada |
+| Pruebas de carga y estrés | Corrida real y re-test ejecutados | `docs/perf/REPORT.md` (commit `52dbc95`, 8 etapas) y sección 10 (re-test tras la corrección, 9 etapas): 0 % de errores, limpieza verificada |
 
 ## Evidencias
 
@@ -55,4 +55,4 @@ Closes #15
 
 ## Observaciones para el revisor
 
-JMeter no se versiona ni se instala con el script; el reporte indica la versión usada (5.6.3). Este PR toca código de producción (módulo `routes`) además de las pruebas; si prefieres separarlo, el commit `53d6ed9` es independiente. P-2 y P-3 siguen siendo decisiones para el equipo de backend.
+JMeter no se versiona ni se instala con el script; el reporte indica la versión usada (5.6.3). Este PR toca código de producción (módulo `routes`) además de las pruebas; la corrección está aislada en el commit `53d6ed9`, por si el equipo prefiere separarla en otro PR. P-2 y P-3 siguen siendo decisiones para el equipo de backend.
