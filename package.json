@@ -30,6 +30,11 @@
     "test:api:raw": "newman run delivery-api.postman_collection.json -e test/postman/logistica_env.json",
     "test:api:report": "./test/run-newman-isolated.sh --report",
     "seed:planning-demo": "tsx src/prisma/seed-planning-demo.ts",
+    "perf:seed": "tsx benchmarks/load/cli.ts seed",
+    "perf:cleanup": "tsx benchmarks/load/cli.ts cleanup",
+    "perf:run": "tsx benchmarks/load/run.ts",
+    "perf:report": "tsx benchmarks/load/report.ts",
+    "perf:status": "tsx benchmarks/load/cli.ts status",
     "benchmark:routing": "node --expose-gc --import tsx benchmarks/routing/run.ts"
   },
   "dependencies": {

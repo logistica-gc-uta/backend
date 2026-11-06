@@ -48,7 +48,15 @@ function runExecFile(file: string, args: string[], options?: ExecFileSyncOptions
     ...options,
     env: { ...process.env, ...options?.env },
   };
-  return execFileSync(file, args, opts);
+  try {
+    return execFileSync(file, args, opts);
+  } catch (error) {
+    // En Windows pnpm suele ser un script (pnpm.cmd) y execFileSync no lo resuelve sin shell (ENOENT).
+    if (process.platform === 'win32' && file === 'pnpm' && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return execFileSync('pnpm.cmd', args, { ...opts, shell: true });
+    }
+    throw error;
+  }
 }
 
 function sleepSync(ms: number): void {

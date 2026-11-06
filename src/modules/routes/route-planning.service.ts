@@ -1,6 +1,7 @@
 import {
   Injectable,
   NotFoundException,
+  type OnModuleDestroy,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
@@ -8,11 +9,11 @@ import { driverRouteDay } from '../drivers/driver-route-date.util.js';
 import { evaluatePlanningEligibility } from '../orders/order-geography.util.js';
 import {
   DEFAULT_ROUTE_CAPACITY,
-  planRoutes,
   type RoutingOrder,
 } from './algorithms/clarke-wright.js';
 import type { GeoPoint } from './algorithms/geo.util.js';
 import { independentTripsKm, savingsFigures } from './algorithms/route-metrics.js';
+import { RoutePlanner } from './route-planner.js';
 import { ExclusionReason, type PlanningExclusionReason } from './planning-exclusion-reason.js';
 import type { PlanRoutesQueryDto } from './dto/plan-routes-query.dto.js';
 import type {
@@ -38,8 +39,15 @@ export { ExclusionReason };
  * driver are separate ADMIN operations (POST /routes, POST /routes/:id/assign).
  */
 @Injectable()
-export class RoutePlanningService {
+export class RoutePlanningService implements OnModuleDestroy {
+  /** Planificador compartido: cálculo en worker, memoizado y sin duplicar trabajo concurrente (P-1 de #15). */
+  private readonly planner = new RoutePlanner();
+
   constructor(private readonly prisma: PrismaService) {}
+
+  async onModuleDestroy(): Promise<void> {
+    await this.planner.close();
+  }
 
   async propose(query: PlanRoutesQueryDto): Promise<RouteProposalResponseDto> {
     const day = driverRouteDay(query.date)!;
@@ -110,10 +118,11 @@ export class RoutePlanningService {
     }
 
     const locations = new Map(routable.map((order) => [order.id, order.location]));
-    const proposals: RouteProposalDto[] = planRoutes(routable, {
+    const planned = await this.planner.plan(routable, {
       depots,
       capacity: DEFAULT_ROUTE_CAPACITY,
-    }).map((route) => {
+    });
+    const proposals: RouteProposalDto[] = planned.map((route) => {
       // Instants are ISO strings of the same business day, sorted chronologically.
       const scheduledInstants = [
         ...new Set(route.orderIds.map((id) => instants.get(id)!)),

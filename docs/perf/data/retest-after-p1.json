@@ -1,0 +1,1077 @@
+{
+  "environment": {
+    "commit": "53d6ed968cb48f3299495a5e4453e1a9273573aa",
+    "dirty": false,
+    "date": "2026-11-04T23:45:37.815Z",
+    "os": "Windows_NT 10.0.26200 (x64)",
+    "cpu": "Intel(R) Core(TM) i9-14900HX",
+    "cores": 32,
+    "totalMemGb": 31.7,
+    "node": "v26.11.1",
+    "postgres": "postgres:16-alpine (Docker, contenedor desechable, tmpfs)",
+    "jmeter": "apache-jmeter-5.6.3",
+    "api": "node dist/main.js (un solo proceso, sin clúster)",
+    "loadVolume": 2000,
+    "quick": false,
+    "cleanupVerified": true,
+    "note": "API, PostgreSQL, JMeter y el monitor comparten la misma laptop; JMeter compite por CPU con la API.",
+    "planningInMix": true
+  },
+  "volumes": [
+    {
+      "size": 100,
+      "checksum": "703324b68f5155cd628d31ba08ee4a7e479205f35bff94bf511f1c4aa96d89e2",
+      "theoreticalRoutes": 25,
+      "seedMs": 449.123599999999,
+      "planningMs": [
+        70.45690000000104,
+        18.201900000000023,
+        15.543300000001182,
+        23.23859999999877,
+        14.278699999998935
+      ],
+      "planningSummary": {
+        "candidateOrders": 100,
+        "plannedOrders": 100,
+        "excludedOrders": 0,
+        "routes": 26,
+        "baselineKm": 172.8,
+        "plannedKm": 70.58,
+        "savingsKm": 102.22,
+        "savingsPercent": 59.16
+      },
+      "adminListMs": 15.223799999999756
+    },
+    {
+      "size": 500,
+      "checksum": "0c575b96e6e88d7bc8c793b82bb292f758ac297804a2d3f41c79d7004fd87597",
+      "theoreticalRoutes": 125,
+      "seedMs": 1485.6638000000003,
+      "planningMs": [
+        45.48519999999917,
+        25.389999999999418,
+        84.82250000000022,
+        22.813099999999395,
+        23.16820000000007
+      ],
+      "planningSummary": {
+        "candidateOrders": 500,
+        "plannedOrders": 500,
+        "excludedOrders": 0,
+        "routes": 125,
+        "baselineKm": 848.943,
+        "plannedKm": 267.898,
+        "savingsKm": 581.045,
+        "savingsPercent": 68.44
+      },
+      "adminListMs": 11.721300000001065
+    },
+    {
+      "size": 2000,
+      "checksum": "9bff21a2f66dcdd007d73b8560f024a4a970c07d6d69b8e010474fbf57d85db3",
+      "theoreticalRoutes": 500,
+      "seedMs": 7560.059499999999,
+      "planningMs": [
+        341.8522000000012,
+        127.12740000000122,
+        274.1193999999996,
+        109.03659999999945,
+        102.55010000000038
+      ],
+      "planningSummary": {
+        "candidateOrders": 2000,
+        "plannedOrders": 2000,
+        "excludedOrders": 0,
+        "routes": 501,
+        "baselineKm": 3379.424,
+        "plannedKm": 955.793,
+        "savingsKm": 2423.631,
+        "savingsPercent": 71.72
+      },
+      "adminListMs": 14.987499999999272
+    }
+  ],
+  "stages": [
+    {
+      "stage": {
+        "name": "carga-25",
+        "kind": "load",
+        "users": 25,
+        "rampupSeconds": 15,
+        "durationSeconds": 60
+      },
+      "startedAt": 1793835400761,
+      "endedAt": 1793835464055,
+      "http": {
+        "samples": 2941,
+        "errors": 0,
+        "errorRate": 0,
+        "durationSeconds": 60.357,
+        "throughput": 48.726742548503076,
+        "maxThreads": 25,
+        "overall": {
+          "count": 2941,
+          "min": 7,
+          "mean": 296.47942876572597,
+          "p50": 233,
+          "p95": 784,
+          "p99": 1268,
+          "max": 2227
+        },
+        "byLabel": [
+          {
+            "label": "GET catalogo publico",
+            "count": 578,
+            "min": 7,
+            "mean": 222.74048442906573,
+            "p50": 193,
+            "p95": 539,
+            "p99": 787,
+            "max": 1052,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.576354026873437
+          },
+          {
+            "label": "GET mis pedidos CLIENT",
+            "count": 579,
+            "min": 14,
+            "mean": 169.8238341968912,
+            "p50": 148,
+            "p95": 389,
+            "p99": 690,
+            "max": 989,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.592922113425121
+          },
+          {
+            "label": "GET pedidos ADMIN paginado",
+            "count": 583,
+            "min": 7,
+            "mean": 229.03945111492283,
+            "p50": 189,
+            "p95": 577,
+            "p99": 905,
+            "max": 1167,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.659194459631857
+          },
+          {
+            "label": "GET propuesta de rutas Clarke-Wright",
+            "count": 588,
+            "min": 71,
+            "mean": 342.50850340136054,
+            "p50": 289,
+            "p95": 823,
+            "p99": 1248,
+            "max": 1474,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.742034892390278
+          },
+          {
+            "label": "POST crear pedido CLIENT",
+            "count": 613,
+            "min": 13,
+            "mean": 505.626427406199,
+            "p50": 481,
+            "p95": 1189,
+            "p99": 1825,
+            "max": 2227,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 10.156237056182382
+          }
+        ],
+        "responseCodes": {
+          "200": 2328,
+          "201": 613
+        }
+      },
+      "resources": {
+        "samples": 31,
+        "apiCpuAvg": 2.705483870967741,
+        "apiCpuMax": 3.48,
+        "apiRssMaxMb": 587.6,
+        "dbCpuAvg": 27.414838709677422,
+        "dbCpuMax": 38.9,
+        "dbMemMaxMb": 95.05,
+        "dbConnectionsMax": 12
+      }
+    },
+    {
+      "stage": {
+        "name": "carga-50",
+        "kind": "load",
+        "users": 50,
+        "rampupSeconds": 15,
+        "durationSeconds": 60
+      },
+      "startedAt": 1793835467069,
+      "endedAt": 1793835530548,
+      "http": {
+        "samples": 3013,
+        "errors": 0,
+        "errorRate": 0,
+        "durationSeconds": 60.383,
+        "throughput": 49.89815014159614,
+        "maxThreads": 50,
+        "overall": {
+          "count": 3013,
+          "min": 5,
+          "mean": 723.6717557251908,
+          "p50": 657,
+          "p95": 1565,
+          "p99": 2177,
+          "max": 3336
+        },
+        "byLabel": [
+          {
+            "label": "GET catalogo publico",
+            "count": 604,
+            "min": 5,
+            "mean": 388.39403973509934,
+            "p50": 369,
+            "p95": 774,
+            "p99": 1035,
+            "max": 1344,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 10.002815361939618
+          },
+          {
+            "label": "GET mis pedidos CLIENT",
+            "count": 646,
+            "min": 20,
+            "mean": 534.9396284829721,
+            "p50": 499,
+            "p95": 1106,
+            "p99": 1487,
+            "max": 1572,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 10.698375370551314
+          },
+          {
+            "label": "GET pedidos ADMIN paginado",
+            "count": 610,
+            "min": 7,
+            "mean": 745.4754098360655,
+            "p50": 735,
+            "p95": 1354,
+            "p99": 1999,
+            "max": 2139,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 10.102181077455574
+          },
+          {
+            "label": "GET propuesta de rutas Clarke-Wright",
+            "count": 579,
+            "min": 69,
+            "mean": 778.9291882556131,
+            "p50": 770,
+            "p95": 1451,
+            "p99": 2084,
+            "max": 2190,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.5887915472898
+          },
+          {
+            "label": "POST crear pedido CLIENT",
+            "count": 574,
+            "min": 18,
+            "mean": 1209.9686411149826,
+            "p50": 1184,
+            "p95": 2169,
+            "p99": 3037,
+            "max": 3336,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.505986784359836
+          }
+        ],
+        "responseCodes": {
+          "200": 2439,
+          "201": 574
+        }
+      },
+      "resources": {
+        "samples": 31,
+        "apiCpuAvg": 2.6667741935483873,
+        "apiCpuMax": 3.58,
+        "apiRssMaxMb": 660.4,
+        "dbCpuAvg": 29.477419354838705,
+        "dbCpuMax": 41.24,
+        "dbMemMaxMb": 93.67,
+        "dbConnectionsMax": 11
+      }
+    },
+    {
+      "stage": {
+        "name": "carga-100",
+        "kind": "load",
+        "users": 100,
+        "rampupSeconds": 15,
+        "durationSeconds": 60
+      },
+      "startedAt": 1793835533575,
+      "endedAt": 1793835598311,
+      "http": {
+        "samples": 2835,
+        "errors": 0,
+        "errorRate": 0,
+        "durationSeconds": 61.584,
+        "throughput": 46.03468433359314,
+        "maxThreads": 100,
+        "overall": {
+          "count": 2835,
+          "min": 9,
+          "mean": 1734.8172839506174,
+          "p50": 1702,
+          "p95": 3230,
+          "p99": 4197,
+          "max": 5135
+        },
+        "byLabel": [
+          {
+            "label": "GET catalogo publico",
+            "count": 615,
+            "min": 9,
+            "mean": 823.6910569105692,
+            "p50": 795,
+            "p95": 1315,
+            "p99": 1596,
+            "max": 1666,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.986360093530786
+          },
+          {
+            "label": "GET mis pedidos CLIENT",
+            "count": 548,
+            "min": 39,
+            "mean": 1325.8777372262773,
+            "p50": 1305,
+            "p95": 2044,
+            "p99": 2285,
+            "max": 2675,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 8.898415172772149
+          },
+          {
+            "label": "GET pedidos ADMIN paginado",
+            "count": 565,
+            "min": 13,
+            "mean": 1890.0654867256637,
+            "p50": 1943,
+            "p95": 2933,
+            "p99": 3330,
+            "max": 3413,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.174460898934788
+          },
+          {
+            "label": "GET propuesta de rutas Clarke-Wright",
+            "count": 572,
+            "min": 83,
+            "mean": 1935.3444055944055,
+            "p50": 1991,
+            "p95": 2999,
+            "p99": 3458,
+            "max": 3511,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.288126786178228
+          },
+          {
+            "label": "POST crear pedido CLIENT",
+            "count": 535,
+            "min": 68,
+            "mean": 2822.714018691589,
+            "p50": 2862,
+            "p95": 4211,
+            "p99": 4656,
+            "max": 5135,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 8.687321382177188
+          }
+        ],
+        "responseCodes": {
+          "200": 2300,
+          "201": 535
+        }
+      },
+      "resources": {
+        "samples": 32,
+        "apiCpuAvg": 2.6415625,
+        "apiCpuMax": 3.26,
+        "apiRssMaxMb": 766.2,
+        "dbCpuAvg": 31.6553125,
+        "dbCpuMax": 48.12,
+        "dbMemMaxMb": 92.92,
+        "dbConnectionsMax": 11
+      }
+    },
+    {
+      "stage": {
+        "name": "carga-200",
+        "kind": "load",
+        "users": 200,
+        "rampupSeconds": 15,
+        "durationSeconds": 60
+      },
+      "startedAt": 1793835601327,
+      "endedAt": 1793835667431,
+      "http": {
+        "samples": 3022,
+        "errors": 0,
+        "errorRate": 0,
+        "durationSeconds": 62.941,
+        "throughput": 48.01321872865064,
+        "maxThreads": 200,
+        "overall": {
+          "count": 3022,
+          "min": 5,
+          "mean": 3440.8305757776307,
+          "p50": 3472,
+          "p95": 6311,
+          "p99": 7929,
+          "max": 8806
+        },
+        "byLabel": [
+          {
+            "label": "GET catalogo publico",
+            "count": 620,
+            "min": 5,
+            "mean": 1458.1403225806453,
+            "p50": 1515,
+            "p95": 2261,
+            "p99": 2493,
+            "max": 2841,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.850494907929647
+          },
+          {
+            "label": "GET mis pedidos CLIENT",
+            "count": 596,
+            "min": 26,
+            "mean": 2572.228187919463,
+            "p50": 2828,
+            "p95": 3909,
+            "p99": 4327,
+            "max": 4391,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.469185427622694
+          },
+          {
+            "label": "GET pedidos ADMIN paginado",
+            "count": 609,
+            "min": 12,
+            "mean": 3849.44170771757,
+            "p50": 4213,
+            "p95": 5664,
+            "p99": 6241,
+            "max": 6331,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.675728062788961
+          },
+          {
+            "label": "GET propuesta de rutas Clarke-Wright",
+            "count": 587,
+            "min": 108,
+            "mean": 3932.809199318569,
+            "p50": 4275,
+            "p95": 6025,
+            "p99": 6262,
+            "max": 6359,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.326194372507587
+          },
+          {
+            "label": "POST crear pedido CLIENT",
+            "count": 610,
+            "min": 14,
+            "mean": 5423.32131147541,
+            "p50": 5854,
+            "p95": 7929,
+            "p99": 8604,
+            "max": 8806,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.691615957801751
+          }
+        ],
+        "responseCodes": {
+          "200": 2412,
+          "201": 610
+        }
+      },
+      "resources": {
+        "samples": 33,
+        "apiCpuAvg": 2.7566666666666677,
+        "apiCpuMax": 3.41,
+        "apiRssMaxMb": 819.6,
+        "dbCpuAvg": 31.479090909090907,
+        "dbCpuMax": 45.28,
+        "dbMemMaxMb": 93.21,
+        "dbConnectionsMax": 11
+      }
+    },
+    {
+      "stage": {
+        "name": "estres-100",
+        "kind": "stress",
+        "users": 100,
+        "rampupSeconds": 10,
+        "durationSeconds": 45
+      },
+      "startedAt": 1793835670448,
+      "endedAt": 1793835723309,
+      "http": {
+        "samples": 2245,
+        "errors": 0,
+        "errorRate": 0,
+        "durationSeconds": 49.445,
+        "throughput": 45.40398422489635,
+        "maxThreads": 100,
+        "overall": {
+          "count": 2245,
+          "min": 27,
+          "mean": 1729.7207126948774,
+          "p50": 1662,
+          "p95": 3142,
+          "p99": 5196,
+          "max": 6700
+        },
+        "byLabel": [
+          {
+            "label": "GET catalogo publico",
+            "count": 462,
+            "min": 27,
+            "mean": 760.0454545454545,
+            "p50": 755,
+            "p95": 1071,
+            "p99": 1565,
+            "max": 2014,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.343715239154616
+          },
+          {
+            "label": "GET mis pedidos CLIENT",
+            "count": 414,
+            "min": 129,
+            "mean": 1259.024154589372,
+            "p50": 1300,
+            "p95": 1758,
+            "p99": 2956,
+            "max": 3784,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 8.3729396298918
+          },
+          {
+            "label": "GET pedidos ADMIN paginado",
+            "count": 471,
+            "min": 54,
+            "mean": 1861.2887473460721,
+            "p50": 1905,
+            "p95": 2763,
+            "p99": 4848,
+            "max": 5005,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.525735665891395
+          },
+          {
+            "label": "GET propuesta de rutas Clarke-Wright",
+            "count": 427,
+            "min": 166,
+            "mean": 1857.192037470726,
+            "p50": 1940,
+            "p95": 2841,
+            "p99": 4682,
+            "max": 5035,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 8.635858024067145
+          },
+          {
+            "label": "POST crear pedido CLIENT",
+            "count": 471,
+            "min": 578,
+            "mean": 2847.469214437367,
+            "p50": 2824,
+            "p95": 5185,
+            "p99": 6382,
+            "max": 6700,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.525735665891395
+          }
+        ],
+        "responseCodes": {
+          "200": 1774,
+          "201": 471
+        }
+      },
+      "resources": {
+        "samples": 26,
+        "apiCpuAvg": 2.6388461538461536,
+        "apiCpuMax": 3.56,
+        "apiRssMaxMb": 752.8,
+        "dbCpuAvg": 32.57269230769231,
+        "dbCpuMax": 45.32,
+        "dbMemMaxMb": 93.7,
+        "dbConnectionsMax": 11
+      }
+    },
+    {
+      "stage": {
+        "name": "estres-200",
+        "kind": "stress",
+        "users": 200,
+        "rampupSeconds": 10,
+        "durationSeconds": 45
+      },
+      "startedAt": 1793835726475,
+      "endedAt": 1793835780272,
+      "http": {
+        "samples": 1444,
+        "errors": 0,
+        "errorRate": 0,
+        "durationSeconds": 48.79,
+        "throughput": 29.596228735396597,
+        "maxThreads": 200,
+        "overall": {
+          "count": 1444,
+          "min": 50,
+          "mean": 5726.884349030471,
+          "p50": 5283,
+          "p95": 13015,
+          "p99": 15684,
+          "max": 16237
+        },
+        "byLabel": [
+          {
+            "label": "GET catalogo publico",
+            "count": 291,
+            "min": 50,
+            "mean": 2369.53264604811,
+            "p50": 2335,
+            "p95": 5997,
+            "p99": 7572,
+            "max": 7602,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 5.964336954293913
+          },
+          {
+            "label": "GET mis pedidos CLIENT",
+            "count": 282,
+            "min": 104,
+            "mean": 4347.372340425532,
+            "p50": 4353,
+            "p95": 9925,
+            "p99": 11285,
+            "max": 11430,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 5.779872924779668
+          },
+          {
+            "label": "GET pedidos ADMIN paginado",
+            "count": 299,
+            "min": 238,
+            "mean": 6499.1003344481605,
+            "p50": 6536,
+            "p95": 12796,
+            "p99": 13193,
+            "max": 13246,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 6.128304980528797
+          },
+          {
+            "label": "GET propuesta de rutas Clarke-Wright",
+            "count": 289,
+            "min": 244,
+            "mean": 6584.342560553633,
+            "p50": 6412,
+            "p95": 13041,
+            "p99": 13231,
+            "max": 13261,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 5.923344947735192
+          },
+          {
+            "label": "POST crear pedido CLIENT",
+            "count": 283,
+            "min": 582,
+            "mean": 8862.26855123675,
+            "p50": 8966,
+            "p95": 15684,
+            "p99": 16214,
+            "max": 16237,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 5.8003689280590285
+          }
+        ],
+        "responseCodes": {
+          "200": 1161,
+          "201": 283
+        }
+      },
+      "resources": {
+        "samples": 27,
+        "apiCpuAvg": 1.802592592592592,
+        "apiCpuMax": 2.96,
+        "apiRssMaxMb": 808.5,
+        "dbCpuAvg": 22.21740740740741,
+        "dbCpuMax": 40.32,
+        "dbMemMaxMb": 94.36,
+        "dbConnectionsMax": 11
+      }
+    },
+    {
+      "stage": {
+        "name": "estres-300",
+        "kind": "stress",
+        "users": 300,
+        "rampupSeconds": 10,
+        "durationSeconds": 45
+      },
+      "startedAt": 1793835783280,
+      "endedAt": 1793835837240,
+      "http": {
+        "samples": 2234,
+        "errors": 0,
+        "errorRate": 0,
+        "durationSeconds": 50.671,
+        "throughput": 44.08833455033451,
+        "maxThreads": 300,
+        "overall": {
+          "count": 2234,
+          "min": 45,
+          "mean": 5718.482990152193,
+          "p50": 6241,
+          "p95": 9568,
+          "p99": 11161,
+          "max": 11775
+        },
+        "byLabel": [
+          {
+            "label": "GET catalogo publico",
+            "count": 437,
+            "min": 286,
+            "mean": 2274.574370709382,
+            "p50": 2424,
+            "p95": 3086,
+            "p99": 3582,
+            "max": 3867,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 8.624262398610645
+          },
+          {
+            "label": "GET mis pedidos CLIENT",
+            "count": 470,
+            "min": 290,
+            "mean": 4439.359574468085,
+            "p50": 4596,
+            "p95": 5646,
+            "p99": 5914,
+            "max": 6067,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.275522488208246
+          },
+          {
+            "label": "GET pedidos ADMIN paginado",
+            "count": 449,
+            "min": 45,
+            "mean": 6409.218262806236,
+            "p50": 6729,
+            "p95": 8073,
+            "p99": 8690,
+            "max": 8728,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 8.861084249373409
+          },
+          {
+            "label": "GET propuesta de rutas Clarke-Wright",
+            "count": 412,
+            "min": 858,
+            "mean": 6595.264563106796,
+            "p50": 6779,
+            "p95": 8264,
+            "p99": 8686,
+            "max": 8868,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 8.130883542854887
+          },
+          {
+            "label": "POST crear pedido CLIENT",
+            "count": 466,
+            "min": 1387,
+            "mean": 8797.457081545064,
+            "p50": 9236,
+            "p95": 11158,
+            "p99": 11623,
+            "max": 11775,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 9.196581871287325
+          }
+        ],
+        "responseCodes": {
+          "200": 1768,
+          "201": 466
+        }
+      },
+      "resources": {
+        "samples": 27,
+        "apiCpuAvg": 2.742592592592593,
+        "apiCpuMax": 3.66,
+        "apiRssMaxMb": 861,
+        "dbCpuAvg": 31.627777777777784,
+        "dbCpuMax": 54.67,
+        "dbMemMaxMb": 94.5,
+        "dbConnectionsMax": 11
+      }
+    },
+    {
+      "stage": {
+        "name": "estres-400",
+        "kind": "stress",
+        "users": 400,
+        "rampupSeconds": 10,
+        "durationSeconds": 45
+      },
+      "startedAt": 1793835840264,
+      "endedAt": 1793835896104,
+      "http": {
+        "samples": 2053,
+        "errors": 0,
+        "errorRate": 0,
+        "durationSeconds": 52.864,
+        "throughput": 38.83550242130751,
+        "maxThreads": 400,
+        "overall": {
+          "count": 2053,
+          "min": 56,
+          "mean": 8600.395518753045,
+          "p50": 9663,
+          "p95": 15452,
+          "p99": 16247,
+          "max": 16618
+        },
+        "byLabel": [
+          {
+            "label": "GET catalogo publico",
+            "count": 391,
+            "min": 146,
+            "mean": 3441.235294117647,
+            "p50": 3520,
+            "p95": 5856,
+            "p99": 6420,
+            "max": 6537,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 7.396337772397095
+          },
+          {
+            "label": "GET mis pedidos CLIENT",
+            "count": 421,
+            "min": 131,
+            "mean": 6569.301662707839,
+            "p50": 7219,
+            "p95": 9744,
+            "p99": 10158,
+            "max": 10455,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 7.96383171912833
+          },
+          {
+            "label": "GET pedidos ADMIN paginado",
+            "count": 410,
+            "min": 56,
+            "mean": 9809.441463414634,
+            "p50": 10716,
+            "p95": 12833,
+            "p99": 12971,
+            "max": 13051,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 7.7557506053268765
+          },
+          {
+            "label": "GET propuesta de rutas Clarke-Wright",
+            "count": 412,
+            "min": 215,
+            "mean": 9726.808252427185,
+            "p50": 10815,
+            "p95": 12886,
+            "p99": 13002,
+            "max": 13083,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 7.793583535108959
+          },
+          {
+            "label": "POST crear pedido CLIENT",
+            "count": 419,
+            "min": 419,
+            "mean": 13164.909307875894,
+            "p50": 14633,
+            "p95": 16247,
+            "p99": 16435,
+            "max": 16618,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 7.925998789346248
+          }
+        ],
+        "responseCodes": {
+          "200": 1634,
+          "201": 419
+        }
+      },
+      "resources": {
+        "samples": 28,
+        "apiCpuAvg": 2.5771428571428565,
+        "apiCpuMax": 3.45,
+        "apiRssMaxMb": 979.8,
+        "dbCpuAvg": 29.151428571428568,
+        "dbCpuMax": 38.25,
+        "dbMemMaxMb": 95.11,
+        "dbConnectionsMax": 11
+      }
+    },
+    {
+      "stage": {
+        "name": "recuperacion-10",
+        "kind": "recovery",
+        "users": 10,
+        "rampupSeconds": 5,
+        "durationSeconds": 30
+      },
+      "startedAt": 1793835899118,
+      "endedAt": 1793835932176,
+      "http": {
+        "samples": 863,
+        "errors": 0,
+        "errorRate": 0,
+        "durationSeconds": 29.963,
+        "throughput": 28.802189366885823,
+        "maxThreads": 10,
+        "overall": {
+          "count": 863,
+          "min": 5,
+          "mean": 162.3476245654693,
+          "p50": 127,
+          "p95": 424,
+          "p99": 656,
+          "max": 910
+        },
+        "byLabel": [
+          {
+            "label": "GET catalogo publico",
+            "count": 168,
+            "min": 5,
+            "mean": 125.93452380952381,
+            "p50": 92,
+            "p95": 378,
+            "p99": 446,
+            "max": 471,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 5.6069151954076695
+          },
+          {
+            "label": "GET mis pedidos CLIENT",
+            "count": 163,
+            "min": 39,
+            "mean": 140.01226993865032,
+            "p50": 104,
+            "p95": 319,
+            "p99": 498,
+            "max": 536,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 5.44004271935387
+          },
+          {
+            "label": "GET pedidos ADMIN paginado",
+            "count": 176,
+            "min": 8,
+            "mean": 99.6590909090909,
+            "p50": 65,
+            "p95": 269,
+            "p99": 389,
+            "max": 407,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 5.873911157093748
+          },
+          {
+            "label": "GET propuesta de rutas Clarke-Wright",
+            "count": 172,
+            "min": 67,
+            "mean": 214.33139534883722,
+            "p50": 185,
+            "p95": 444,
+            "p99": 579,
+            "max": 670,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 5.740413176250709
+          },
+          {
+            "label": "POST crear pedido CLIENT",
+            "count": 184,
+            "min": 11,
+            "mean": 226.75,
+            "p50": 182,
+            "p95": 544,
+            "p99": 801,
+            "max": 910,
+            "errors": 0,
+            "errorRate": 0,
+            "throughput": 6.140907118779828
+          }
+        ],
+        "responseCodes": {
+          "200": 679,
+          "201": 184
+        }
+      },
+      "resources": {
+        "samples": 16,
+        "apiCpuAvg": 2.03,
+        "apiCpuMax": 2.97,
+        "apiRssMaxMb": 970.9,
+        "dbCpuAvg": 21.306875,
+        "dbCpuMax": 37.3,
+        "dbMemMaxMb": 95.24,
+        "dbConnectionsMax": 11
+      }
+    }
+  ]
+}
