@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acceso de muestra · REGALÍA</title>
+<style>
+:root { color-scheme:light; --bg:#F8F6F1; --surface:#fff; --ink:#234D3E; --muted:#4F6257; --line:#D7DDD7; --accent:#234D3E; --on-accent:#fff; --hero:#E9EEE5; --peach:#F5E8D9; --box:#E8C9AA; --lid:#F2DCC5; --ribbon:#6D334B; --paper:#F8F6F1; --error:#9A293A; }
+[data-theme="dark"] { color-scheme:dark; --bg:#24141C; --surface:#36202B; --ink:#FAEEF1; --muted:#D8BDC8; --line:#785464; --accent:#F0CCD8; --on-accent:#351D29; --hero:#422531; --peach:#503D31; --box:#B98F85; --lid:#D4AFA1; --ribbon:#754059; --paper:#F1DFDA; --error:#FFC0CA; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+a { color:inherit; text-underline-offset:4px; }
+button,input { font:inherit; }
+button { cursor:pointer; }
+a,button { touch-action:manipulation; }
+[hidden] { display:none !important; }
+:focus-visible { outline:3px solid var(--ink); outline-offset:4px; }
+.wrap { width:min(1200px,calc(100% - 64px)); margin-inline:auto; }
+.skip { position:absolute; top:-100px; left:16px; z-index:2; padding:12px; background:var(--surface); }
+.skip:focus { top:12px; }
+.notice { text-align:center; background:var(--ink); color:var(--bg); padding:7px 16px; font-size:12px; letter-spacing:.05em; }
+.header { display:flex; align-items:center; justify-content:space-between; gap:24px; padding-block:23px; border-bottom:1px solid var(--line); }
+.wordmark { font:32px Georgia,serif; letter-spacing:.13em; text-decoration:none; }
+.header-tools { display:flex; align-items:center; gap:22px; }
+.header-tools a,.back,.preview { display:inline-flex; align-items:center; min-height:44px; font-size:14px; }
+#theme-toggle { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; min-height:44px; min-width:44px; padding:10px; border:1px solid var(--muted); border-radius:50%; color:var(--ink); background:var(--surface); }
+.icon { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.6; }
+.theme-moon { display:none; }
+[data-theme="dark"] .theme-sun { display:none; }
+[data-theme="dark"] .theme-moon { display:block; }
+main { padding-block:20px 12px; }
+.back { color:var(--muted); margin-bottom:16px; }
+.access { display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1fr); max-width:980px; margin:0 auto; border:1px solid var(--line); border-radius:6px; background:var(--surface); overflow:hidden; }
+.context { padding:42px; background:var(--hero); }
+h1,h2,p { margin-top:0; }
+h1,h2 { font-family:Georgia,"Times New Roman",serif; font-weight:400; }
+h1 { font-size:34px; line-height:1.15; letter-spacing:-.025em; margin-bottom:16px; }
+h2 { font-size:26px; line-height:1.2; margin-bottom:8px; }
+.eyebrow { font-size:11px; font-weight:650; letter-spacing:.15em; text-transform:uppercase; margin-bottom:14px; }
+.context > p:not(.eyebrow) { color:var(--muted); max-width:32ch; }
+.illustration { display:block; width:100%; max-width:255px; height:auto; margin:24px auto; }
+.info { border-top:1px solid var(--muted); padding-top:20px; font-size:13px; color:var(--muted); }
+.info strong { color:var(--ink); }
+.info p { margin-bottom:10px; }
+.form-area { padding:32px 38px; min-width:0; }
+.tabs { display:flex; gap:8px; border-bottom:1px solid var(--line); padding-bottom:12px; margin-bottom:24px; }
+.tabs button { flex:1; min-width:0; min-height:44px; border:1px solid transparent; border-radius:4px; padding:10px 12px; color:var(--muted); background:transparent; font-size:14px; }
+.tabs button[aria-selected="true"] { color:var(--ink); border-color:var(--muted); background:var(--hero); font-weight:650; }
+.small { color:var(--muted); font-size:13px; margin-bottom:20px; }
+.field { margin-bottom:16px; }
+label { display:block; font-size:14px; font-weight:600; margin-bottom:6px; }
+input { width:100%; min-width:0; min-height:46px; border:1px solid var(--muted); border-radius:4px; color:var(--ink); background:var(--surface); padding:10px 12px; }
+input[aria-invalid="true"] { border:2px solid var(--error); padding:9px 11px; }
+.password { display:flex; align-items:stretch; gap:8px; }
+.password input { flex:1; }
+.reveal { flex-shrink:0; min-height:44px; min-width:76px; border:1px solid var(--muted); border-radius:4px; background:var(--surface); color:var(--ink); font-size:13px; padding:8px; }
+.help { color:var(--muted); font-size:12px; margin:6px 0 0; }
+.error { color:var(--error); font-size:13px; font-weight:600; margin:6px 0 0; }
+.summary { font-size:14px; border-left:3px solid var(--error); padding:10px 12px; margin:0 0 18px; }
+.summary[data-valid="true"] { border-color:var(--ink); background:var(--hero); }
+.cta { display:flex; justify-content:center; align-items:center; width:100%; min-height:48px; border:1px solid var(--accent); border-radius:4px; padding:12px 16px; color:var(--on-accent); background:var(--accent); font-size:14px; font-weight:650; }
+.cta:hover,.reveal:hover { text-decoration:underline; text-underline-offset:4px; }
+.preview-block { max-width:980px; margin:20px auto 0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 24px; }
+.preview-block p { color:var(--muted); font-size:13px; margin:0; }
+.preview { font-weight:600; }
+footer { display:flex; justify-content:space-between; gap:20px; border-top:1px solid var(--line); margin-top:26px; padding-block:22px; font-size:12px; color:var(--muted); }
+@media(max-width:850px) { .context { padding:30px; } .form-area { padding:28px; } .access { grid-template-columns:minmax(0,.85fr) minmax(0,1fr); } }
+@media(max-width:650px) { .wrap { width:calc(100% - 32px); } .header { flex-wrap:wrap; gap:12px; padding-block:18px; } .wordmark { font-size:26px; } .header-tools { gap:14px; } .access { grid-template-columns:minmax(0,1fr); } .context { padding:24px; } h1 { font-size:28px; } .context > p:not(.eyebrow) { max-width:none; } .illustration { width:132px; margin:12px auto; } .info { padding-top:14px; } .info p:last-child { margin-bottom:0; } .form-area { padding:24px; } footer { flex-direction:column; gap:6px; } }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido</a>
+<div class="notice">Prototipo interactivo · sin autenticación ni compras reales</div>
+<header class="wrap header">
+<a class="wordmark" href="01-storefront.html" aria-label="Regalía, inicio">REGALÍA</a>
+<div class="header-tools"><a href="02-catalog.html">Explorar regalos</a><button id="theme-toggle" type="button" aria-pressed="false" aria-label="Cambiar al tema vino" title="Cambiar al tema vino"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><g class="theme-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></g><path class="theme-moon" d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z"/></svg></button></div>
+</header>
+<main class="wrap" id="contenido">
+<a class="back" href="02-catalog.html">← Volver al catálogo</a>
+<section class="access" aria-labelledby="access-title">
+<div class="context">
+<p class="eyebrow">Mi cuenta · vista de muestra</p><h1 id="access-title">Un detalle empieza contigo.</h1>
+<p>Explora cómo sería acceder a tu cuenta de cliente o crear una nueva.</p>
+<svg class="illustration" viewBox="0 0 280 220" aria-hidden="true"><circle cx="140" cy="110" r="100" fill="var(--paper)" opacity=".55"/><ellipse cx="140" cy="189" rx="93" ry="8" fill="var(--box)"/><rect x="59" y="99" width="162" height="83" rx="5" fill="var(--box)"/><rect x="51" y="82" width="178" height="29" rx="4" fill="var(--lid)"/><path d="M128 82h24v100h-24z" fill="var(--ribbon)"/><path d="M140 84c-60 1-61-52-34-40 18 8 34 40 34 40Zm0 0c60 1 61-52 34-40-18 8-34 40-34 40Z" fill="none" stroke="var(--ribbon)" stroke-width="9"/><g transform="rotate(12 199 142)"><rect x="180" y="119" width="37" height="47" rx="2" fill="var(--paper)"/><path d="M199 132c-11-10-19 5 0 14 19-9 11-24 0-14Z" fill="var(--ribbon)"/></g></svg>
+<div class="info"><p><strong>Para una futura compra</strong><br>Se requerirá acceso de cliente (CLIENT). El registro será solo para clientes.</p><p>Esta muestra solo valida campos en la página. No contacta servicios ni guarda datos. Usa datos ficticios y una contraseña de prueba, nunca una real.</p></div>
+</div>
+<div class="form-area">
+<div class="tabs" role="tablist" aria-label="Acceso de cliente" hidden>
+<button id="tab-login" role="tab" type="button" aria-selected="true" aria-controls="panel-login" tabindex="0">Iniciar sesión</button>
+<button id="tab-register" role="tab" type="button" aria-selected="false" aria-controls="panel-register" tabindex="-1">Crear cuenta</button>
+</div>
+<section id="panel-login" aria-labelledby="tab-login">
+<h2>Qué bueno verte.</h2><p class="small">Acceso de muestra. Todos los campos son obligatorios.</p>
+<form id="login-form" novalidate>
+<p class="summary" id="login-status" role="status" aria-atomic="true" tabindex="-1" hidden></p>
+<div class="field"><label for="login-email">Correo electrónico</label><input id="login-email" type="email" autocomplete="username" required aria-describedby="login-email-error" aria-invalid="false"><p class="error" id="login-email-error" hidden></p></div>
+<div class="field"><label for="login-password">Contraseña</label><div class="password"><input id="login-password" type="password" autocomplete="current-password" required aria-describedby="login-password-error" aria-invalid="false"><button class="reveal" type="button" data-password="login-password" aria-controls="login-password" aria-label="Mostrar contraseña de acceso" aria-pressed="false">Mostrar</button></div><p class="error" id="login-password-error" hidden></p></div>
+<button class="cta" type="submit" disabled>Validar acceso · muestra</button>
+</form>
+</section>
+<section id="panel-register" aria-labelledby="tab-register" hidden>
+<h2>Tu primer detalle.</h2><p class="small">Registro de cliente de muestra. Todos los campos son obligatorios.</p>
+<form id="register-form" novalidate>
+<p class="summary" id="register-status" role="status" aria-atomic="true" tabindex="-1" hidden></p>
+<div class="field"><label for="register-name">Nombre</label><input id="register-name" type="text" autocomplete="name" required aria-describedby="register-name-error" aria-invalid="false"><p class="error" id="register-name-error" hidden></p></div>
+<div class="field"><label for="register-email">Correo electrónico</label><input id="register-email" type="email" autocomplete="email" required aria-describedby="register-email-error" aria-invalid="false"><p class="error" id="register-email-error" hidden></p></div>
+<div class="field"><label for="register-password">Contraseña</label><div class="password"><input id="register-password" type="password" autocomplete="new-password" required aria-describedby="password-help register-password-error" aria-invalid="false"><button class="reveal" type="button" data-password="register-password" aria-controls="register-password" aria-label="Mostrar contraseña de registro" aria-pressed="false">Mostrar</button></div><p class="help" id="password-help">La muestra solo comprueba que no esté vacía; no define una política de contraseñas.</p><p class="error" id="register-password-error" hidden></p></div>
+<div class="field"><label for="register-confirm">Confirmar contraseña</label><div class="password"><input id="register-confirm" type="password" autocomplete="new-password" required aria-describedby="confirm-help register-confirm-error" aria-invalid="false"><button class="reveal" type="button" data-password="register-confirm" aria-controls="register-confirm" aria-label="Mostrar confirmación de contraseña" aria-pressed="false">Mostrar</button></div><p class="help" id="confirm-help">Comparación local de esta muestra; no se envía.</p><p class="error" id="register-confirm-error" hidden></p></div>
+<button class="cta" type="submit" disabled>Validar registro · muestra</button>
+</form>
+</section>
+<noscript><p>Activa JavaScript para alternar los formularios y probar su validación local. No se enviará ningún dato. Los enlaces de navegación siguen disponibles.</p></noscript>
+</div>
+</section>
+<div class="preview-block"><p>Puedes recorrer la siguiente pantalla sin validar estos formularios.</p><a class="preview" href="06-delivery.html">Continuar a entrega · vista previa →</a></div>
+</main>
+<footer class="wrap"><span>REGALÍA · El arte de tener un detalle.</span><span>Acceso de muestra · no crea cuentas ni sesiones.</span></footer>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const tabs = [$('tab-login'), $('tab-register')];
+const modes = ['login', 'register'];
+const fields = { login:['login-email','login-password'], register:['register-name','register-email','register-password','register-confirm'] };
+function maskPasswords() {
+  document.querySelectorAll('[data-password]').forEach(button => {
+    $(button.dataset.password).type = 'password';
+    button.setAttribute('aria-pressed','false');
+    button.textContent = 'Mostrar';
+    button.setAttribute('aria-label',button.dataset.showLabel);
+  });
+}
+function selectTab(index) {
+  maskPasswords();
+  tabs.forEach((tab,i) => {
+    tab.setAttribute('aria-selected',String(i === index));
+    tab.tabIndex = i === index ? 0 : -1;
+    $('panel-' + modes[i]).hidden = i !== index;
+  });
+}
+tabs.forEach((tab,index) => {
+  tab.addEventListener('click',() => selectTab(index));
+  tab.addEventListener('keydown',event => {
+    if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? 1 : 1 - index;
+    selectTab(next);
+    tabs[next].focus();
+  });
+});
+document.querySelectorAll('[data-password]').forEach(button => {
+  button.dataset.showLabel = button.getAttribute('aria-label');
+  button.addEventListener('click',() => {
+    const input = $(button.dataset.password);
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    button.setAttribute('aria-pressed',String(show));
+    button.setAttribute('aria-label',show ? button.dataset.showLabel.replace('Mostrar','Ocultar') : button.dataset.showLabel);
+    button.textContent = show ? 'Ocultar' : 'Mostrar';
+  });
+});
+function fieldError(id) {
+  const input = $(id);
+  const password = input.type === 'password' || id.endsWith('password') || id.endsWith('confirm');
+  if (password ? input.value === '' : input.value.trim() === '') return 'Completa este campo para validar la muestra.';
+  if (input.type === 'email' && input.validity.typeMismatch) return 'Escribe un correo válido, por ejemplo: detalle@example.com.';
+  if (id === 'register-confirm' && input.value !== $('register-password').value) return 'Las contraseñas no coinciden. Revisa la confirmación.';
+  return '';
+}
+function showError(id,message) {
+  $(id).setAttribute('aria-invalid',String(Boolean(message)));
+  $(id + '-error').textContent = message;
+  $(id + '-error').hidden = !message;
+}
+modes.forEach(mode => {
+  const form = $(mode + '-form');
+  const status = $(mode + '-status');
+  form.addEventListener('submit',event => {
+    event.preventDefault();
+    const invalid = fields[mode].filter(id => {
+      const message = fieldError(id);
+      showError(id,message);
+      return Boolean(message);
+    });
+    status.hidden = false;
+    status.dataset.valid = String(invalid.length === 0);
+    status.textContent = invalid.length ? `Revisa ${invalid.length} ${invalid.length === 1 ? 'campo señalado' : 'campos señalados'}. No se ha enviado ningún dato.` : 'Formulario de muestra válido; no se ha iniciado sesión/creado una cuenta.';
+    if (invalid.length) $(invalid[0]).focus();
+    else { maskPasswords(); status.focus(); }
+  });
+  form.addEventListener('input',event => {
+    status.hidden = true;
+    status.textContent = '';
+    if (fields[mode].includes(event.target.id) && event.target.getAttribute('aria-invalid') === 'true') showError(event.target.id,fieldError(event.target.id));
+    if (event.target.id === 'register-password' && $('register-confirm').getAttribute('aria-invalid') === 'true') showError('register-confirm',fieldError('register-confirm'));
+  });
+  form.querySelector('[type="submit"]').disabled = false;
+  $('panel-' + mode).setAttribute('role','tabpanel');
+});
+document.querySelector('.tabs').hidden = false;
+$('theme-toggle').addEventListener('click',() => {
+  const dark = document.documentElement.dataset.theme !== 'dark';
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  $('theme-toggle').setAttribute('aria-pressed',String(dark));
+  const label = dark ? 'Cambiar al tema claro' : 'Cambiar al tema vino';
+  $('theme-toggle').setAttribute('aria-label',label);
+  $('theme-toggle').setAttribute('title',label);
+});
+</script>
+</body>
+</html>

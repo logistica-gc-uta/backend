@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrega de muestra · REGALÍA</title>
+<style>
+:root { color-scheme:light; --bg:#F8F6F1; --surface:#fff; --ink:#234D3E; --muted:#4F6257; --line:#D7DDD7; --accent:#234D3E; --on-accent:#fff; --hero:#E9EEE5; --peach:#F5E8D9; }
+[data-theme="dark"] { color-scheme:dark; --bg:#24141C; --surface:#36202B; --ink:#FAEEF1; --muted:#D8BDC8; --line:#785464; --accent:#F0CCD8; --on-accent:#351D29; --hero:#422531; --peach:#503D31; }
+* { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; } a { color:inherit; text-underline-offset:4px; } button,input,select,textarea { font:inherit; } button { cursor:pointer; } a,button { touch-action:manipulation; } [hidden] { display:none !important; } :focus-visible { outline:3px solid var(--ink); outline-offset:4px; }
+.wrap { width:min(1200px,calc(100% - 64px)); margin-inline:auto; } .skip { position:absolute; top:-100px; left:16px; z-index:3; padding:12px; background:var(--surface); } .skip:focus { top:12px; } .notice { padding:7px 16px; background:var(--ink); color:var(--bg); text-align:center; font-size:12px; letter-spacing:.05em; }
+.header { display:flex; align-items:center; gap:28px; padding-block:23px; border-bottom:1px solid var(--line); } .wordmark { font:32px Georgia,serif; letter-spacing:.13em; text-decoration:none; } .header-label { color:var(--muted); font-size:13px; margin-left:auto; } .tools { display:flex; align-items:center; gap:16px; } .tools a { min-height:44px; display:inline-flex; align-items:center; font-size:14px; } #theme-toggle { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; min-height:44px; min-width:44px; padding:10px; border:1px solid var(--muted); border-radius:50%; color:var(--ink); background:var(--surface); } .icon { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.6; } .theme-moon { display:none; } [data-theme="dark"] .theme-sun { display:none; } [data-theme="dark"] .theme-moon { display:block; }
+main { padding-top:20px; } .steps { display:flex; flex-wrap:wrap; align-items:center; gap:12px; list-style:none; padding:0; margin:0 0 24px; color:var(--muted); font-size:13px; } .steps li { display:flex; align-items:center; gap:9px; } .steps li + li::before { content:'→'; margin-right:3px; } .steps [aria-current] { color:var(--ink); font-weight:700; } .step-number { border:1px solid var(--muted); border-radius:50%; min-width:26px; height:26px; display:inline-grid; place-items:center; } [aria-current] .step-number { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+h1,h2,p { margin-top:0; } h1 { font:400 clamp(28px,3vw,36px)/1.2 Georgia,serif; letter-spacing:-.025em; margin-bottom:6px; } h2 { font-size:16px; font-weight:650; margin-bottom:12px; } .intro { color:var(--muted); font-size:14px; margin-bottom:24px; max-width:76ch; } .layout { display:grid; grid-template-columns:minmax(0,1fr) 350px; gap:48px; align-items:start; } .section { border:0; border-top:1px solid var(--line); margin:0 0 22px; padding:18px 0 0; min-width:0; } legend { padding:0 12px 0 0; font-weight:650; font-size:16px; } .fields { display:grid; grid-template-columns:1fr 1fr; gap:12px 18px; } .full { grid-column:1 / -1; } label { display:block; font-size:13px; font-weight:600; } input,select,textarea { width:100%; min-width:0; border:1px solid var(--muted); border-radius:4px; min-height:44px; padding:9px 11px; color:var(--ink); background:var(--surface); margin-top:5px; } textarea { resize:vertical; min-height:72px; } .small { color:var(--muted); font-size:12px; } .help { margin:7px 0 0; } .error { margin:5px 0 0; font-size:13px; font-weight:650; } [aria-invalid="true"] { border:2px solid var(--ink); } .error:not(:empty)::before { content:'! '; }
+.map { margin:14px 0 10px; padding:12px; background:var(--hero); border-radius:5px; } .map svg { width:100%; height:104px; display:block; color:var(--ink); } figcaption { font-size:12px; color:var(--muted); margin-top:8px; } .row { display:flex; flex-wrap:wrap; align-items:center; gap:12px; } button,.button { min-height:44px; padding:10px 16px; border:1px solid var(--muted); border-radius:4px; background:var(--surface); color:var(--ink); font-weight:600; font-size:14px; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:10px; } .primary { background:var(--accent); color:var(--on-accent); border-color:var(--accent); } .button:hover,button:hover { text-decoration:underline; } #next { margin-top:14px; width:100%; } .summary { padding:24px; border:1px solid var(--line); border-radius:6px; background:var(--surface); } .eyebrow { font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:650; color:var(--muted); margin-bottom:8px; } .item { display:grid; grid-template-columns:48px 1fr auto; gap:12px; align-items:center; padding:16px 0; border-bottom:1px solid var(--line); font-size:13px; } .item svg { width:48px; height:54px; background:var(--peach); border-radius:4px; } .item strong { display:block; font-weight:600; } .item span { font-size:12px; color:var(--muted); } .money { white-space:nowrap; font-variant-numeric:tabular-nums; } dl { margin:18px 0; font-size:13px; } dl div { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px; } dd { margin:0; font-variant-numeric:tabular-nums; } .total { padding-top:14px; border-top:1px solid var(--line); font-size:18px; font-weight:650; } .boundary { background:var(--hero); padding:14px; border-radius:4px; font-size:12px; margin-bottom:0; color:var(--muted); } .actions { margin-top:20px; } .actions a { display:inline-flex; min-height:44px; align-items:center; } footer { display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; padding-block:22px; border-top:1px solid var(--line); margin-top:30px; color:var(--muted); font-size:12px; }
+@media(max-width:900px) { .layout { grid-template-columns:minmax(0,1fr) 300px; gap:24px; } .header { flex-wrap:wrap; gap:14px; } .header-label { display:none; } .tools { margin-left:auto; } }
+@media(max-width:700px) { .wrap { width:calc(100% - 32px); } .header { padding-block:18px; } .wordmark { font-size:26px; } .tools { gap:12px; flex-wrap:wrap; } .layout { grid-template-columns:minmax(0,1fr); gap:24px; } .fields { grid-template-columns:minmax(0,1fr); } .full { grid-column:auto; } .summary { padding:20px; } .steps { gap:8px; font-size:12px; } .steps li { gap:5px; } .steps li + li::before { margin-right:0; } footer { flex-direction:column; } }
+@media(max-width:420px) { .header { align-items:flex-start; flex-direction:column; } .tools { margin:0; width:100%; justify-content:space-between; } }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido</a><div class="notice">Boceto · datos de muestra</div>
+<header class="wrap header"><a class="wordmark" href="01-storefront.html" aria-label="Regalía, inicio">REGALÍA</a><span class="header-label">Un detalle, paso a paso.</span><div class="tools"><button id="theme-toggle" type="button" aria-pressed="false" aria-label="Cambiar al tema vino" title="Cambiar al tema vino"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><g class="theme-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></g><path class="theme-moon" d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z"/></svg></button><a href="05-access.html">Mi cuenta</a><a href="02-catalog.html">Catálogo</a></div></header>
+<main class="wrap" id="contenido">
+<nav aria-label="Pasos del boceto"><ol class="steps"><li aria-current="step"><span class="step-number">1</span>Entrega</li><li><span class="step-number">2</span>Pago</li><li><span class="step-number">3</span>Resultado</li></ol></nav>
+<h1>Un lugar para la sorpresa.</h1><p class="intro">Cuéntanos dónde y cuándo entregar tu detalle.</p>
+<details data-prototype-tools><summary>Herramientas del boceto</summary><p class="small">Usa solo datos inventados. Validación local, sin backend ni persistencia; no se crea una entrega. El pago usa un resumen fijo, no tus entradas. El plano no valida coordenadas ni cobertura y las zonas no confirman disponibilidad comercial.</p></details>
+<div class="layout"><form id="delivery-form" novalidate autocomplete="off">
+<fieldset class="section"><legend>¿Quién recibe?</legend><div class="fields"><div><label for="recipient">Nombre de quien recibe</label><input id="recipient" name="recipient" required maxlength="80" aria-describedby="recipient-error"><p class="error" id="recipient-error"></p></div><div><label for="phone">Teléfono</label><input id="phone" name="phone" type="tel" inputmode="tel" required maxlength="24" aria-describedby="phone-help phone-error"><p id="phone-help" class="small help">Entre 7 y 15 dígitos.</p><p class="error" id="phone-error"></p></div></div></fieldset>
+<fieldset class="section"><legend>Dirección de entrega</legend><div class="fields"><div class="full"><label for="zone">Zona</label><select id="zone" name="zone" required aria-describedby="zone-help zone-error"><option value="">Elige una zona</option><option value="centro">Zona Centro</option><option value="norte">Zona Norte</option></select><p class="small help" id="zone-help">Selecciona la zona de entrega.</p><p class="error" id="zone-error"></p></div><div class="full"><label for="address">Dirección</label><input id="address" name="address" required maxlength="180" aria-describedby="address-error"><p class="error" id="address-error"></p></div></div>
+<figure class="map"><svg viewBox="0 0 600 110" role="img" aria-label="Plano esquemático de muestra, sin ubicación geográfica real"><rect width="600" height="110" rx="4" fill="var(--surface)"/><path d="M0 35h600M0 83h600M115 0v110M325 0v110M490 0v110" stroke="var(--muted)" stroke-width="8" opacity=".35"/><path d="M130 110 280 0" stroke="var(--muted)" stroke-width="12" opacity=".35"/><path d="M372 21a19 19 0 0 1 38 0c0 17-19 35-19 35s-19-18-19-35Z" fill="var(--accent)"/><circle cx="391" cy="21" r="6" fill="var(--on-accent)"/></svg><figcaption>Confirma la ubicación para continuar.</figcaption></figure>
+<div class="row"><button id="confirm-location" type="button" aria-pressed="false" aria-describedby="location-error">Confirmar ubicación</button><span class="small" id="location-status" role="status">Sin confirmar en el boceto.</span></div><p class="error" id="location-error"></p></fieldset>
+<fieldset class="section"><legend>¿Cuándo entregamos?</legend><div class="fields"><div><label for="date">Fecha futura</label><input id="date" name="date" type="date" required aria-describedby="schedule-help date-error"><p class="error" id="date-error"></p></div><div><label for="time">Hora en Ecuador</label><input id="time" name="time" type="time" min="07:00" max="17:00" step="60" required aria-describedby="schedule-help time-error"><p class="error" id="time-error"></p></div></div><p class="small help" id="schedule-help">America/Guayaquil · 07:00–17:00, ambos extremos incluidos. Elige una fecha posterior a hoy en Ecuador.</p></fieldset>
+<label for="notes">Indicaciones opcionales</label><textarea id="notes" name="notes" maxlength="240" rows="2" aria-describedby="notes-help notes-error"></textarea><p class="small help" id="notes-help">Hasta 240 caracteres. No incluyas información personal real.</p><p class="error" id="notes-error"></p>
+<p id="form-status" class="error" role="alert"></p><button class="primary" id="validate" type="submit" disabled>Validar entrega <span aria-hidden="true">→</span></button><a class="button primary" id="next" href="07-payment.html" hidden>Ir al pago →</a>
+</form>
+<aside class="summary" aria-labelledby="summary-title"><p class="eyebrow">Tu pedido</p><h2 id="summary-title">Dos formas de decirlo.</h2><div class="item"><svg viewBox="0 0 48 54" aria-hidden="true"><rect x="7" y="23" width="34" height="25" rx="2" fill="#E8C9AA"/><path d="M5 20h38v9H5z" fill="#F2DCC5"/><path d="M21 20h6v28h-6zM24 20C4 22 13 4 24 20c11-16 20 2 0 0" fill="#6D334B"/></svg><div><strong>Caja Dulce Abrazo</strong><span>Cantidad 1 · $28.90 USD</span></div><b class="money">$28.90</b></div><div class="item"><svg viewBox="0 0 48 54" aria-hidden="true"><path d="m10 25 14 26 14-26-14 9z" fill="#E8C9AA"/><path d="M24 36V12" stroke="#496D4C" stroke-width="3"/><g fill="#C9798C"><circle cx="14" cy="18" r="8"/><circle cx="33" cy="18" r="8"/><circle cx="24" cy="10" r="8"/></g></svg><div><strong>Ramo Bonito Día</strong><span>Cantidad 1 · $34.50 USD</span></div><b class="money">$34.50</b></div><dl><div><dt>Subtotal</dt><dd data-money="subtotal">$63.40 USD</dd></div><div><dt>IVA · 15%</dt><dd data-money="tax">$9.51 USD</dd></div><div><dt>Envío</dt><dd data-money="shipping">$0.00 USD</dd></div><div class="total"><dt>Total</dt><dd data-money="total">$72.91 USD</dd></div></dl><div class="actions"><a href="04-cart.html">← Ver bolsa</a></div></aside></div>
+<noscript><p>Activa JavaScript para validar localmente y acceder al siguiente paso de muestra. No se enviará este formulario.</p></noscript>
+</main><footer class="wrap"><span>REGALÍA · El arte de tener un detalle.</span><span>Un detalle, paso a paso.</span></footer>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const order = { subtotal:2890 + 3450, shipping:0 };
+order.tax = Math.floor((order.subtotal * 15 + 50) / 100);
+order.total = order.subtotal + order.tax + order.shipping;
+const money = cents => `$${Math.floor(cents / 100)}.${String(cents % 100).padStart(2,'0')} USD`;
+document.querySelectorAll('[data-money]').forEach(node => { node.textContent = money(order[node.dataset.money]); });
+$('theme-toggle').addEventListener('click',() => {
+  const dark = document.documentElement.dataset.theme !== 'dark';
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  $('theme-toggle').setAttribute('aria-pressed',String(dark));
+  const label = dark ? 'Cambiar al tema claro' : 'Cambiar al tema vino';
+  $('theme-toggle').setAttribute('aria-label',label); $('theme-toggle').setAttribute('title',label);
+});
+function todayInEcuador() {
+  const parts = new Intl.DateTimeFormat('en-US',{ timeZone:'America/Guayaquil',year:'numeric',month:'2-digit',day:'2-digit' }).formatToParts(new Date());
+  const part = type => parts.find(item => item.type === type).value;
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+function nextDate(today) {
+  const date = new Date(`${today}T12:00:00Z`); date.setUTCDate(date.getUTCDate() + 1); return date.toISOString().slice(0,10);
+}
+$('date').min = nextDate(todayInEcuador());
+let locationConfirmed = false;
+const fields = ['recipient','phone','zone','address','date','time','notes'];
+function showError(id,message) {
+  $(id).setAttribute('aria-invalid',String(Boolean(message)));
+  $(`${id}-error`).textContent = message;
+}
+function invalidateStep() { $('next').hidden = true; $('form-status').textContent = ''; }
+function resetLocation() {
+  locationConfirmed = false; $('confirm-location').setAttribute('aria-pressed','false');
+  $('location-status').textContent = 'Sin confirmar en el boceto.'; $('location-error').textContent = '';
+}
+fields.forEach(id => $(id).addEventListener('input',() => {
+  invalidateStep(); showError(id,''); if (id === 'address' || id === 'zone') resetLocation();
+}));
+$('confirm-location').addEventListener('click',() => {
+  locationConfirmed = true; $('confirm-location').setAttribute('aria-pressed','true');
+  $('location-status').textContent = 'Ubicación de muestra confirmada; sin validación geográfica.';
+  $('location-error').textContent = ''; invalidateStep();
+});
+function validateDelivery() {
+  const phone = $('phone').value.trim();
+  const errors = {
+    recipient: $('recipient').value.trim().length >= 2 && $('recipient').value.length <= 80 ? '' : 'Escribe un nombre ficticio de 2 a 80 caracteres.',
+    phone: /^[+\d\s()-]+$/.test(phone) && phone.replace(/\D/g,'').length >= 7 && phone.replace(/\D/g,'').length <= 15 && phone.length <= 24 ? '' : 'Usa un teléfono ficticio con 7 a 15 dígitos; solo +, espacios, paréntesis o guiones.',
+    zone: ['centro','norte'].includes($('zone').value) ? '' : 'Elige una zona de muestra.',
+    address: $('address').value.trim().length >= 8 && $('address').value.length <= 180 ? '' : 'Escribe una dirección ficticia de 8 a 180 caracteres.',
+    date: /^\d{4}-\d{2}-\d{2}$/.test($('date').value) && $('date').validity.valid && $('date').value > todayInEcuador() ? '' : 'Elige una fecha posterior a hoy en America/Guayaquil.',
+    time: /^\d{2}:\d{2}$/.test($('time').value) && $('time').validity.valid && $('time').value >= '07:00' && $('time').value <= '17:00' ? '' : 'Elige una hora entre 07:00 y 17:00 inclusive.',
+    notes: $('notes').value.length <= 240 ? '' : 'Reduce las indicaciones a 240 caracteres.'
+  };
+  fields.forEach(id => showError(id,errors[id]));
+  $('location-error').textContent = locationConfirmed ? '' : 'Confirma la ubicación de muestra con el botón del plano.';
+  return { errors, valid:!Object.values(errors).some(Boolean) && locationConfirmed };
+}
+$('delivery-form').addEventListener('submit',event => {
+  event.preventDefault(); const result = validateDelivery(); $('next').hidden = !result.valid;
+  $('form-status').textContent = result.valid ? 'Entrega válida solo para el boceto. Puedes ir al pago fijo; tus entradas no se transmitirán.' : 'Revisa los campos indicados. No se ha enviado ningún dato.';
+  if (!result.valid) { const first = fields.find(id => result.errors[id]); (first ? $(first) : $('confirm-location')).focus(); }
+  else $('next').focus();
+});
+// Enable only after the local submit handler is attached; no native submission fallback.
+$('validate').disabled = false;
+</script>
+</body></html>

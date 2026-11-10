@@ -28,7 +28,12 @@ coverage/
 .jscpd
 eslint-report.json
 test-results/
-
+.issue12-e-isolated
+.issue13-independent-v7q7eeuz
+.issue13-integration-verify-x_o36zyq
+.issue13-pnpm-store
+.issue13-tools
+.issue13-verification
 # ==========================================
 # Agentes de IA y Asistentes (Prisma 8 / IDEs)
 # ==========================================
@@ -36,6 +41,17 @@ test-results/
 .claude/
 .cursor/
 .devin/
+.pi/
+
+# Cachés locales de Python
+__pycache__/
+*.py[cod]
+
+# Auxiliares de la sesión que preparó las issues de REGALÍA
+# Conservar la revisión y la matriz de cobertura como evidencia documental.
+/odd/issues-replanteamiento-review/*
+!/odd/issues-replanteamiento-review/review.md
+!/odd/issues-replanteamiento-review/coverage.json
 
 # ==========================================
 # Configuración Local de IDEs y Editores
@@ -65,3 +81,6 @@ Thumbs.db
 
 # Reportes de Newman
 reports/
+
+# Bocetos locales; no forman parte del backend desplegable.
+/design/

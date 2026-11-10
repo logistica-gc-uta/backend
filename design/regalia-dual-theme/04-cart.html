@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bolsa · REGALÍA</title>
+<style>
+:root { color-scheme:light; --bg:#F8F6F1; --surface:#fff; --ink:#234D3E; --muted:#4F6257; --line:#D7DDD7; --accent:#234D3E; --on-accent:#fff; --hero:#E9EEE5; --peach:#F5E8D9; --rose:#F3E4E2; --box:#E8C9AA; --lid:#F2DCC5; --ribbon:#6D334B; --petal:#C9798C; --paper:#F8F6F1; }
+[data-theme="dark"] { color-scheme:dark; --bg:#24141C; --surface:#36202B; --ink:#FAEEF1; --muted:#D8BDC8; --line:#785464; --accent:#F0CCD8; --on-accent:#351D29; --hero:#422531; --peach:#503D31; --rose:#51303C; --box:#B98F85; --lid:#D4AFA1; --ribbon:#754059; --petal:#BA7B95; --paper:#F1DFDA; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+a { color:inherit; text-underline-offset:4px; }
+button,input { font:inherit; }
+button { cursor:pointer; }
+a,button { touch-action:manipulation; }
+[hidden] { display:none !important; }
+:focus-visible { outline:3px solid var(--ink); outline-offset:4px; }
+.wrap { width:min(1200px,calc(100% - 64px)); margin-inline:auto; }
+.skip { position:absolute; top:-100px; left:16px; z-index:2; padding:12px; background:var(--surface); }
+.skip:focus { top:12px; }
+.notice { text-align:center; background:var(--ink); color:var(--bg); padding:7px 16px; font-size:12px; letter-spacing:.05em; }
+.header { display:flex; align-items:center; gap:32px; padding-block:23px; }
+.wordmark { font:32px Georgia,serif; letter-spacing:.13em; text-decoration:none; }
+.search { display:flex; align-items:center; gap:10px; flex:1; max-width:460px; margin-left:auto; border:1px solid var(--muted); border-radius:50px; padding:0 16px; background:var(--surface); }
+.search input { width:100%; min-width:0; border:0; padding:12px 0; color:var(--ink); background:transparent; }
+.search input::placeholder { color:var(--muted); opacity:1; }
+.search:focus-within { outline:2px solid var(--ink); outline-offset:3px; }
+.search input:focus { outline:none; }
+.icon { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.6; flex-shrink:0; }
+.tools { display:flex; align-items:center; gap:16px; }
+.plain { display:inline-flex; align-items:center; justify-content:center; gap:7px; border:0; padding:5px; min-height:44px; background:none; color:var(--ink); font-size:14px; }
+#theme-toggle { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; min-height:44px; min-width:44px; padding:10px; border:1px solid var(--muted); border-radius:50%; color:var(--ink); background:var(--surface); }
+.theme-moon { display:none; }
+[data-theme="dark"] .theme-sun { display:none; }
+[data-theme="dark"] .theme-moon { display:block; }
+.nav-row { border-block:1px solid var(--line); }
+.nav { display:flex; flex-wrap:wrap; gap:24px; }
+.nav a { display:inline-flex; align-items:center; min-height:48px; font-size:14px; text-decoration:none; }
+.nav a:hover { text-decoration:underline; }
+#header-status { margin-block:0; color:var(--muted); font-size:14px; }
+#header-status:not(:empty) { padding-block:12px; }
+main { padding-top:18px; }
+.breadcrumb ol { display:flex; flex-wrap:wrap; align-items:center; gap:10px; list-style:none; padding:0; margin:0 0 16px; color:var(--muted); font-size:13px; }
+.breadcrumb a { display:inline-flex; align-items:center; min-height:44px; }
+.breadcrumb li + li::before { content:'/'; margin-right:10px; }
+h1,h2,h3,p { margin-top:0; }
+h1 { font:400 clamp(28px,3vw,36px)/1.2 Georgia,"Times New Roman",serif; letter-spacing:-.025em; margin-bottom:6px; }
+h2 { font-size:17px; font-weight:650; margin-bottom:18px; }
+h3 { font-size:17px; font-weight:600; margin-bottom:5px; }
+.intro { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:28px; }
+.intro p { color:var(--muted); margin-bottom:0; font-size:14px; }
+.secondary { min-height:44px; border:1px solid var(--muted); border-radius:4px; background:var(--surface); color:var(--ink); padding:7px 12px; font-size:13px; }
+.secondary:hover { background:var(--hero); }
+.cart-layout { display:grid; grid-template-columns:minmax(0,1fr) 350px; gap:48px; align-items:start; }
+.item-list { list-style:none; padding:0; margin:0; border-top:1px solid var(--line); }
+.item { display:grid; grid-template-columns:144px minmax(0,1fr) auto; gap:24px; padding-block:26px; border-bottom:1px solid var(--line); }
+figure { margin:0; align-self:start; }
+figure svg { display:block; width:100%; height:auto; aspect-ratio:1.12; border-radius:5px; }
+.peach { background:var(--peach); } .rose { background:var(--rose); }
+figcaption { color:var(--muted); font-size:11px; margin-top:6px; text-align:center; }
+.description,.unit-price { font-size:13px; color:var(--muted); margin-bottom:8px; }
+.quantity-label { display:block; font-size:12px; margin:14px 0 5px; }
+.quantity { display:inline-flex; border:1px solid var(--muted); border-radius:4px; background:var(--surface); }
+.quantity button { border:0; background:transparent; color:var(--ink); min-width:44px; min-height:44px; font-size:20px; }
+.quantity input { width:56px; min-width:0; border:0; border-inline:1px solid var(--muted); color:var(--ink); background:transparent; text-align:center; padding:8px 4px; }
+.line-end { text-align:right; font-variant-numeric:tabular-nums; }
+.line-end strong { display:block; margin-bottom:12px; white-space:nowrap; font-size:15px; }
+.remove { text-decoration:underline; text-underline-offset:4px; min-width:44px; }
+.error { font-size:13px; font-weight:600; margin:10px 0 0; }
+.small { font-size:12px; color:var(--muted); }
+#quantity-help { margin:16px 0 8px; max-width:65ch; }
+.back { display:inline-flex; align-items:center; min-height:44px; font-size:14px; }
+.summary { padding:26px; border:1px solid var(--line); border-radius:6px; background:var(--surface); }
+.summary .eyebrow { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+dl { margin:0; font-size:14px; }
+dl > div { display:flex; justify-content:space-between; align-items:baseline; gap:14px; margin:16px 0; }
+dd { margin:0; text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.tax-note { margin:0 0 20px; }
+.total { border-top:1px solid var(--line); padding-top:20px; font-size:18px; font-weight:650; }
+.cta { display:flex; justify-content:center; align-items:center; gap:10px; width:100%; min-height:48px; border:1px solid var(--accent); border-radius:4px; padding:12px 14px; color:var(--on-accent); background:var(--accent); font-size:14px; font-weight:650; margin-top:22px; }
+.cta:hover { text-decoration:underline; text-underline-offset:4px; }
+.cta:disabled { cursor:not-allowed; background:var(--hero); color:var(--muted); border-color:var(--muted); text-decoration:none; }
+.summary-note { border-top:1px solid var(--line); padding-top:18px; margin:20px 0 0; }
+#checkout-notice { font-size:13px; margin:14px 0 0; }
+.recovery { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; margin-bottom:18px; padding:12px 16px; background:var(--hero); border:1px solid var(--muted); border-radius:4px; font-size:14px; }
+#cart-status { margin:0; flex:1; }
+.empty { text-align:center; padding:42px 22px; background:var(--hero); border-radius:6px; }
+.empty h2 { font:400 28px/1.2 Georgia,serif; }
+.empty p { color:var(--muted); }
+.empty .back { font-weight:600; }
+.prototype-note { margin:32px 0 0; border-top:1px solid var(--line); padding-top:20px; }
+footer { display:flex; justify-content:space-between; gap:20px; border-top:1px solid var(--line); margin-top:36px; padding-block:22px; font-size:12px; color:var(--muted); }
+.symbols { position:absolute; width:0; height:0; overflow:hidden; }
+@media(max-width:1050px) { .header { flex-wrap:wrap; gap:18px; } .tools { margin-left:auto; } .search { max-width:none; } .cart-layout { gap:24px; grid-template-columns:minmax(0,1fr) 310px; } .item { grid-template-columns:100px minmax(0,1fr); gap:18px; } .line-end { grid-column:2; display:flex; align-items:center; justify-content:space-between; gap:12px; } .line-end strong { margin:0; } }
+@media(max-width:760px) { .wrap { width:calc(100% - 32px); } .header { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; padding-block:18px; } .wordmark { font-size:26px; } .search { margin:0; width:100%; } .tools { margin:0; justify-content:flex-end; flex-wrap:wrap; gap:12px; } .nav { gap:8px 18px; } .intro { align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:22px; } .cart-layout { grid-template-columns:minmax(0,1fr); gap:28px; } .summary { padding:22px; } footer { flex-direction:column; gap:6px; } }
+@media(max-width:380px) { .item { grid-template-columns:76px minmax(0,1fr); gap:14px; } h3 { font-size:16px; } }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido</a>
+<div class="notice">Boceto · datos de muestra</div>
+<svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+<symbol id="gift" viewBox="0 0 240 190"><ellipse cx="120" cy="170" rx="80" ry="8" fill="#B98A54" opacity=".18"/><rect x="48" y="72" width="144" height="94" rx="4" fill="var(--box)"/><rect x="40" y="61" width="160" height="30" rx="4" fill="var(--lid)"/><path d="M108 61h24v105h-24z" fill="var(--ribbon)"/><path d="M120 63C64 65 66 17 91 27c15 6 29 36 29 36Zm0 0c56 2 54-46 29-36-15 6-29 36-29 36Z" fill="none" stroke="var(--ribbon)" stroke-width="9"/><path d="m153 108 23 8-9 28-23-8z" fill="var(--paper)"/></symbol>
+<symbol id="flowers" viewBox="0 0 240 190"><ellipse cx="120" cy="175" rx="65" ry="7" fill="#B98A54" opacity=".18"/><path d="m90 90 28 75 32-75M120 152V54m0 64-30-43m30 51 35-57" stroke="#496D4C" stroke-width="5" fill="none"/><g fill="var(--petal)"><circle cx="87" cy="63" r="24"/><circle cx="147" cy="62" r="26"/><circle cx="117" cy="41" r="24"/></g><g fill="var(--lid)"><circle cx="87" cy="63" r="11"/><circle cx="147" cy="62" r="12"/><circle cx="117" cy="41" r="10"/></g><path d="m75 93 45 18 46-18-27 78h-39z" fill="var(--box)"/><path d="m99 143 41 9m-20-9v20" stroke="var(--ribbon)" stroke-width="5"/></symbol>
+</defs></svg>
+<header>
+<div class="wrap header">
+<a class="wordmark" href="01-storefront.html" aria-label="Regalía, inicio">REGALÍA</a>
+<form class="search" role="search" id="search-form"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg><input id="search" type="search" aria-label="Búsqueda demostrativa" placeholder="Busca un detalle especial…"></form>
+<div class="tools">
+<button id="theme-toggle" type="button" aria-pressed="false" aria-label="Cambiar al tema vino" title="Cambiar al tema vino"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><g class="theme-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></g><path class="theme-moon" d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z"/></svg></button>
+<button class="plain" id="account" type="button"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg>Mi cuenta</button>
+<a class="plain" id="bag-link" href="#cart-title" aria-current="page" aria-label="Bolsa de muestra, 2 unidades"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 8h14l2 13H3zM8 8V6a4 4 0 0 1 8 0v2"/></svg>Bolsa (<span id="cart-count">2</span>)</a>
+</div></div>
+<div class="nav-row"><nav class="wrap nav" aria-label="Tienda"><a href="02-catalog.html">Todos los regalos</a><a href="01-storefront.html">Nuestro inicio</a></nav></div>
+<p class="wrap" id="header-status" role="status" aria-atomic="true"></p>
+</header>
+<main class="wrap" id="contenido">
+<nav class="breadcrumb" aria-label="Ruta de navegación"><ol><li><a href="01-storefront.html">Inicio</a></li><li><a href="02-catalog.html">Catálogo</a></li><li aria-current="page">Bolsa</li></ol></nav>
+<div class="intro"><div><h1 id="cart-title" tabindex="-1">Tu bolsa de regalos</h1><p>Revisa tus detalles, antes del siguiente paso.</p></div><details data-prototype-tools><summary>Herramientas del boceto</summary><p class="small">Bolsa independiente en memoria; no importa selecciones ni confirma inventario. Se reinicia al recargar, sin compras ni persistencia.</p><button class="secondary" id="reset" type="button">Restaurar muestra</button></details></div>
+<div class="recovery" id="recovery" hidden><p id="cart-status" role="status" aria-atomic="true"></p><button class="secondary" id="undo" type="button">Deshacer</button></div>
+<div class="cart-layout">
+<section aria-label="Regalos en tu bolsa">
+<ul class="item-list" id="item-list">
+<li class="item" id="row-gift">
+<figure><svg class="peach" viewBox="0 0 240 190" role="img" aria-label="Ilustración de muestra: caja con lazo"><use href="#gift"/></svg><figcaption>Ilustración · muestra</figcaption></figure>
+<div><h3><a href="03-product-detail.html">Caja Dulce Abrazo</a></h3><p class="description">Chocolates y una nota especial</p><p class="unit-price">$28.90 USD / unidad</p><label class="quantity-label" for="qty-gift">Cantidad · Caja Dulce Abrazo</label><div class="quantity"><button id="minus-gift" type="button" aria-label="Disminuir cantidad de Caja Dulce Abrazo">−</button><input id="qty-gift" type="text" inputmode="numeric" value="1" aria-invalid="false" aria-describedby="quantity-help error-gift"><button id="plus-gift" type="button" aria-label="Aumentar cantidad de Caja Dulce Abrazo">+</button></div><p class="error" id="error-gift" role="alert" hidden></p></div>
+<div class="line-end"><strong id="line-gift">$28.90 USD</strong><button class="plain remove" id="remove-gift" type="button" aria-label="Quitar Caja Dulce Abrazo de la bolsa">Quitar</button></div>
+</li>
+<li class="item" id="row-flowers">
+<figure><svg class="rose" viewBox="0 0 240 190" role="img" aria-label="Ilustración de muestra: ramo de flores rosas"><use href="#flowers"/></svg><figcaption>Ilustración · muestra</figcaption></figure>
+<div><h3>Ramo Bonito Día</h3><p class="description">Flores para decirlo sin palabras</p><p class="unit-price">$34.50 USD / unidad</p><label class="quantity-label" for="qty-flowers">Cantidad · Ramo Bonito Día</label><div class="quantity"><button id="minus-flowers" type="button" aria-label="Disminuir cantidad de Ramo Bonito Día">−</button><input id="qty-flowers" type="text" inputmode="numeric" value="1" aria-invalid="false" aria-describedby="quantity-help error-flowers"><button id="plus-flowers" type="button" aria-label="Aumentar cantidad de Ramo Bonito Día">+</button></div><p class="error" id="error-flowers" role="alert" hidden></p></div>
+<div class="line-end"><strong id="line-flowers">$34.50 USD</strong><button class="plain remove" id="remove-flowers" type="button" aria-label="Quitar Ramo Bonito Día de la bolsa">Quitar</button></div>
+</li>
+</ul>
+<div class="empty" id="empty" hidden><h2 id="empty-title" tabindex="-1">Tu bolsa espera un detalle.</h2><p>La muestra está vacía. Vuelve al catálogo para seguir explorando o restaura estos dos regalos.</p><a class="back" id="empty-catalog" href="02-catalog.html">Explorar el catálogo →</a></div>
+<p class="small" id="quantity-help">Cantidades enteras de 1 a 99 por regalo. Los cambios válidos se aplican al escribir.</p>
+<a class="back" href="02-catalog.html">← Seguir eligiendo regalos</a>
+</section>
+<aside class="summary" aria-labelledby="summary-title">
+<p class="eyebrow">Un vistazo a tu bolsa</p><h2 id="summary-title">Resumen</h2>
+<dl><div><dt>Subtotal</dt><dd id="subtotal">$63.40</dd></div><div><dt>Envío incluido</dt><dd>$0.00</dd></div><div><dt>IVA · 15%</dt><dd id="tax">$9.51</dd></div></dl>
+
+<dl><div class="total"><dt>Total <span class="small">USD</span></dt><dd id="total">$72.91</dd></div></dl>
+<button class="cta" id="continue" type="button" aria-describedby="checkout-notice empty-help">Continuar a la entrega <span aria-hidden="true">→</span></button>
+<p class="small" id="empty-help" hidden>Necesitas un regalo en la bolsa de muestra para probar este botón.</p>
+<p id="checkout-notice" role="status" aria-atomic="true"></p>
+
+</aside>
+</div>
+
+<noscript><p>Activa JavaScript para probar cantidades, quitar, deshacer y cambiar el tema. Los importes iniciales son ilustrativos; esta página no permite comprar.</p></noscript>
+</main>
+<footer class="wrap"><span>REGALÍA · El arte de tener un detalle.</span><span>Un detalle, paso a paso.</span></footer>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const products = [
+  { id:'gift', name:'Caja Dulce Abrazo', cents:2890, quantity:1, present:true },
+  { id:'flowers', name:'Ramo Bonito Día', cents:3450, quantity:1, present:true }
+];
+const removed = [];
+const money = cents => `$${Math.floor(cents / 100)}.${String(cents % 100).padStart(2,'0')}`;
+// Positive integer cents; HALF_UP once on the complete subtotal, never per line.
+const taxFor = subtotal => Math.floor((subtotal * 15 + 50) / 100);
+function announce(message) {
+  $('recovery').hidden = false;
+  $('cart-status').textContent = message;
+  $('undo').hidden = removed.length === 0;
+}
+function render() {
+  let count = 0;
+  let subtotal = 0;
+  products.forEach(product => {
+    $(`row-${product.id}`).hidden = !product.present;
+    if (product.present) {
+      count += product.quantity;
+      subtotal += product.cents * product.quantity;
+    }
+    $(`line-${product.id}`).textContent = `${money(product.cents * product.quantity)} USD`;
+  });
+  $('cart-count').textContent = String(count);
+  $('bag-link').setAttribute('aria-label',`Bolsa de muestra, ${count} unidades`);
+  $('subtotal').textContent = money(subtotal);
+  $('tax').textContent = money(taxFor(subtotal));
+  $('total').textContent = money(subtotal + taxFor(subtotal));
+  $('empty').hidden = count !== 0;
+  $('item-list').hidden = count === 0;
+  $('quantity-help').hidden = count === 0;
+  $('continue').disabled = count === 0;
+  $('empty-help').hidden = count !== 0;
+  $('checkout-notice').textContent = '';
+}
+function error(product,message) {
+  $(`qty-${product.id}`).setAttribute('aria-invalid',String(Boolean(message)));
+  const output = $(`error-${product.id}`);
+  output.hidden = !message;
+  output.textContent = message ? `${product.name}: ${message}` : '';
+}
+function readQuantity(product) {
+  const raw = $(`qty-${product.id}`).value.trim();
+  let message = '';
+  if (!raw) message = 'escribe una cantidad entera de 1 a 99; el importe no ha cambiado.';
+  else if (!/^\d+$/.test(raw)) message = 'usa solo números enteros positivos, sin decimales; el importe no ha cambiado.';
+  else if (Number(raw) < 1) message = 'la cantidad mínima es 1; usa Quitar para retirar el regalo. El importe no ha cambiado.';
+  else if (Number(raw) > 99) message = '99 es el tope técnico de la muestra; el importe no ha cambiado.';
+  error(product,message);
+  return message ? null : Number(raw);
+}
+function applyQuantity(product,value) {
+  product.quantity = value;
+  error(product,'');
+  render();
+}
+function step(product,delta) {
+  const value = readQuantity(product);
+  if (value === null) { $(`qty-${product.id}`).focus(); return; }
+  const next = value + delta;
+  if (next < 1 || next > 99) {
+    error(product,next < 1 ? 'la cantidad mínima es 1; usa Quitar para retirar el regalo. El importe no ha cambiado.' : '99 es el tope técnico de la muestra; el importe no ha cambiado.');
+    return;
+  }
+  $(`qty-${product.id}`).value = String(next);
+  applyQuantity(product,next);
+  announce(`${product.name}: ${next} unidades en la muestra.`);
+}
+products.forEach(product => {
+  $(`qty-${product.id}`).addEventListener('input',() => {
+    const value = readQuantity(product);
+    if (value !== null) applyQuantity(product,value);
+  });
+  $(`minus-${product.id}`).addEventListener('click',() => step(product,-1));
+  $(`plus-${product.id}`).addEventListener('click',() => step(product,1));
+  $(`remove-${product.id}`).addEventListener('click',() => {
+    // Rows remain in their original DOM order; undo restores the committed quantity.
+    removed.push({ product, quantity:product.quantity });
+    product.present = false;
+    error(product,'');
+    render();
+    announce(`${product.name} se quitó de la muestra. Puedes deshacerlo.`);
+    $('undo').focus();
+  });
+});
+$('undo').addEventListener('click',() => {
+  const snapshot = removed.pop();
+  if (!snapshot) return;
+  const product = snapshot.product;
+  product.present = true;
+  product.quantity = snapshot.quantity;
+  $(`qty-${product.id}`).value = String(snapshot.quantity);
+  error(product,'');
+  render();
+  announce(`${product.name} restaurado con ${product.quantity} unidades y en su posición original.`);
+  $(`qty-${product.id}`).focus();
+});
+$('reset').addEventListener('click',() => {
+  removed.length = 0;
+  products.forEach(product => {
+    product.quantity = 1;
+    product.present = true;
+    $(`qty-${product.id}`).value = '1';
+    error(product,'');
+  });
+  render();
+  announce('Muestra restaurada: dos regalos, una unidad de cada uno.');
+  $('qty-gift').focus();
+});
+$('continue').addEventListener('click',() => {
+  if ($('continue').disabled) return;
+  $('checkout-notice').textContent = 'La pantalla de entrega y checkout está pendiente de diseño; no se ha iniciado una compra.';
+});
+$('theme-toggle').addEventListener('click',() => {
+  const dark = document.documentElement.dataset.theme !== 'dark';
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  $('theme-toggle').setAttribute('aria-pressed',String(dark));
+  const label = dark ? 'Cambiar al tema claro' : 'Cambiar al tema vino';
+  $('theme-toggle').setAttribute('aria-label',label);
+  $('theme-toggle').setAttribute('title',label);
+});
+$('search-form').addEventListener('submit',event => {
+  event.preventDefault();
+  $('header-status').textContent = 'Búsqueda de demostración: no se ejecuta aquí. Abre «Todos los regalos» para buscar en el catálogo de muestra.';
+});
+$('account').addEventListener('click',() => {
+  $('header-status').textContent = 'Mi cuenta no está habilitada en este boceto. No se inicia sesión ni se recopilan datos personales.';
+});
+render();
+</script>
+</body>
+</html>

@@ -174,7 +174,7 @@ Reutilizar **GET `/api/v1/zones`** PUBLIC y seleccionar solo zonas con `depotLoc
 - `scheduledDeliveryDate`: ISO offset explícito; exactamente 1 instante de **hora de entrega aproximada**, posterior al reloj de BD al commit; la fecha local y horario se muestran en `America/Guayaquil` (Ecuador continental, Ambato) y se guarda en UTC. Por defecto el horario local admitido es **07:00 a 17:00 inclusive**, ambos extremos incluidos. El backend valida fecha/hora local y configuración vigente tanto al cotizar como al pagar; fuera del horario => 422 `DELIVERY_OUTSIDE_HOURS`. El ADMIN puede editar inicio/fin (sin intervalos nocturnos) y cualquier cambio incrementa `settings.version`. No imponer franja start/end ni cambio de huso para el Shop v1.2. Galápagos tiene otra zona horaria y no pertenece al alcance operativo actual de Ambato.
 - `deliveryNotes`: opcional trim 0..500; no incluir si no hay observación.
 - **Envío gratis:** la logística está incorporada en `priceCents`. `shipping:{status:"FREE_INCLUDED",amountCents:0,includedInPrices:true}` siempre; no añadir cargo, no aplicar descuento por envío ni mostrar una cifra negativa.
-- **IVA simulado:** por defecto `taxEnabled=true`, `taxRateBps=1500` (15%). Se agrega al subtotal, NO está incluido de nuevo en el precio: `taxAmountCents = (subtotalCents * taxRateBps + 5000) // 10000` para entradas enteras no negativas (redondeo half-up a centavo), **una sola vez por pedido**; `totalCents = subtotalCents + taxAmountCents`. Trabajar con enteros y evitar punto flotante. La UI muestra "IVA simulado (15 %)" separado y el aviso "Demostración sin validez tributaria". Puede modificarse o deshabilitarse solo por ADMIN; no son tributos legales/SRI. La cotización/pago captura versión de ajustes y porcentaje aplicado, y no cambia tras aprobarse.
+- **IVA simulado:** por defecto `taxEnabled=true`, `taxRateBps=1500` (15%). Se agrega al subtotal, NO está incluido de nuevo en el precio: `taxAmountCents = (subtotalCents * taxRateBps + 5000) // 10000` para entradas enteras no negativas (redondeo half-up a centavo), **una sola vez por pedido**; `totalCents = subtotalCents + taxAmountCents`. Trabajar con enteros y evitar punto flotante. La UI cliente muestra "IVA (15 %)" separado, sin aviso repetido de simulación o validez tributaria; véase la adenda de presentación (§22). Puede modificarse o deshabilitarse solo por ADMIN; no son tributos legales/SRI. La cotización/pago captura versión de ajustes y porcentaje aplicado, y no cambia tras aprobarse.
 - El backend guarda `Order.userId`/`createdById` desde JWT, no de request, y snapshots de destinatario/teléfono; `recipientType=REGISTERED_CLIENT` identifica dueño autenticado aunque quien recibe sea otra persona. No registrar a destinatarios como usuarios automáticamente.
 
 ### 8.1 Configuración operativa del Shop — API configurable ADMIN (NUEVO)
@@ -215,7 +215,7 @@ Reutilizar **GET `/api/v1/zones`** PUBLIC y seleccionar solo zonas con `depotLoc
 
 ## 9. Simulador: 3 tarjetas ficticias y campos del formulario
 
-**Decisión técnica y funcional consolidada para frontend #20 y backend #33:** el formulario de pago pide **número, titular, vencimiento y CVV totalmente ficticios**. Aunque el SRS anterior contemplaba selección por alias, esta decisión de integración reemplaza esa modalidad; Figma solo la ilustra y **no obliga a copiar su diseño**. El backend compara únicamente con fixtures de demostración, sin datos bancarios reales.
+**Decisión técnica y funcional consolidada para frontend #20 y backend #33:** el formulario de pago pide **número, titular, vencimiento y CVV totalmente ficticios**, con etiquetas cliente normales, sin repetir esa calificación (§22). Aunque el SRS anterior contemplaba selección por alias, esta decisión de integración reemplaza esa modalidad; Figma solo la ilustra y **no obliga a copiar su diseño**. El backend compara únicamente con fixtures de demostración, sin datos bancarios reales.
 
 Fixtures SUGERIDOS, **exclusivamente `NODE_ENV=test|demo` / `SIMULATED_PAYMENTS_ENABLED=true`**, con números intencionalmente no bancarios:
 
@@ -338,7 +338,7 @@ Timeline refleja eventos persistidos y verificables; **no inventar marcas tempor
  "disclaimer":"COMPROBANTE DE COMPRA SIMULADO — SIN VALIDEZ TRIBUTARIA"
 }
 ```
-`orderId` y `paymentId` únicos. No generar comprobante para rechazos; consultar comprobante de otro usuario devuelve 404. No generar RUC, clave de acceso, XML, firma SRI ni tributos oficiales: **sí se muestra un IVA simulado de 15% configurable** claramente identificado como demostración y conservado como snapshot histórico, sin afirmación fiscal.
+`orderId` y `paymentId` únicos. No generar comprobante para rechazos; consultar comprobante de otro usuario devuelve 404. No generar RUC, clave de acceso, XML, firma SRI ni tributos oficiales: **sí se muestra el importe del IVA simulado de 15% configurable**, etiquetado «IVA» con su tasa en la UI cliente (§22) y conservado como snapshot histórico, sin afirmación fiscal. `disclaimer` permanece sin cambios en la API y en el snapshot persistido; el renderer cliente no lo muestra, tampoco al imprimir.
 
 ## 12. Tabla de errores estables (NUEVO)
 
@@ -461,7 +461,7 @@ Nunca confiar en `userId` suministrado por la UI. Backend determina dueño desde
 | CT-031 | Cambio de zona con ubicación previa en frontend | marcador pierde confirmación y exige nueva selección |
 | CT-032 | Cancelación/no validación posterior | no se considera entrega; **sin devolución de saldo ni reposición automática**; política de reversión diferida hasta decisión expresa |
 | CT-033 | Envío incluido en precio | GET Shop settings y quote devuelven FREE_INCLUDED, 0 centavos; ninguna comisión oculta |
-| CT-034 | IVA simulado 15% | subtotal 7300 → impuesto 1095 → total 8395; etiqueta simulación en UI y comprobante |
+| CT-034 | IVA simulado 15% | subtotal 7300 → impuesto 1095 → total 8395; UI cliente «IVA» con tasa, sin leyenda tributaria; `disclaimer` intacto en API/snapshot (§22) |
 | CT-035 | Cambio tasa IVA por ADMIN | versión de ajustes sube; quote antiguo devuelve SHOP_SETTINGS_CHANGED; nuevo quote usa tasa nueva |
 | CT-036 | IVA simulado deshabilitado por ADMIN | taxAmountCents=0 y total=subtotal; captura enabled=false y rate en comprobante |
 | CT-037 | Límite 10 por SKU | qty 10 acepta si hay stock; qty 11 o duplicados 6+5 rechaza sin descontar stock/saldo |
@@ -499,7 +499,7 @@ Backend unitarios + integración **contra PostgreSQL real**; frontend Vitest/Rea
 ## 18. Decisiones del líder vigentes, exclusiones y acuerdos diferidos
 
 1. **ENVÍO GRATIS (APROBADO):** está absorbido en los precios de productos. `shipping.status=FREE_INCLUDED`, `amountCents=0`, `includedInPrices=true`; el ADMIN no puede cobrar envío adicional desde este contrato.
-2. **IVA FICTICIO CONFIGURABLE (APROBADO):** por defecto `taxEnabled=true`, `taxRateBps=1500` (15%) calculado sobre subtotal. Se muestra como IVA **simulado**, no fiscal. ADMIN puede modificar la tasa/desactivar y se conserva tasa+importe históricos. Jamás emitir SRI/IVA tributario oficial.
+2. **IVA FICTICIO CONFIGURABLE (APROBADO):** por defecto `taxEnabled=true`, `taxRateBps=1500` (15%) calculado sobre subtotal. Su semántica sigue siendo IVA **simulado**, no fiscal; la etiqueta cliente es «IVA» con tasa (§22). ADMIN puede modificar la tasa/desactivar y se conserva tasa+importe históricos. Jamás emitir SRI/IVA tributario oficial.
 3. **CANCELACIONES (DIFERIDO):** las cancelaciones administrativas existentes siguen operando; no realizar **devoluciones ni reposición automática** hasta decidir reglas auditables. Preparar modelo/servicio de ajustes y reversiones versionable sin activar endpoints públicos ni cambios monetarios.
 4. **RECUPERACIÓN DE CONTRASEÑA Y EMAIL (DIFERIDO):** se admite preparar interfaces de servicio y plantillas detrás de feature flag desactivada, pero no se exige implementación ni correos reales. No crear enlaces ni flujos que aparenten estar funcionando.
 5. **CANTIDADES (APROBADO):** máximo **10 por SKU y por pedido** por defecto, ajustable ADMIN desde 1 a 100. No es máximo 10 por carrito entero; consolidar líneas repetidas por SKU antes de validar. Debe existir stock suficiente en BD.
@@ -554,3 +554,13 @@ Esta sección facilita implementar la primera Issue de manera **autónoma**, sin
 - **Fecha de integración de la información:** 23 de octubre de 2026. Los ejemplos de fechas y entidades son ilustrativos, no pruebas de backend desplegado.
 
 **Regla única para lectores y agentes:** utilizar **CI-SHOP-001 v1.2 CONSOLIDADO** y su OpenAPI 3.1 v1.2. No mezclar v1.0, v1.1, la adenda ni cifras históricas del mockup como fuente de campos o totales. Implementar por Issue con pruebas, sin merge automático.
+
+## 22. Adenda de presentación aprobada — 08-11-2026
+
+El usuario aprueba retirar las advertencias repetidas de la interfaz cliente y mantener su explicación en documentación: «no es necesario colocar pago simulado, uso de tarjetas ficticias y la leyenda del comprobante sin validez tributaria ... contal que sepa yo no es necesario colocarlo. pero eso si tiene que estar documentado». Confirmación expresa: «le quitamos pero si tiene que estar documentado.»
+
+Esta decisión sustituye únicamente las exigencias de copy cliente de §§8, 9, 11, CT-034 y §18.2: «Pago», «IVA» con tasa, campos de tarjeta normales y comprobante sin leyenda visible de simulación/no validez tributaria. El campo `disclaimer` y su literal en §11 siguen byte por byte en el contrato API y en el snapshot persistido; no se renderizan en la vista cliente ni en su impresión. No se modifica el enum OpenAPI.
+
+La UI cliente propuesta es concisa, sin avisos técnicos repetidos; los detalles permanecen en [REGALÍA — Presentación de la UI](REGALIA-UI-PRESENTATION.md). En los prototipos se conserva una frontera externa «Boceto · datos de muestra» y herramientas de revisión separadas, con restricción accesible a tarjetas de prueba.
+
+Es una aprobación de diseño/presentación, no de implementación de producción, pago real, capacidad tributaria ni habilitación de modo productivo. Permanecen todos los controles backend, fixtures, dinero entero, impuestos simulados, snapshots inmutables y restricciones de despliegue de este contrato. Los requisitos legales o de exposición pública futura requieren revisión humana separada; esta decisión no certifica cumplimiento legal.

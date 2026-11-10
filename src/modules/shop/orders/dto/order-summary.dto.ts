@@ -35,6 +35,14 @@ export class OrderSummaryDto {
   @ApiProperty({ type: String, nullable: true, format: 'uri', description: 'URL de imagen principal o null' })
   primaryImageUrl!: string | null;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    format: 'uuid',
+    description: 'Producto de la miniatura; sirve para mostrar la foto del catálogo si el comprobante no congeló imageUrl',
+  })
+  primaryProductId!: string | null;
+
   @ApiProperty({ minimum: 0, description: 'Subtotal en centavos' })
   subtotalCents!: number;
 
