@@ -113,6 +113,7 @@ describe('ShopOrdersService unit tests (public behavior)', () => {
         receiptId: 'rcpt-1',
         itemsCount: 2,
         primaryImageUrl: 'https://img.test/a.jpg',
+        primaryProductId: 'p1',
         subtotalCents: 7300,
         taxAmountCents: 1095,
         taxRateBps: 1500,
@@ -149,6 +150,7 @@ describe('ShopOrdersService unit tests (public behavior)', () => {
 
       const result = await service.listOrders('user-1', { page: 1, pageSize: 10, status: OrderStatus.ASSIGNED });
       expect(result.items[0].primaryImageUrl).toBeNull();
+      expect(result.items[0].primaryProductId).toBe('p2');
       expect(result.items[0].scheduledDeliveryDate).toBe('2026-11-20T12:00:00.000Z');
       expect(result.items[0].taxEnabled).toBe(false);
     });

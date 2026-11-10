@@ -265,9 +265,13 @@ export class ShopOrdersService {
           itemsCount += it.quantity;
         }
 
-        const rawImageUrl = snap.items[0]?.imageUrl;
+        const firstItem = snap.items[0];
+        const rawImageUrl = firstItem?.imageUrl;
         const primaryImageUrl =
           typeof rawImageUrl === 'string' && rawImageUrl.trim().length > 0 ? rawImageUrl.trim() : null;
+        const rawProductId = firstItem?.productId;
+        const primaryProductId =
+          typeof rawProductId === 'string' && rawProductId.trim().length > 0 ? rawProductId.trim() : null;
 
         const scheduledDate = resolveFrozenScheduledDate(
           snap.delivery?.scheduledDeliveryDate,
@@ -286,6 +290,7 @@ export class ShopOrdersService {
           receiptId: row.receiptId,
           itemsCount,
           primaryImageUrl,
+          primaryProductId,
           subtotalCents: toSafeIntegerCents(row.subtotalCents, 'subtotalCents'),
           taxAmountCents: toSafeIntegerCents(row.taxAmountCents, 'taxAmountCents'),
           taxRateBps: row.taxRateBps,

@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caja Dulce Abrazo · REGALÍA</title>
+<style>
+:root { color-scheme:light; --bg:#F8F6F1; --surface:#fff; --ink:#234D3E; --muted:#4F6257; --line:#D7DDD7; --accent:#234D3E; --on-accent:#fff; --hero:#E9EEE5; --peach:#F5E8D9; --box:#E8C9AA; --lid:#F2DCC5; --ribbon:#6D334B; --paper:#F8F6F1; }
+[data-theme="dark"] { color-scheme:dark; --bg:#24141C; --surface:#36202B; --ink:#FAEEF1; --muted:#D8BDC8; --line:#785464; --accent:#F0CCD8; --on-accent:#351D29; --hero:#422531; --peach:#503D31; --box:#B98F85; --lid:#D4AFA1; --ribbon:#754059; --paper:#F1DFDA; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+a { color:inherit; text-underline-offset:4px; }
+button,input { font:inherit; }
+button { cursor:pointer; }
+a,button { touch-action:manipulation; }
+[hidden] { display:none !important; }
+:focus-visible { outline:3px solid var(--ink); outline-offset:4px; }
+.wrap { width:min(1200px,calc(100% - 64px)); margin-inline:auto; }
+.skip { position:absolute; top:-100px; left:16px; z-index:2; padding:12px; background:var(--surface); }
+.skip:focus { top:12px; }
+.notice { text-align:center; background:var(--ink); color:var(--bg); padding:7px 16px; font-size:12px; letter-spacing:.05em; }
+.header { display:flex; align-items:center; gap:32px; padding-block:23px; }
+.wordmark { font:32px Georgia,serif; letter-spacing:.13em; text-decoration:none; }
+.search { display:flex; align-items:center; gap:10px; flex:1; max-width:460px; margin-left:auto; border:1px solid var(--muted); border-radius:50px; padding:0 16px; background:var(--surface); }
+.search input { width:100%; min-width:0; border:0; padding:12px 0; color:var(--ink); background:transparent; }
+.search input::placeholder { color:var(--muted); opacity:1; }
+.search:focus-within { outline:2px solid var(--ink); outline-offset:3px; }
+.search input:focus { outline:none; }
+.icon { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.6; flex-shrink:0; }
+.tools { display:flex; align-items:center; gap:16px; }
+.plain { display:inline-flex; align-items:center; justify-content:center; gap:7px; border:0; padding:5px; min-height:44px; background:none; color:var(--ink); font-size:14px; }
+#theme-toggle { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; min-height:44px; min-width:44px; padding:10px; border:1px solid var(--muted); border-radius:50%; color:var(--ink); background:var(--surface); }
+.theme-moon { display:none; }
+[data-theme="dark"] .theme-sun { display:none; }
+[data-theme="dark"] .theme-moon { display:block; }
+.nav-row { border-block:1px solid var(--line); }
+.nav { display:flex; flex-wrap:wrap; gap:24px; }
+.nav a { display:inline-flex; align-items:center; min-height:48px; font-size:14px; text-decoration:none; }
+.nav a:hover { text-decoration:underline; }
+#header-status { margin:0; color:var(--muted); font-size:14px; }
+#header-status:not(:empty) { padding-block:12px; }
+main { padding-top:18px; }
+.breadcrumb ol { display:flex; flex-wrap:wrap; align-items:center; gap:10px; list-style:none; padding:0; margin:0 0 20px; color:var(--muted); font-size:13px; }
+.breadcrumb a { display:inline-flex; align-items:center; min-height:44px; }
+.breadcrumb li + li::before { content:'/'; margin-right:10px; }
+.product-layout { display:grid; grid-template-columns:minmax(0,1.12fr) minmax(0,1fr); gap:64px; align-items:start; }
+figure { margin:0; }
+.stage { background:var(--peach); border-radius:6px; padding:24px; }
+.stage svg { display:block; width:100%; height:auto; aspect-ratio:1.12; }
+figcaption { color:var(--muted); font-size:12px; margin-top:12px; display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; }
+.thumbnails { display:flex; gap:12px; margin-top:18px; }
+.thumb { width:94px; padding:7px; border:1px solid var(--muted); border-radius:4px; background:var(--surface); color:var(--ink); font-size:12px; }
+.thumb svg { display:block; width:100%; height:58px; }
+.thumb[aria-pressed="true"] { border:2px solid var(--ink); padding:6px; background:var(--hero); }
+.thumb[aria-pressed="true"] span::before { content:'✓ '; }
+h1,h2,p { margin-top:0; }
+h1 { font:400 clamp(30px,3.2vw,42px)/1.15 Georgia,"Times New Roman",serif; letter-spacing:-.025em; margin-bottom:14px; }
+h2 { font-size:16px; font-weight:650; margin-bottom:10px; }
+.eyebrow { font-size:11px; letter-spacing:.14em; text-transform:uppercase; font-weight:650; color:var(--muted); margin-bottom:12px; }
+.description { color:var(--muted); margin-bottom:20px; max-width:43ch; }
+.price { font-size:26px; font-weight:600; margin-bottom:4px; }
+.small { color:var(--muted); font-size:13px; }
+.included { padding-block:22px; margin-top:22px; border-block:1px solid var(--line); }
+.included ul { padding-left:20px; margin:0; color:var(--muted); font-size:14px; }
+.included li + li { margin-top:5px; }
+.buy { margin-top:22px; }
+.quantity-label { display:block; font-size:14px; font-weight:600; margin-bottom:8px; }
+.quantity { display:inline-flex; border:1px solid var(--muted); border-radius:4px; background:var(--surface); }
+.quantity button { border:0; background:transparent; color:var(--ink); min-width:44px; min-height:44px; font-size:20px; }
+.quantity input { width:76px; min-width:0; border:0; border-inline:1px solid var(--muted); color:var(--ink); background:transparent; text-align:center; padding:8px 4px; }
+#quantity-help { margin:9px 0 16px; max-width:48ch; font-size:12px; }
+#quantity-error { font-size:14px; font-weight:600; margin-bottom:14px; }
+.cta { display:flex; justify-content:center; align-items:center; gap:12px; width:100%; min-height:48px; border:1px solid var(--accent); border-radius:4px; padding:12px 18px; color:var(--on-accent); background:var(--accent); font-size:14px; font-weight:650; }
+.cta:hover { text-decoration:underline; text-underline-offset:4px; }
+#cart-status { font-size:14px; margin:14px 0 0; }
+.demo-note { font-size:12px; color:var(--muted); margin:10px 0 0; }
+.cart { margin-top:30px; padding:24px; border:1px solid var(--muted); border-radius:6px; background:var(--surface); scroll-margin-top:20px; }
+.cart-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.cart-heading h2 { margin-bottom:0; }
+.cart-line { display:flex; flex-wrap:wrap; justify-content:space-between; gap:16px; border-block:1px solid var(--line); padding-block:16px; margin-block:16px; }
+.cart-line p { margin:0; }
+.subtotal { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; }
+.cart .small { margin-bottom:0; }
+.endnote { display:flex; flex-wrap:wrap; justify-content:space-between; gap:16px; border-top:1px solid var(--line); margin-top:36px; padding-top:22px; font-size:14px; }
+footer { display:flex; justify-content:space-between; gap:20px; border-top:1px solid var(--line); margin-top:32px; padding-block:22px; font-size:12px; color:var(--muted); }
+.symbols { position:absolute; width:0; height:0; overflow:hidden; }
+@media(max-width:1050px) { .header { flex-wrap:wrap; gap:18px; } .tools { margin-left:auto; } .search { max-width:none; } .product-layout { gap:32px; } }
+@media(max-width:760px) { .wrap { width:calc(100% - 32px); } .header { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; padding-block:18px; } .wordmark { font-size:26px; } .search { margin:0; width:100%; } .tools { margin:0; justify-content:flex-end; flex-wrap:wrap; gap:12px; } .nav { gap:8px 18px; } .product-layout { grid-template-columns:minmax(0,1fr); gap:28px; } .stage { padding:16px; } .stage svg { max-height:400px; } .breadcrumb ol { margin-bottom:14px; } footer { flex-direction:column; gap:6px; } .cart { padding:18px; } }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#contenido">Saltar al contenido</a>
+<div class="notice">Boceto · datos ilustrativos · sin compras reales</div>
+<svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+<symbol id="gift-front" viewBox="0 0 480 400">
+<circle cx="240" cy="193" r="158" fill="var(--paper)" opacity=".45"/>
+<ellipse cx="240" cy="340" rx="161" ry="15" fill="#B98A54" opacity=".18"/>
+<rect x="106" y="174" width="268" height="155" rx="6" fill="var(--box)"/>
+<rect x="92" y="149" width="296" height="48" rx="6" fill="var(--lid)"/>
+<path d="M220 149h40v180h-40z" fill="var(--ribbon)"/>
+<path d="M240 151c-109 3-99-85-54-66 30 13 54 66 54 66Zm0 0c109 3 99-85 54-66-30 13-54 66-54 66Z" fill="none" stroke="var(--ribbon)" stroke-width="15"/>
+<path d="m310 223 45 13-16 59-45-13z" fill="var(--paper)"/><path d="m311 249 23 7" stroke="#8F6949" stroke-width="3"/>
+</symbol>
+<symbol id="gift-open" viewBox="0 0 480 400">
+<circle cx="240" cy="193" r="158" fill="var(--paper)" opacity=".45"/>
+<g transform="translate(33 -13) rotate(-9 230 100)"><rect x="104" y="73" width="260" height="87" rx="6" fill="var(--lid)"/><path d="M218 73h35v87h-35z" fill="var(--ribbon)"/></g>
+<ellipse cx="240" cy="342" rx="160" ry="13" fill="#B98A54" opacity=".18"/>
+<rect x="92" y="185" width="296" height="140" rx="6" fill="var(--box)"/><rect x="106" y="198" width="268" height="106" rx="4" fill="var(--ribbon)"/>
+<g fill="#CFAC82"><rect x="121" y="212" width="64" height="32" rx="9"/><rect x="207" y="212" width="64" height="32" rx="9"/><rect x="293" y="212" width="64" height="32" rx="9"/><rect x="121" y="259" width="64" height="32" rx="9"/><rect x="207" y="259" width="64" height="32" rx="9"/><rect x="293" y="259" width="64" height="32" rx="9"/></g>
+<path d="m131 218 43 18m43-18 43 18m43-18 43 18" stroke="var(--paper)" stroke-width="3"/>
+</symbol>
+<symbol id="gift-note" viewBox="0 0 480 400">
+<circle cx="240" cy="193" r="158" fill="var(--paper)" opacity=".45"/>
+<rect x="90" y="240" width="300" height="72" rx="6" fill="var(--box)"/><rect x="80" y="224" width="320" height="30" rx="4" fill="var(--lid)"/><path d="M220 224h40v88h-40z" fill="var(--ribbon)"/>
+<g transform="rotate(-12 242 176)"><rect x="138" y="82" width="204" height="165" rx="5" fill="var(--paper)" stroke="#8F6949" stroke-width="2"/><path d="M240 141c-30-33-61 12 0 41 61-29 30-74 0-41Z" fill="var(--ribbon)"/><path d="M183 205h114m-95 14h76" stroke="#8F6949" stroke-width="3"/></g>
+</symbol>
+</defs></svg>
+<header>
+<div class="wrap header">
+<a class="wordmark" href="01-storefront.html" aria-label="Regalía, inicio">REGALÍA</a>
+<form class="search" role="search" id="search-form"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg><input id="search" type="search" aria-label="Búsqueda demostrativa" aria-describedby="search-help" placeholder="Busca un detalle especial…"></form>
+<div class="tools">
+<button id="theme-toggle" type="button" aria-pressed="false" aria-label="Cambiar al tema vino" title="Cambiar al tema vino"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><g class="theme-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></g><path class="theme-moon" d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z"/></svg></button>
+<button class="plain" id="account" type="button"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg>Mi cuenta</button>
+<button class="plain" id="cart-toggle" type="button" aria-label="Bolsa de demostración, 0 unidades"><svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 8h14l2 13H3zM8 8V6a4 4 0 0 1 8 0v2"/></svg>Bolsa (<span id="cart-count">0</span>)</button>
+</div></div>
+<div class="nav-row"><nav class="wrap nav" aria-label="Tienda"><a href="02-catalog.html">Todos los regalos</a><a href="01-storefront.html">Nuestro inicio</a></nav></div>
+<p class="wrap" id="header-status" role="status" aria-atomic="true"></p>
+</header>
+<main class="wrap" id="contenido">
+<nav class="breadcrumb" aria-label="Ruta de navegación"><ol><li><a href="01-storefront.html">Inicio</a></li><li><a href="02-catalog.html">Catálogo</a></li><li aria-current="page">Caja Dulce Abrazo</li></ol></nav>
+<div class="product-layout">
+<section aria-label="Galería del producto de muestra">
+<figure><div class="stage"><svg id="product-art" viewBox="0 0 480 400" role="img" aria-label="Ilustración de muestra: caja cerrada con lazo vino"><use id="main-view" href="#gift-front"/></svg></div><figcaption><span>Ilustración de muestra</span><span id="view-label" role="status">1 / 3 · Presentación</span></figcaption></figure>
+<div class="thumbnails" role="group" aria-label="Elegir vista de la ilustración">
+<button class="thumb" type="button" data-view="gift-front" aria-label="Ver caja cerrada con lazo vino" aria-pressed="true" aria-controls="product-art"><svg viewBox="0 0 480 400" aria-hidden="true"><use href="#gift-front"/></svg><span>Presentación</span></button>
+<button class="thumb" type="button" data-view="gift-open" aria-label="Ver caja abierta con chocolates de muestra" aria-pressed="false" aria-controls="product-art"><svg viewBox="0 0 480 400" aria-hidden="true"><use href="#gift-open"/></svg><span>Interior</span></button>
+<button class="thumb" type="button" data-view="gift-note" aria-label="Ver detalle de la tarjeta ilustrada" aria-pressed="false" aria-controls="product-art"><svg viewBox="0 0 480 400" aria-hidden="true"><use href="#gift-note"/></svg><span>La nota</span></button>
+</div>
+</section>
+<section aria-labelledby="product-title">
+<p class="eyebrow">Cajas y dulces · muestra</p>
+<h1 id="product-title">Caja Dulce Abrazo</h1>
+<p class="description">Chocolates y una nota especial. Un pequeño gesto para decir «pensé en ti».</p>
+<p class="price">$28.90 <span style="font-size:14px">USD</span></p><p class="small">Precio ilustrativo · no es una oferta de venta.</p>
+<div class="included"><h2>Un detalle por dentro</h2><ul><li>Chocolates en una caja de regalo.</li><li>Tarjeta con una nota especial.</li><li>Presentación con lazo en tono vino.</li></ul><p class="demo-note">Composición de ejemplo; la ilustración no define cantidades ni especificaciones comerciales.</p></div>
+<form class="buy" id="buy-form" novalidate>
+<label class="quantity-label" for="quantity">Cantidad</label>
+<div class="quantity"><button id="decrement" type="button" aria-label="Disminuir cantidad">−</button><input id="quantity" type="number" value="1" min="1" max="99" step="1" required inputmode="numeric" aria-invalid="false" aria-describedby="quantity-help quantity-error"><button id="increment" type="button" aria-label="Aumentar cantidad">+</button></div>
+<p class="small" id="quantity-help">Usa un número entero de 1 a 99. Tope de 99 unidades en esta simulación, no una política de la tienda.</p>
+<p id="quantity-error" role="alert" hidden></p>
+<button class="cta" type="submit">Añadir a la bolsa · demo <span aria-hidden="true">↗</span></button>
+<p class="demo-note">Solo en esta página; se reinicia al recargar. Sin compra, pago ni almacenamiento de datos.</p>
+</form>
+<p id="cart-status" role="status" aria-live="polite" aria-atomic="true"></p>
+</section>
+</div>
+<div class="endnote"><a href="02-catalog.html">← Seguir explorando el catálogo</a><span class="small" id="search-help">Búsqueda de demo: explora y busca en el catálogo.</span></div>
+<noscript><p>Activa JavaScript para cambiar las vistas, el tema y probar la bolsa de demostración. Puedes seguir los enlaces al inicio y al catálogo.</p></noscript>
+</main>
+<footer class="wrap"><span>REGALÍA · El arte de tener un detalle.</span><span>Boceto · datos ilustrativos · detalle propuesto.</span></footer>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const thumbnails = [...document.querySelectorAll('[data-view]')];
+const views = [
+  { id:'gift-front', label:'Presentación', description:'caja cerrada con lazo vino' },
+  { id:'gift-open', label:'Interior', description:'caja abierta con chocolates de muestra' },
+  { id:'gift-note', label:'La nota', description:'detalle de la tarjeta ilustrada' }
+];
+thumbnails.forEach((button,index) => button.addEventListener('click',() => {
+  const view = views[index];
+  $('main-view').setAttribute('href',`#${view.id}`);
+  $('product-art').setAttribute('aria-label',`Ilustración de muestra: ${view.description}`);
+  $('view-label').textContent = `${index + 1} / 3 · ${view.label}`;
+  thumbnails.forEach(item => item.setAttribute('aria-pressed',String(item === button)));
+}));
+$('theme-toggle').addEventListener('click',() => {
+  const dark = document.documentElement.dataset.theme !== 'dark';
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  $('theme-toggle').setAttribute('aria-pressed',String(dark));
+  const label = dark ? 'Cambiar al tema claro' : 'Cambiar al tema vino';
+  $('theme-toggle').setAttribute('aria-label',label);
+  $('theme-toggle').setAttribute('title',label);
+});
+$('search-form').addEventListener('submit',event => {
+  event.preventDefault();
+  $('header-status').textContent = 'Búsqueda de demostración: no se ejecuta aquí. Abre «Todos los regalos» para buscar en el catálogo de muestra.';
+});
+$('account').addEventListener('click',() => {
+  $('header-status').textContent = 'Mi cuenta no está habilitada en este boceto. No se inicia sesión ni se recopilan datos personales.';
+});
+const quantity = $('quantity');
+let cartCount = 0;
+function error(message) {
+  quantity.setAttribute('aria-invalid',String(Boolean(message)));
+  $('quantity-error').hidden = !message;
+  $('quantity-error').textContent = message;
+}
+function readQuantity() {
+  const value = Number(quantity.value);
+  const valid = quantity.value.trim() !== '' && quantity.validity.valid && Number.isInteger(value) && value >= 1 && value <= 99;
+  error(valid ? '' : 'Introduce un número entero de 1 a 99 para probar la simulación.');
+  return valid ? value : null;
+}
+quantity.addEventListener('input',() => { $('cart-status').textContent = ''; readQuantity(); });
+function stepQuantity(change) {
+  $('cart-status').textContent = '';
+  const value = readQuantity();
+  if (value === null) { quantity.focus(); return; }
+  const next = value + change;
+  if (next < 1 || next > 99) {
+    error(next < 1 ? 'La cantidad mínima es 1; no se ha cambiado.' : '99 es el tope de este prototipo; no se ha cambiado la cantidad.');
+    return;
+  }
+  quantity.value = String(next);
+  error('');
+}
+$('decrement').addEventListener('click',() => stepQuantity(-1));
+$('increment').addEventListener('click',() => stepQuantity(1));
+$('buy-form').addEventListener('submit',event => {
+  event.preventDefault();
+  $('cart-status').textContent = '';
+  const value = readQuantity();
+  if (value === null) { quantity.focus(); return; }
+  if (cartCount + value > 99) {
+    error('Esta bolsa de simulación admite hasta 99 unidades en total. Reduce la cantidad; no se ha añadido nada.');
+    quantity.focus();
+    return;
+  }
+  cartCount += value;
+  $('cart-count').textContent = String(cartCount);
+  $('cart-toggle').setAttribute('aria-label',`Bolsa de demostración, ${cartCount} unidades`);
+  $('cart-status').textContent = `Simulación: ${value} ${value === 1 ? 'unidad añadida' : 'unidades añadidas'} de Caja Dulce Abrazo. Bolsa de muestra: ${cartCount} ${cartCount === 1 ? 'unidad' : 'unidades'}. No se ha creado un carrito real.`;
+});
+$('cart-toggle').addEventListener('click',() => {
+  $('header-status').textContent = 'La bolsa tendrá su propia pantalla. Todavía no está diseñada en este boceto.';
+});
+</script>
+</body>
+</html>

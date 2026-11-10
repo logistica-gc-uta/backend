@@ -1,0 +1,76 @@
+{
+  "title": "REGALÍA · Un detalle que dice mucho",
+  "brief": "Boceto independiente de la tienda de regalos REGALÍA. Home, catálogo y detalle aprobados; bolsa propuesta en su propia pantalla, no debajo del detalle. Continúa la identidad verde y crema; el selector vino es una comparación secundaria de colores, no una implementación de producción. Productos, precios en USD e ilustraciones de muestra. Bolsa independiente en memoria con cantidades, quitar y deshacer; envío incluido e IVA simulado del 15%, sin checkout diseñado, compras reales ni persistencia. Decisión de copy cliente aprobada: Pago, IVA con tasa y comprobante sin leyendas técnicas repetidas; frontera de boceto y herramientas de revisión separadas. Documentada en docs/REGALIA-UI-PRESENTATION.md; no autoriza implementación de producción.",
+  "artboards": [
+    {
+      "file": "01-storefront.html",
+      "title": "Tienda clara · verde y crema",
+      "tradeoff": "Jerarquía editorial cálida, con ocasiones y cuatro regalos fáciles de explorar; prioriza la propuesta clara y usa ilustraciones conceptuales en lugar de fotografía comercial. El vino mejora superficies, contraste y tonos de ilustración para comparar ambos temas en el mismo diseño, sin implementar producción.",
+      "width": 1440,
+      "height": 1100
+    },
+    {
+      "file": "02-catalog.html",
+      "title": "Catálogo · descubrir un regalo",
+      "tradeoff": "Continuidad cálida con el home aprobado y comparación en tarjetas; filtros laterales en escritorio y desplegables en móvil. Nueve regalos y precios de muestra, ilustraciones conceptuales y referencia provisional de detalle: permite validar la exploración, no fotografía comercial, inventario ni compra real.",
+      "width": 1440,
+      "height": 1100
+    },
+    {
+      "file": "03-product-detail.html",
+      "title": "Detalle · Caja Dulce Abrazo",
+      "tradeoff": "Prioriza el producto con ilustración grande, tres vistas y acción compacta; conserva verde y crema con alternativa vino. La bolsa y las cantidades solo se simulan en memoria, con tope técnico explícito de 99 unidades; no valida fotografía, especificaciones comerciales, inventario ni compra real. El inicio y el catálogo aprobados conservan sus enlaces originales.",
+      "width": 1440,
+      "height": 1100
+    },
+    {
+      "file": "04-cart.html",
+      "title": "Bolsa · revisar tus regalos",
+      "tradeoff": "Lista práctica con resumen lateral y apilado móvil; prioriza revisar cantidades e importes sobre la emoción editorial. Bolsa independiente con dos regalos de muestra, quitar y deshacer en memoria; envío incluido e IVA ilustrativo del 15%. No comparte estado entre pantallas, confirma inventario ni cotiza o inicia una compra: entrega y checkout quedan pendientes.",
+      "width": 1440,
+      "height": 1100
+    },
+    {
+      "file": "05-access.html",
+      "title": "Acceso de cliente · muestra",
+      "tradeoff": "Acceso y registro en una composición cálida con validación local y temas claro/vino. El formulario de registro es más alto y se apila en móvil; no autentica ni crea cuentas reales.",
+      "width": 1440,
+      "height": 1100
+    },
+    {
+      "file": "06-delivery.html",
+      "title": "Entrega de muestra",
+      "tradeoff": "Entrega con validación local y plano SVG conceptual; la confirmación explícita añade un paso, sin mapas reales ni validación geográfica.",
+      "width": 1440,
+      "height": 1100
+    },
+    {
+      "file": "07-payment.html",
+      "title": "Pago de muestra",
+      "tradeoff": "Tres escenarios sintéticos permiten revisar el flujo sin datos sensibles; no representa una pasarela real ni procesa cobros.",
+      "width": 1440,
+      "height": 1100
+    },
+    {
+      "file": "08-result.html",
+      "title": "Resultado de demostración",
+      "tradeoff": "Variantes aprobada, rechazada y pendiente con comprobante ilustrativo; los controles de revisión son visibles y no consultan un backend.",
+      "width": 1440,
+      "height": 1100
+    },
+    {
+      "file": "09-orders.html",
+      "title": "Mis pedidos",
+      "tradeoff": "Historial compacto con búsqueda y estados legibles; tres compras de muestra enlazadas a su detalle, sin backend ni seguimiento real.",
+      "width": 1440,
+      "height": 1100
+    },
+    {
+      "file": "10-order-detail.html",
+      "title": "Detalle del pedido y comprobante",
+      "tradeoff": "Entrega e historial primero; comprobante desplegable e imprimible para evitar saturación. Datos de muestra, sin rastreo en vivo ni validez tributaria.",
+      "width": 1440,
+      "height": 1100
+    }
+  ]
+}
