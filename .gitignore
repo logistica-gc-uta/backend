@@ -81,3 +81,6 @@ Thumbs.db
 
 # Reportes de Newman
 reports/
+
+# Bocetos locales; no forman parte del backend desplegable.
+/design/

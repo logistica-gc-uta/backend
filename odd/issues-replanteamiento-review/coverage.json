@@ -1,0 +1,50 @@
+{
+  "purpose": "Map approved requirement groups to expanded issue handoffs; coverage is not implementation or test evidence.",
+  "requirements": {
+    "NR-01": ["backend#45", "backend#46", "frontend-web-logistica#34", "frontend-web-logistica#35"],
+    "NR-02": ["backend#45", "frontend-web-logistica#34"],
+    "NR-03": ["backend#45", "frontend-web-logistica#34", "backend#35"],
+    "NR-04": ["backend#45", "frontend-web-logistica#34", "backend#35"],
+    "NR-05": ["backend#45", "backend#35", "frontend-web-logistica#34"],
+    "NR-06": ["backend#45", "frontend-web-logistica#34"],
+    "NR-07": ["backend#46", "frontend-web-logistica#35"],
+    "NR-08": ["backend#46", "frontend-web-logistica#35"],
+    "NR-09": ["backend#45", "backend#46", "frontend-web-logistica#34", "frontend-web-logistica#35"],
+    "NR-10": ["backend#42", "backend#45"],
+    "NR-11": ["backend#41", "frontend-web-logistica#32"],
+    "NR-12": ["backend#41", "backend#42", "frontend-web-logistica#32", "frontend-web-logistica#33"],
+    "NR-13": ["backend#41", "backend#42", "frontend-web-logistica#32"],
+    "NR-14": ["backend#42", "frontend-web-logistica#33", "backend#45"],
+    "NR-15": ["backend#41", "backend#47", "frontend-web-logistica#32"],
+    "NR-16": ["backend#44", "backend#49", "frontend-web-logistica#36", "frontend-web-logistica#37"],
+    "NR-17": ["backend#48", "frontend-web-logistica#37"],
+    "NR-18": ["backend#48", "frontend-web-logistica#37"],
+    "NR-19": ["backend#47", "backend#48", "frontend-web-logistica#37"],
+    "NR-20": ["backend#49", "frontend-web-logistica#37"],
+    "NR-21": ["backend#47", "frontend-web-logistica#37", "backend#35"],
+    "NR-22": ["backend#48", "backend#49"],
+    "NR-23": ["app-movil-logistica#8", "backend#35"],
+    "NR-24": ["backend#50", "frontend-web-logistica#38"],
+    "NR-25": ["backend#51", "frontend-web-logistica#39"],
+    "NR-26": ["backend#51", "backend#44", "frontend-web-logistica#39"],
+    "NR-27": ["backend#52", "frontend-web-logistica#39"],
+    "NR-28": ["backend#52", "frontend-web-logistica#39"],
+    "NR-29": ["backend#51", "backend#52", "backend#35"]
+  },
+  "additional_issue_areas": {
+    "driver_admin_provisioning": ["backend#43", "frontend-web-logistica#36"],
+    "production_configuration": ["backend#53", "backend#35"]
+  },
+  "deferred_not_implementation_scope": [
+    "Private guest tracking link", "Routing generation fallback system", "Live GPS",
+    "Automatic banking validation", "Direct product transfer between drivers",
+    "Additional advanced logistics controls"
+  ],
+  "open_design_not_decided_by_agent": [
+    "Group time-margin semantics and tie-breaking", "Relative road distance/time ranking",
+    "Coverage representation and API contracts", "Driver credential provisioning",
+    "Absence shape and correction workflow", "Receipt payment/contact discriminants",
+    "Incident states/reservation transitions", "Replacement unit granularity",
+    "Map tile source, OSRM profile and hosting", "Production domains and secret management"
+  ]
+}
