@@ -37,6 +37,11 @@ enum AttemptOutcome {
   FAILED
 }
 
+enum ExternalPaymentMethod {
+  CASH
+  TRANSFER
+}
+
 enum VisitFailureReason {
   RECIPIENT_ABSENT
   RECIPIENT_REFUSED
@@ -58,6 +63,9 @@ model User {
   payments         PaymentAttempt[] @relation("PaymentBuyer")
   receipts         PurchaseReceipt[] @relation("ReceiptBuyer")
   storeCoverageUpdates StoreCoverage[] @relation("StoreCoverageActor")
+  externalDeclarations ExternalPaymentDeclaration[] @relation("ExternalPaymentActor")
+  contactAudits        OrderContactAudit[] @relation("ContactAuditActor")
+  adminPurchaseAttempts AdminPurchaseAttempt[] @relation("AdminPurchaseActor")
 }
 
 model Driver {
@@ -238,6 +246,9 @@ model Order {
   deliveryLat           Float?
   deliveryLng           Float?
   createdAt             DateTime    @default(now())
+  buyerName             String?
+  buyerPhone            String?
+  contactRevision       Int         @default(0)
 
   requiresAdministrativeReview Boolean @default(false)
   // Unresolved failed visits are never commercially delivered/cancelled.
@@ -247,6 +258,9 @@ model Order {
   paymentAttempt        PaymentAttempt?
   receipt               PurchaseReceipt?
   checkoutAttempts      CheckoutAttempt[]
+  externalDeclaration   ExternalPaymentDeclaration?
+  contactAudits         OrderContactAudit[]
+  adminPurchaseAttempts AdminPurchaseAttempt[]
 
   @@index([userId])
   @@index([createdById])
@@ -260,6 +274,9 @@ model Order {
   @@check(expression: "COALESCE((\"deliveryWindowStart\" IS NULL AND \"deliveryWindowEnd\" IS NULL) OR (\"deliveryWindowStart\" IS NOT NULL AND \"deliveryWindowEnd\" IS NOT NULL AND \"scheduledDeliveryDate\" IS NOT NULL AND \"deliveryWindowStart\" < \"deliveryWindowEnd\" AND \"scheduledDeliveryDate\" >= \"deliveryWindowStart\" AND \"scheduledDeliveryDate\" <= \"deliveryWindowEnd\" AND (\"deliveryWindowStart\" AT TIME ZONE 'America/Guayaquil')::date = (\"deliveryWindowEnd\" AT TIME ZONE 'America/Guayaquil')::date), false)", name: "order_delivery_window_valid")
 
   @@check(expression: "(\"deliveryLat\" IS NULL AND \"deliveryLng\" IS NULL) OR (\"deliveryLat\" IS NOT NULL AND \"deliveryLng\" IS NOT NULL AND \"deliveryLat\" >= -90 AND \"deliveryLat\" <= 90 AND \"deliveryLng\" >= -180 AND \"deliveryLng\" <= 180)", name: "order_delivery_coordinates_valid")
+  @@check(expression: "\"buyerPhone\" IS NULL OR (\"buyerPhone\" ~ '[^[:space:]]' AND length(\"buyerPhone\") BETWEEN 1 AND 40)", name: "order_buyer_phone_valid")
+  @@check(expression: "\"buyerName\" IS NULL OR (\"buyerName\" ~ '[^[:space:]]' AND length(\"buyerName\") BETWEEN 1 AND 120)", name: "order_buyer_name_valid")
+  @@check(expression: "\"contactRevision\" >= 0", name: "order_contact_revision_nonnegative")
 }
 
 model OrderItem {
@@ -447,8 +464,8 @@ model PurchaseReceipt {
   order                 Order            @relation(fields: [orderId], references: [id])
   number                String           @unique
   commercialOrderNumber String           @unique
-  buyerId               String
-  buyer                 User             @relation("ReceiptBuyer", fields: [buyerId], references: [id])
+  buyerId               String?
+  buyer                 User?            @relation("ReceiptBuyer", fields: [buyerId], references: [id])
   issuedAt              DateTime         @default(now())
   merchantName          String           @default("REGALÍA")
   currency              String           @default("USD")
@@ -465,6 +482,7 @@ model PurchaseReceipt {
   createdAt             DateTime         @default(now())
 
   checkoutAttempts      CheckoutAttempt[]
+  adminPurchaseAttempts AdminPurchaseAttempt[]
 
   @@index([buyerId])
   @@index([issuedAt])
@@ -527,4 +545,67 @@ model CheckoutAttempt {
   @@index([receiptId])
   @@index([paymentAttemptId])
   @@check(expression: "status IN ('PROCESSING', 'SUCCEEDED', 'REJECTED', 'FAILED') AND length(\"idempotencyKey\") BETWEEN 1 AND 128 AND length(\"requestHash\") BETWEEN 1 AND 128 AND ((status = 'PROCESSING' AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"paymentAttemptId\" IS NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NULL) OR (status = 'SUCCEEDED' AND \"orderId\" IS NOT NULL AND \"receiptId\" IS NOT NULL AND \"paymentAttemptId\" IS NOT NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NOT NULL AND json_typeof(\"successSnapshot\") = 'object') OR (status IN ('REJECTED', 'FAILED') AND \"errorCode\" IS NOT NULL AND length(\"errorCode\") BETWEEN 1 AND 64 AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"paymentAttemptId\" IS NULL AND \"successSnapshot\" IS NULL))", name: "checkout_attempt_status_consistency")
+}
+
+// ADMIN cash/transfer declaration for a completed external payment (#45). Not a bank verification.
+model ExternalPaymentDeclaration {
+  id           String                 @id @default(uuid())
+  orderId      String                 @unique
+  order        Order                  @relation(fields: [orderId], references: [id])
+  method       ExternalPaymentMethod
+  declaredById String
+  declaredBy   User                   @relation("ExternalPaymentActor", fields: [declaredById], references: [id])
+  declaredAt   DateTime
+  note         String?
+  createdAt    DateTime               @default(now())
+
+  adminPurchaseAttempts AdminPurchaseAttempt[]
+
+  @@index([declaredById])
+  @@check(expression: "\"note\" IS NULL OR (length(\"note\") BETWEEN 1 AND 200 AND \"note\" ~ '[^[:space:]]')", name: "external_payment_declaration_note_valid")
+}
+
+// Idempotent ADMIN purchase intention; SUCCEEDED requires declaration+receipt, never a simulated card.
+model AdminPurchaseAttempt {
+  id               String                      @id @default(uuid())
+  actorId          String
+  actor            User                        @relation("AdminPurchaseActor", fields: [actorId], references: [id])
+  idempotencyKey   String
+  requestHash      String
+  status           String                      @default("PROCESSING")
+  orderId          String?
+  order            Order?                      @relation(fields: [orderId], references: [id])
+  receiptId        String?
+  receipt          PurchaseReceipt?            @relation(fields: [receiptId], references: [id])
+  declarationId    String?
+  declaration      ExternalPaymentDeclaration? @relation(fields: [declarationId], references: [id])
+  errorCode        String?
+  errorMessage     String?
+  errorDetails     Json?
+  successSnapshot  Json?
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @default(now())
+
+  @@unique([actorId, idempotencyKey])
+  @@index([actorId])
+  @@index([orderId])
+  @@index([receiptId])
+  @@index([declarationId])
+  @@check(expression: "status IN ('PROCESSING', 'SUCCEEDED', 'REJECTED', 'FAILED') AND length(\"idempotencyKey\") BETWEEN 1 AND 128 AND length(\"requestHash\") BETWEEN 1 AND 128 AND ((status = 'PROCESSING' AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"declarationId\" IS NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NULL) OR (status = 'SUCCEEDED' AND \"orderId\" IS NOT NULL AND \"receiptId\" IS NOT NULL AND \"declarationId\" IS NOT NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NOT NULL AND json_typeof(\"successSnapshot\") = 'object') OR (status IN ('REJECTED', 'FAILED') AND \"errorCode\" IS NOT NULL AND length(\"errorCode\") BETWEEN 1 AND 64 AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"declarationId\" IS NULL AND \"successSnapshot\" IS NULL))", name: "admin_purchase_attempt_status_consistency")
+}
+
+model OrderContactAudit {
+  id             String   @id @default(uuid())
+  orderId        String
+  order          Order    @relation(fields: [orderId], references: [id])
+  actorId        String
+  actor          User     @relation("ContactAuditActor", fields: [actorId], references: [id])
+  field          String
+  previousValue  String?
+  nextValue      String?
+  createdAt      DateTime @default(now())
+
+  @@index([orderId, createdAt])
+  @@index([actorId])
+  @@check(expression: "\"field\" IN ('buyerName', 'buyerPhone', 'recipientName', 'recipientPhone')", name: "order_contact_audit_field_valid")
 }
