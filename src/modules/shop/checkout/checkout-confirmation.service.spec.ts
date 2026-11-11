@@ -5,6 +5,7 @@ describe('CheckoutConfirmationService unit tests', () => {
   let service: CheckoutConfirmationService;
   let mockPrisma: any;
   let mockSettings: any;
+  let mockStoreCoverage: any;
 
   beforeEach(() => {
     process.env.NODE_ENV = 'test';
@@ -62,7 +63,10 @@ describe('CheckoutConfirmationService unit tests', () => {
       }),
     };
 
-    service = new CheckoutConfirmationService(mockPrisma as any, mockSettings as any);
+    mockStoreCoverage = {
+      evaluatePoint: jest.fn().mockResolvedValue({ accepted: true, position: 'INTERIOR' }),
+    };
+    service = new CheckoutConfirmationService(mockPrisma as any, mockSettings as any, mockStoreCoverage as any);
   });
 
   afterEach(() => {
@@ -454,6 +458,148 @@ describe('CheckoutConfirmationService unit tests', () => {
         },
       },
     });
+  });
+
+  async function confirmWithLockedCatalog(overrides?: {
+    scheduledDeliveryDate?: string;
+    requestZoneId?: string;
+    tokenZoneId?: string;
+  }) {
+    const { signQuoteToken } = await import('./quote-token.util.js');
+    process.env.JWT_SECRET = 'supersecretlongenough12345678901234567890';
+    const prodId = '11111111-1111-4111-8111-111111111111';
+    const tokenZoneId = overrides?.tokenZoneId ?? '22222222-2222-4222-8222-222222222222';
+    const requestZoneId = overrides?.requestZoneId ?? tokenZoneId;
+    const buyerUserId = 'user-1';
+    const scheduledDeliveryDate = overrides?.scheduledDeliveryDate ?? '2030-11-15T15:00:00.000Z';
+    const deliveryLocation = { lat: -1.24, lng: -78.61 };
+    const quoteToken = signQuoteToken({
+      buyerUserId,
+      issuedAt: new Date().toISOString(),
+      validUntil: new Date(Date.now() + 600000).toISOString(),
+      settingsVersion: 1,
+      currency: 'USD',
+      items: [{ productId: prodId, quantity: 1, unitPriceCents: 1000, lineTotalCents: 1000 }],
+      delivery: {
+        zoneId: tokenZoneId,
+        recipient: { name: 'Juan', phone: '0991234567' },
+        deliveryAddress: 'Av. Cevallos 100',
+        deliveryLocation,
+        scheduledDeliveryDate,
+      },
+      subtotalCents: 1000,
+      shippingAmountCents: 0,
+      tax: { mode: 'SIMULATED', enabled: true, rateBps: 1500, amountCents: 150 },
+      totalCents: 1150,
+    });
+    const delivery = {
+      recipient: { name: 'Juan', phone: '0991234567' },
+      zoneId: requestZoneId,
+      deliveryAddress: 'Av. Cevallos 100',
+      deliveryLocation,
+      scheduledDeliveryDate,
+    };
+    const { buildCanonicalIntent, hashCanonicalIntent } = await import('./checkout-intent.util.js');
+    const matchingHash = hashCanonicalIntent(buildCanonicalIntent({
+      items: [{ productId: prodId, quantity: 1 }],
+      delivery,
+      quoteToken,
+      cardFixtureId: 'DEMO_APPROVED',
+    }));
+    jest.spyOn(service as any, 'acquireProcessingReservation').mockResolvedValue({ acquired: true, attemptId: 'attempt-1' });
+    let queryCall = 0;
+    const execute = jest.fn().mockResolvedValue(1);
+    mockPrisma.client.transaction.mockImplementation(async (cb: any) => {
+      const tx = {
+        execute,
+        query: jest.fn().mockImplementation(async (plan: any) => {
+          if (plan?.spec?.instant) {
+            return [{ instant: Temporal.Now.instant() }];
+          }
+          queryCall++;
+          if (queryCall === 1) return [];
+          if (queryCall === 2) return [];
+          if (queryCall === 3) {
+            return [{ id: 'attempt-1', status: 'PROCESSING', requestHash: matchingHash }];
+          }
+          if (queryCall === 4) return [{ categoryId: 'cat-A' }];
+          if (queryCall === 5) return [{ id: 'cat-A', isActive: true }];
+          if (queryCall === 6) return [{ id: prodId, name: 'Rosas Rojas', price: 10, stock: 10 }];
+          if (queryCall === 7) {
+            return [{
+              id: prodId,
+              name: 'Rosas Rojas',
+              sku: 'ROS-01',
+              price: 10,
+              stock: 10,
+              priceCents: 1000n,
+              isPublished: true,
+              categoryId: 'cat-A',
+              categoryIsActive: true,
+            }];
+          }
+          if (queryCall === 8) {
+            return [{
+              id: 'card-1',
+              fixtureId: 'DEMO_APPROVED',
+              last4: '0001',
+              active: true,
+              balanceCents: 100000n,
+            }];
+          }
+          return [];
+        }),
+      };
+      return cb(tx);
+    });
+    return {
+      execute,
+      promise: service.confirmCheckout(buyerUserId, '77777777-7777-4777-8777-777777777778', {
+        items: [{ productId: prodId, quantity: 1 }],
+        delivery,
+        quoteToken,
+        paymentCard: {
+          number: '9000 0000 0000 0001',
+          holderName: 'PRUEBA APROBADA',
+          expiresMonth: 12,
+          expiresYear: 2030,
+          cvv: '111',
+        },
+      } as any),
+    };
+  }
+
+  it('re-evaluates current coverage and rejects exterior without debiting stock or balance', async () => {
+    mockStoreCoverage.evaluatePoint.mockResolvedValue({ accepted: false, position: 'EXTERIOR' });
+    const { execute, promise } = await confirmWithLockedCatalog();
+    await expect(promise).rejects.toMatchObject({
+      status: HttpStatus.UNPROCESSABLE_ENTITY,
+      response: { error: { code: 'DELIVERY_OUTSIDE_COVERAGE' } },
+    });
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('does not treat a different ignored zoneId as a delivery mismatch', async () => {
+    mockStoreCoverage.evaluatePoint.mockResolvedValue({ accepted: false, position: 'EXTERIOR' });
+    const { promise } = await confirmWithLockedCatalog({
+      tokenZoneId: '22222222-2222-4222-8222-222222222222',
+      requestZoneId: '33333333-3333-4333-8333-333333333333',
+    });
+    await expect(promise).rejects.toMatchObject({
+      status: HttpStatus.UNPROCESSABLE_ENTITY,
+      response: { error: { code: 'DELIVERY_OUTSIDE_COVERAGE' } },
+    });
+  });
+
+  it('re-evaluates current shop hours and rejects 06:59 without debiting', async () => {
+    const { execute, promise } = await confirmWithLockedCatalog({
+      scheduledDeliveryDate: '2030-11-15T11:59:00.000Z',
+    });
+    await expect(promise).rejects.toMatchObject({
+      status: HttpStatus.UNPROCESSABLE_ENTITY,
+      response: { error: { code: 'DELIVERY_OUTSIDE_HOURS' } },
+    });
+    expect(execute).not.toHaveBeenCalled();
   });
 
 

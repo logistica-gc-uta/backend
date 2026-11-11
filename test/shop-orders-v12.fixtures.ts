@@ -3,6 +3,7 @@ import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { JwtService } from '@nestjs/jwt';
 import { bootstrapSimulatedCards } from '../src/modules/shop/checkout/simulated-card.js';
+import { seedAmbatoStoreCoverage } from './ambato-store-coverage.fixture.js';
 
 export interface SeededUsers {
   clientToken: string;
@@ -131,6 +132,7 @@ export async function seedCatalog(db: any, dbSuffix: string): Promise<SeededCata
     depotLat: -1.2425,
     depotLng: -78.6188,
   });
+  await seedAmbatoStoreCoverage(db);
 
   return {
     categoryId,

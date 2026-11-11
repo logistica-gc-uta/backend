@@ -29,11 +29,11 @@ export class GeoPointDto {
 }
 
 export class DeliveryReadDto {
-  @ApiProperty({ format: 'uuid', description: 'ID de la zona de entrega' })
-  zoneId!: string;
+  @ApiProperty({ format: 'uuid', nullable: true, type: String, description: 'Legacy zone id, or null for store-coverage orders' })
+  zoneId!: string | null;
 
-  @ApiProperty({ description: 'Nombre de la zona de entrega' })
-  zoneName!: string;
+  @ApiProperty({ nullable: true, type: String, description: 'Legacy zone name, or null for store-coverage orders' })
+  zoneName!: string | null;
 
   @ApiProperty({ description: 'Dirección física de entrega' })
   address!: string;

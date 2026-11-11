@@ -92,8 +92,13 @@ export class OrderCreatedResponseDto {
   })
   userId: string | null;
 
-  @ApiProperty({ description: 'ID de la zona de entrega asignada', example: 'cm123zone456' })
-  zoneId: string;
+  @ApiProperty({
+    description: 'Legacy zone id or null for new store-coverage orders',
+    example: 'cm123zone456',
+    nullable: true,
+    type: String,
+  })
+  zoneId: string | null;
 
   @ApiProperty({ description: 'Dirección física de entrega', example: 'Av. Cevallos y Montalvo' })
   deliveryAddress: string;

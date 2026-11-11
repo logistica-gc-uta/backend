@@ -89,29 +89,30 @@ export class RoutePlanningService implements OnModuleDestroy {
       if (order.requiresAdministrativeReview) {
         reasons.push(ExclusionReason.ADMINISTRATIVE_REVIEW_REQUIRED);
       }
-      if (reasons.length || !deliveryLocation || !order.zone) {
-        excluded.push({ orderId: order.id, zoneId: order.zoneId, reasons });
+      const zoneId = order.zoneId;
+      if (reasons.length || !deliveryLocation || !order.zone || !zoneId) {
+        excluded.push({ orderId: order.id, zoneId, reasons });
         continue;
       }
 
-      const count = (perZone.get(order.zoneId) ?? 0) + 1;
+      const count = (perZone.get(zoneId) ?? 0) + 1;
       if (count > MAX_ORDERS_PER_ZONE) {
         throw new UnprocessableEntityException(
           `Zone '${order.zone.code}' has more than ${MAX_ORDERS_PER_ZONE} plannable orders for ${query.date}; narrow the request`,
         );
       }
-      perZone.set(order.zoneId, count);
+      perZone.set(zoneId, count);
 
-      depots[order.zoneId] = {
+      depots[zoneId] = {
         lat: order.zone.depotLat as number,
         lng: order.zone.depotLng as number,
       };
-      zones.set(order.zoneId, { code: order.zone.code });
+      zones.set(zoneId, { code: order.zone.code });
       instants.set(order.id, order.scheduledDeliveryDate!.toString());
       addresses.set(order.id, order.deliveryAddress);
       routable.push({
         id: order.id,
-        zoneId: order.zoneId,
+        zoneId,
         deliveryDate: query.date,
         location: deliveryLocation,
       });

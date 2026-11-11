@@ -101,12 +101,13 @@ export class DeliveryDto {
   @Type(() => RecipientDto)
   readonly recipient!: RecipientDto;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '55555555-5555-4555-8555-555555555555',
-    description: 'Zone UUID',
+    description: 'Deprecated. Ignored for eligibility; do not send on new clients.',
   })
+  @ValidateIf((_, value) => value !== undefined)
   @IsUUID('all', { message: 'zoneId must be a valid UUID' })
-  readonly zoneId!: string;
+  readonly zoneId?: string;
 
   @ApiProperty({
     example: 'Av. Cevallos y Montalvo, Ambato',

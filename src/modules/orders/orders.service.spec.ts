@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../database/prisma.service.js';
+import { ShopSettingsService } from '../shop/settings/shop-settings.service.js';
+import { StoreCoverageService } from '../store-coverage/store-coverage.service.js';
 import { AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
 import { OrderStatus } from './dto/update-order-status.dto.js';
 import { OrdersService } from './orders.service.js';
@@ -16,6 +18,7 @@ describe('OrdersService', () => {
   let prismaMock: any;
   let txMock: any;
   let progressMock: any;
+  let storeCoverageMock: { evaluatePoint: jest.Mock };
 
   beforeEach(async () => {
     txMock = {
@@ -118,11 +121,30 @@ describe('OrdersService', () => {
           provide: PrismaService,
           useValue: prismaMock,
         },
+        {
+          provide: StoreCoverageService,
+          useValue: {
+            evaluatePoint: jest.fn().mockResolvedValue({ accepted: true, position: 'INTERIOR' }),
+          },
+        },
+        {
+          provide: ShopSettingsService,
+          useValue: {
+            getPublicSettings: jest.fn().mockResolvedValue({
+              deliverySchedule: {
+                timeZone: 'America/Guayaquil',
+                startTime: '07:00',
+                endTime: '17:00',
+              },
+            }),
+          },
+        },
       ],
     }).compile();
 
     service = module.get<OrdersService>(OrdersService);
     progressMock = module.get(RouteProgressService);
+    storeCoverageMock = module.get(StoreCoverageService);
   });
 
   it('should be defined', () => {
@@ -343,14 +365,56 @@ describe('OrdersService', () => {
       );
     });
 
-    it('Caso 3: Error por zona inexistente (NotFoundException)', async () => {
-      prismaMock.zone.where.mockReturnValue({
-        first: jest.fn().mockResolvedValue(null),
+    it('persists omitted zoneId as null and does not invent a default zone', async () => {
+      prismaMock.product.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(validProduct),
       });
 
-      await expect(service.createOrder('user-1', createDto)).rejects.toThrow(
-        NotFoundException,
+      const { zoneId: _omitZone, ...withoutZone } = createDto;
+      await service.createOrder('user-1', withoutZone);
+      expect(txMock.orm.public.Order.create).toHaveBeenCalledWith(
+        expect.objectContaining({ zoneId: null }),
       );
+    });
+
+    it('rejects exterior coverage before creating an order', async () => {
+      storeCoverageMock.evaluatePoint.mockResolvedValue({
+        accepted: false,
+        position: 'EXTERIOR',
+      });
+
+      await expect(
+        service.createOrder('user-1', {
+          ...createDto,
+          deliveryLat: -1.249,
+          deliveryLng: -78.616,
+        }),
+      ).rejects.toMatchObject({
+        response: { error: { code: 'DELIVERY_OUTSIDE_COVERAGE' } },
+      });
+      expect(txMock.orm.public.Order.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects 06:59 America/Guayaquil and accepts 07:00 on the CLIENT path when a date is sent', async () => {
+      prismaMock.product.where.mockReturnValue({
+        first: jest.fn().mockResolvedValue(validProduct),
+      });
+
+      await expect(
+        service.createOrder('user-1', {
+          ...createDto,
+          scheduledDeliveryDate: '2030-09-25T11:59:00.000Z',
+        }),
+      ).rejects.toMatchObject({
+        response: { error: { code: 'DELIVERY_OUTSIDE_HOURS' } },
+      });
+      expect(txMock.orm.public.Order.create).not.toHaveBeenCalled();
+
+      await service.createOrder('user-1', {
+        ...createDto,
+        scheduledDeliveryDate: '2030-09-25T12:00:00.000Z',
+      });
+      expect(txMock.orm.public.Order.create).toHaveBeenCalled();
     });
 
     it('Caso 4: Error por producto inexistente (NotFoundException)', async () => {

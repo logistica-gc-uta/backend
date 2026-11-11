@@ -13,15 +13,16 @@ import { ListAdminOrdersDto } from './dto/list-admin-orders.dto.js';
 import { projectOrder } from './order-response.util.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
+import { ShopSettingsService } from '../shop/settings/shop-settings.service.js';
+import { StoreCoverageService } from '../store-coverage/store-coverage.service.js';
 import { CreateOrderDto } from './dto/create-order.dto.js';
+import { assertDeliveryCovered } from './delivery-coverage.util.js';
+import { assertWithinOperatingHours } from './delivery-hours.util.js';
 import {
   OrderStatus,
   UpdateOrderStatusDto,
 } from './dto/update-order-status.dto.js';
-import {
-  evaluatePlanningEligibility,
-  validateCoordinatePair,
-} from './order-geography.util.js';
+import { validateCoordinatePair } from './order-geography.util.js';
 import { validateOrderTransition } from './order-status.policy.js';
 import { consolidateOrderItems, lockInventoryProduct } from './order-inventory.util.js';
 
@@ -30,6 +31,8 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly progress: RouteProgressService,
+    private readonly storeCoverage: StoreCoverageService,
+    private readonly settingsService: ShopSettingsService,
   ) {}
 
   async createOrder(userId: string, dto: CreateOrderDto) {
@@ -93,14 +96,15 @@ export class OrdersService {
       'delivery',
     );
 
-    // 1. Validar que la zona exista
-    const zone = await this.prisma.zone.where({ id: dto.zoneId }).first();
-    if (!zone) {
-      throw new NotFoundException(`Zona con ID '${dto.zoneId}' no encontrada`);
+    if (requireGeography && !coords.hasCoordinates) {
+      throw new BadRequestException('Confirmed delivery coordinates are required');
     }
-
-    if (requireGeography && !evaluatePlanningEligibility(dto, zone).planningEligibility.eligible) {
-      throw new BadRequestException('Confirmed delivery coordinates and configured zone depot are required');
+    if (coords.hasCoordinates && coords.lat !== null && coords.lng !== null) {
+      await assertDeliveryCovered(this.storeCoverage, coords.lat, coords.lng);
+    }
+    if (timing.scheduledDeliveryDate) {
+      const settings = await this.settingsService.getPublicSettings();
+      assertWithinOperatingHours(timing.scheduledDeliveryDate, settings.deliverySchedule);
     }
 
     const consolidated = consolidateOrderItems(dto.items);
@@ -133,7 +137,7 @@ export class OrdersService {
       // b. Crear la orden
       const order = await tx.orm.public.Order.create({
         ...metadata,
-        zoneId: dto.zoneId,
+        zoneId: dto.zoneId ?? null,
         deliveryAddress: dto.deliveryAddress,
         deliveryLat: coords.lat,
         deliveryLng: coords.lng,

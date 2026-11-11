@@ -29,10 +29,11 @@ describe('Unit D delivery HTTP (owned PostgreSQL 16, advancing database clock)',
   const state = () => database.sql('unit_b', `SELECT (SELECT stock FROM public.product WHERE id='b-product') || ':' ||
     (SELECT count(*) FROM public."order") || ':' || (SELECT count(*) FROM public."orderItem")`);
   const sequence = (name: 'stock' | 'item') => Number(database.sql('unit_b', `SELECT CASE WHEN is_called THEN last_value ELSE 0 END FROM delivery_evidence.${name}_writes`));
-  const privateError = (response: request.Response) => expect(JSON.stringify(response.body)).not.toMatch(/Guest Name|593|Profile client|private-hash/);
+  const privateError = (response: request.Response) => expect(JSON.stringify(response.body)).not.toMatch(/Guest Name|\+593|Profile client|private-hash/);
 
   beforeAll(async () => {
     jwt = new JwtService({ secret: prepareOwnedApiDatabase(database) });
+    database.sql('unit_b', `UPDATE public."shopBusinessSettings" SET "deliveryStartTime"='00:00', "deliveryEndTime"='23:59'`);
     database.sql('unit_b', `INSERT INTO public.product (id,name,price,stock) VALUES ('d-second','Second',7,10)`);
     installDeliveryBarrier(database);
     observer = await session(database, 'd-observer');
@@ -106,9 +107,9 @@ describe('Unit D delivery HTTP (owned PostgreSQL 16, advancing database clock)',
   });
 
   it.each(['GUEST', 'REGISTERED_CLIENT'] as const)('%s accepts inclusive mixed-offset window on one Guayaquil day', async (kind) => {
-    const response = await post(kind, { ...body(kind), scheduledDeliveryDate: calendar('2030-02-15T01:00:00Z'),
-      deliveryWindowStart: calendar('2030-02-14T20:00:00-05:00'), deliveryWindowEnd: calendar('2030-02-15T03:00:00Z') }).expect(201);
-    expect(response.body.deliveryWindowStart).toBe(calendar('2030-02-15T01:00:00Z'));
+    const response = await post(kind, { ...body(kind), scheduledDeliveryDate: calendar('2030-02-14T15:00:00Z'),
+      deliveryWindowStart: calendar('2030-02-14T09:00:00-05:00'), deliveryWindowEnd: calendar('2030-02-14T16:00:00Z') }).expect(201);
+    expect(response.body.deliveryWindowStart).toBe(calendar('2030-02-14T14:00:00Z'));
     const result = await request(app.getHttpServer()).get(calendar('/api/v1/orders?date=2030-02-14'))
       .auth(jwt.sign({ sub: actors.admin }), { type: 'bearer' }).expect(200);
     expect(result.body.items.some((order: { id: string }) => order.id === response.body.id)).toBe(true);

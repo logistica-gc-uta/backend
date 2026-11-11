@@ -1,10 +1,13 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service.js';
+import { assertDeliveryCovered } from '../../orders/delivery-coverage.util.js';
+import { assertWithinOperatingHours } from '../../orders/delivery-hours.util.js';
 import { deliveryClock, parseDeliveryTiming } from '../../orders/order-delivery.util.js';
-import { evaluatePlanningEligibility, validateCoordinatePair } from '../../orders/order-geography.util.js';
+import { validateCoordinatePair } from '../../orders/order-geography.util.js';
 import { consolidateOrderItems } from '../../orders/order-inventory.util.js';
 import { ShopSettingsPublicDto } from '../settings/dto/shop-settings.dto.js';
 import { ShopSettingsService } from '../settings/shop-settings.service.js';
+import { StoreCoverageService } from '../../store-coverage/store-coverage.service.js';
 import { shopError } from '../shop-http.filter.js';
 import { calculateMoneyAmounts, MoneyLineInput } from './checkout-money.util.js';
 import { QuoteRequestDto } from './dto/quote-request.dto.js';
@@ -28,25 +31,18 @@ interface ProductWithCategory {
   } | null;
 }
 
-interface ZoneWithDepot {
-  id: string;
-  name: string;
-  code: string;
-  depotLat: number | null;
-  depotLng: number | null;
-}
-
 @Injectable()
 export class CheckoutService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly settingsService: ShopSettingsService,
+    private readonly storeCoverage: StoreCoverageService,
   ) {}
 
   /**
    * Generates a signed, short-lived quotation for the client basket and delivery input.
    * Validates product publication, active category, stock availability, server priceCents,
-   * delivery zone with configured depot, operating hours in America/Guayaquil, and dynamic SKU limits.
+   * store coverage, operating hours in America/Guayaquil, and dynamic SKU limits.
    * Never reserves stock, mutates settings or creates orders.
    */
   async quoteCheckout(
@@ -89,14 +85,17 @@ export class CheckoutService {
     );
     const scheduledInstant = timing.scheduledDeliveryDate!;
 
-    // 6. Read clock, zone, and products in default read committed transaction on pinned connection
+    await assertDeliveryCovered(
+      this.storeCoverage,
+      dto.delivery.deliveryLocation.lat,
+      dto.delivery.deliveryLocation.lng,
+    );
+
+    // 6. Read clock and products in default read committed transaction on pinned connection
     const productIds = consolidated.map(item => item.productId);
-    const { nowDb, zone, productMap } = await this.prisma.client.transaction(
+    const { nowDb, productMap } = await this.prisma.client.transaction(
       async (tx: Transaction) => {
         const nowDb = await deliveryClock(tx, this.prisma.client.raw);
-        const zone = (await tx.orm.public.Zone.where({
-          id: dto.delivery.zoneId,
-        }).first()) as ZoneWithDepot | undefined;
 
         const rawProducts = (await tx.orm.public.Product.where(p =>
           p.id.in(productIds),
@@ -109,39 +108,9 @@ export class CheckoutService {
           productMap.set(p.id, p);
         }
 
-        return { nowDb, zone, productMap };
+        return { nowDb, productMap };
       },
     );
-
-    // 7. Validate zone existence and depot eligibility
-    if (!zone) {
-      throw shopError(
-        HttpStatus.NOT_FOUND,
-        'ZONE_NOT_FOUND',
-        `Zone with ID '${dto.delivery.zoneId}' not found`,
-        { zoneId: dto.delivery.zoneId },
-      );
-    }
-
-    const { planningEligibility } = evaluatePlanningEligibility(
-      {
-        deliveryLat: dto.delivery.deliveryLocation.lat,
-        deliveryLng: dto.delivery.deliveryLocation.lng,
-      },
-      zone,
-    );
-
-    if (!planningEligibility.eligible) {
-      throw shopError(
-        HttpStatus.UNPROCESSABLE_ENTITY,
-        'DELIVERY_INVALID',
-        'Zone or delivery coordinates are not eligible for delivery planning',
-        {
-          reasons: planningEligibility.reasons,
-          zoneId: dto.delivery.zoneId,
-        },
-      );
-    }
 
     // 8. Assert strictly future delivery date against PostgreSQL DB clock
     if (Temporal.Instant.compare(scheduledInstant, nowDb) <= 0) {
@@ -156,29 +125,7 @@ export class CheckoutService {
       );
     }
 
-    // 9. Validate local America/Guayaquil operating hours (inclusive bounds)
-    const localZonedDateTime = scheduledInstant.toZonedDateTimeISO('America/Guayaquil');
-    const localTime = localZonedDateTime.toPlainTime();
-    const startTime = Temporal.PlainTime.from(settings.deliverySchedule.startTime);
-    const endTime = Temporal.PlainTime.from(settings.deliverySchedule.endTime);
-
-    if (
-      Temporal.PlainTime.compare(localTime, startTime) < 0 ||
-      Temporal.PlainTime.compare(localTime, endTime) > 0
-    ) {
-      const requestedTimeStr = `${String(localTime.hour).padStart(2, '0')}:${String(localTime.minute).padStart(2, '0')}`;
-      throw shopError(
-        HttpStatus.UNPROCESSABLE_ENTITY,
-        'DELIVERY_OUTSIDE_HOURS',
-        `Scheduled delivery time ${requestedTimeStr} is outside commercial delivery hours (${settings.deliverySchedule.startTime} - ${settings.deliverySchedule.endTime})`,
-        {
-          startTime: settings.deliverySchedule.startTime,
-          endTime: settings.deliverySchedule.endTime,
-          timeZone: 'America/Guayaquil',
-          requestedTime: requestedTimeStr,
-        },
-      );
-    }
+    assertWithinOperatingHours(scheduledInstant, settings.deliverySchedule);
 
     // 10. Validate catalog products, active categories and authoritative prices
     const moneyLines: MoneyLineInput[] = [];
@@ -285,7 +232,6 @@ export class CheckoutService {
           name: dto.delivery.recipient.name.trim(),
           phone: dto.delivery.recipient.phone.trim(),
         },
-        zoneId: dto.delivery.zoneId.trim(),
         deliveryAddress: dto.delivery.deliveryAddress.trim(),
         deliveryLocation: {
           lat: Number(dto.delivery.deliveryLocation.lat),

@@ -11,7 +11,7 @@ export class UrgencyProposalDto {
   @ApiProperty({ enum: ['INSERT', 'NEW_ROUTE', 'BLOCKED'] }) kind!:
     'INSERT' | 'NEW_ROUTE' | 'BLOCKED';
   @ApiProperty({ nullable: true, type: String }) routeId!: string | null;
-  @ApiProperty() zoneId!: string;
+  @ApiProperty({ nullable: true, type: String }) zoneId!: string | null;
   @ApiProperty({ nullable: true, type: String }) routeDate!: string | null;
   @ApiProperty({ type: [String] }) orderIds!: string[];
   @ApiProperty({ type: [UrgencyStopDto] }) stops!: UrgencyStopDto[];

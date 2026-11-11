@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { randomUUID } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { db } from './db.js';
 
@@ -20,6 +21,37 @@ async function main() {
       await db.orm.public.Zone.create(z);
       console.log(`Zona creada: ${z.name}`);
     }
+  }
+
+  // DEMO/TEST store coverage: closed ring covering Newman/Ambato demo delivery points.
+  // Create-if-absent leaves an ADMIN-configured polygon unchanged on re-seed.
+  const existingCoverage = await db.orm.public.StoreCoverage.where({
+    singletonKey: 'GLOBAL',
+  }).first();
+  if (!existingCoverage) {
+    const now = Temporal.Now.instant();
+    await db.orm.public.StoreCoverage.create({
+      id: randomUUID(),
+      singletonKey: 'GLOBAL',
+      lat: -1.24908,
+      lng: -78.61675,
+      coverage: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [-78.7, -1.3],
+            [-78.5, -1.3],
+            [-78.5, -1.1],
+            [-78.7, -1.1],
+            [-78.7, -1.3],
+          ],
+        ],
+      },
+      updatedById: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    console.log('Cobertura de tienda creada (DEMO/TEST Ambato)');
   }
 
   // 2. Productos

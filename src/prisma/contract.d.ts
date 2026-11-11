@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'e22e1c24292de6991987b5543666555d140b3af27a2da3628aa3eac1e5109e0f'>;
+  StorageHashBase<'5e11bbaf1302fbf1e4e29d9e035846311bccdefcfac729378b0e54068f139b98'>;
 export type ExecutionHash =
   ExecutionHashBase<'59a310d3a48432e67eb44cfdd26f69df0828479942b5b5a6e32c12c5a2e5a46b'>;
 export type ProfileHash =
@@ -324,7 +324,7 @@ export type FieldOutputTypes = {
       readonly recipientPhone: CodecTypes['pg/text@1']['output'] | null;
       readonly deliveryWindowStart: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly deliveryWindowEnd: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
-      readonly zoneId: CodecTypes['pg/text@1']['output'];
+      readonly zoneId: CodecTypes['pg/text@1']['output'] | null;
       readonly routeId: CodecTypes['pg/text@1']['output'] | null;
       readonly status: 'PENDING' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
       readonly total: CodecTypes['pg/float8@1']['output'];
@@ -606,7 +606,7 @@ export type FieldInputTypes = {
       readonly recipientPhone: CodecTypes['pg/text@1']['input'] | null;
       readonly deliveryWindowStart: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly deliveryWindowEnd: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
-      readonly zoneId: CodecTypes['pg/text@1']['input'];
+      readonly zoneId: CodecTypes['pg/text@1']['input'] | null;
       readonly routeId: CodecTypes['pg/text@1']['input'] | null;
       readonly status: 'PENDING' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
       readonly total: CodecTypes['pg/float8@1']['input'];
@@ -899,7 +899,7 @@ export type StorageColumnTypes = {
       readonly subtotalCents: CodecTypes['pg/int8@1']['output'] | null;
       readonly total: CodecTypes['pg/float8@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'] | null;
-      readonly zoneId: CodecTypes['pg/text@1']['output'];
+      readonly zoneId: CodecTypes['pg/text@1']['output'] | null;
     };
     readonly orderClaim: {
       readonly claimedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
@@ -1181,7 +1181,7 @@ export type StorageColumnInputTypes = {
       readonly subtotalCents: CodecTypes['pg/int8@1']['input'] | null;
       readonly total: CodecTypes['pg/float8@1']['input'];
       readonly userId: CodecTypes['pg/text@1']['input'] | null;
-      readonly zoneId: CodecTypes['pg/text@1']['input'];
+      readonly zoneId: CodecTypes['pg/text@1']['input'] | null;
     };
     readonly orderClaim: {
       readonly claimedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
@@ -1522,7 +1522,7 @@ export namespace Models {
     recipientPhone: CodecTypes['pg/text@1']['output'] | null;
     deliveryWindowStart: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
     deliveryWindowEnd: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
-    zoneId: CodecTypes['pg/text@1']['output'];
+    zoneId: CodecTypes['pg/text@1']['output'] | null;
     routeId: CodecTypes['pg/text@1']['output'] | null;
     status: 'PENDING' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
     total: CodecTypes['pg/float8@1']['output'];
@@ -1541,7 +1541,7 @@ export namespace Models {
     receipt: public_PurchaseReceipt | null;
     route: public_Route | null;
     user: public_User | null;
-    zone: public_Zone;
+    zone: public_Zone | null;
     readonly [RelationKeys]?:
       | 'checkoutAttempts'
       | 'createdBy'
@@ -2507,7 +2507,7 @@ type ContractBase = Omit<
                 readonly zoneId: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
-                  readonly nullable: false;
+                  readonly nullable: true;
                 };
                 readonly routeId: {
                   readonly nativeType: 'text';
@@ -4956,7 +4956,7 @@ type ContractBase = Omit<
                 };
               };
               readonly zoneId: {
-                readonly nullable: false;
+                readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
               readonly routeId: {
@@ -5090,7 +5090,7 @@ type ContractBase = Omit<
               readonly zone: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Zone' };
                 readonly cardinality: 'N:1';
-                readonly nullable: false;
+                readonly nullable: true;
                 readonly on: {
                   readonly localFields: readonly ['zoneId'];
                   readonly targetFields: readonly ['id'];

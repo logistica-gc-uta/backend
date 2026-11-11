@@ -89,12 +89,17 @@ export class RouteUrgencyService {
       routeDate: string,
       evidence: unknown,
     ) => {
-      const routing: RoutingOrder[] = orders.map((o) => ({
-        id: o.id,
-        zoneId: o.zoneId,
-        deliveryDate: date,
-        location: { lat: o.deliveryLat!, lng: o.deliveryLng! },
-      }));
+      const routing: RoutingOrder[] = orders.map((o) => {
+        if (!o.zoneId) {
+          throw new Error('Urgent dispatch grouping requires a persisted zoneId');
+        }
+        return {
+          id: o.id,
+          zoneId: o.zoneId,
+          deliveryDate: date,
+          location: { lat: o.deliveryLat!, lng: o.deliveryLng! },
+        };
+      });
       // Degenerate/zero-savings groups can produce separate tours; flatten the
       // deterministic tours since all validated candidates already fit one vehicle.
       const ids = planRoutes(routing, {

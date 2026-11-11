@@ -11,6 +11,7 @@ import {
 } from './geolocation-migration.fixtures.js';
 import { bootstrapSimulatedCards } from '../src/modules/shop/checkout/simulated-card.js';
 import { signQuoteToken, QuoteTokenPayload } from '../src/modules/shop/checkout/quote-token.util.js';
+import { seedAmbatoStoreCoverage } from './ambato-store-coverage.fixture.js';
 
 jest.setTimeout(240_000);
 
@@ -144,6 +145,7 @@ describe('Shop Checkout v1.2 Recovery, Attempt GET & Durability E2E (owned Postg
       depotLat: -1.2425,
       depotLng: -78.6188,
     });
+    await seedAmbatoStoreCoverage(db);
   });
 
   afterAll(async () => {

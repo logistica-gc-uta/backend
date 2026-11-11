@@ -31,6 +31,14 @@ import {
 type Transaction = Parameters<
   Parameters<PrismaService['client']['transaction']>[0]
 >[0];
+
+/** Coverage-era orders persist zoneId null; they may join a route whose zone ADMIN selected. */
+function orderBelongsToRouteZone(
+  orderZoneId: string | null | undefined,
+  routeZoneId: string,
+): boolean {
+  return orderZoneId == null || orderZoneId === routeZoneId;
+}
 interface RouteSnapshot {
   id: string;
   status: string | null;
@@ -146,7 +154,7 @@ export class RouteAssignmentService {
           false,
           order.requiresAdministrativeReview,
         ) ||
-        order.zoneId !== zoneId ||
+        !orderBelongsToRouteZone(order.zoneId, zoneId) ||
         !order.scheduledDeliveryDate ||
         !isSameBusinessDay(order.scheduledDeliveryDate, date)
       ) {
@@ -205,7 +213,7 @@ export class RouteAssignmentService {
             );
       if (
         !eligible ||
-        order.zoneId !== route.zoneId ||
+        !orderBelongsToRouteZone(order.zoneId, route.zoneId) ||
         !order.scheduledDeliveryDate ||
         !isSameBusinessDay(order.scheduledDeliveryDate, route.date) ||
         !evaluatePlanningEligibility(
@@ -273,7 +281,7 @@ export class RouteAssignmentService {
       for (const id of [...dto.orderIds].sort()) {
         const order = await tx.orm.public.Order.where({ id }).first();
         if (!order) throw new NotFoundException('Proposal order not found');
-        if (order.zoneId !== dto.zoneId)
+        if (!orderBelongsToRouteZone(order.zoneId, dto.zoneId))
           throw new BadRequestException(
             'Order does not belong to the requested zone',
           );

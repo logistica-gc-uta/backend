@@ -94,9 +94,10 @@ This document records the architectural decisions, contract reconciliation, sche
 - **Consolidation & Dynamic Limits:**
   - Lines with identical `productId` are consolidated prior to limit checks and pricing.
   - Consolidated quantity is validated against active `ShopBusinessSettings.limits.maxUnitsPerSkuPerOrder` (default 10). Exceeding limit (e.g. 6 + 5 = 11) returns HTTP 422 `QUANTITY_LIMIT_EXCEEDED` with `{ productId, requestedQuantity: 11, maximumAllowed: 10 }`.
-- **Geographic & Depot Verification:**
-  - Zone lookup in database. Missing zone returns HTTP 404 `ZONE_NOT_FOUND`.
-  - Depot presence evaluated via `evaluatePlanningEligibility`. Zone without depot coordinates returns HTTP 422 `DELIVERY_INVALID`.
+- **Geographic coverage (backend #42):**
+  - `delivery.zoneId` is optional and ignored for eligibility. Coverage uses `StoreCoverageService.evaluatePoint`.
+  - Interior/boundary accepted. Exterior returns HTTP 422 `DELIVERY_OUTSIDE_COVERAGE`. Missing store configuration returns HTTP 409 `STORE_NOT_CONFIGURED`.
+  - Confirm re-evaluates the current polygon and current shop hours; a stale quote cannot purchase after ADMIN changed coverage or hours.
 - **Delivery Scheduling & Operating Hours:**
   - Scheduled date parsed strictly with explicit timezone offset. Missing offset returns HTTP 400 `VALIDATION_ERROR`.
   - Scheduled instant compared against PostgreSQL database clock via `deliveryClock`. Past instant returns HTTP 422 `DELIVERY_INVALID`.
@@ -136,7 +137,7 @@ This document records the architectural decisions, contract reconciliation, sche
     - ScheduledDeliveryDate UTC normalization: ISO offset date string normalized to parsed UTC instant string in signed quote token payload.
     - Past delivery date -> 422 DELIVERY_INVALID
     - 06:59 -> 422 DELIVERY_OUTSIDE_HOURS; 17:01 -> 422 DELIVERY_OUTSIDE_HOURS; 07:00 -> 200 OK; 17:00 -> 200 OK
-    - Non-existent zone -> 404 ZONE_NOT_FOUND; zone without depot -> 422 DELIVERY_INVALID
+    - Exterior point -> 422 DELIVERY_OUTSIDE_COVERAGE; missing store coverage -> 409 STORE_NOT_CONFIGURED
     - Non-existent product -> 404 PRODUCT_NOT_FOUND; unpublished product -> 409 PRODUCT_UNPUBLISHED; inactive category -> 409 PRODUCT_UNPUBLISHED
     - Immutability check: product stock, singleton settings version, and audit trail count verified unchanged before and after requests
     - Regressions: `GET /api/v1/shop/settings` returns 200; `GET /api/v1/products` returns 200 with stock > 0

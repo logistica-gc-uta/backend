@@ -20,6 +20,10 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
     request(app.getHttpServer()).post('/api/v1/orders/admin').auth(token(actor), { type: 'bearer' }).set('Content-Type', 'application/json').send(JSON.stringify(body));
   const get = (path: string, actor: keyof typeof actors = 'admin') =>
     request(app.getHttpServer()).get(`/api/v1/orders${path}`).auth(token(actor), { type: 'bearer' });
+  const patchStatus = (id: string, body: unknown, actor: keyof typeof actors = 'admin') =>
+    request(app.getHttpServer()).patch(`/api/v1/orders/${id}/status`).auth(token(actor), { type: 'bearer' }).set('Content-Type', 'application/json').send(JSON.stringify(body));
+  const confirmRoute = (body: unknown) =>
+    request(app.getHttpServer()).post('/api/v1/routes').auth(token('admin'), { type: 'bearer' }).set('Content-Type', 'application/json').send(JSON.stringify(body));
 
   beforeAll(async () => {
     const secret = prepareOwnedApiDatabase(database);
@@ -90,8 +94,41 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
     await request(app.getHttpServer()).post('/api/v1/orders').auth(token('client'), { type: 'bearer' }).send(guestBody()).expect(400);
   });
 
-  it.each([['absent', 'missing-user', 404], ['admin', actors.admin, 400], ['driver', actors.driver, 400]])('rejects registered owner %s', async (_name, clientId, status) => {
+  it.each([['admin', actors.admin, 400], ['driver', actors.driver, 400]])('rejects registered owner %s', async (_name, clientId, status) => {
     await post({ ...guestBody(), recipient: { type: 'REGISTERED_CLIENT', clientId } }).expect(status as number);
+  });
+
+  it('keeps Nest 404 for a missing registered client and does not create an order or debit stock', async () => {
+    const count = database.sql('unit_b', 'SELECT count(*) FROM public."order"');
+    const stock = database.sql('unit_b', 'SELECT stock FROM public.product');
+    const missing = await post({
+      ...guestBody(),
+      recipient: { type: 'REGISTERED_CLIENT', clientId: 'missing-user' },
+    }).expect(404);
+    expect(missing.body).toEqual({
+      statusCode: 404,
+      message: 'Registered client not found',
+      error: 'Not Found',
+    });
+    expect(database.sql('unit_b', 'SELECT count(*) FROM public."order"')).toBe(count);
+    expect(database.sql('unit_b', 'SELECT stock FROM public.product')).toBe(stock);
+  });
+
+  it('keeps Nest 400 for insufficient stock with the specific product message and no writes', async () => {
+    const count = database.sql('unit_b', 'SELECT count(*) FROM public."order"');
+    const stock = Number(database.sql('unit_b', 'SELECT stock FROM public.product'));
+    const quantity = stock + 1;
+    const rejected = await post({
+      ...guestBody(),
+      items: [{ productId: 'b-product', quantity }],
+    }).expect(400);
+    expect(rejected.body).toEqual({
+      statusCode: 400,
+      message: `Stock insuficiente para el producto 'Product'. Solicitado: ${quantity}, Disponible: ${stock}`,
+      error: 'Bad Request',
+    });
+    expect(database.sql('unit_b', 'SELECT count(*) FROM public."order"')).toBe(count);
+    expect(database.sql('unit_b', 'SELECT stock FROM public.product')).toBe(String(stock));
   });
 
   it('allows optional registered phone and retains CLIENT optional coordinates/date', async () => {
@@ -131,8 +168,6 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
     ['partial coordinates', { deliveryLng: undefined }, 400],
     ['null coordinates', { deliveryLat: null, deliveryLng: null }, 400],
     ['range', { deliveryLat: 91 }, 400],
-    ['unknown zone', { zoneId: 'absent-zone' }, 404],
-    ['no depot', { zoneId: 'b-no-depot' }, 400],
     ['missing date', { scheduledDeliveryDate: undefined }, 400],
     ['offsetless date', { scheduledDeliveryDate: calendar('2030-02-14T15:00:00') }, 400],
     ['one window endpoint', { deliveryWindowStart: calendar('2030-02-14T14:00:00Z') }, 400],
@@ -152,18 +187,48 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
     await post({ ...guestBody(), scheduledDeliveryDate: calendar('2030-02-14T10:00:00-05:00'), deliveryWindowStart: calendar('2030-02-14T10:00:00-05:00'), deliveryWindowEnd: calendar('2030-02-14T12:00:00-05:00') }).expect(201);
   });
 
+  it('ADMIN accepts inclusive 07:00/17:00 Guayaquil and rejects 06:59/17:01 without writes', async () => {
+    const count = database.sql('unit_b', 'SELECT count(*) FROM public."order"');
+    const stock = database.sql('unit_b', 'SELECT stock FROM public.product');
+    await post({ ...guestBody(), scheduledDeliveryDate: calendar('2030-02-14T07:00:00-05:00') }).expect(201);
+    await post({ ...guestBody(), scheduledDeliveryDate: calendar('2030-02-14T17:00:00-05:00') }).expect(201);
+    const tooEarly = await post({ ...guestBody(), scheduledDeliveryDate: calendar('2030-02-14T06:59:00-05:00') }).expect(422);
+    expect(tooEarly.body.error).toMatchObject({
+      code: 'DELIVERY_OUTSIDE_HOURS',
+      message: 'Scheduled delivery time 06:59 is outside commercial delivery hours (07:00 - 17:00)',
+    });
+    expect(tooEarly.body.error.requestId).toEqual(expect.stringMatching(/^[0-9a-f-]{36}$/));
+    const tooLate = await post({ ...guestBody(), scheduledDeliveryDate: calendar('2030-02-14T17:01:00-05:00') }).expect(422);
+    expect(tooLate.body.error.code).toBe('DELIVERY_OUTSIDE_HOURS');
+    expect(Number(database.sql('unit_b', 'SELECT count(*) FROM public."order"'))).toBe(Number(count) + 2);
+    expect(database.sql('unit_b', 'SELECT stock FROM public.product')).toBe(String(Number(stock) - 2));
+  });
+
+  it('ADMIN rejects an exterior point with 422 and no order or stock debit', async () => {
+    const count = database.sql('unit_b', 'SELECT count(*) FROM public."order"');
+    const stock = database.sql('unit_b', 'SELECT stock FROM public.product');
+    const exterior = await post({ ...guestBody(), deliveryLat: 0, deliveryLng: 0 }).expect(422);
+    expect(exterior.body.error).toMatchObject({
+      code: 'DELIVERY_OUTSIDE_COVERAGE',
+      message: 'Delivery point is outside the configured store coverage',
+    });
+    expect(exterior.body.error.requestId).toEqual(expect.stringMatching(/^[0-9a-f-]{36}$/));
+    expect(database.sql('unit_b', 'SELECT count(*) FROM public."order"')).toBe(count);
+    expect(database.sql('unit_b', 'SELECT stock FROM public.product')).toBe(stock);
+  });
+
   it('paginates scheduled business-day filters with stable date/id order and safe user summaries', async () => {
-    await post({ ...guestBody(), scheduledDeliveryDate: calendar('2030-02-15T04:59:59Z') }).expect(201);
-    await post({ ...guestBody(), scheduledDeliveryDate: calendar('2030-02-15T05:00:00Z') }).expect(201);
-    const response = await get(calendar('?date=2030-02-14&zoneId=b-zone&status=PENDING&pageSize=2')).expect(200);
+    await post({ ...guestBody(), scheduledDeliveryDate: calendar('2030-02-14T22:00:00Z') }).expect(201);
+    await post({ ...guestBody(), scheduledDeliveryDate: calendar('2030-02-15T12:00:00Z') }).expect(201);
+    const response = await get(calendar('?date=2030-02-14&status=PENDING&pageSize=2')).expect(200);
     expect(response.body).toMatchObject({ page: 1, pageSize: 2, items: expect.any(Array), total: expect.any(Number) });
-    const all = await get(calendar('?date=2030-02-14&zoneId=b-zone&status=PENDING&pageSize=100')).expect(200);
+    const all = await get(calendar('?date=2030-02-14&status=PENDING&pageSize=100')).expect(200);
     expect(all.body.total).toBe(all.body.items.length);
     const keys = all.body.items.map((order: { scheduledDeliveryDate: string; id: string }) => `${order.scheduledDeliveryDate}:${order.id}`);
     expect(keys).toEqual([...keys].sort((a, b) => a < b ? -1 : a > b ? 1 : 0));
-    expect(all.body.items.some((order: { scheduledDeliveryDate: string }) => order.scheduledDeliveryDate === calendar('2030-02-15T04:59:59Z'))).toBe(true);
-    expect(all.body.items.some((order: { scheduledDeliveryDate: string }) => order.scheduledDeliveryDate === calendar('2030-02-15T05:00:00Z'))).toBe(false);
-    const second = await get(calendar('?date=2030-02-14&zoneId=b-zone&status=PENDING&pageSize=2&page=2')).expect(200);
+    expect(all.body.items.some((order: { scheduledDeliveryDate: string }) => order.scheduledDeliveryDate === calendar('2030-02-14T22:00:00Z'))).toBe(true);
+    expect(all.body.items.some((order: { scheduledDeliveryDate: string }) => order.scheduledDeliveryDate === calendar('2030-02-15T12:00:00Z'))).toBe(false);
+    const second = await get(calendar('?date=2030-02-14&status=PENDING&pageSize=2&page=2')).expect(200);
     expect(second.body.items.map((order: { id: string }) => order.id)).toEqual(all.body.items.slice(2, 4).map((order: { id: string }) => order.id));
     for (const order of all.body.items) if (order.user) expect(Object.keys(order.user).sort()).toEqual(['id', 'name']);
     expect(JSON.stringify(all.body)).not.toMatch(/private-hash|@example\.test|password/);
@@ -186,7 +251,70 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
     const client = await get('/b-history', 'client').expect(200);
     expect(client.body.recipientName).toBeNull();
     expect(client.body).not.toHaveProperty('recipientPhone');
-    await get('/absent-order').expect(404);
+    const missing = await get('/absent-order').expect(404);
+    expect(missing.body).toEqual({
+      statusCode: 404,
+      message: "Pedido con ID 'absent-order' no encontrado",
+      error: 'Not Found',
+    });
+  });
+
+  it('keeps Nest 400/409 status bodies on order status writes, not Shop INTERNAL_ERROR', async () => {
+    const assign = await patchStatus(registeredId, { status: 'ASSIGNED' }).expect(400);
+    expect(assign.body).toEqual({
+      statusCode: 400,
+      message: 'La asignación de pedidos solo puede realizarse a través del endpoint de rutas',
+      error: 'Bad Request',
+    });
+    expect(database.sql('unit_b', `SELECT status FROM public."order" WHERE id='${registeredId}'`)).toBe('PENDING');
+
+    database.sql('unit_b', `UPDATE public."order" SET "routeId"='b-route' WHERE id='${guestId}'`);
+    const conflict = await patchStatus(guestId, { status: 'IN_TRANSIT' }, 'driver').expect(409);
+    expect(conflict.body).toEqual({
+      statusCode: 409,
+      message: 'Stable route stop required',
+      error: 'Conflict',
+    });
+    expect(database.sql('unit_b', `SELECT status FROM public."order" WHERE id='${guestId}'`)).toBe('PENDING');
+  });
+
+  it('confirms a public route for a coverage order with null zoneId and rolls back a missing order', async () => {
+    const { zoneId: _omit, ...coverageBody } = guestBody();
+    const created = await post(coverageBody).expect(201);
+    expect(created.body.zoneId).toBeNull();
+    expect(database.sql('unit_b', `SELECT ("zoneId" IS NULL)::text FROM public."order" WHERE id='${created.body.id}'`)).toBe('true');
+
+    const confirmed = await confirmRoute({
+      zoneId: 'b-zone',
+      orderIds: [created.body.id],
+      routeDate: calendar('2030-02-14T15:00:00Z'),
+    });
+    expect(confirmed.status).toBe(201);
+    expect(database.sql('unit_b', `SELECT ("zoneId" IS NULL)::text FROM public."order" WHERE id='${created.body.id}'`)).toBe('true');
+    expect(database.sql('unit_b', `SELECT count(*) FROM public."routeStop" WHERE "orderId"='${created.body.id}'`)).toBe('1');
+
+    const mismatched = await post({ ...guestBody(), zoneId: 'b-no-depot' }).expect(201);
+    expect(mismatched.body.zoneId).toBe('b-no-depot');
+    expect(database.sql('unit_b', `SELECT "zoneId" FROM public."order" WHERE id='${mismatched.body.id}'`)).toBe('b-no-depot');
+    const rejected = await confirmRoute({
+      zoneId: 'b-zone',
+      orderIds: [mismatched.body.id],
+      routeDate: calendar('2030-02-14T15:00:00Z'),
+    });
+    expect(rejected.status).toBe(409);
+    expect(database.sql('unit_b', `SELECT count(*) FROM public."routeStop" WHERE "orderId"='${mismatched.body.id}'`)).toBe('0');
+
+    const pending = await post(coverageBody).expect(201);
+    const routesBefore = database.sql('unit_b', 'SELECT count(*) FROM public.route');
+    const missingOrder = await confirmRoute({
+      zoneId: 'b-zone',
+      orderIds: [pending.body.id, '00000000-0000-4000-8000-000000000099'],
+      routeDate: calendar('2030-02-14T15:00:00Z'),
+    });
+    expect(missingOrder.status).toBe(404);
+    expect(database.sql('unit_b', 'SELECT count(*) FROM public.route')).toBe(routesBefore);
+    expect(database.sql('unit_b', `SELECT count(*) FROM public."routeStop" WHERE "orderId"='${pending.body.id}'`)).toBe('0');
+    expect(database.sql('unit_b', `SELECT ("zoneId" IS NULL)::text FROM public."order" WHERE id='${pending.body.id}'`)).toBe('true');
   });
 
   it('retains owned-url and ambient-url guards before dynamic application imports', () => {
@@ -202,10 +330,13 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
     expect(recipient.oneOf).toHaveLength(2);
     expect(recipient.discriminator.propertyName).toBe('type');
     expect(recipient.discriminator.mapping).toHaveProperty('GUEST');
-    for (const field of ['userId', 'createdById', 'recipientType', 'recipientName', 'recipientPhone', 'deliveryWindowStart', 'deliveryWindowEnd']) {
+    for (const field of ['userId', 'createdById', 'zoneId', 'recipientType', 'recipientName', 'recipientPhone', 'deliveryWindowStart', 'deliveryWindowEnd']) {
       expect(schemas.OrderCreatedResponseDto.properties[field].nullable).toBe(true);
     }
     expect(Object.keys(schemas.UserSummaryDto.properties).sort()).toEqual(['id', 'name']);
+    expect(schemas.CreateOrderDto.properties.zoneId.description).toBe(
+      'Deprecated. Ignored for eligibility; persist the FK when sent, otherwise store null.',
+    );
     const admin = document.paths['/api/v1/orders/admin'].post!;
     for (const status of ['201', '400', '401', '403', '404']) expect(admin.responses[status]).toBeDefined();
     expect((document.paths['/api/v1/orders'].get!.responses['200'] as any).content['application/json'].schema.$ref).toBe('#/components/schemas/AdminOrdersPageDto');

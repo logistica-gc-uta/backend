@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Query,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -33,6 +34,7 @@ import {
   OrderResponseDto,
 } from './dto/order-response.dto.js';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto.js';
+import { OrdersCreateHttpExceptionFilter } from './orders-create-http.filter.js';
 import { OrdersService } from './orders.service.js';
 
 @ApiTags('Orders')
@@ -43,6 +45,7 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
+  @UseFilters(OrdersCreateHttpExceptionFilter)
   @Roles(Role.CLIENT)
   @ApiOperation({
     summary: 'Crear un pedido con reserva de inventario (Solo CLIENT)',
@@ -67,6 +70,7 @@ export class OrdersController {
   }
 
   @Post('admin')
+  @UseFilters(OrdersCreateHttpExceptionFilter)
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Create a delivery for a registered CLIENT or GUEST (ADMIN)' })
   @ApiResponse({ status: 201, type: OrderCreatedResponseDto, description: 'Created with JWT creator and recipient snapshot' })
