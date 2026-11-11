@@ -1,6 +1,6 @@
 ## Descripción
 
-Completa #35: pruebas de contrato y de concurrencia sobre PostgreSQL real para los casos de la matriz CI-SHOP-001 §15 que no tenían cobertura de punta a punta, y la matriz de evidencia con resultados ejecutados.
+Segunda parte de #35 (apilada sobre el PR del seeder de 200 regalos): pruebas de contrato y de concurrencia sobre PostgreSQL real para los casos de la matriz CI-SHOP-001 §15 que no tenían cobertura de punta a punta, y la matriz de evidencia con resultados ejecutados.
 
 ## Issue relacionado
 
@@ -13,7 +13,7 @@ Refs #35
 - Validación del OpenAPI candidato: `shop-openapi-document.spec.ts` (documento válido y coherente) y `shop-openapi-contract.e2e-spec.ts` (las respuestas reales cumplen los esquemas). Nuevas dependencias de desarrollo: `yaml` y `ajv`. Hallazgo D-4: `GET /shop/orders` devuelve `primaryProductId`, que el contrato no declara.
 - Subcasos que faltaban: CT-009 (fecha que vence durante la espera de un bloqueo), CT-040 (cambio de horario seguido de compra) y CT-042 (auditoría de importes con más de dos decimales y rollback).
 - Matriz de evidencia CT-001..043 con PASS / PASS (parcial) / BLOCKED en `docs/issue-35-evidence-matrix.md`.
-- Correcciones de las pruebas existentes: fechas de entrega fijas de 2026-11-15 (fallarían desde esa fecha) y `pnpm` en Windows en los dos fixtures de base propia; `ci-security.spec.ts` ahora espera 35 suites.
+- Correcciones de las pruebas existentes: fechas de entrega fijas de 2026-11-15 (fallarían desde esa fecha) y el conteo de suites e2e en `ci-security.spec.ts`.
 
 ## Pruebas realizadas
 
@@ -31,15 +31,15 @@ Refs #35
 
 ## Impacto técnico
 
-**API / Contratos:** sin cambios.
+**API / Contratos:** sin cambios en la API; se agrega validación contra `docs/REGALIA-SHOP-OPENAPI-v1.2.yaml`.
 
-**Base de datos / Migraciones:** sin cambios.
+**Base de datos / Migraciones:** sin cambios. Dependencias de desarrollo nuevas: `yaml` y `ajv`.
 
 **Seguridad y permisos:** sin cambios; las pruebas no usan credenciales reales.
 
 **Compatibilidad con otros componentes:** CT-028 y CT-031 dependen de Flutter y React y quedan BLOCKED.
 
-**Limitaciones conocidas:** los CP-SHOP-001..034 no se mapearon porque su definición no está en el repositorio.
+**Limitaciones conocidas:** los CP-SHOP-001..034 no se mapearon porque su definición no está en el repositorio; D-4 queda abierto (`it.failing`) hasta que backend alinee el contrato; las secciones de compra ADMIN, cobertura, rutas con motor vial, retiro y pérdida de la guía dependen de los issues #41–#52 y no se declaran aprobadas.
 
 ## Checklist de entrega
 
