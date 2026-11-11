@@ -1,12 +1,12 @@
 # Issue #35 — Matriz de evidencia (CI-SHOP-001 v1.2 §15)
 
-Resultados **ejecutados** el 2026-11-04 sobre PostgreSQL 16 real en contenedores propios (rama `test/35-a-shop-demo-catalog`, Windows 11, Node 26). Nada se marca PASS sin haberse ejecutado; lo que no se pudo ejecutar figura como BLOCKED con su motivo.
+Resultados **ejecutados** sobre PostgreSQL 16 real en contenedores propios (Windows 11, Node 26). Los casos CT se ejecutaron el 2026-11-04; el 2026-11-10 se reintegraron las ramas sobre `main` (commit `2eb0230`) y se repitió la suite e2e completa (ver abajo). Nada se marca PASS sin haberse ejecutado; lo que no se pudo ejecutar figura como BLOCKED con su motivo.
 
 ## Resumen de ejecución
 
 | Conjunto | Resultado |
 |---|---|
-| e2e autónomos (32 suites sin las 3 heredadas) | **515 de 515 PASS** (379 en la corrida completa + 136 de 4 suites `admin-guest-orders-*` repetidas tras corregir `pnpm` en Windows) |
+| e2e autónomos (33 suites sin las 3 heredadas), tras reintegrar sobre `main` | **517 de 520 PASS** en la corrida completa. Las 3 que fallaron son de `realtime.e2e-spec` (Issue 13, no tocada por #35): `reconnects and resynchronizes…` devolvió 500; ejecutada sola pasa 9/9. Se registra como intermitente (H-4), sin causa confirmada |
 | de ellos, nuevos de #35 | seed 7 · contrato 13 · concurrencia 5 |
 | Unitarias (84 suites, 982 pruebas) | 940 PASS · 42 FAIL, todos preexistentes en Windows (ver «Fallos conocidos») |
 | Cobertura unitaria | líneas 89,3 % · funciones 84,6 % · ramas 80,3 % (exigido ≥ 80 %) |
@@ -74,10 +74,11 @@ La definición de estos casos **no está en el repositorio** (solo se menciona `
 |---|---|---|---|
 | D-1 | Alta | Las suites de Shop tenían fechas de entrega fijas (`2026-11-15`, 42 ocurrencias): desde esa fecha la cotización las rechaza por «fecha pasada» y el CI se pone en rojo | Corregido: fechas movidas a 2030 (102 pruebas PASS). Conviene generarlas dinámicamente |
 | D-2 | Media | En Windows los fixtures no encuentran `pnpm` (`spawnSync pnpm ENOENT`): 4 suites (136 pruebas) no podían correr | Corregido en los dos fixtures, solo ante ENOENT |
-| D-3 | Baja | `ci-security.spec.ts` fija el número de suites e2e (32); al agregar suites hay que actualizarlo | Corregido: 35 |
+| D-3 | Baja | `ci-security.spec.ts` fija el número de suites e2e; al agregar suites hay que actualizarlo | Corregido: 36 (33 de `main` + 3 de #35) |
 | H-1 | Informativo | El reintento idempotente devuelve el mismo contenido pero con otro orden de claves JSON | Sin acción |
 | H-2 | Informativo | `PATCH /admin/shop-settings` espera a las compras en curso (checkout toma los ajustes `FOR SHARE`); la compra en curso conserva los ajustes con los que se cotizó | Comportamiento correcto, cubierto por prueba |
 | H-3 | Informativo | Con 12 compradores simultáneos no hubo bloqueos ni agotamiento del pool | Sin acción |
+| H-4 | Media | `realtime.e2e-spec` falló una vez (500 al resincronizar tras reconectar) dentro de la corrida completa y pasó 9/9 al repetirla sola. No es parte de #35, pero conviene repetirla en CI (Linux) para descartar una condición de carrera | Abierto: sin causa confirmada |
 
 ## Fallos conocidos (preexistentes, solo Windows)
 

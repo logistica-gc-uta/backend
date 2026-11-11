@@ -4,7 +4,7 @@ Completa #35: pruebas de contrato y de concurrencia sobre PostgreSQL real para l
 
 ## Issue relacionado
 
-Closes #35
+Refs #35
 
 ## Cambios realizados
 
@@ -19,7 +19,7 @@ Closes #35
 |---|---|---|
 | Análisis estático | PASS | `pnpm lint`, `tsc --noEmit` |
 | Pruebas unitarias | PASS en CI; en Windows 41 fallos preexistentes | cobertura líneas 89,3 % · ramas 80,3 % |
-| Pruebas de integración | PASS 515/515 | e2e autónomos con PostgreSQL 16 real |
+| Pruebas de integración | 517/520 PASS | e2e autónomos con PostgreSQL 16 real, tras reintegrar sobre `main`. Las 3 fallas son de `realtime.e2e-spec` (ajena a #35), que pasa 9/9 al repetirla sola; ver H-4 de la matriz |
 | Compilación | PASS | `nest build` |
 | Pruebas funcionales | PASS | 34 CT PASS, 6 parciales, 3 BLOCKED, 0 FAIL |
 
