@@ -14,6 +14,7 @@ import {
   UserFixture,
   ZoneFixture,
 } from './orders-security.fixtures.js';
+import { seedAmbatoStoreCoverage } from './ambato-store-coverage.fixture.js';
 
 describe('Orders Security Integration & E2E (PostgreSQL Real)', () => {
   let app: INestApplication;
@@ -66,6 +67,7 @@ describe('Orders Security Integration & E2E (PostgreSQL Real)', () => {
     prisma = app.get(PrismaService);
     jwtService = app.get(JwtService);
     fixtures = new SecurityFixtureManager(prisma, jwtService);
+    await seedAmbatoStoreCoverage(prisma);
 
     // 2. Creación aislada de actores con credenciales JWT reales y registros en PostgreSQL
     admin = await fixtures.createUser(Role.ADMIN, 'admin');
