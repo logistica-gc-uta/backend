@@ -4,6 +4,10 @@
   "target": "postgres",
   "profileHash": "3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2",
   "roots": {
+    "adminPurchaseAttempt": {
+      "model": "AdminPurchaseAttempt",
+      "namespace": "public"
+    },
     "category": {
       "model": "Category",
       "namespace": "public"
@@ -28,6 +32,10 @@
       "model": "DriverReservation",
       "namespace": "public"
     },
+    "externalPaymentDeclaration": {
+      "model": "ExternalPaymentDeclaration",
+      "namespace": "public"
+    },
     "legacyRouteReconciliation": {
       "model": "LegacyRouteReconciliation",
       "namespace": "public"
@@ -38,6 +46,10 @@
     },
     "orderClaim": {
       "model": "OrderClaim",
+      "namespace": "public"
+    },
+    "orderContactAudit": {
+      "model": "OrderContactAudit",
       "namespace": "public"
     },
     "orderItem": {
@@ -111,6 +123,19 @@
               {
                 "name": "FAILED",
                 "value": "FAILED"
+              }
+            ]
+          },
+          "ExternalPaymentMethod": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "CASH",
+                "value": "CASH"
+              },
+              {
+                "name": "TRANSFER",
+                "value": "TRANSFER"
               }
             ]
           },
@@ -222,6 +247,222 @@
           }
         },
         "models": {
+          "AdminPurchaseAttempt": {
+            "fields": {
+              "actorId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "declarationId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "errorCode": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "errorDetails": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "errorMessage": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "idempotencyKey": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "orderId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "receiptId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "requestHash": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "successSnapshot": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "actor": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "actorId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "declaration": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "declarationId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "ExternalPaymentDeclaration",
+                  "namespace": "public"
+                }
+              },
+              "order": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "orderId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Order",
+                  "namespace": "public"
+                }
+              },
+              "receipt": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "receiptId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "PurchaseReceipt",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "actorId": {
+                  "column": "actorId"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "declarationId": {
+                  "column": "declarationId"
+                },
+                "errorCode": {
+                  "column": "errorCode"
+                },
+                "errorDetails": {
+                  "column": "errorDetails"
+                },
+                "errorMessage": {
+                  "column": "errorMessage"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "idempotencyKey": {
+                  "column": "idempotencyKey"
+                },
+                "orderId": {
+                  "column": "orderId"
+                },
+                "receiptId": {
+                  "column": "receiptId"
+                },
+                "requestHash": {
+                  "column": "requestHash"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "successSnapshot": {
+                  "column": "successSnapshot"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "adminPurchaseAttempt"
+            }
+          },
           "Category": {
             "fields": {
               "createdAt": {
@@ -1048,6 +1289,141 @@
               "table": "driverReservation"
             }
           },
+          "ExternalPaymentDeclaration": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "declaredAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "declaredById": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "method": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "ExternalPaymentMethod",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "note": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "orderId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "adminPurchaseAttempts": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "declarationId"
+                  ]
+                },
+                "to": {
+                  "model": "AdminPurchaseAttempt",
+                  "namespace": "public"
+                }
+              },
+              "declaredBy": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "declaredById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "order": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "orderId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Order",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "declaredAt": {
+                  "column": "declaredAt"
+                },
+                "declaredById": {
+                  "column": "declaredById"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "method": {
+                  "column": "method"
+                },
+                "note": {
+                  "column": "note"
+                },
+                "orderId": {
+                  "column": "orderId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "externalPaymentDeclaration"
+            }
+          },
           "LegacyRouteReconciliation": {
             "fields": {
               "administratorId": {
@@ -1164,6 +1540,27 @@
           },
           "Order": {
             "fields": {
+              "buyerName": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "buyerPhone": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "contactRevision": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -1318,6 +1715,21 @@
               }
             },
             "relations": {
+              "adminPurchaseAttempts": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "orderId"
+                  ]
+                },
+                "to": {
+                  "model": "AdminPurchaseAttempt",
+                  "namespace": "public"
+                }
+              },
               "checkoutAttempts": {
                 "cardinality": "1:N",
                 "on": {
@@ -1330,6 +1742,21 @@
                 },
                 "to": {
                   "model": "CheckoutAttempt",
+                  "namespace": "public"
+                }
+              },
+              "contactAudits": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "orderId"
+                  ]
+                },
+                "to": {
+                  "model": "OrderContactAudit",
                   "namespace": "public"
                 }
               },
@@ -1346,6 +1773,22 @@
                 },
                 "to": {
                   "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "externalDeclaration": {
+                "cardinality": "1:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "orderId"
+                  ]
+                },
+                "to": {
+                  "model": "ExternalPaymentDeclaration",
                   "namespace": "public"
                 }
               },
@@ -1447,6 +1890,15 @@
             },
             "storage": {
               "fields": {
+                "buyerName": {
+                  "column": "buyerName"
+                },
+                "buyerPhone": {
+                  "column": "buyerPhone"
+                },
+                "contactRevision": {
+                  "column": "contactRevision"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -1604,6 +2056,120 @@
               },
               "namespaceId": "public",
               "table": "orderClaim"
+            }
+          },
+          "OrderContactAudit": {
+            "fields": {
+              "actorId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "field": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "nextValue": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "orderId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "previousValue": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "actor": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "actorId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "order": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "orderId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Order",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "actorId": {
+                  "column": "actorId"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "field": {
+                  "column": "field"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "nextValue": {
+                  "column": "nextValue"
+                },
+                "orderId": {
+                  "column": "orderId"
+                },
+                "previousValue": {
+                  "column": "previousValue"
+                }
+              },
+              "namespaceId": "public",
+              "table": "orderContactAudit"
             }
           },
           "OrderItem": {
@@ -2250,7 +2816,7 @@
           "PurchaseReceipt": {
             "fields": {
               "buyerId": {
-                "nullable": false,
+                "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
@@ -2384,9 +2950,24 @@
               }
             },
             "relations": {
+              "adminPurchaseAttempts": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "receiptId"
+                  ]
+                },
+                "to": {
+                  "model": "AdminPurchaseAttempt",
+                  "namespace": "public"
+                }
+              },
               "buyer": {
                 "cardinality": "N:1",
-                "nullable": false,
+                "nullable": true,
                 "on": {
                   "localFields": [
                     "buyerId"
@@ -3647,6 +4228,21 @@
               }
             },
             "relations": {
+              "adminPurchaseAttempts": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "actorId"
+                  ]
+                },
+                "to": {
+                  "model": "AdminPurchaseAttempt",
+                  "namespace": "public"
+                }
+              },
               "checkoutAttempts": {
                 "cardinality": "1:N",
                 "on": {
@@ -3659,6 +4255,21 @@
                 },
                 "to": {
                   "model": "CheckoutAttempt",
+                  "namespace": "public"
+                }
+              },
+              "contactAudits": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "actorId"
+                  ]
+                },
+                "to": {
+                  "model": "OrderContactAudit",
                   "namespace": "public"
                 }
               },
@@ -3690,6 +4301,21 @@
                 },
                 "to": {
                   "model": "Driver",
+                  "namespace": "public"
+                }
+              },
+              "externalDeclarations": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "declaredById"
+                  ]
+                },
+                "to": {
+                  "model": "ExternalPaymentDeclaration",
                   "namespace": "public"
                 }
               },
@@ -3905,6 +4531,212 @@
       "public": {
         "entries": {
           "table": {
+            "adminPurchaseAttempt": {
+              "checks": [
+                {
+                  "expression": "status IN ('PROCESSING', 'SUCCEEDED', 'REJECTED', 'FAILED') AND length(\"idempotencyKey\") BETWEEN 1 AND 128 AND length(\"requestHash\") BETWEEN 1 AND 128 AND ((status = 'PROCESSING' AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"declarationId\" IS NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NULL) OR (status = 'SUCCEEDED' AND \"orderId\" IS NOT NULL AND \"receiptId\" IS NOT NULL AND \"declarationId\" IS NOT NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NOT NULL AND json_typeof(\"successSnapshot\") = 'object') OR (status IN ('REJECTED', 'FAILED') AND \"errorCode\" IS NOT NULL AND length(\"errorCode\") BETWEEN 1 AND 64 AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"declarationId\" IS NULL AND \"successSnapshot\" IS NULL))",
+                  "name": "admin_purchase_attempt_status_consistency_9872e924",
+                  "prefix": "admin_purchase_attempt_status_consistency"
+                }
+              ],
+              "columns": {
+                "actorId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "declarationId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "errorCode": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "errorDetails": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": true
+                },
+                "errorMessage": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "idempotencyKey": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "orderId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "receiptId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "requestHash": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "PROCESSING"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "successSnapshot": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": true
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "actorId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "adminPurchaseAttempt"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "orderId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "adminPurchaseAttempt"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "order"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "receiptId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "adminPurchaseAttempt"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "purchaseReceipt"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "declarationId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "adminPurchaseAttempt"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "externalPaymentDeclaration"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "actorId"
+                  ],
+                  "name": "adminPurchaseAttempt_actorId_idx_a58f6b4b",
+                  "prefix": "adminPurchaseAttempt_actorId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "declarationId"
+                  ],
+                  "name": "adminPurchaseAttempt_declarationId_idx_2758bd12",
+                  "prefix": "adminPurchaseAttempt_declarationId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "orderId"
+                  ],
+                  "name": "adminPurchaseAttempt_orderId_idx_d284871b",
+                  "prefix": "adminPurchaseAttempt_orderId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "receiptId"
+                  ],
+                  "name": "adminPurchaseAttempt_receiptId_idx_9b8e07be",
+                  "prefix": "adminPurchaseAttempt_receiptId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "actorId",
+                    "idempotencyKey"
+                  ]
+                }
+              ]
+            },
             "category": {
               "checks": [
                 {
@@ -4678,6 +5510,123 @@
               },
               "uniques": []
             },
+            "externalPaymentDeclaration": {
+              "checks": [
+                {
+                  "expression": "\"method\" IN ('CASH', 'TRANSFER')",
+                  "name": "externalPaymentDeclaration_method_check_5587eb50",
+                  "prefix": "externalPaymentDeclaration_method_check"
+                },
+                {
+                  "expression": "\"note\" IS NULL OR (length(\"note\") BETWEEN 1 AND 200 AND \"note\" ~ '[^[:space:]]')",
+                  "name": "external_payment_declaration_note_valid_9e947d08",
+                  "prefix": "external_payment_declaration_note_valid"
+                }
+              ],
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "declaredAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "declaredById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "method": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "ExternalPaymentMethod",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "note": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "orderId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "orderId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "externalPaymentDeclaration"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "order"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "declaredById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "externalPaymentDeclaration"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "declaredById"
+                  ],
+                  "name": "externalPaymentDeclaration_declaredById_idx_dd0c7dda",
+                  "prefix": "externalPaymentDeclaration_declaredById_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "orderId"
+                  ]
+                }
+              ]
+            },
             "legacyRouteReconciliation": {
               "columns": {
                 "administratorId": {
@@ -4799,6 +5748,21 @@
                   "prefix": "failed_order_commercial_hold"
                 },
                 {
+                  "expression": "\"buyerName\" IS NULL OR (\"buyerName\" ~ '[^[:space:]]' AND length(\"buyerName\") BETWEEN 1 AND 120)",
+                  "name": "order_buyer_name_valid_b2bb714c",
+                  "prefix": "order_buyer_name_valid"
+                },
+                {
+                  "expression": "\"buyerPhone\" IS NULL OR (\"buyerPhone\" ~ '[^[:space:]]' AND length(\"buyerPhone\") BETWEEN 1 AND 40)",
+                  "name": "order_buyer_phone_valid_19141dd8",
+                  "prefix": "order_buyer_phone_valid"
+                },
+                {
+                  "expression": "\"contactRevision\" >= 0",
+                  "name": "order_contact_revision_nonnegative_6e7938df",
+                  "prefix": "order_contact_revision_nonnegative"
+                },
+                {
                   "expression": "(\"deliveryLat\" IS NULL AND \"deliveryLng\" IS NULL) OR (\"deliveryLat\" IS NOT NULL AND \"deliveryLng\" IS NOT NULL AND \"deliveryLat\" >= -90 AND \"deliveryLat\" <= 90 AND \"deliveryLng\" >= -180 AND \"deliveryLng\" <= 180)",
                   "name": "order_delivery_coordinates_valid_84ff84b6",
                   "prefix": "order_delivery_coordinates_valid"
@@ -4825,6 +5789,25 @@
                 }
               ],
               "columns": {
+                "buyerName": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "buyerPhone": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "contactRevision": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 0
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-temporal@1",
                   "default": {
@@ -5157,6 +6140,123 @@
                   ],
                   "name": "orderClaim_routeId_idx_91ae2fd6",
                   "prefix": "orderClaim_routeId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
+            "orderContactAudit": {
+              "checks": [
+                {
+                  "expression": "\"field\" IN ('buyerName', 'buyerPhone', 'recipientName', 'recipientPhone')",
+                  "name": "order_contact_audit_field_valid_c8d4a6a6",
+                  "prefix": "order_contact_audit_field_valid"
+                }
+              ],
+              "columns": {
+                "actorId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "field": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "nextValue": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "orderId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "previousValue": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "orderId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "orderContactAudit"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "order"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "actorId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "orderContactAudit"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "actorId"
+                  ],
+                  "name": "orderContactAudit_actorId_idx_a58f6b4b",
+                  "prefix": "orderContactAudit_actorId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "orderId",
+                    "createdAt"
+                  ],
+                  "name": "orderContactAudit_orderId_createdAt_idx_cf5e070a",
+                  "prefix": "orderContactAudit_orderId_createdAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "orderId"
+                  ],
+                  "name": "orderContactAudit_orderId_idx_d284871b",
+                  "prefix": "orderContactAudit_orderId_idx",
                   "unique": false
                 }
               ],
@@ -5739,7 +6839,7 @@
                 "buyerId": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
-                  "nullable": false
+                  "nullable": true
                 },
                 "commercialOrderNumber": {
                   "codecId": "pg/text@1",
@@ -7098,6 +8198,13 @@
                 "FAILED"
               ]
             },
+            "ExternalPaymentMethod": {
+              "kind": "valueSet",
+              "values": [
+                "CASH",
+                "TRANSFER"
+              ]
+            },
             "OrderStatus": {
               "kind": "valueSet",
               "values": [
@@ -7153,12 +8260,23 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "5e11bbaf1302fbf1e4e29d9e035846311bccdefcfac729378b0e54068f139b98"
+    "storageHash": "d0d70e575dc12d82fbeab635c30dcd5aa849f52f9bccb3251a8e414bdd715ba8"
   },
   "execution": {
-    "executionHash": "59a310d3a48432e67eb44cfdd26f69df0828479942b5b5a6e32c12c5a2e5a46b",
+    "executionHash": "dac09e945d150c63cfc477c1d5428bbced3cb831e1bbf2514ac091f711459cce",
     "mutations": {
       "defaults": [
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "adminPurchaseAttempt"
+          }
+        },
         {
           "onCreate": {
             "id": "uuidv4",
@@ -7233,6 +8351,17 @@
           "ref": {
             "column": "id",
             "namespace": "public",
+            "table": "externalPaymentDeclaration"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
             "table": "legacyRouteReconciliation"
           }
         },
@@ -7256,6 +8385,17 @@
             "column": "id",
             "namespace": "public",
             "table": "orderClaim"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "orderContactAudit"
           }
         },
         {

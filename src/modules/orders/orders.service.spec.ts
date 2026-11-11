@@ -11,6 +11,7 @@ import { ShopSettingsService } from '../shop/settings/shop-settings.service.js';
 import { StoreCoverageService } from '../store-coverage/store-coverage.service.js';
 import { AuthenticatedUser } from '../auth/decorators/current-user.decorator.js';
 import { OrderStatus } from './dto/update-order-status.dto.js';
+import { AdminPurchaseService } from './admin-purchase.service.js';
 import { OrdersService } from './orders.service.js';
 
 describe('OrdersService', () => {
@@ -138,6 +139,10 @@ describe('OrdersService', () => {
               },
             }),
           },
+        },
+        {
+          provide: AdminPurchaseService,
+          useValue: { create: jest.fn() },
         },
       ],
     }).compile();

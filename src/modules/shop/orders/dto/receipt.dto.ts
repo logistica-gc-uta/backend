@@ -1,16 +1,22 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class ReceiptBuyerDto {
   @ApiProperty({ description: 'Nombre del comprador' })
   name!: string;
 
-  @ApiProperty({ format: 'email', description: 'Correo del comprador' })
-  email!: string;
+  @ApiPropertyOptional({ format: 'email', description: 'Correo del comprador registrado; omitido para invitados' })
+  email?: string;
+
+  @ApiPropertyOptional({ description: 'Teléfono del comprador congelado en el comprobante' })
+  phone?: string;
 }
 
 export class ReceiptRecipientDto {
   @ApiProperty({ description: 'Nombre del destinatario' })
   name!: string;
+
+  @ApiPropertyOptional({ description: 'Teléfono del destinatario congelado en el comprobante; omitido si el snapshot histórico no lo trae' })
+  phone?: string;
 }
 
 export class ReceiptItemDto {
@@ -31,14 +37,26 @@ export class ReceiptItemDto {
 }
 
 export class ReceiptPaymentDto {
-  @ApiProperty({ enum: ['APPROVED'], default: 'APPROVED' })
-  status!: 'APPROVED';
+  @ApiProperty({ enum: ['APPROVED', 'DECLARED'] })
+  status!: 'APPROVED' | 'DECLARED';
 
-  @ApiProperty({ description: 'Referencia de la transacción de pago simulado' })
-  reference!: string;
+  @ApiPropertyOptional({ enum: ['ADMIN_DECLARED_EXTERNAL', 'SIMULATED_CARD'] })
+  kind?: 'ADMIN_DECLARED_EXTERNAL' | 'SIMULATED_CARD';
 
-  @ApiProperty({ description: 'Últimos 4 dígitos de la tarjeta utilizada' })
-  cardLast4!: string;
+  @ApiPropertyOptional({ description: 'Referencia de la transacción de pago simulado' })
+  reference?: string;
+
+  @ApiPropertyOptional({ description: 'Últimos 4 dígitos de la tarjeta utilizada' })
+  cardLast4?: string;
+
+  @ApiPropertyOptional({ enum: ['CASH', 'TRANSFER'] })
+  method?: 'CASH' | 'TRANSFER';
+
+  @ApiPropertyOptional()
+  declaredById?: string;
+
+  @ApiPropertyOptional({ format: 'date-time' })
+  declaredAt?: string;
 }
 
 export class SimulatedTaxQuoteDto {

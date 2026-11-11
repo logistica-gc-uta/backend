@@ -28,11 +28,12 @@ export function prepareOwnedApiDatabase(database: AdminOrdersDatabase): string {
   // Preserve the historical fixture origin, then exercise the current additive edge.
   database.prisma('unit_b', 'migrate', 'e357d1aa2fdc74464e729ec7cd8bb087b979a13b22e0f88aa005b60be4c16427');
   seedAdminApi(database);
-  database.prisma('unit_b', 'migrate', '5e11bbaf1302fbf1e4e29d9e035846311bccdefcfac729378b0e54068f139b98');
+  database.prisma('unit_b', 'migrate', 'd0d70e575dc12d82fbeab635c30dcd5aa849f52f9bccb3251a8e414bdd715ba8');
   database.sql('unit_b', `
     INSERT INTO public."storeCoverage" (id,"singletonKey",lat,lng,coverage)
       VALUES ('b-store','GLOBAL',-1.24908,-78.61675,
         '{"type":"Polygon","coordinates":[[[-78.7,-1.3],[-78.5,-1.3],[-78.5,-1.1],[-78.7,-1.1],[-78.7,-1.3]]]}'::jsonb);
+    UPDATE public.product SET "priceCents"=1000 WHERE id='b-product' AND "priceCents" IS NULL;
   `);
   process.env.DOTENV_CONFIG_PATH = '/dev/null';
   process.env.DATABASE_URL = database.ownedUrl('unit_b');
@@ -46,10 +47,15 @@ export const calendar = (iso: string) => iso.replace('2030', String(fixtureYear)
 
 export function guestBody() {
   return {
-    recipient: { type: 'GUEST', name: '  Guest Name  ', contactPhone: '  +593 99 123 4567  ' },
+    buyer: { type: 'GUEST' as const, name: '  Guest Name  ', contactPhone: '  +593 99 123 4567  ' },
+    payment: { method: 'CASH' as const },
     zoneId: 'b-zone', deliveryAddress: 'Confirmed address',
     deliveryLat: -1.2, deliveryLng: -78.6,
     scheduledDeliveryDate: calendar('2030-02-14T15:00:00Z'),
     items: [{ productId: 'b-product', quantity: 1 }],
   };
+}
+
+export function registeredBuyer(clientId: string, contactPhone = '+593 999') {
+  return { type: 'REGISTERED_CLIENT' as const, clientId, contactPhone };
 }

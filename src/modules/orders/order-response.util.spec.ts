@@ -20,6 +20,7 @@ describe('order response allowlist', () => {
     expect(response.recipientPhone).toBe('+593');
     expect(Object.keys(response).sort()).toEqual([
       'id', 'userId', 'createdById', 'recipientType', 'recipientName', 'recipientPhone',
+      'buyerName', 'buyerPhone', 'contactRevision',
       'zoneId', 'deliveryAddress', 'deliveryLat', 'deliveryLng', 'scheduledDeliveryDate',
       'deliveryWindowStart', 'deliveryWindowEnd', 'status', 'total', 'routeId', 'stopOrder',
       'createdAt', 'user', 'items', 'zone', 'deliveryLocation', 'planningEligibility',

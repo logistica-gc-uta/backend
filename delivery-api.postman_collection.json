@@ -3143,11 +3143,13 @@
       "name": "Issue 11 ADMIN registered and guest orders",
       "event": [
         { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
-          "const common = { zoneId: pm.collectionVariables.get('zoneId'), deliveryAddress: 'DEMO/TEST ADMIN recipient address', deliveryLat: -1.25, deliveryLng: -78.63, scheduledDeliveryDate: pm.collectionVariables.get('futureOrderDate'), items: [{productId: pm.collectionVariables.get('productId'), quantity: 1}] };",
-          "const guest = {...common, recipient: {type: 'GUEST', name: 'DEMO Guest', contactPhone: '+593999111222'}};",
+          "const common = { zoneId: pm.collectionVariables.get('zoneId'), deliveryAddress: 'DEMO/TEST ADMIN recipient address', deliveryLat: -1.25, deliveryLng: -78.63, scheduledDeliveryDate: pm.collectionVariables.get('futureOrderDate'), items: [{productId: pm.collectionVariables.get('productId'), quantity: 1}], payment: {method: 'CASH'} };",
+          "const guest = {...common, buyer: {type: 'GUEST', name: 'DEMO Guest', contactPhone: '+593999111222'}};",
+          "const key = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16); });",
+          "pm.variables.set('adminIdempotencyKey', key);",
           "pm.variables.set('adminGuestBody', JSON.stringify(guest));",
-          "pm.variables.set('adminRegisteredBody', JSON.stringify({...common, recipient: {type: 'REGISTERED_CLIENT', clientId: pm.collectionVariables.get('registeredClientId'), contactPhone: '+593999333444'}}));",
-          "pm.variables.set('adminUnknownBody', JSON.stringify({...guest, recipient: {...guest.recipient, unexpectedRecipientKey: 'reject'}}));"
+          "pm.variables.set('adminRegisteredBody', JSON.stringify({...common, buyer: {type: 'REGISTERED_CLIENT', clientId: pm.collectionVariables.get('registeredClientId'), contactPhone: '+593999333444'}}));",
+          "pm.variables.set('adminUnknownBody', JSON.stringify({...guest, buyer: {...guest.buyer, unexpectedRecipientKey: 'reject'}}));"
         ] } },
         { "listen": "test", "script": { "type": "text/javascript", "exec": [
           "pm.test('No authentication secrets in order payload', () => pm.expect(pm.response.text()).not.to.match(/password|access_token/));"
@@ -3156,7 +3158,7 @@
       "item": [
         {
           "name": "ADMIN creates REGISTERED_CLIENT order",
-          "request": { "method": "POST", "url": "{{baseUrl}}/orders/admin", "header": [{"key":"Content-Type","value":"application/json"}], "auth": {"type":"bearer","bearer":[{"key":"token","value":"{{adminToken}}","type":"string"}]}, "body":{"mode":"raw","raw":"{{adminRegisteredBody}}"} },
+          "request": { "method": "POST", "url": "{{baseUrl}}/orders/admin", "header": [{"key":"Content-Type","value":"application/json"},{"key":"Idempotency-Key","value":"{{adminIdempotencyKey}}"}], "auth": {"type":"bearer","bearer":[{"key":"token","value":"{{adminToken}}","type":"string"}]}, "body":{"mode":"raw","raw":"{{adminRegisteredBody}}"} },
           "event": [{"listen":"test","script":{"type":"text/javascript","exec":[
             "pm.test('Registered ADMIN creation 201', () => pm.response.to.have.status(201));",
             "const b = pm.response.json(); pm.collectionVariables.set('adminRegisteredOrderId', b.id);",
@@ -3166,7 +3168,7 @@
         },
         {
           "name": "ADMIN creates GUEST order",
-          "request": { "method": "POST", "url": "{{baseUrl}}/orders/admin", "header": [{"key":"Content-Type","value":"application/json"}], "auth": {"type":"bearer","bearer":[{"key":"token","value":"{{adminToken}}","type":"string"}]}, "body":{"mode":"raw","raw":"{{adminGuestBody}}"} },
+          "request": { "method": "POST", "url": "{{baseUrl}}/orders/admin", "header": [{"key":"Content-Type","value":"application/json"},{"key":"Idempotency-Key","value":"{{adminIdempotencyKey}}"}], "auth": {"type":"bearer","bearer":[{"key":"token","value":"{{adminToken}}","type":"string"}]}, "body":{"mode":"raw","raw":"{{adminGuestBody}}"} },
           "event": [{"listen":"test","script":{"type":"text/javascript","exec":[
             "pm.test('Guest ADMIN creation 201', () => pm.response.to.have.status(201));",
             "const b = pm.response.json(); pm.collectionVariables.set('adminGuestOrderId', b.id);",
@@ -3202,22 +3204,22 @@
         },
         {
           "name":"CLIENT cannot create ADMIN order",
-          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{clientToken}}","type":"string"}]},"body":{"mode":"raw","raw":"{{adminGuestBody}}"}},
+          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"},{"key":"Idempotency-Key","value":"{{adminIdempotencyKey}}"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{clientToken}}","type":"string"}]},"body":{"mode":"raw","raw":"{{adminGuestBody}}"}},
           "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('CLIENT ADMIN creation forbidden 403', () => pm.response.to.have.status(403));"]}}]
         },
         {
           "name":"DRIVER cannot create ADMIN order",
-          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{driverToken}}","type":"string"}]},"body":{"mode":"raw","raw":"{{adminGuestBody}}"}},
+          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"},{"key":"Idempotency-Key","value":"{{adminIdempotencyKey}}"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{driverToken}}","type":"string"}]},"body":{"mode":"raw","raw":"{{adminGuestBody}}"}},
           "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('DRIVER ADMIN creation forbidden 403', () => pm.response.to.have.status(403));"]}}]
         },
         {
           "name":"ADMIN creation requires JWT",
-          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{{adminGuestBody}}"}},
+          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"},{"key":"Idempotency-Key","value":"{{adminIdempotencyKey}}"}],"body":{"mode":"raw","raw":"{{adminGuestBody}}"}},
           "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('ADMIN creation unauthenticated 401', () => pm.response.to.have.status(401));"]}}]
         },
         {
           "name":"ADMIN recipient unknown key rejected",
-          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{adminToken}}","type":"string"}]},"body":{"mode":"raw","raw":"{{adminUnknownBody}}"}},
+          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"},{"key":"Idempotency-Key","value":"{{adminIdempotencyKey}}"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{adminToken}}","type":"string"}]},"body":{"mode":"raw","raw":"{{adminUnknownBody}}"}},
           "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('Unknown recipient key rejected 400', () => pm.response.to.have.status(400));"]}}]
         },
         {

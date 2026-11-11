@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import request from 'supertest';
 import { AdminOrdersDatabase } from './admin-guest-orders-migration.fixtures';
+import { randomUUID } from 'node:crypto';
 import { actors, guestBody, prepareOwnedApiDatabase, calendar } from './admin-guest-orders-api.fixtures';
 
 // This module has no static application/Prisma imports. Refuse ambient URLs first.
@@ -16,8 +17,8 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
   let registeredId: string;
   let guestId: string;
   const token = (actor: keyof typeof actors) => jwt.sign({ sub: actors[actor], role: 'ADMIN' });
-  const post = (body: unknown, actor: keyof typeof actors = 'admin') =>
-    request(app.getHttpServer()).post('/api/v1/orders/admin').auth(token(actor), { type: 'bearer' }).set('Content-Type', 'application/json').send(JSON.stringify(body));
+  const post = (body: unknown, actor: keyof typeof actors = 'admin', key = randomUUID()) =>
+    request(app.getHttpServer()).post('/api/v1/orders/admin').auth(token(actor), { type: 'bearer' }).set('Content-Type', 'application/json').set('Idempotency-Key', key).send(JSON.stringify(body));
   const get = (path: string, actor: keyof typeof actors = 'admin') =>
     request(app.getHttpServer()).get(`/api/v1/orders${path}`).auth(token(actor), { type: 'bearer' });
   const patchStatus = (id: string, body: unknown, actor: keyof typeof actors = 'admin') =>
@@ -41,7 +42,7 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
   });
 
   it('creates a registered recipient with real owner/creator and database snapshot', async () => {
-    const response = await post({ ...guestBody(), recipient: { type: 'REGISTERED_CLIENT', clientId: actors.client, contactPhone: ' +593 999 ' } }).expect(201);
+    const response = await post({ ...guestBody(), buyer: { type: 'REGISTERED_CLIENT', clientId: actors.client, contactPhone: ' +593 999 ' } }).expect(201);
     registeredId = response.body.id;
     expect(response.body).toMatchObject({ userId: actors.client, createdById: actors.admin, recipientType: 'REGISTERED_CLIENT', recipientName: 'Profile client', recipientPhone: '+593 999', status: 'PENDING' });
     expect(database.sql('unit_b', `SELECT "userId" || ':' || "createdById" || ':' || "recipientName" FROM public."order" WHERE id='${registeredId}'`)).toBe('b-client:b-admin:Profile client');
@@ -80,13 +81,14 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
     ['long phone', { type: 'GUEST', name: 'Name', contactPhone: '1'.repeat(41) }],
     ['null', null],
     ['array', [{ type: 'GUEST', name: 'Name', contactPhone: '123' }]],
-  ])('rejects invalid recipient %s with 400', async (_name, recipient) => {
-    await post({ ...guestBody(), recipient }).expect(400);
+  ])('rejects invalid buyer %s with 400', async (_name, buyer) => {
+    await post({ ...guestBody(), buyer }).expect(400);
   });
 
   it.each(['createdById', 'userId', 'role', 'clientId'])('rejects actor/owner injection %s', async (key) => {
     await post({ ...guestBody(), [key]: actors.admin }).expect(400);
-    await request(app.getHttpServer()).post('/api/v1/orders').auth(token('client'), { type: 'bearer' }).send({ ...guestBody(), recipient: undefined, [key]: actors.admin }).expect(400);
+    const { buyer: _b, payment: _p, ...legacy } = guestBody();
+    await request(app.getHttpServer()).post('/api/v1/orders').auth(token('client'), { type: 'bearer' }).send({ ...legacy, [key]: actors.admin }).expect(400);
   });
 
   it('rejects additional nested item fields and CLIENT recipient injection', async () => {
@@ -95,7 +97,7 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
   });
 
   it.each([['admin', actors.admin, 400], ['driver', actors.driver, 400]])('rejects registered owner %s', async (_name, clientId, status) => {
-    await post({ ...guestBody(), recipient: { type: 'REGISTERED_CLIENT', clientId } }).expect(status as number);
+    await post({ ...guestBody(), buyer: { type: 'REGISTERED_CLIENT', clientId, contactPhone: '+593 999' } }).expect(status as number);
   });
 
   it('keeps Nest 404 for a missing registered client and does not create an order or debit stock', async () => {
@@ -103,7 +105,7 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
     const stock = database.sql('unit_b', 'SELECT stock FROM public.product');
     const missing = await post({
       ...guestBody(),
-      recipient: { type: 'REGISTERED_CLIENT', clientId: 'missing-user' },
+      buyer: { type: 'REGISTERED_CLIENT', clientId: 'missing-user', contactPhone: '+593 999' },
     }).expect(404);
     expect(missing.body).toEqual({
       statusCode: 404,
@@ -131,9 +133,10 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
     expect(database.sql('unit_b', 'SELECT stock FROM public.product')).toBe(String(stock));
   });
 
-  it('allows optional registered phone and retains CLIENT optional coordinates/date', async () => {
-    const adminResponse = await post({ ...guestBody(), recipient: { type: 'REGISTERED_CLIENT', clientId: actors.foreign } }).expect(201);
-    expect(adminResponse.body.recipientPhone).toBeNull();
+  it('rejects registered buyer without phone and retains CLIENT optional coordinates/date', async () => {
+    const count = database.sql('unit_b', 'SELECT count(*) FROM public."order"');
+    await post({ ...guestBody(), buyer: { type: 'REGISTERED_CLIENT', clientId: actors.foreign } }).expect(400);
+    expect(database.sql('unit_b', 'SELECT count(*) FROM public."order"')).toBe(count);
     const response = await request(app.getHttpServer()).post('/api/v1/orders').auth(token('client'), { type: 'bearer' }).send({ zoneId: 'b-zone', deliveryAddress: 'Client address', items: [{ productId: 'b-product', quantity: 1 }] }).expect(201);
     expect(response.body).toMatchObject({ userId: actors.client, createdById: actors.client, recipientType: 'REGISTERED_CLIENT', recipientName: 'Changed profile', deliveryLat: null, deliveryLng: null });
     expect(response.body).not.toHaveProperty('recipientPhone');
@@ -326,10 +329,11 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
   it('documents actual discriminator, nullable history, pagination and errors in Swagger', () => {
     const document = SwaggerModule.createDocument(app, new DocumentBuilder().build());
     const schemas = document.components!.schemas! as Record<string, any>;
-    const recipient = schemas.CreateAdminOrderDto.properties.recipient;
-    expect(recipient.oneOf).toHaveLength(2);
-    expect(recipient.discriminator.propertyName).toBe('type');
-    expect(recipient.discriminator.mapping).toHaveProperty('GUEST');
+    const buyer = schemas.CreateAdminOrderDto.properties.buyer;
+    expect(buyer.oneOf).toHaveLength(2);
+    expect(buyer.discriminator.propertyName).toBe('type');
+    expect(buyer.discriminator.mapping).toHaveProperty('GUEST');
+    expect(schemas.CreateAdminOrderDto.properties.payment).toBeDefined();
     for (const field of ['userId', 'createdById', 'zoneId', 'recipientType', 'recipientName', 'recipientPhone', 'deliveryWindowStart', 'deliveryWindowEnd']) {
       expect(schemas.OrderCreatedResponseDto.properties[field].nullable).toBe(true);
     }
@@ -340,5 +344,88 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
     const admin = document.paths['/api/v1/orders/admin'].post!;
     for (const status of ['201', '400', '401', '403', '404']) expect(admin.responses[status]).toBeDefined();
     expect((document.paths['/api/v1/orders'].get!.responses['200'] as any).content['application/json'].schema.$ref).toBe('#/components/schemas/AdminOrdersPageDto');
+  });
+
+  it('records a registered gift with distinct contacts, frozen golden money and printable receipts', async () => {
+    database.sql('unit_b', `UPDATE public.product SET price=73, "priceCents"=7300 WHERE id='b-product'`);
+    database.sql('unit_b', `UPDATE public."shopBusinessSettings" SET "taxEnabled"=true, "taxRateBps"=1500`);
+    const key = randomUUID();
+    const body = {
+      ...guestBody(),
+      buyer: { type: 'REGISTERED_CLIENT', clientId: actors.client, contactPhone: '+593111' },
+      giftRecipient: { name: 'Gift Person', contactPhone: '+593222' },
+      payment: { method: 'TRANSFER' },
+      items: [{ productId: 'b-product', quantity: 1 }],
+    };
+    const created = await post(body, 'admin', key).expect(201);
+    expect(created.body.userId).toBe(actors.client);
+    expect(created.body.createdById).toBe(actors.admin);
+    expect(created.body.buyerPhone).toBe('+593111');
+    expect(created.body.recipientPhone).toBe('+593222');
+    expect(created.body.recipientName).toBe('Gift Person');
+    expect(created.body.subtotalCents).toBe(7300);
+    expect(created.body.taxAmountCents).toBe(1095);
+    expect(created.body.shippingAmountCents).toBe(0);
+    expect(created.body.totalCents).toBe(8395);
+    expect(created.body.payment).toMatchObject({ kind: 'ADMIN_DECLARED_EXTERNAL', status: 'DECLARED', method: 'TRANSFER', declaredById: actors.admin });
+    expect(created.body.payment).not.toHaveProperty('cardLast4');
+    expect(database.sql('unit_b', `SELECT count(*) FROM public."paymentAttempt" WHERE "orderId"='${created.body.id}'`)).toBe('0');
+    const replay = await post(body, 'admin', key).expect(201);
+    expect(replay.body.id).toBe(created.body.id);
+    const conflict = await post({ ...body, deliveryAddress: 'Other' }, 'admin', key).expect(409);
+    expect(conflict.body.error.code).toBe('IDEMPOTENCY_KEY_REUSED');
+    database.sql('unit_b', `UPDATE public."shopBusinessSettings" SET "taxRateBps"=2000`);
+    database.sql('unit_b', `UPDATE public.product SET "priceCents"=9999 WHERE id='b-product'`);
+    const adminReceipt = await get(`/${created.body.id}/receipt`).expect(200);
+    expect(adminReceipt.body.totalCents).toBe(8395);
+    expect(adminReceipt.body.tax.rateBps).toBe(1500);
+    expect(adminReceipt.body.payment.kind).toBe('ADMIN_DECLARED_EXTERNAL');
+    const clientToken = jwt.sign({ sub: actors.client, role: 'CLIENT' });
+    const own = await request(app.getHttpServer()).get(`/api/v1/shop/orders/${created.body.id}/receipt`).auth(clientToken, { type: 'bearer' }).expect(200);
+    expect(own.body.totalCents).toBe(8395);
+    const other = await request(app.getHttpServer()).get(`/api/v1/shop/orders/${created.body.id}/receipt`).auth(jwt.sign({ sub: actors.foreign, role: 'CLIENT' }), { type: 'bearer' }).expect(404);
+    expect(other.body.error.code).toBe('ORDER_NOT_FOUND');
+    const patched = await request(app.getHttpServer()).patch(`/api/v1/orders/${created.body.id}/contact`).auth(token('admin'), { type: 'bearer' }).send({ contactRevision: 0, buyerPhone: '+593333' }).expect(200);
+    expect(patched.body.buyerPhone).toBe('+593333');
+    expect((await get(`/${created.body.id}/receipt`).expect(200)).body.totalCents).toBe(8395);
+    expect((await get(`/${created.body.id}/receipt`).expect(200)).body.buyer.phone).toBe('+593111');
+    const history = await get(`/${created.body.id}/contact-history`).expect(200);
+    expect(history.body[0]).toMatchObject({ field: 'buyerPhone', previousValue: '+593111', nextValue: '+593333', actorId: actors.admin });
+    expect(own.body.recipient).toMatchObject({ name: 'Gift Person', phone: '+593222' });
+    const recovered = await get(`/admin/purchase-attempts/${key}`).expect(200);
+    expect(recovered.body).toMatchObject({ status: 'SUCCEEDED', orderId: created.body.id });
+    expect(recovered.body.result.id).toBe(created.body.id);
+    await get(`/admin/purchase-attempts/${key}`, 'admin2').expect(404);
+  });
+
+  it('lets ADMIN print a guest receipt without fabricating an account', async () => {
+    const created = await post({
+      ...guestBody(),
+      buyer: { type: 'GUEST', name: 'Walk-in', contactPhone: '+593444' },
+      payment: { method: 'CASH' },
+    }).expect(201);
+    expect(created.body.userId).toBeNull();
+    const receipt = await get(`/${created.body.id}/receipt`).expect(200);
+    expect(receipt.body.buyer).toEqual({ name: 'Walk-in', phone: '+593444' });
+    expect(receipt.body.payment).toMatchObject({ kind: 'ADMIN_DECLARED_EXTERNAL', status: 'DECLARED', method: 'CASH' });
+    expect(receipt.body.payment).not.toHaveProperty('cardLast4');
+    expect(database.sql('unit_b', `SELECT ("buyerId" IS NULL)::text FROM public."purchaseReceipt" WHERE "orderId"='${created.body.id}'`)).toBe('true');
+    await request(app.getHttpServer()).get(`/api/v1/shop/orders/${created.body.id}/receipt`)
+      .auth(jwt.sign({ sub: actors.client, role: 'CLIENT' }), { type: 'bearer' }).expect(404);
+  });
+
+  it('sells the last unit once under concurrent ADMIN creates', async () => {
+    database.sql('unit_b', `INSERT INTO public.product (id,name,price,stock,"priceCents") VALUES ('b-last','Last unit',10,1,1000)`);
+    const bodyA = { ...guestBody(), items: [{ productId: 'b-last', quantity: 1 }], deliveryAddress: 'Last A' };
+    const bodyB = { ...guestBody(), items: [{ productId: 'b-last', quantity: 1 }], deliveryAddress: 'Last B' };
+    const [first, second] = await Promise.all([post(bodyA), post(bodyB)]);
+    const statuses = [first.status, second.status].sort((a, b) => a - b);
+    expect(statuses).toEqual([201, 400]);
+    const winner = first.status === 201 ? first : second;
+    const loser = first.status === 201 ? second : first;
+    expect(loser.body.message).toMatch(/Stock insuficiente/);
+    expect(database.sql('unit_b', `SELECT stock FROM public.product WHERE id='b-last'`)).toBe('0');
+    expect(database.sql('unit_b', `SELECT count(*) FROM public."purchaseReceipt" r JOIN public."orderItem" i ON i."orderId"=r."orderId" WHERE i."productId"='b-last'`)).toBe('1');
+    expect(winner.body.receipt.id).toBeTruthy();
   });
 });

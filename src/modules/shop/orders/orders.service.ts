@@ -80,6 +80,7 @@ interface ParsedSnapshot {
     id?: string;
     name?: string;
     email?: string;
+    phone?: string;
   };
   recipient?: {
     name?: string;
@@ -114,9 +115,13 @@ interface ParsedSnapshot {
     totalCents?: number;
   };
   payment?: {
+    kind?: string;
     status?: string;
     reference?: string;
     cardLast4?: string;
+    method?: string;
+    declaredById?: string;
+    declaredAt?: string;
   };
   disclaimer?: string;
 }
@@ -666,17 +671,31 @@ export class ShopOrdersService {
       if (
         !snap.buyer?.name ||
         typeof snap.buyer.name !== 'string' ||
-        !snap.buyer.name.trim() ||
-        !snap.buyer?.email ||
-        typeof snap.buyer.email !== 'string' ||
-        !snap.buyer.email.trim()
+        !snap.buyer.name.trim()
+      ) {
+        throw shopError(HttpStatus.INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR', 'Snapshot buyer data corrupted');
+      }
+
+      const declared =
+        snap.payment?.kind === 'ADMIN_DECLARED_EXTERNAL' || snap.payment?.status === 'DECLARED';
+
+      if (
+        !declared &&
+        (!snap.buyer?.email ||
+          typeof snap.buyer.email !== 'string' ||
+          !snap.buyer.email.trim())
       ) {
         throw shopError(HttpStatus.INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR', 'Snapshot buyer data corrupted');
       }
 
       const buyer = {
         name: snap.buyer.name.trim(),
-        email: snap.buyer.email.trim(),
+        ...(typeof snap.buyer.email === 'string' && snap.buyer.email.trim()
+          ? { email: snap.buyer.email.trim() }
+          : {}),
+        ...(typeof snap.buyer.phone === 'string' && snap.buyer.phone.trim()
+          ? { phone: snap.buyer.phone.trim() }
+          : {}),
       };
 
       if (!snap.recipient?.name || typeof snap.recipient.name !== 'string' || !snap.recipient.name.trim()) {
@@ -685,16 +704,36 @@ export class ShopOrdersService {
 
       const recipient = {
         name: snap.recipient.name.trim(),
+        ...(declared && typeof snap.recipient.phone === 'string' && snap.recipient.phone.trim()
+          ? { phone: snap.recipient.phone.trim() }
+          : {}),
       };
 
-      if (!snap.payment?.reference || !snap.payment?.cardLast4) {
-        throw shopError(HttpStatus.INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR', 'Snapshot payment data corrupted');
-      }
-
-      const payment = {
-        status: 'APPROVED' as const,
-        reference: snap.payment.reference,
-        cardLast4: snap.payment.cardLast4,
+      let payment: ReceiptDto['payment'];
+      if (declared) {
+        if (
+          (snap.payment?.method !== 'CASH' && snap.payment?.method !== 'TRANSFER') ||
+          typeof snap.payment?.declaredById !== 'string' ||
+          typeof snap.payment?.declaredAt !== 'string'
+        ) {
+          throw shopError(HttpStatus.INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR', 'Snapshot payment data corrupted');
+        }
+        payment = {
+          kind: 'ADMIN_DECLARED_EXTERNAL',
+          status: 'DECLARED',
+          method: snap.payment.method,
+          declaredById: snap.payment.declaredById,
+          declaredAt: snap.payment.declaredAt,
+        };
+      } else {
+        if (!snap.payment?.reference || !snap.payment?.cardLast4) {
+          throw shopError(HttpStatus.INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR', 'Snapshot payment data corrupted');
+        }
+        payment = {
+          status: 'APPROVED',
+          reference: snap.payment.reference,
+          cardLast4: snap.payment.cardLast4,
+        };
       };
 
       const ratePercent = row.taxRateBps / 100;

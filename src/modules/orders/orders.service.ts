@@ -24,6 +24,7 @@ import {
 } from './dto/update-order-status.dto.js';
 import { validateCoordinatePair } from './order-geography.util.js';
 import { validateOrderTransition } from './order-status.policy.js';
+import { AdminPurchaseService } from './admin-purchase.service.js';
 import { consolidateOrderItems, lockInventoryProduct } from './order-inventory.util.js';
 
 @Injectable()
@@ -33,6 +34,7 @@ export class OrdersService {
     private readonly progress: RouteProgressService,
     private readonly storeCoverage: StoreCoverageService,
     private readonly settingsService: ShopSettingsService,
+    private readonly adminPurchases: AdminPurchaseService,
   ) {}
 
   async createOrder(userId: string, dto: CreateOrderDto) {
@@ -59,29 +61,8 @@ export class OrdersService {
     return owner;
   }
 
-  async createAdminOrder(actorId: string, dto: CreateAdminOrderDto) {
-    const { deliveryWindowStart: start, deliveryWindowEnd: end } = parseDeliveryTiming(dto, true);
-
-    let ownerId: string | null = null;
-    let name: string;
-    if (dto.recipient.type === 'REGISTERED_CLIENT') {
-      const owner = await this.registeredOwner(dto.recipient.clientId);
-      ownerId = owner.id;
-      name = owner.name;
-    } else if (dto.recipient.type === 'GUEST') {
-      name = dto.recipient.name;
-    } else {
-      throw new BadRequestException('Unknown recipient type');
-    }
-    const phone = dto.recipient.contactPhone === undefined ? null :
-      this.recipientText(dto.recipient.contactPhone, 40, 'phone');
-    if (dto.recipient.type === 'GUEST' && phone === null) throw new BadRequestException('Guest contact is required');
-    const order = await this.persistOrder(dto, {
-      userId: ownerId, createdById: actorId, recipientType: dto.recipient.type,
-      recipientName: this.recipientText(name, 120, 'name'), recipientPhone: phone,
-      deliveryWindowStart: start, deliveryWindowEnd: end,
-    }, true);
-    return projectOrder(order, true);
+  async createAdminOrder(actorId: string, dto: CreateAdminOrderDto, idempotencyKey?: string) {
+    return this.adminPurchases.create(actorId, dto, idempotencyKey);
   }
 
   private async persistOrder(dto: CreateOrderDto, metadata: {

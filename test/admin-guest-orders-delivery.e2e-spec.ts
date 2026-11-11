@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
@@ -18,14 +19,18 @@ describe('Unit D delivery HTTP (owned PostgreSQL 16, advancing database clock)',
   const kinds = ['CLIENT', 'GUEST', 'REGISTERED_CLIENT'] as const;
   const body = (kind: Kind) => {
     const result = guestBody();
-    if (kind === 'REGISTERED_CLIENT') return { ...result, recipient: { type: kind, clientId: actors.client } };
-    if (kind === 'CLIENT') { const { recipient: _omit, ...client } = result; return client; }
+    if (kind === 'REGISTERED_CLIENT') return { ...result, buyer: { type: kind, clientId: actors.client, contactPhone: '+593 999' } };
+    if (kind === 'CLIENT') { const { buyer: _omitBuyer, payment: _omitPay, ...client } = result; return client; }
     return result;
   };
-  const post = (kind: Kind, payload: unknown) => request(app.getHttpServer())
-    .post(`/api/v1/orders${kind === 'CLIENT' ? '' : '/admin'}`)
-    .auth(jwt.sign({ sub: actors[kind === 'CLIENT' ? 'client' : 'admin'], role: 'ADMIN' }), { type: 'bearer' })
-    .set('Content-Type', 'application/json').send(JSON.stringify(payload)).timeout(12000);
+  const post = (kind: Kind, payload: unknown) => {
+    const req = request(app.getHttpServer())
+      .post(`/api/v1/orders${kind === 'CLIENT' ? '' : '/admin'}`)
+      .auth(jwt.sign({ sub: actors[kind === 'CLIENT' ? 'client' : 'admin'], role: 'ADMIN' }), { type: 'bearer' })
+      .set('Content-Type', 'application/json');
+    if (kind !== 'CLIENT') req.set('Idempotency-Key', randomUUID());
+    return req.send(JSON.stringify(payload)).timeout(12000);
+  };
   const state = () => database.sql('unit_b', `SELECT (SELECT stock FROM public.product WHERE id='b-product') || ':' ||
     (SELECT count(*) FROM public."order") || ':' || (SELECT count(*) FROM public."orderItem")`);
   const sequence = (name: 'stock' | 'item') => Number(database.sql('unit_b', `SELECT CASE WHEN is_called THEN last_value ELSE 0 END FROM delivery_evidence.${name}_writes`));

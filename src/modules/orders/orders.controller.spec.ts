@@ -18,7 +18,12 @@ describe('OrdersController', () => {
       findOne: jest.fn(),
       updateStatus: jest.fn(),
     };
-    controller = new OrdersController(ordersServiceMock);
+    controller = new OrdersController(ordersServiceMock, {
+      getAttempt: jest.fn(),
+      getReceipt: jest.fn(),
+      updateContact: jest.fn(),
+      contactHistory: jest.fn(),
+    } as any);
   });
 
   it('should be defined', () => {
@@ -41,8 +46,12 @@ describe('OrdersController', () => {
 
   it('delegates ADMIN creation with only the injected JWT actor and keeps distinct role gates', async () => {
     const dto = new CreateAdminOrderDto();
-    await controller.createAdmin('jwt-admin', dto);
-    expect(ordersServiceMock.createAdminOrder).toHaveBeenCalledWith('jwt-admin', dto);
+    await controller.createAdmin('jwt-admin', dto, '11111111-1111-4111-8111-111111111111');
+    expect(ordersServiceMock.createAdminOrder).toHaveBeenCalledWith(
+      'jwt-admin',
+      dto,
+      '11111111-1111-4111-8111-111111111111',
+    );
     expect(Reflect.getMetadata(ROLES_KEY, Object.getOwnPropertyDescriptor(OrdersController.prototype, 'createAdmin')!.value)).toEqual(['ADMIN']);
     expect(Reflect.getMetadata(ROLES_KEY, Object.getOwnPropertyDescriptor(OrdersController.prototype, 'create')!.value)).toEqual(['CLIENT']);
   });

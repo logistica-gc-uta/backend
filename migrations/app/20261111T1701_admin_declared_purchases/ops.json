@@ -1,0 +1,1205 @@
+[
+  {
+    "id": "table.adminPurchaseAttempt",
+    "label": "Create table \"adminPurchaseAttempt\"",
+    "summary": "Creates table \"adminPurchaseAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "adminPurchaseAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"adminPurchaseAttempt\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminPurchaseAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"adminPurchaseAttempt\"",
+        "sql": "CREATE TABLE \"public\".\"adminPurchaseAttempt\" (\n  \"actorId\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"declarationId\" text,\n  \"errorCode\" text,\n  \"errorDetails\" json,\n  \"errorMessage\" text,\n  \"id\" text NOT NULL,\n  \"idempotencyKey\" text NOT NULL,\n  \"orderId\" text,\n  \"receiptId\" text,\n  \"requestHash\" text NOT NULL,\n  \"status\" text DEFAULT 'PROCESSING' NOT NULL,\n  \"successSnapshot\" json,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"admin_purchase_attempt_status_consistency_9872e924\" CHECK (status IN ('PROCESSING', 'SUCCEEDED', 'REJECTED', 'FAILED') AND length(\"idempotencyKey\") BETWEEN 1 AND 128 AND length(\"requestHash\") BETWEEN 1 AND 128 AND ((status = 'PROCESSING' AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"declarationId\" IS NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NULL) OR (status = 'SUCCEEDED' AND \"orderId\" IS NOT NULL AND \"receiptId\" IS NOT NULL AND \"declarationId\" IS NOT NULL AND \"errorCode\" IS NULL AND \"errorMessage\" IS NULL AND \"errorDetails\" IS NULL AND \"successSnapshot\" IS NOT NULL AND json_typeof(\"successSnapshot\") = 'object') OR (status IN ('REJECTED', 'FAILED') AND \"errorCode\" IS NOT NULL AND length(\"errorCode\") BETWEEN 1 AND 64 AND \"orderId\" IS NULL AND \"receiptId\" IS NULL AND \"declarationId\" IS NULL AND \"successSnapshot\" IS NULL)))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"adminPurchaseAttempt\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminPurchaseAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.externalPaymentDeclaration",
+    "label": "Create table \"externalPaymentDeclaration\"",
+    "summary": "Creates table \"externalPaymentDeclaration\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "externalPaymentDeclaration"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"externalPaymentDeclaration\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"externalPaymentDeclaration\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"externalPaymentDeclaration\"",
+        "sql": "CREATE TABLE \"public\".\"externalPaymentDeclaration\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"declaredAt\" timestamptz NOT NULL,\n  \"declaredById\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"method\" text NOT NULL,\n  \"note\" text,\n  \"orderId\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"externalPaymentDeclaration_method_check_5587eb50\" CHECK (\"method\" IN ('CASH', 'TRANSFER')),\n  CONSTRAINT \"external_payment_declaration_note_valid_9e947d08\" CHECK (\"note\" IS NULL OR (length(\"note\") BETWEEN 1 AND 200 AND \"note\" ~ '[^[:space:]]'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"externalPaymentDeclaration\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"externalPaymentDeclaration\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.orderContactAudit",
+    "label": "Create table \"orderContactAudit\"",
+    "summary": "Creates table \"orderContactAudit\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "orderContactAudit"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"orderContactAudit\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderContactAudit\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"orderContactAudit\"",
+        "sql": "CREATE TABLE \"public\".\"orderContactAudit\" (\n  \"actorId\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"field\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"nextValue\" text,\n  \"orderId\" text NOT NULL,\n  \"previousValue\" text,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"order_contact_audit_field_valid_c8d4a6a6\" CHECK (\"field\" IN ('buyerName', 'buyerPhone', 'recipientName', 'recipientPhone'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"orderContactAudit\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderContactAudit\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.buyerName",
+    "label": "Add column \"buyerName\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "buyerName",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"buyerName\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "buyerName"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"buyerName\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"buyerName\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"buyerName\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "buyerName"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.buyerPhone",
+    "label": "Add column \"buyerPhone\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "buyerPhone",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"buyerPhone\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "buyerPhone"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"buyerPhone\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"buyerPhone\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"buyerPhone\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "buyerPhone"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.order.contactRevision",
+    "label": "Add column \"contactRevision\" to \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "contactRevision",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"contactRevision\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "contactRevision"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"contactRevision\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD COLUMN \"contactRevision\" int4 DEFAULT 0 NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"contactRevision\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "order",
+          "contactRevision"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.dropNotNull.purchaseReceipt.buyerId",
+    "label": "Drop NOT NULL on \"purchaseReceipt\".\"buyerId\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "buyerId",
+        "table": "purchaseReceipt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"buyerId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "purchaseReceipt",
+          "buyerId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop NOT NULL on \"buyerId\"",
+        "sql": "ALTER TABLE \"public\".\"purchaseReceipt\" ALTER COLUMN \"buyerId\" DROP NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"buyerId\" is nullable",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "purchaseReceipt",
+          "buyerId",
+          "YES"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.adminPurchaseAttempt.adminPurchaseAttempt_actorId_idempotencyKey_key",
+    "label": "Add unique constraint on \"adminPurchaseAttempt\" (actorId, idempotencyKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "adminPurchaseAttempt_actorId_idempotencyKey_key",
+        "table": "adminPurchaseAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"adminPurchaseAttempt_actorId_idempotencyKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adminPurchaseAttempt_actorId_idempotencyKey_key",
+          "public",
+          "\"public\".\"adminPurchaseAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"adminPurchaseAttempt_actorId_idempotencyKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"adminPurchaseAttempt\" ADD CONSTRAINT \"adminPurchaseAttempt_actorId_idempotencyKey_key\" UNIQUE (\"actorId\", \"idempotencyKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"adminPurchaseAttempt_actorId_idempotencyKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adminPurchaseAttempt_actorId_idempotencyKey_key",
+          "public",
+          "\"public\".\"adminPurchaseAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.externalPaymentDeclaration.externalPaymentDeclaration_orderId_key",
+    "label": "Add unique constraint on \"externalPaymentDeclaration\" (orderId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "externalPaymentDeclaration_orderId_key",
+        "table": "externalPaymentDeclaration"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"externalPaymentDeclaration_orderId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "externalPaymentDeclaration_orderId_key",
+          "public",
+          "\"public\".\"externalPaymentDeclaration\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"externalPaymentDeclaration_orderId_key\"",
+        "sql": "ALTER TABLE \"public\".\"externalPaymentDeclaration\" ADD CONSTRAINT \"externalPaymentDeclaration_orderId_key\" UNIQUE (\"orderId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"externalPaymentDeclaration_orderId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "externalPaymentDeclaration_orderId_key",
+          "public",
+          "\"public\".\"externalPaymentDeclaration\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.order.order_buyer_name_valid_b2bb714c",
+    "label": "Add check constraint \"order_buyer_name_valid_b2bb714c\" on \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "order_buyer_name_valid_b2bb714c",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"order_buyer_name_valid_b2bb714c\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_buyer_name_valid_b2bb714c",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"order_buyer_name_valid_b2bb714c\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD CONSTRAINT \"order_buyer_name_valid_b2bb714c\" CHECK (\"buyerName\" IS NULL OR (\"buyerName\" ~ '[^[:space:]]' AND length(\"buyerName\") BETWEEN 1 AND 120))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"order_buyer_name_valid_b2bb714c\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_buyer_name_valid_b2bb714c",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.order.order_buyer_phone_valid_19141dd8",
+    "label": "Add check constraint \"order_buyer_phone_valid_19141dd8\" on \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "order_buyer_phone_valid_19141dd8",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"order_buyer_phone_valid_19141dd8\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_buyer_phone_valid_19141dd8",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"order_buyer_phone_valid_19141dd8\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD CONSTRAINT \"order_buyer_phone_valid_19141dd8\" CHECK (\"buyerPhone\" IS NULL OR (\"buyerPhone\" ~ '[^[:space:]]' AND length(\"buyerPhone\") BETWEEN 1 AND 40))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"order_buyer_phone_valid_19141dd8\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_buyer_phone_valid_19141dd8",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.order.order_contact_revision_nonnegative_6e7938df",
+    "label": "Add check constraint \"order_contact_revision_nonnegative_6e7938df\" on \"order\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "order_contact_revision_nonnegative_6e7938df",
+        "table": "order"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"order_contact_revision_nonnegative_6e7938df\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_contact_revision_nonnegative_6e7938df",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"order_contact_revision_nonnegative_6e7938df\"",
+        "sql": "ALTER TABLE \"public\".\"order\" ADD CONSTRAINT \"order_contact_revision_nonnegative_6e7938df\" CHECK (\"contactRevision\" >= 0)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"order_contact_revision_nonnegative_6e7938df\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_contact_revision_nonnegative_6e7938df",
+          "public",
+          "\"public\".\"order\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.adminPurchaseAttempt.adminPurchaseAttempt_actorId_idx_a58f6b4b",
+    "label": "Create index \"adminPurchaseAttempt_actorId_idx_a58f6b4b\" on \"adminPurchaseAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "adminPurchaseAttempt_actorId_idx_a58f6b4b",
+        "table": "adminPurchaseAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"adminPurchaseAttempt_actorId_idx_a58f6b4b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminPurchaseAttempt_actorId_idx_a58f6b4b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"adminPurchaseAttempt_actorId_idx_a58f6b4b\"",
+        "sql": "CREATE INDEX \"adminPurchaseAttempt_actorId_idx_a58f6b4b\" ON \"public\".\"adminPurchaseAttempt\" (\"actorId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"adminPurchaseAttempt_actorId_idx_a58f6b4b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminPurchaseAttempt_actorId_idx_a58f6b4b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.adminPurchaseAttempt.adminPurchaseAttempt_declarationId_idx_2758bd12",
+    "label": "Create index \"adminPurchaseAttempt_declarationId_idx_2758bd12\" on \"adminPurchaseAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "adminPurchaseAttempt_declarationId_idx_2758bd12",
+        "table": "adminPurchaseAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"adminPurchaseAttempt_declarationId_idx_2758bd12\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminPurchaseAttempt_declarationId_idx_2758bd12\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"adminPurchaseAttempt_declarationId_idx_2758bd12\"",
+        "sql": "CREATE INDEX \"adminPurchaseAttempt_declarationId_idx_2758bd12\" ON \"public\".\"adminPurchaseAttempt\" (\"declarationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"adminPurchaseAttempt_declarationId_idx_2758bd12\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminPurchaseAttempt_declarationId_idx_2758bd12\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.adminPurchaseAttempt.adminPurchaseAttempt_orderId_idx_d284871b",
+    "label": "Create index \"adminPurchaseAttempt_orderId_idx_d284871b\" on \"adminPurchaseAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "adminPurchaseAttempt_orderId_idx_d284871b",
+        "table": "adminPurchaseAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"adminPurchaseAttempt_orderId_idx_d284871b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminPurchaseAttempt_orderId_idx_d284871b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"adminPurchaseAttempt_orderId_idx_d284871b\"",
+        "sql": "CREATE INDEX \"adminPurchaseAttempt_orderId_idx_d284871b\" ON \"public\".\"adminPurchaseAttempt\" (\"orderId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"adminPurchaseAttempt_orderId_idx_d284871b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminPurchaseAttempt_orderId_idx_d284871b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.adminPurchaseAttempt.adminPurchaseAttempt_receiptId_idx_9b8e07be",
+    "label": "Create index \"adminPurchaseAttempt_receiptId_idx_9b8e07be\" on \"adminPurchaseAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "adminPurchaseAttempt_receiptId_idx_9b8e07be",
+        "table": "adminPurchaseAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"adminPurchaseAttempt_receiptId_idx_9b8e07be\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminPurchaseAttempt_receiptId_idx_9b8e07be\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"adminPurchaseAttempt_receiptId_idx_9b8e07be\"",
+        "sql": "CREATE INDEX \"adminPurchaseAttempt_receiptId_idx_9b8e07be\" ON \"public\".\"adminPurchaseAttempt\" (\"receiptId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"adminPurchaseAttempt_receiptId_idx_9b8e07be\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adminPurchaseAttempt_receiptId_idx_9b8e07be\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.externalPaymentDeclaration.externalPaymentDeclaration_declaredById_idx_dd0c7dda",
+    "label": "Create index \"externalPaymentDeclaration_declaredById_idx_dd0c7dda\" on \"externalPaymentDeclaration\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "externalPaymentDeclaration_declaredById_idx_dd0c7dda",
+        "table": "externalPaymentDeclaration"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"externalPaymentDeclaration_declaredById_idx_dd0c7dda\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"externalPaymentDeclaration_declaredById_idx_dd0c7dda\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"externalPaymentDeclaration_declaredById_idx_dd0c7dda\"",
+        "sql": "CREATE INDEX \"externalPaymentDeclaration_declaredById_idx_dd0c7dda\" ON \"public\".\"externalPaymentDeclaration\" (\"declaredById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"externalPaymentDeclaration_declaredById_idx_dd0c7dda\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"externalPaymentDeclaration_declaredById_idx_dd0c7dda\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orderContactAudit.orderContactAudit_actorId_idx_a58f6b4b",
+    "label": "Create index \"orderContactAudit_actorId_idx_a58f6b4b\" on \"orderContactAudit\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "orderContactAudit_actorId_idx_a58f6b4b",
+        "table": "orderContactAudit"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"orderContactAudit_actorId_idx_a58f6b4b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderContactAudit_actorId_idx_a58f6b4b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"orderContactAudit_actorId_idx_a58f6b4b\"",
+        "sql": "CREATE INDEX \"orderContactAudit_actorId_idx_a58f6b4b\" ON \"public\".\"orderContactAudit\" (\"actorId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"orderContactAudit_actorId_idx_a58f6b4b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderContactAudit_actorId_idx_a58f6b4b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orderContactAudit.orderContactAudit_orderId_createdAt_idx_cf5e070a",
+    "label": "Create index \"orderContactAudit_orderId_createdAt_idx_cf5e070a\" on \"orderContactAudit\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "orderContactAudit_orderId_createdAt_idx_cf5e070a",
+        "table": "orderContactAudit"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"orderContactAudit_orderId_createdAt_idx_cf5e070a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderContactAudit_orderId_createdAt_idx_cf5e070a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"orderContactAudit_orderId_createdAt_idx_cf5e070a\"",
+        "sql": "CREATE INDEX \"orderContactAudit_orderId_createdAt_idx_cf5e070a\" ON \"public\".\"orderContactAudit\" (\"orderId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"orderContactAudit_orderId_createdAt_idx_cf5e070a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderContactAudit_orderId_createdAt_idx_cf5e070a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orderContactAudit.orderContactAudit_orderId_idx_d284871b",
+    "label": "Create index \"orderContactAudit_orderId_idx_d284871b\" on \"orderContactAudit\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "orderContactAudit_orderId_idx_d284871b",
+        "table": "orderContactAudit"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"orderContactAudit_orderId_idx_d284871b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderContactAudit_orderId_idx_d284871b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"orderContactAudit_orderId_idx_d284871b\"",
+        "sql": "CREATE INDEX \"orderContactAudit_orderId_idx_d284871b\" ON \"public\".\"orderContactAudit\" (\"orderId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"orderContactAudit_orderId_idx_d284871b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderContactAudit_orderId_idx_d284871b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.adminPurchaseAttempt.adminPurchaseAttempt_actorId_fkey",
+    "label": "Add foreign key \"adminPurchaseAttempt_actorId_fkey\" on \"adminPurchaseAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "adminPurchaseAttempt_actorId_fkey",
+        "table": "adminPurchaseAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"adminPurchaseAttempt_actorId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adminPurchaseAttempt_actorId_fkey",
+          "public",
+          "\"public\".\"adminPurchaseAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"adminPurchaseAttempt_actorId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"adminPurchaseAttempt\"\nADD CONSTRAINT \"adminPurchaseAttempt_actorId_fkey\"\nFOREIGN KEY (\"actorId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"adminPurchaseAttempt_actorId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adminPurchaseAttempt_actorId_fkey",
+          "public",
+          "\"public\".\"adminPurchaseAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.adminPurchaseAttempt.adminPurchaseAttempt_orderId_fkey",
+    "label": "Add foreign key \"adminPurchaseAttempt_orderId_fkey\" on \"adminPurchaseAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "adminPurchaseAttempt_orderId_fkey",
+        "table": "adminPurchaseAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"adminPurchaseAttempt_orderId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adminPurchaseAttempt_orderId_fkey",
+          "public",
+          "\"public\".\"adminPurchaseAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"adminPurchaseAttempt_orderId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"adminPurchaseAttempt\"\nADD CONSTRAINT \"adminPurchaseAttempt_orderId_fkey\"\nFOREIGN KEY (\"orderId\")\nREFERENCES \"public\".\"order\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"adminPurchaseAttempt_orderId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adminPurchaseAttempt_orderId_fkey",
+          "public",
+          "\"public\".\"adminPurchaseAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.adminPurchaseAttempt.adminPurchaseAttempt_receiptId_fkey",
+    "label": "Add foreign key \"adminPurchaseAttempt_receiptId_fkey\" on \"adminPurchaseAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "adminPurchaseAttempt_receiptId_fkey",
+        "table": "adminPurchaseAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"adminPurchaseAttempt_receiptId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adminPurchaseAttempt_receiptId_fkey",
+          "public",
+          "\"public\".\"adminPurchaseAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"adminPurchaseAttempt_receiptId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"adminPurchaseAttempt\"\nADD CONSTRAINT \"adminPurchaseAttempt_receiptId_fkey\"\nFOREIGN KEY (\"receiptId\")\nREFERENCES \"public\".\"purchaseReceipt\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"adminPurchaseAttempt_receiptId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adminPurchaseAttempt_receiptId_fkey",
+          "public",
+          "\"public\".\"adminPurchaseAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.adminPurchaseAttempt.adminPurchaseAttempt_declarationId_fkey",
+    "label": "Add foreign key \"adminPurchaseAttempt_declarationId_fkey\" on \"adminPurchaseAttempt\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "adminPurchaseAttempt_declarationId_fkey",
+        "table": "adminPurchaseAttempt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"adminPurchaseAttempt_declarationId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adminPurchaseAttempt_declarationId_fkey",
+          "public",
+          "\"public\".\"adminPurchaseAttempt\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"adminPurchaseAttempt_declarationId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"adminPurchaseAttempt\"\nADD CONSTRAINT \"adminPurchaseAttempt_declarationId_fkey\"\nFOREIGN KEY (\"declarationId\")\nREFERENCES \"public\".\"externalPaymentDeclaration\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"adminPurchaseAttempt_declarationId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adminPurchaseAttempt_declarationId_fkey",
+          "public",
+          "\"public\".\"adminPurchaseAttempt\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.externalPaymentDeclaration.externalPaymentDeclaration_orderId_fkey",
+    "label": "Add foreign key \"externalPaymentDeclaration_orderId_fkey\" on \"externalPaymentDeclaration\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "externalPaymentDeclaration_orderId_fkey",
+        "table": "externalPaymentDeclaration"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"externalPaymentDeclaration_orderId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "externalPaymentDeclaration_orderId_fkey",
+          "public",
+          "\"public\".\"externalPaymentDeclaration\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"externalPaymentDeclaration_orderId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"externalPaymentDeclaration\"\nADD CONSTRAINT \"externalPaymentDeclaration_orderId_fkey\"\nFOREIGN KEY (\"orderId\")\nREFERENCES \"public\".\"order\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"externalPaymentDeclaration_orderId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "externalPaymentDeclaration_orderId_fkey",
+          "public",
+          "\"public\".\"externalPaymentDeclaration\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.externalPaymentDeclaration.externalPaymentDeclaration_declaredById_fkey",
+    "label": "Add foreign key \"externalPaymentDeclaration_declaredById_fkey\" on \"externalPaymentDeclaration\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "externalPaymentDeclaration_declaredById_fkey",
+        "table": "externalPaymentDeclaration"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"externalPaymentDeclaration_declaredById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "externalPaymentDeclaration_declaredById_fkey",
+          "public",
+          "\"public\".\"externalPaymentDeclaration\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"externalPaymentDeclaration_declaredById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"externalPaymentDeclaration\"\nADD CONSTRAINT \"externalPaymentDeclaration_declaredById_fkey\"\nFOREIGN KEY (\"declaredById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"externalPaymentDeclaration_declaredById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "externalPaymentDeclaration_declaredById_fkey",
+          "public",
+          "\"public\".\"externalPaymentDeclaration\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.orderContactAudit.orderContactAudit_orderId_fkey",
+    "label": "Add foreign key \"orderContactAudit_orderId_fkey\" on \"orderContactAudit\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "orderContactAudit_orderId_fkey",
+        "table": "orderContactAudit"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"orderContactAudit_orderId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderContactAudit_orderId_fkey",
+          "public",
+          "\"public\".\"orderContactAudit\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"orderContactAudit_orderId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"orderContactAudit\"\nADD CONSTRAINT \"orderContactAudit_orderId_fkey\"\nFOREIGN KEY (\"orderId\")\nREFERENCES \"public\".\"order\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"orderContactAudit_orderId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderContactAudit_orderId_fkey",
+          "public",
+          "\"public\".\"orderContactAudit\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.orderContactAudit.orderContactAudit_actorId_fkey",
+    "label": "Add foreign key \"orderContactAudit_actorId_fkey\" on \"orderContactAudit\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "orderContactAudit_actorId_fkey",
+        "table": "orderContactAudit"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"orderContactAudit_actorId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderContactAudit_actorId_fkey",
+          "public",
+          "\"public\".\"orderContactAudit\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"orderContactAudit_actorId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"orderContactAudit\"\nADD CONSTRAINT \"orderContactAudit_actorId_fkey\"\nFOREIGN KEY (\"actorId\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"orderContactAudit_actorId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderContactAudit_actorId_fkey",
+          "public",
+          "\"public\".\"orderContactAudit\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "admin-purchase.integrity-guards",
+    "label": "Enforce guest receipt ownership, payment XOR, and append-only contact audit",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "objectType": "table",
+        "schema": "public",
+        "name": "purchaseReceipt"
+      }
+    },
+    "precheck": [
+      {
+        "description": "purchaseReceipt table exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"tables\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2)) AS \"result\"",
+        "params": [
+          "public",
+          "purchaseReceipt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "receipt buyerId matches order.userId including both-null guests",
+        "sql": "\nCREATE OR REPLACE FUNCTION public.admin_purchase_receipt_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  owner_id text;\n  has_declaration boolean;\n  has_card boolean;\nBEGIN\n  SELECT o.\"userId\" INTO owner_id FROM public.\"order\" o WHERE o.id = NEW.\"orderId\";\n  IF NOT FOUND THEN\n    RAISE EXCEPTION 'Receipt order does not exist' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.\"buyerId\" IS DISTINCT FROM owner_id THEN\n    RAISE EXCEPTION 'Receipt buyerId must match order.userId' USING ERRCODE = '23514';\n  END IF;\n  SELECT EXISTS(SELECT 1 FROM public.\"externalPaymentDeclaration\" d WHERE d.\"orderId\" = NEW.\"orderId\") INTO has_declaration;\n  SELECT EXISTS(SELECT 1 FROM public.\"paymentAttempt\" p WHERE p.\"orderId\" = NEW.\"orderId\") INTO has_card;\n  IF has_declaration AND has_card THEN\n    RAISE EXCEPTION 'Order cannot have both declared external payment and simulated card payment' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.\"buyerId\" IS NULL AND NOT has_declaration THEN\n    RAISE EXCEPTION 'Guest receipt requires an external payment declaration' USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND;\n$$;\nDROP TRIGGER IF EXISTS admin_purchase_receipt_guard ON public.\"purchaseReceipt\";\nCREATE TRIGGER admin_purchase_receipt_guard\n  BEFORE INSERT OR UPDATE ON public.\"purchaseReceipt\"\n  FOR EACH ROW EXECUTE FUNCTION public.admin_purchase_receipt_guard();\n"
+      },
+      {
+        "description": "declaration cannot coexist with simulated card payment",
+        "sql": "\nCREATE OR REPLACE FUNCTION public.admin_purchase_declaration_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nBEGIN\n  IF EXISTS(SELECT 1 FROM public.\"paymentAttempt\" p WHERE p.\"orderId\" = NEW.\"orderId\") THEN\n    RAISE EXCEPTION 'Order cannot have both declared external payment and simulated card payment' USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND;\n$$;\nDROP TRIGGER IF EXISTS admin_purchase_declaration_guard ON public.\"externalPaymentDeclaration\";\nCREATE TRIGGER admin_purchase_declaration_guard\n  BEFORE INSERT OR UPDATE ON public.\"externalPaymentDeclaration\"\n  FOR EACH ROW EXECUTE FUNCTION public.admin_purchase_declaration_guard();\n"
+      },
+      {
+        "description": "simulated card payment cannot coexist with a declared external payment",
+        "sql": "\nCREATE OR REPLACE FUNCTION public.admin_purchase_payment_xor_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nBEGIN\n  IF EXISTS(SELECT 1 FROM public.\"externalPaymentDeclaration\" d WHERE d.\"orderId\" = NEW.\"orderId\") THEN\n    RAISE EXCEPTION 'Order cannot have both declared external payment and simulated card payment' USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND;\n$$;\nDROP TRIGGER IF EXISTS admin_purchase_payment_xor_guard ON public.\"paymentAttempt\";\nCREATE TRIGGER admin_purchase_payment_xor_guard\n  BEFORE INSERT OR UPDATE ON public.\"paymentAttempt\"\n  FOR EACH ROW EXECUTE FUNCTION public.admin_purchase_payment_xor_guard();\n"
+      },
+      {
+        "description": "contact audit rows cannot be rewritten or deleted",
+        "sql": "\nCREATE OR REPLACE FUNCTION public.order_contact_audit_append_only() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nBEGIN\n  RAISE EXCEPTION 'Order contact audit is append-only' USING ERRCODE = '23514';\nEND;\n$$;\nDROP TRIGGER IF EXISTS order_contact_audit_append_only ON public.\"orderContactAudit\";\nCREATE TRIGGER order_contact_audit_append_only\n  BEFORE UPDATE OR DELETE ON public.\"orderContactAudit\"\n          FOR EACH ROW EXECUTE FUNCTION public.order_contact_audit_append_only();\n"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "receipt guard is installed",
+        "sql": "SELECT to_regprocedure('public.admin_purchase_receipt_guard()') IS NOT NULL AS \"result\""
+      },
+      {
+        "description": "declaration guard is installed",
+        "sql": "SELECT to_regprocedure('public.admin_purchase_declaration_guard()') IS NOT NULL AS \"result\""
+      },
+      {
+        "description": "payment XOR guard is installed",
+        "sql": "SELECT to_regprocedure('public.admin_purchase_payment_xor_guard()') IS NOT NULL AS \"result\""
+      },
+      {
+        "description": "contact audit append-only guard is installed",
+        "sql": "SELECT to_regprocedure('public.order_contact_audit_append_only()') IS NOT NULL AS \"result\""
+      }
+    ]
+  }
+]
