@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
@@ -17,19 +18,24 @@ describe('Unit C inventory HTTP (owned PostgreSQL 16)', () => {
   type Kind = 'CLIENT' | 'GUEST' | 'REGISTERED_CLIENT';
   const body = (kind: Kind, items = [{ productId: 'b-product', quantity: 1 }]) => {
     const result = { ...guestBody(), items };
-    if (kind === 'REGISTERED_CLIENT') return { ...result, recipient: { type: kind, clientId: actors.client } };
-    if (kind === 'CLIENT') { const { recipient: _omit, ...client } = result; return client; }
+    if (kind === 'REGISTERED_CLIENT') return { ...result, buyer: { type: kind, clientId: actors.client, contactPhone: '+593 999' } };
+    if (kind === 'CLIENT') { const { buyer: _omitBuyer, payment: _omitPay, ...client } = result; return client; }
     return result;
   };
-  const post = (kind: Kind, payload: unknown = body(kind)) => request(app.getHttpServer())
-    .post(`/api/v1/orders${kind === 'CLIENT' ? '' : '/admin'}`)
-    .auth(token(kind === 'CLIENT' ? 'client' : 'admin'), { type: 'bearer' }).set('Content-Type', 'application/json').send(JSON.stringify(payload)).timeout(12000);
+  const post = (kind: Kind, payload: unknown = body(kind)) => {
+    const req = request(app.getHttpServer())
+      .post(`/api/v1/orders${kind === 'CLIENT' ? '' : '/admin'}`)
+      .auth(token(kind === 'CLIENT' ? 'client' : 'admin'), { type: 'bearer' })
+      .set('Content-Type', 'application/json');
+    if (kind !== 'CLIENT') req.set('Idempotency-Key', randomUUID());
+    return req.send(JSON.stringify(payload)).timeout(12000);
+  };
   const stock = () => database.sql('unit_b', 'SELECT id || \':\' || stock FROM public.product ORDER BY id');
   const counts = () => database.sql('unit_b', 'SELECT (SELECT count(*) FROM public."order") || \':\' || (SELECT count(*) FROM public."orderItem")');
 
   beforeAll(async () => {
     jwt = new JwtService({ secret: prepareOwnedApiDatabase(database) });
-    database.sql('unit_b', `INSERT INTO public.product (id,name,price,stock) VALUES ('c-second','Second',7,10)`);
+    database.sql('unit_b', `INSERT INTO public.product (id,name,price,stock,"priceCents") VALUES ('c-second','Second',7,10,700)`);
     installRollbackEvidence(database);
     observer = await session(database, 'c-observer');
     const { AppModule } = await import('../src/app.module.js');

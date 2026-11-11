@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -33,7 +34,9 @@ import {
   OrderCreatedResponseDto,
   OrderResponseDto,
 } from './dto/order-response.dto.js';
+import { UpdateOrderContactDto } from './dto/update-order-contact.dto.js';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto.js';
+import { AdminPurchaseService } from './admin-purchase.service.js';
 import { OrdersCreateHttpExceptionFilter } from './orders-create-http.filter.js';
 import { OrdersService } from './orders.service.js';
 
@@ -42,7 +45,10 @@ import { OrdersService } from './orders.service.js';
 @Controller('orders')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly adminPurchases: AdminPurchaseService,
+  ) {}
 
   @Post()
   @UseFilters(OrdersCreateHttpExceptionFilter)
@@ -79,8 +85,22 @@ export class OrdersController {
   @ApiResponse({ status: 403, description: 'ADMIN role required' })
   @ApiResponse({ status: 404, description: 'Registered client, zone or product not found' })
   @HttpCode(HttpStatus.CREATED)
-  async createAdmin(@CurrentUser('userId') actorId: string, @Body() dto: CreateAdminOrderDto) {
-    return this.ordersService.createAdminOrder(actorId, dto);
+  async createAdmin(
+    @CurrentUser('userId') actorId: string,
+    @Body() dto: CreateAdminOrderDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.ordersService.createAdminOrder(actorId, dto, idempotencyKey);
+  }
+
+  @Get('admin/purchase-attempts/:idempotencyKey')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Recover an ADMIN declared-purchase attempt by Idempotency-Key' })
+  async getAdminPurchaseAttempt(
+    @CurrentUser('userId') actorId: string,
+    @Param('idempotencyKey') idempotencyKey: string,
+  ) {
+    return this.adminPurchases.getAttempt(actorId, idempotencyKey);
   }
 
   @Get('my-orders')
@@ -170,5 +190,32 @@ export class OrdersController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.ordersService.updateStatus(id, dto, user);
+  }
+
+  @Get(':id/receipt')
+  @Roles(Role.ADMIN)
+  @UseFilters(OrdersCreateHttpExceptionFilter)
+  @ApiOperation({ summary: 'Printable commercial receipt for a registered or guest ADMIN sale' })
+  async getAdminReceipt(@Param('id') id: string) {
+    return this.adminPurchases.getReceipt(id);
+  }
+
+  @Patch(':id/contact')
+  @Roles(Role.ADMIN)
+  @UseFilters(OrdersCreateHttpExceptionFilter)
+  @ApiOperation({ summary: 'Correct operational contact without mutating the frozen receipt' })
+  async updateContact(
+    @CurrentUser('userId') actorId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateOrderContactDto,
+  ) {
+    return this.adminPurchases.updateContact(actorId, id, dto);
+  }
+
+  @Get(':id/contact-history')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Append-only contact correction history' })
+  async contactHistory(@Param('id') id: string) {
+    return this.adminPurchases.contactHistory(id);
   }
 }

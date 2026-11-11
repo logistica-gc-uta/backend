@@ -18,7 +18,12 @@ export function projectOrder(order: Source, includeContact: boolean) {
     createdById: order.createdById ?? null,
     recipientType: order.recipientType ?? null,
     recipientName: order.recipientName ?? null,
-    ...(includeContact ? { recipientPhone: order.recipientPhone ?? null } : {}),
+    ...(includeContact ? {
+      recipientPhone: order.recipientPhone ?? null,
+      buyerName: order.buyerName ?? null,
+      buyerPhone: order.buyerPhone ?? null,
+      contactRevision: order.contactRevision ?? 0,
+    } : {}),
     deliveryWindowStart: order.deliveryWindowStart ?? null,
     deliveryWindowEnd: order.deliveryWindowEnd ?? null,
     zoneId: order.zoneId,

@@ -1,19 +1,18 @@
 import { ApiExtraModels, ApiProperty, ApiPropertyOptional, getSchemaPath, OmitType } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { Equals, IsDefined, IsIn, IsISO8601, IsNotEmpty, IsNumber, IsObject, IsString, Matches, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
+import { Equals, IsDefined, IsIn, IsISO8601, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
 import { CreateOrderDto } from './create-order.dto.js';
 
 const trim = ({ value }: { value: unknown }) => typeof value === 'string' ? value.trim() : value;
 import { EXPLICIT_OFFSET } from '../order-delivery.util.js';
 
-// Unknown discriminator values resolve to this base and fail closed.
-export class AdminRecipientDto {
+export class AdminBuyerDto {
   @ApiProperty({ enum: ['REGISTERED_CLIENT', 'GUEST'] })
   @IsIn(['REGISTERED_CLIENT', 'GUEST'])
   type!: 'REGISTERED_CLIENT' | 'GUEST';
 }
 
-export class RegisteredClientRecipientDto extends AdminRecipientDto {
+export class RegisteredClientBuyerDto extends AdminBuyerDto {
   @ApiProperty({ enum: ['REGISTERED_CLIENT'] })
   @Equals('REGISTERED_CLIENT')
   declare type: 'REGISTERED_CLIENT';
@@ -23,16 +22,15 @@ export class RegisteredClientRecipientDto extends AdminRecipientDto {
   @IsNotEmpty()
   clientId!: string;
 
-  @ApiPropertyOptional({ maxLength: 40, description: 'Delivery contact, trimmed only; not an authentication identifier' })
-  @ValidateIf((_object, value) => value !== undefined)
+  @ApiProperty({ maxLength: 40, description: 'Mandatory buyer phone; never read from User' })
   @Transform(trim)
   @IsString()
   @IsNotEmpty()
   @MaxLength(40)
-  contactPhone?: string;
+  contactPhone!: string;
 }
 
-export class GuestRecipientDto extends AdminRecipientDto {
+export class GuestBuyerDto extends AdminBuyerDto {
   @ApiProperty({ enum: ['GUEST'] })
   @Equals('GUEST')
   declare type: 'GUEST';
@@ -44,7 +42,7 @@ export class GuestRecipientDto extends AdminRecipientDto {
   @MaxLength(120)
   name!: string;
 
-  @ApiProperty({ maxLength: 40, description: 'Delivery contact, trimmed only; no account is created' })
+  @ApiProperty({ maxLength: 40, description: 'Mandatory guest buyer phone; does not create or link an account' })
   @Transform(trim)
   @IsString()
   @IsNotEmpty()
@@ -52,26 +50,70 @@ export class GuestRecipientDto extends AdminRecipientDto {
   contactPhone!: string;
 }
 
-@ApiExtraModels(RegisteredClientRecipientDto, GuestRecipientDto)
+export class GiftRecipientDto {
+  @ApiProperty({ maxLength: 120 })
+  @Transform(trim)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  name!: string;
+
+  @ApiProperty({ maxLength: 40 })
+  @Transform(trim)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(40)
+  contactPhone!: string;
+}
+
+export class AdminDeclaredPaymentDto {
+  @ApiProperty({ enum: ['CASH', 'TRANSFER'] })
+  @IsIn(['CASH', 'TRANSFER'])
+  method!: 'CASH' | 'TRANSFER';
+
+  @ApiPropertyOptional({ maxLength: 200, description: 'Optional note; not a bank reference' })
+  @ValidateIf((_object, value) => value !== undefined && value !== null)
+  @Transform(trim)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  note?: string;
+}
+
+@ApiExtraModels(RegisteredClientBuyerDto, GuestBuyerDto)
 export class CreateAdminOrderDto extends OmitType(CreateOrderDto, ['scheduledDeliveryDate', 'deliveryLat', 'deliveryLng'] as const) {
   @ApiProperty({
     oneOf: [
-      { $ref: getSchemaPath(RegisteredClientRecipientDto) },
-      { $ref: getSchemaPath(GuestRecipientDto) },
+      { $ref: getSchemaPath(RegisteredClientBuyerDto) },
+      { $ref: getSchemaPath(GuestBuyerDto) },
     ],
     discriminator: { propertyName: 'type', mapping: {
-      REGISTERED_CLIENT: getSchemaPath(RegisteredClientRecipientDto),
-      GUEST: getSchemaPath(GuestRecipientDto),
+      REGISTERED_CLIENT: getSchemaPath(RegisteredClientBuyerDto),
+      GUEST: getSchemaPath(GuestBuyerDto),
     } },
   })
   @IsDefined()
   @IsObject()
   @ValidateNested()
-  @Type(() => AdminRecipientDto, { discriminator: { property: 'type', subTypes: [
-    { name: 'REGISTERED_CLIENT', value: RegisteredClientRecipientDto },
-    { name: 'GUEST', value: GuestRecipientDto },
+  @Type(() => AdminBuyerDto, { discriminator: { property: 'type', subTypes: [
+    { name: 'REGISTERED_CLIENT', value: RegisteredClientBuyerDto },
+    { name: 'GUEST', value: GuestBuyerDto },
   ] }, keepDiscriminatorProperty: true })
-  recipient!: RegisteredClientRecipientDto | GuestRecipientDto;
+  buyer!: RegisteredClientBuyerDto | GuestBuyerDto;
+
+  @ApiPropertyOptional({ type: GiftRecipientDto })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => GiftRecipientDto)
+  giftRecipient?: GiftRecipientDto;
+
+  @ApiProperty({ type: AdminDeclaredPaymentDto })
+  @IsDefined()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => AdminDeclaredPaymentDto)
+  payment!: AdminDeclaredPaymentDto;
 
   @ApiProperty({ format: 'date-time', description: 'Scheduled instant with explicit UTC offset' })
   @IsISO8601({ strict: true })
