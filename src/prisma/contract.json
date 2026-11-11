@@ -80,6 +80,10 @@
       "model": "SimulatedCard",
       "namespace": "public"
     },
+    "storeCoverage": {
+      "model": "StoreCoverage",
+      "namespace": "public"
+    },
     "uploadedAsset": {
       "model": "UploadedAsset",
       "namespace": "public"
@@ -3289,6 +3293,114 @@
               "table": "simulatedCard"
             }
           },
+          "StoreCoverage": {
+            "fields": {
+              "coverage": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "lat": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/float8@1",
+                  "kind": "scalar"
+                }
+              },
+              "lng": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/float8@1",
+                  "kind": "scalar"
+                }
+              },
+              "singletonKey": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "updatedBy": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "updatedById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "coverage": {
+                  "column": "coverage"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "lat": {
+                  "column": "lat"
+                },
+                "lng": {
+                  "column": "lng"
+                },
+                "singletonKey": {
+                  "column": "singletonKey"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                },
+                "updatedById": {
+                  "column": "updatedById"
+                }
+              },
+              "namespaceId": "public",
+              "table": "storeCoverage"
+            }
+          },
           "UploadedAsset": {
             "fields": {
               "actorId": {
@@ -3623,6 +3735,21 @@
                 },
                 "to": {
                   "model": "PurchaseReceipt",
+                  "namespace": "public"
+                }
+              },
+              "storeCoverageUpdates": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "updatedById"
+                  ]
+                },
+                "to": {
+                  "model": "StoreCoverage",
                   "namespace": "public"
                 }
               },
@@ -6574,6 +6701,114 @@
                 }
               ]
             },
+            "storeCoverage": {
+              "checks": [
+                {
+                  "expression": "\"singletonKey\" = 'GLOBAL'",
+                  "name": "store_coverage_singleton_23de2fff",
+                  "prefix": "store_coverage_singleton"
+                },
+                {
+                  "expression": "\"lat\" >= -90 AND \"lat\" <= 90 AND \"lng\" >= -180 AND \"lng\" <= 180 AND json_typeof(\"coverage\") = 'object'",
+                  "name": "store_coverage_valid_cf74cd43",
+                  "prefix": "store_coverage_valid"
+                }
+              ],
+              "columns": {
+                "coverage": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "lat": {
+                  "codecId": "pg/float8@1",
+                  "nativeType": "float8",
+                  "nullable": false
+                },
+                "lng": {
+                  "codecId": "pg/float8@1",
+                  "nativeType": "float8",
+                  "nullable": false
+                },
+                "singletonKey": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "GLOBAL"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "updatedById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "updatedById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "storeCoverage"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "updatedById"
+                  ],
+                  "name": "storeCoverage_updatedById_idx_d0517c24",
+                  "prefix": "storeCoverage_updatedById_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "singletonKey"
+                  ]
+                }
+              ]
+            },
             "uploadedAsset": {
               "checks": [
                 {
@@ -6918,10 +7153,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "70a695f73c329e3d06c6ee0a3d8b301de993c376613442e431adde1392ca8710"
+    "storageHash": "e22e1c24292de6991987b5543666555d140b3af27a2da3628aa3eac1e5109e0f"
   },
   "execution": {
-    "executionHash": "c68023e2175bd784e4e7ecda87b1c9fa7ece194cbd3559e5407558de6f1eca5f",
+    "executionHash": "59a310d3a48432e67eb44cfdd26f69df0828479942b5b5a6e32c12c5a2e5a46b",
     "mutations": {
       "defaults": [
         {
@@ -7131,6 +7366,17 @@
             "column": "id",
             "namespace": "public",
             "table": "simulatedCard"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "storeCoverage"
           }
         },
         {

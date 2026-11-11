@@ -1,0 +1,164 @@
+[
+  {
+    "id": "table.storeCoverage",
+    "label": "Create table \"storeCoverage\"",
+    "summary": "Creates table \"storeCoverage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "storeCoverage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"storeCoverage\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"storeCoverage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"storeCoverage\"",
+        "sql": "CREATE TABLE \"public\".\"storeCoverage\" (\n  \"coverage\" json NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"lat\" float8 NOT NULL,\n  \"lng\" float8 NOT NULL,\n  \"singletonKey\" text DEFAULT 'GLOBAL' NOT NULL,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"updatedById\" text,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"store_coverage_singleton_23de2fff\" CHECK (\"singletonKey\" = 'GLOBAL'),\n  CONSTRAINT \"store_coverage_valid_cf74cd43\" CHECK (\"lat\" >= -90 AND \"lat\" <= 90 AND \"lng\" >= -180 AND \"lng\" <= 180 AND json_typeof(\"coverage\") = 'object')\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"storeCoverage\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"storeCoverage\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.storeCoverage.storeCoverage_singletonKey_key",
+    "label": "Add unique constraint on \"storeCoverage\" (singletonKey)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "storeCoverage_singletonKey_key",
+        "table": "storeCoverage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"storeCoverage_singletonKey_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "storeCoverage_singletonKey_key",
+          "public",
+          "\"public\".\"storeCoverage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"storeCoverage_singletonKey_key\"",
+        "sql": "ALTER TABLE \"public\".\"storeCoverage\" ADD CONSTRAINT \"storeCoverage_singletonKey_key\" UNIQUE (\"singletonKey\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"storeCoverage_singletonKey_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "storeCoverage_singletonKey_key",
+          "public",
+          "\"public\".\"storeCoverage\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.storeCoverage.storeCoverage_updatedById_idx_d0517c24",
+    "label": "Create index \"storeCoverage_updatedById_idx_d0517c24\" on \"storeCoverage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "storeCoverage_updatedById_idx_d0517c24",
+        "table": "storeCoverage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"storeCoverage_updatedById_idx_d0517c24\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"storeCoverage_updatedById_idx_d0517c24\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"storeCoverage_updatedById_idx_d0517c24\"",
+        "sql": "CREATE INDEX \"storeCoverage_updatedById_idx_d0517c24\" ON \"public\".\"storeCoverage\" (\"updatedById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"storeCoverage_updatedById_idx_d0517c24\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"storeCoverage_updatedById_idx_d0517c24\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.storeCoverage.storeCoverage_updatedById_fkey",
+    "label": "Add foreign key \"storeCoverage_updatedById_fkey\" on \"storeCoverage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "storeCoverage_updatedById_fkey",
+        "table": "storeCoverage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"storeCoverage_updatedById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "storeCoverage_updatedById_fkey",
+          "public",
+          "\"public\".\"storeCoverage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"storeCoverage_updatedById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"storeCoverage\"\nADD CONSTRAINT \"storeCoverage_updatedById_fkey\"\nFOREIGN KEY (\"updatedById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"storeCoverage_updatedById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "storeCoverage_updatedById_fkey",
+          "public",
+          "\"public\".\"storeCoverage\""
+        ]
+      }
+    ]
+  }
+]
