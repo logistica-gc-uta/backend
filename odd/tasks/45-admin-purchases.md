@@ -42,8 +42,8 @@ S15. "No ejecutar vaciados, seeds sobre entornos compartidos o despliegues por e
 - [x] T3 [S1,S3–S6,S8–S12] inline — ADMIN sale transaction, idempotency/recovery, public create — Risk: items 2, 3, 4 — `AdminPurchaseService.create`
 - [x] T4 [S5,S7,S8,S12–S14] inline — CLIENT-owner and ADMIN receipt reads, payment variants — Risk: items 2, 3 — shop union parser + `GET /orders/:id/receipt`
 - [x] T5 [S1,S2,S12,S13] inline — ADMIN contact correction + audit — Risk: items 2, 3, 4 — PATCH/GET contact
-- [ ] T6 [S4–S7,S11–S15] inline — consumers/fixtures/Newman/CI-equivalent gates — Risk: item 5 — fixtures/Postman adapted; full CI pending
-- [ ] T7 [S1–S15] inline — independent verification + D7 report — Risk: items 1–4 as named
+- [x] T6 [S4–S7,S11–S15] inline — consumers/fixtures/Newman/CI-equivalent gates — Risk: item 5 — isolated E2E 34 suites exit 0; Newman 104/439/0; coverage 80%+; `shellcheck` NOT RUN
+- [x] T7 [S1–S15] inline — independent verification + D7 report — Risk: items 1–4 — static `7f7cecec`; A16/A19/A21/A26 now owned-Postgres e2e; no push/PR
 
 ## A# → task → public interface (D0)
 
@@ -68,3 +68,11 @@ L3. T1: `pnpm prisma db migrate --to d0d70e57…` exit 0 (16 migrations, 29 ops 
 L4. T2–T5: `pnpm test:e2e --runTestsByPath test/admin-guest-orders-api.e2e-spec.ts` 61 passed; inventory 18 passed; delivery 33 passed. Prisma raw SQL rejects JS `null` (use `NULLIF('',)`). Golden 7300+1095+0=8395 frozen after tax/price change.
 
 L5. T6 partial: Newman bodies/Idempotency-Key adapted; full lint/build green after interpolation types; coverage/E2E-isolated/Newman-isolated NOT RUN yet.
+
+L6. T6 coverage/lint/build 2026-11-11: allowlist keys `buyerName`/`buyerPhone`/`contactRevision`; `admin-purchase.service.spec.ts` covers create/replay/sale/receipt/contact. `pnpm run lint` exit 0 (warnings only, including preexisting `admin-purchase.service.ts:220` no-base-to-string). `bash -n test/run-newman-isolated.sh test/run-e2e-isolated.sh` OK. `pnpm run build` exit 0. `pnpm run test:cov --coverageThreshold=...80` exit 0: 93 suites, 1059 tests, global 89.00/80.69/85.90/90.89. Isolated E2E and Newman still RUNNING/NOT RUN.
+
+L7. Independent `review-risk` launches `355cd2cd`, `814724d1`, `3bcdce3e` ERROR: model unavailable on Free. Fallback `7f7cecec` completed static T7: no source blockers; A16/A19/A21/A26 were unproven then.
+
+L8. Added owned-Postgres A16 concurrent last-unit, A19 GET purchase-attempts, A21 guest ADMIN receipt, A26 23514 XOR/audit. Isolated E2E previously FAIL (shop recipient phone, AdminRouteHistoryOrderDto keys, route-progress missing AdminPurchaseService). Fixes: declared-only recipient.phone; swagger buyerName/buyerPhone/contactRevision; provider in route-progress.
+
+L9. Full isolated E2E 2026-11-11: `env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm run test:e2e:isolated` exit 0, 34 suites (31 self-managed 511 tests + app 1 + orders-security 35 + drivers-routes-security 23). `pnpm run build` exit 0. Newman `env -u DATABASE_URL DOTENV_CONFIG_PATH=/dev/null pnpm run test:api:report` exit 0: 104 requests, 439 assertions, 0 failed. `shellcheck` NOT RUN (binary missing). `pnpm run lint` exit 0 warnings only.

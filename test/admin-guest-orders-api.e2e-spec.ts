@@ -391,5 +391,41 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
     expect((await get(`/${created.body.id}/receipt`).expect(200)).body.buyer.phone).toBe('+593111');
     const history = await get(`/${created.body.id}/contact-history`).expect(200);
     expect(history.body[0]).toMatchObject({ field: 'buyerPhone', previousValue: '+593111', nextValue: '+593333', actorId: actors.admin });
+    expect(own.body.recipient).toMatchObject({ name: 'Gift Person', phone: '+593222' });
+    const recovered = await get(`/admin/purchase-attempts/${key}`).expect(200);
+    expect(recovered.body).toMatchObject({ status: 'SUCCEEDED', orderId: created.body.id });
+    expect(recovered.body.result.id).toBe(created.body.id);
+    await get(`/admin/purchase-attempts/${key}`, 'admin2').expect(404);
+  });
+
+  it('lets ADMIN print a guest receipt without fabricating an account', async () => {
+    const created = await post({
+      ...guestBody(),
+      buyer: { type: 'GUEST', name: 'Walk-in', contactPhone: '+593444' },
+      payment: { method: 'CASH' },
+    }).expect(201);
+    expect(created.body.userId).toBeNull();
+    const receipt = await get(`/${created.body.id}/receipt`).expect(200);
+    expect(receipt.body.buyer).toEqual({ name: 'Walk-in', phone: '+593444' });
+    expect(receipt.body.payment).toMatchObject({ kind: 'ADMIN_DECLARED_EXTERNAL', status: 'DECLARED', method: 'CASH' });
+    expect(receipt.body.payment).not.toHaveProperty('cardLast4');
+    expect(database.sql('unit_b', `SELECT ("buyerId" IS NULL)::text FROM public."purchaseReceipt" WHERE "orderId"='${created.body.id}'`)).toBe('true');
+    await request(app.getHttpServer()).get(`/api/v1/shop/orders/${created.body.id}/receipt`)
+      .auth(jwt.sign({ sub: actors.client, role: 'CLIENT' }), { type: 'bearer' }).expect(404);
+  });
+
+  it('sells the last unit once under concurrent ADMIN creates', async () => {
+    database.sql('unit_b', `INSERT INTO public.product (id,name,price,stock,"priceCents") VALUES ('b-last','Last unit',10,1,1000)`);
+    const bodyA = { ...guestBody(), items: [{ productId: 'b-last', quantity: 1 }], deliveryAddress: 'Last A' };
+    const bodyB = { ...guestBody(), items: [{ productId: 'b-last', quantity: 1 }], deliveryAddress: 'Last B' };
+    const [first, second] = await Promise.all([post(bodyA), post(bodyB)]);
+    const statuses = [first.status, second.status].sort((a, b) => a - b);
+    expect(statuses).toEqual([201, 400]);
+    const winner = first.status === 201 ? first : second;
+    const loser = first.status === 201 ? second : first;
+    expect(loser.body.message).toMatch(/Stock insuficiente/);
+    expect(database.sql('unit_b', `SELECT stock FROM public.product WHERE id='b-last'`)).toBe('0');
+    expect(database.sql('unit_b', `SELECT count(*) FROM public."purchaseReceipt" r JOIN public."orderItem" i ON i."orderId"=r."orderId" WHERE i."productId"='b-last'`)).toBe('1');
+    expect(winner.body.receipt.id).toBeTruthy();
   });
 });

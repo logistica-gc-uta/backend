@@ -97,6 +97,8 @@ describe('Route progress: owned PostgreSQL, JWT and actual HTTP', () => {
       await import('../src/modules/store-coverage/store-coverage.service.js');
     const { ShopSettingsService } =
       await import('../src/modules/shop/settings/shop-settings.service.js');
+    const { AdminPurchaseService } =
+      await import('../src/modules/orders/admin-purchase.service.js');
     const { JwtStrategy } = await import('../src/modules/auth/jwt.strategy.js');
     const { JwtAuthGuard } =
       await import('../src/modules/auth/guards/jwt-auth.guard.js');
@@ -118,6 +120,7 @@ describe('Route progress: owned PostgreSQL, JWT and actual HTTP', () => {
         RouteExecutionService,
         RouteProgressService,
         OrdersService,
+        AdminPurchaseService,
         StoreCoverageService,
         ShopSettingsService,
         JwtStrategy,

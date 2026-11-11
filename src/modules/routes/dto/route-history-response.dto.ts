@@ -104,6 +104,9 @@ export class AdminRouteHistoryOrderDto extends RouteHistoryOrderDto {
   recipientType!: 'REGISTERED_CLIENT' | 'GUEST' | null;
   @ApiProperty({ type: String, nullable: true }) recipientName!: string | null;
   @ApiProperty({ type: String, nullable: true }) recipientPhone!: string | null;
+  @ApiProperty({ type: String, nullable: true }) buyerName!: string | null;
+  @ApiProperty({ type: String, nullable: true }) buyerPhone!: string | null;
+  @ApiProperty({ type: Number }) contactRevision!: number;
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   deliveryWindowStart!: string | null;
   @ApiProperty({ type: String, format: 'date-time', nullable: true })

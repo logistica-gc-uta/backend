@@ -466,6 +466,48 @@ describe('ShopOrdersService unit tests (public behavior)', () => {
       });
     });
 
+    it('maps a declared ADMIN receipt with distinct buyer and recipient phones', async () => {
+      mockTx.query.mockResolvedValueOnce([{
+        id: 'rcpt-decl',
+        number: 'CMP-RG-DECL',
+        orderId: 'ord-decl',
+        issuedAt: '2026-10-22T12:00:00.000Z',
+        merchantName: 'REGALÍA',
+        currency: 'USD',
+        subtotalCents: BigInt(7300),
+        taxMode: 'SIMULATED',
+        taxEnabled: true,
+        taxRateBps: 1500,
+        taxAmountCents: BigInt(1095),
+        shippingStatus: 'FREE_INCLUDED',
+        shippingAmountCents: 0,
+        totalCents: BigInt(8395),
+        disclaimer: 'COMPROBANTE DE COMPRA SIMULADO — SIN VALIDEZ TRIBUTARIA',
+        snapshot: {
+          buyer: { name: 'Owner', phone: '+593111' },
+          recipient: { name: 'Gift', phone: '+593222' },
+          payment: {
+            kind: 'ADMIN_DECLARED_EXTERNAL',
+            status: 'DECLARED',
+            method: 'CASH',
+            declaredById: 'admin-1',
+            declaredAt: '2026-10-22T12:00:00.000Z',
+          },
+          items: [{ sku: 'SKU-A', name: 'Caja 1', quantity: 1, unitPriceCents: 7300, lineTotalCents: 7300 }],
+        },
+      }]);
+      const receipt = await service.getOrderReceipt('user-1', 'ord-decl');
+      expect(receipt.buyer).toEqual({ name: 'Owner', phone: '+593111' });
+      expect(receipt.recipient).toEqual({ name: 'Gift', phone: '+593222' });
+      expect(receipt.payment).toEqual({
+        kind: 'ADMIN_DECLARED_EXTERNAL',
+        status: 'DECLARED',
+        method: 'CASH',
+        declaredById: 'admin-1',
+        declaredAt: '2026-10-22T12:00:00.000Z',
+      });
+    });
+
     it('fails closed when payment data is missing from receipt snapshot', async () => {
       const badReceiptRow = {
         id: 'rcpt-bad-pay',

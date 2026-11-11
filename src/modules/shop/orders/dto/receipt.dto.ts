@@ -14,6 +14,9 @@ export class ReceiptBuyerDto {
 export class ReceiptRecipientDto {
   @ApiProperty({ description: 'Nombre del destinatario' })
   name!: string;
+
+  @ApiPropertyOptional({ description: 'Teléfono del destinatario congelado en el comprobante; omitido si el snapshot histórico no lo trae' })
+  phone?: string;
 }
 
 export class ReceiptItemDto {

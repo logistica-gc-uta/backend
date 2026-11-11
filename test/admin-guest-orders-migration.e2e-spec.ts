@@ -162,6 +162,44 @@ describe('Admin guest orders persistence migration', () => {
     expect(db.sql(fresh, `SELECT "userId" FROM public."order" WHERE id = 'client-compatible';`)).toBe('client');
   });
 
+  it('rejects guest receipts without a declaration, payment XOR and audit rewrites on PostgreSQL', () => {
+    insert('guard-guest');
+    const receiptSql = (orderId: string, number: string) =>
+      `INSERT INTO public."purchaseReceipt" (
+        id, "orderId", number, "commercialOrderNumber", "buyerId", "issuedAt",
+        "merchantName", currency, "subtotalCents", "taxMode", "taxEnabled", "taxRateBps",
+        "taxAmountCents", "shippingStatus", "shippingAmountCents", "totalCents", snapshot, disclaimer
+      ) VALUES (
+        '${number}', '${orderId}', '${number}', 'RG-${number}', NULL, NOW(),
+        'REGALÍA', 'USD', 100, 'SIMULATED', false, 0, 0, 'FREE_INCLUDED', 0, 100,
+        '{}'::jsonb, 'COMPROBANTE DE COMPRA SIMULADO — SIN VALIDEZ TRIBUTARIA'
+      );`;
+    expect(() => db.sql(fresh, receiptSql('guard-guest', 'CMP-guest-bare'))).toThrow(
+      /Guest receipt requires an external payment declaration/,
+    );
+    db.sql(fresh, `INSERT INTO public."externalPaymentDeclaration"
+      (id, "orderId", method, "declaredById", "declaredAt")
+      VALUES ('decl-guest', 'guard-guest', 'CASH', 'admin', NOW());`);
+    db.sql(fresh, receiptSql('guard-guest', 'CMP-guest-ok'));
+    db.sql(fresh, `INSERT INTO public."simulatedCard" (id, "fixtureId", last4, "balanceCents")
+      VALUES ('card-1', 'visa-ok', '4242', 0);`);
+    expect(() => db.sql(fresh, `INSERT INTO public."paymentAttempt" (
+        id, "orderId", "buyerId", "cardFixtureId", status, currency,
+        "subtotalCents", "taxEnabled", "taxRateBps", "taxAmountCents",
+        "shippingAmountCents", "totalCents", "amountCents", "cardLast4", reference
+      ) VALUES (
+        'pay-xor', 'guard-guest', 'client', 'visa-ok', 'APPROVED', 'USD',
+        100, false, 0, 0, 0, 100, 100, '4242', 'ref-xor'
+      );`)).toThrow(/both declared external payment and simulated card payment/);
+    db.sql(fresh, `INSERT INTO public."orderContactAudit"
+      (id, "orderId", "actorId", field, "previousValue", "nextValue")
+      VALUES ('audit-1', 'guard-guest', 'admin', 'buyerPhone', '1', '2');`);
+    expect(() => db.sql(fresh, `UPDATE public."orderContactAudit" SET "nextValue"='3' WHERE id='audit-1';`))
+      .toThrow(/Order contact audit is append-only/);
+    expect(() => db.sql(fresh, `DELETE FROM public."orderContactAudit" WHERE id='audit-1';`))
+      .toThrow(/Order contact audit is append-only/);
+  });
+
   it('verifies both actual migrated databases against the emitted contract', () => {
     expect(() => db.prisma(legacy, 'verify')).not.toThrow();
     expect(() => db.prisma(fresh, 'verify')).not.toThrow();

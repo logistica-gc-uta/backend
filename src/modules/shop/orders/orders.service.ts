@@ -704,6 +704,9 @@ export class ShopOrdersService {
 
       const recipient = {
         name: snap.recipient.name.trim(),
+        ...(declared && typeof snap.recipient.phone === 'string' && snap.recipient.phone.trim()
+          ? { phone: snap.recipient.phone.trim() }
+          : {}),
       };
 
       let payment: ReceiptDto['payment'];
