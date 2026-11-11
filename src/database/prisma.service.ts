@@ -29,6 +29,10 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
         return this.client.orm.public.Zone;
     }
 
+    get storeCoverage(): typeof db.orm.public.StoreCoverage {
+        return this.client.orm.public.StoreCoverage;
+    }
+
     get product(): typeof db.orm.public.Product {
         return this.client.orm.public.Product;
     }

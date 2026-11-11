@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'70a695f73c329e3d06c6ee0a3d8b301de993c376613442e431adde1392ca8710'>;
+  StorageHashBase<'e22e1c24292de6991987b5543666555d140b3af27a2da3628aa3eac1e5109e0f'>;
 export type ExecutionHash =
-  ExecutionHashBase<'c68023e2175bd784e4e7ecda87b1c9fa7ece194cbd3559e5407558de6f1eca5f'>;
+  ExecutionHashBase<'59a310d3a48432e67eb44cfdd26f69df0828479942b5b5a6e32c12c5a2e5a46b'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -477,6 +477,16 @@ export type FieldOutputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
+    readonly StoreCoverage: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly singletonKey: CodecTypes['pg/text@1']['output'];
+      readonly lat: CodecTypes['pg/float8@1']['output'];
+      readonly lng: CodecTypes['pg/float8@1']['output'];
+      readonly coverage: CodecTypes['pg/json@1']['output'];
+      readonly updatedById: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
     readonly UploadedAsset: {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly actorId: CodecTypes['pg/text@1']['output'];
@@ -746,6 +756,16 @@ export type FieldInputTypes = {
       readonly last4: CodecTypes['pg/text@1']['input'];
       readonly active: CodecTypes['pg/bool@1']['input'];
       readonly balanceCents: CodecTypes['pg/int8@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
+    readonly StoreCoverage: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly singletonKey: CodecTypes['pg/text@1']['input'];
+      readonly lat: CodecTypes['pg/float8@1']['input'];
+      readonly lng: CodecTypes['pg/float8@1']['input'];
+      readonly coverage: CodecTypes['pg/json@1']['input'];
+      readonly updatedById: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
@@ -1021,6 +1041,16 @@ export type StorageColumnTypes = {
       readonly last4: CodecTypes['pg/text@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
+    readonly storeCoverage: {
+      readonly coverage: CodecTypes['pg/json@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly lat: CodecTypes['pg/float8@1']['output'];
+      readonly lng: CodecTypes['pg/float8@1']['output'];
+      readonly singletonKey: CodecTypes['pg/text@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly updatedById: CodecTypes['pg/text@1']['output'] | null;
+    };
     readonly uploadedAsset: {
       readonly actorId: CodecTypes['pg/text@1']['output'];
       readonly attachedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
@@ -1293,6 +1323,16 @@ export type StorageColumnInputTypes = {
       readonly last4: CodecTypes['pg/text@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
+    readonly storeCoverage: {
+      readonly coverage: CodecTypes['pg/json@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly lat: CodecTypes['pg/float8@1']['input'];
+      readonly lng: CodecTypes['pg/float8@1']['input'];
+      readonly singletonKey: CodecTypes['pg/text@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly updatedById: CodecTypes['pg/text@1']['input'] | null;
+    };
     readonly uploadedAsset: {
       readonly actorId: CodecTypes['pg/text@1']['input'];
       readonly attachedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
@@ -1343,6 +1383,7 @@ export namespace Models {
     orders: public_Order[];
     payments: public_PaymentAttempt[];
     receipts: public_PurchaseReceipt[];
+    storeCoverageUpdates: public_StoreCoverage[];
     uploadedAssets: public_UploadedAsset[];
     readonly [RelationKeys]?:
       | 'checkoutAttempts'
@@ -1351,6 +1392,7 @@ export namespace Models {
       | 'orders'
       | 'payments'
       | 'receipts'
+      | 'storeCoverageUpdates'
       | 'uploadedAssets';
   };
   export type public_Driver = {
@@ -1362,6 +1404,18 @@ export namespace Models {
     routes: public_Route[];
     user: public_User;
     readonly [RelationKeys]?: 'routes' | 'user';
+  };
+  export type public_StoreCoverage = {
+    id: CodecTypes['pg/text@1']['output'];
+    singletonKey: CodecTypes['pg/text@1']['output'];
+    lat: CodecTypes['pg/float8@1']['output'];
+    lng: CodecTypes['pg/float8@1']['output'];
+    coverage: CodecTypes['pg/json@1']['output'];
+    updatedById: CodecTypes['pg/text@1']['output'] | null;
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    updatedBy: public_User | null;
+    readonly [RelationKeys]?: 'updatedBy';
   };
   export type public_Zone = {
     id: CodecTypes['pg/text@1']['output'];
@@ -1706,6 +1760,7 @@ export declare const models: {
   public: {
     User: Models.public_User;
     Driver: Models.public_Driver;
+    StoreCoverage: Models.public_StoreCoverage;
     Zone: Models.public_Zone;
     Category: Models.public_Category;
     Product: Models.public_Product;
@@ -3879,6 +3934,80 @@ type ContractBase = Omit<
               indexes: readonly [];
               foreignKeys: readonly [];
             };
+            readonly storeCoverage: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly singletonKey: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'GLOBAL'>;
+                  };
+                };
+                readonly lat: {
+                  readonly nativeType: 'float8';
+                  readonly codecId: 'pg/float8@1';
+                  readonly nullable: false;
+                };
+                readonly lng: {
+                  readonly nativeType: 'float8';
+                  readonly codecId: 'pg/float8@1';
+                  readonly nullable: false;
+                };
+                readonly coverage: {
+                  readonly nativeType: 'json';
+                  readonly codecId: 'pg/json@1';
+                  readonly nullable: false;
+                };
+                readonly updatedById: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['singletonKey'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'storeCoverage_updatedById_idx_d0517c24';
+                  readonly prefix: 'storeCoverage_updatedById_idx';
+                  readonly columns: readonly ['updatedById'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'storeCoverage';
+                    readonly columns: readonly ['updatedById'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
             readonly uploadedAsset: {
               columns: {
                 readonly id: {
@@ -4131,6 +4260,10 @@ type ContractBase = Omit<
   readonly roots: {
     readonly user: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
     readonly driver: { readonly namespace: 'public' & NamespaceId; readonly model: 'Driver' };
+    readonly storeCoverage: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'StoreCoverage';
+    };
     readonly zone: { readonly namespace: 'public' & NamespaceId; readonly model: 'Zone' };
     readonly category: { readonly namespace: 'public' & NamespaceId; readonly model: 'Category' };
     readonly product: { readonly namespace: 'public' & NamespaceId; readonly model: 'Product' };
@@ -6088,6 +6221,73 @@ type ContractBase = Omit<
               };
             };
           };
+          readonly StoreCoverage: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly singletonKey: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly lat: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
+              };
+              readonly lng: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/float8@1' };
+              };
+              readonly coverage: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/json@1' };
+              };
+              readonly updatedById: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly updatedBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['updatedById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'storeCoverage';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly singletonKey: { readonly column: 'singletonKey' };
+                readonly lat: { readonly column: 'lat' };
+                readonly lng: { readonly column: 'lng' };
+                readonly coverage: { readonly column: 'coverage' };
+                readonly updatedById: { readonly column: 'updatedById' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
+              };
+            };
+          };
           readonly UploadedAsset: {
             readonly fields: {
               readonly id: {
@@ -6304,6 +6504,17 @@ type ContractBase = Omit<
                 readonly on: {
                   readonly localFields: readonly ['id'];
                   readonly targetFields: readonly ['buyerId'];
+                };
+              };
+              readonly storeCoverageUpdates: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'StoreCoverage';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['updatedById'];
                 };
               };
               readonly uploadedAssets: {
@@ -6631,6 +6842,14 @@ type ContractBase = Omit<
           readonly ref: {
             readonly namespace: 'public';
             readonly table: 'simulatedCard';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'storeCoverage';
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
