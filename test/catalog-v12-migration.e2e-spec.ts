@@ -54,4 +54,53 @@ describe('catalog v1.2 formal migration — owned PostgreSQL only', () => {
     runPrismaMigrate(restoredUrl, CATALOG_CURRENT);
     expect(execPsqlCommand(restored, `SELECT price::text||':'||"priceCents" FROM public.product WHERE id='legacy-valid'`)).toBe('0.1:10');
   });
+
+  it('CT-042: audita los importes con más de dos decimales sin truncarlos y el rollback deja intactos los históricos', () => {
+    const audit = `catalog_audit_${suffix}`;
+    const auditRestored = `catalog_audit_restore_${suffix}`;
+    const auditUrl = createOwnedDatabase(audit);
+    runPrismaMigrate(auditUrl, CATALOG_ORIGIN);
+    execPsqlCommand(audit, `
+      INSERT INTO public."user"(id,name,email,password,role) VALUES ('audit-client','Audit Client','audit-client@example.test','hash','CLIENT');
+      INSERT INTO public.zone(id,name,code) VALUES ('audit-zone','Audit zone','AUD');
+      INSERT INTO public.product(id,name,price,stock) VALUES
+        ('p-a','Exacto dos decimales',19.99,1),('p-b','Medio centavo',0.005,1),('p-c','Redondeo ambiguo',2.675,1),
+        ('p-d','Tres decimales',12.345,1),('p-e','Decimo',0.1,1),('p-f','Entero',1000,1);
+      INSERT INTO public."order"(id,"userId","zoneId",total,"deliveryAddress") VALUES
+        ('o-a','audit-client','audit-zone',19.99,'Address'),('o-b','audit-client','audit-zone',0.005,'Address');
+      INSERT INTO public."orderItem"(id,"orderId","productId",quantity,price) VALUES
+        ('l-a','o-a','p-a',1,19.99),('l-b','o-b','p-b',1,0.005);
+    `);
+    // Huella de todos los importes heredados (Float) antes de migrar.
+    const fingerprint = (database: string) =>
+      execPsqlCommand(database, `SELECT md5(
+        (SELECT string_agg(id||':'||price::text, ',' ORDER BY id) FROM public.product) ||
+        (SELECT string_agg(id||':'||total::text, ',' ORDER BY id) FROM public."order") ||
+        (SELECT string_agg(id||':'||price::text, ',' ORDER BY id) FROM public."orderItem"))`);
+    const before = fingerprint(audit);
+    const backup = createScratchFile('catalog-audit-before');
+    backupOwnedDatabase(audit, backup);
+
+    runPrismaMigrate(auditUrl, CATALOG_CURRENT);
+    runPrismaVerify(auditUrl);
+
+    // Nada de lo histórico se modificó al migrar (sin reescritura retroactiva).
+    expect(fingerprint(audit)).toBe(before);
+    // Backfill por decimal exacto: dos decimales se convierten sin pérdida.
+    expect(execPsqlCommand(audit, `SELECT string_agg(id||'='||"priceCents", ',' ORDER BY id) FROM public.product WHERE "priceCents" IS NOT NULL`)).toBe('p-a=1999,p-e=10,p-f=100000');
+    // Auditoría: los importes con más de dos decimales son exactamente los que quedaron sin centavos
+    // (nunca se truncan ni se redondean en silencio), y la consulta de auditoría los identifica.
+    const moreThanTwoDecimals = execPsqlCommand(audit, `SELECT string_agg(id, ',' ORDER BY id) FROM public.product WHERE price::numeric <> round(price::numeric, 2)`);
+    const withoutCents = execPsqlCommand(audit, `SELECT string_agg(id, ',' ORDER BY id) FROM public.product WHERE "priceCents" IS NULL`);
+    expect(moreThanTwoDecimals).toBe('p-b,p-c,p-d');
+    expect(withoutCents).toBe(moreThanTwoDecimals);
+    expect(execPsqlCommand(audit, `SELECT string_agg(id, ',' ORDER BY id) FROM public."orderItem" WHERE "unitPriceCents" IS NULL`)).toBe('l-b');
+    expect(execPsqlCommand(audit, `SELECT string_agg(id, ',' ORDER BY id) FROM public."order" WHERE "subtotalCents" IS NULL`)).toBe('o-b');
+
+    // Rollback: el respaldo restaura el esquema anterior con los mismos importes históricos, sin columnas de centavos.
+    runPrismaMigrate(createOwnedDatabase(auditRestored), CATALOG_ORIGIN);
+    restoreOwnedDatabase(auditRestored, backup);
+    expect(fingerprint(auditRestored)).toBe(before);
+    expect(() => execPsqlCommand(auditRestored, `SELECT "priceCents" FROM public.product LIMIT 1`)).toThrow();
+  });
 });

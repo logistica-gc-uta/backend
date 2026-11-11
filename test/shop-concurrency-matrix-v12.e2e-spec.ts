@@ -243,4 +243,100 @@ describe('Shop v1.2 concurrency matrix on real PostgreSQL (owned fixture)', () =
     expect(await card('DEMO_APPROVED')).toBe(balanceAfterFirst);
     expect(await countRows('Order')).toBe(ordersBefore + 1);
   });
+
+  describe('Horario de atención (CT-009 y CT-040)', () => {
+    let adminToken: string;
+    let adminAvailable = false;
+    const patchSchedule = async (startTime: string, endTime: string) => {
+      const version = (await http().get('/api/v1/shop/settings').expect(200)).body.version;
+      return http().patch('/api/v1/admin/shop-settings').set(auth(adminToken)).send({ expectedVersion: version, deliverySchedule: { startTime, endTime } });
+    };
+    const quoteAt = (token: string, productId: string, scheduledDeliveryDate: string) => {
+      const dlv = { ...delivery(), scheduledDeliveryDate };
+      return http().post('/api/v1/shop/checkout/quote').set(auth(token)).send({ items: [{ productId, quantity: 1 }], delivery: dlv });
+    };
+    const unchanged = async (before: { balance: bigint; orders: number; payments: number; receipts: number }, productId: string, stock: number) => {
+      expect(await card('DEMO_APPROVED')).toBe(before.balance);
+      expect(await countRows('Order')).toBe(before.orders);
+      expect(await countRows('PaymentAttempt')).toBe(before.payments);
+      expect(await countRows('PurchaseReceipt')).toBe(before.receipts);
+      expect(await stockOf(productId)).toBe(stock);
+    };
+    const snapshot = async () => ({
+      balance: await card('DEMO_APPROVED'),
+      orders: await countRows('Order'),
+      payments: await countRows('PaymentAttempt'),
+      receipts: await countRows('PurchaseReceipt'),
+    });
+
+    beforeAll(async () => {
+      const adminId = randomUUID();
+      const email = `admin-horario-${adminId}@example.test`;
+      await db.user.create({ id: adminId, name: 'Admin Horario', email, password: 'fixture-not-real', role: 'ADMIN' });
+      adminToken = jwtSign({ sub: adminId, email, role: 'ADMIN' });
+      adminAvailable = true;
+    });
+    afterAll(async () => {
+      if (adminAvailable) await patchSchedule('07:00', '17:00'); // deja el horario inicial del contrato
+    });
+
+    it('CT-009: una fecha que vence mientras la compra espera el bloqueo del producto se rechaza con DELIVERY_INVALID sin cobrar', async () => {
+      expect((await patchSchedule('00:00', '23:59')).status).toBe(200); // el horario no debe influir en este caso
+      const productId = await createProduct('FECHA', 1000, 10);
+      const [buyer] = await createBuyers(1);
+      const scheduled = new Date(Date.now() + 9_000).toISOString(); // futura al cotizar, vencida al terminar la espera
+      const quote = await quoteAt(buyer!.token, productId, scheduled);
+      expect(quote.status).toBe(200);
+      const prepared = { items: [{ productId, quantity: 1 }], delivery: { ...delivery(), scheduledDeliveryDate: scheduled }, quoteToken: quote.body.quoteToken as string };
+      const before = await snapshot();
+
+      let release!: () => void;
+      let locked!: () => void;
+      const hold = new Promise<void>((resolve) => { release = resolve; });
+      const acquired = new Promise<void>((resolve) => { locked = resolve; });
+      const lockTask = db.client.transaction(async (tx: any) => {
+        await tx.query(db.client.raw.sql`SELECT id FROM public.product WHERE id = ${productId} FOR UPDATE`.returnsRow({ id: 'pg/text@1' }).build());
+        locked();
+        await hold;
+      });
+      await acquired;
+
+      const pending = buy(buyer!.token, prepared, APPROVED).then((res) => res);
+      await new Promise((resolve) => setTimeout(resolve, Math.max(0, Date.parse(scheduled) - Date.now()) + 1500)); // la fecha ya venció con la compra en espera
+      release();
+      await lockTask;
+      const res = await pending;
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.code).toBe('DELIVERY_INVALID');
+      await unchanged(before, productId, 10);
+    });
+
+    it('CT-040: tras cambiar el horario el ADMIN, la cotización anterior da SHOP_SETTINGS_CHANGED, la nueva valida el horario vigente y compra', async () => {
+      expect((await patchSchedule('07:00', '17:00')).status).toBe(200);
+      const productId = await createProduct('HORARIO', 1000, 10);
+      const [buyer] = await createBuyers(1);
+      const stale = await quoteFor(buyer!.token, productId); // 10:00 local, válida con 07:00–17:00
+      const before = await snapshot();
+
+      expect((await patchSchedule('08:00', '09:00')).status).toBe(200);
+
+      const late = await buy(buyer!.token, stale, APPROVED);
+      expect(late.status).toBe(409);
+      expect(late.body.error.code).toBe('SHOP_SETTINGS_CHANGED');
+      await unchanged(before, productId, 10);
+
+      const outside = await quoteAt(buyer!.token, productId, deliveryDate()); // 10:00 local: fuera de 08:00–09:00
+      expect(outside.status).toBe(422);
+      expect(outside.body.error.code).toBe('DELIVERY_OUTSIDE_HOURS');
+
+      const inside = new Date(Date.now() + 3 * 86_400_000);
+      inside.setUTCHours(13, 30, 0, 0); // 08:30 en Guayaquil
+      const fresh = await quoteAt(buyer!.token, productId, inside.toISOString());
+      expect(fresh.status).toBe(200);
+      const bought = await buy(buyer!.token, { items: [{ productId, quantity: 1 }], delivery: { ...delivery(), scheduledDeliveryDate: inside.toISOString() }, quoteToken: fresh.body.quoteToken }, APPROVED);
+      expect(bought.status).toBe(201);
+      expect(await stockOf(productId)).toBe(9);
+    });
+  });
 });

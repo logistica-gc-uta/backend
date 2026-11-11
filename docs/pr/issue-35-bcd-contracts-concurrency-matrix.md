@@ -11,6 +11,7 @@ Refs #35
 - `shop-contract-matrix-v12`: catálogo público de 200 regalos (CT-001..005), permisos y datos manipulados (CT-007, 013), reversión total y límites (CT-016, 037) y ajustes versionados del ADMIN (CT-035, 036, 038, 040, 041).
 - `shop-concurrency-matrix-v12`: 12 compradores por 5 unidades, 10 compras contra la tarjeta limitada, 8 reintentos con la misma clave, y cambios de precio y de ajustes mientras la compra espera un bloqueo.
 - Validación del OpenAPI candidato: `shop-openapi-document.spec.ts` (documento válido y coherente) y `shop-openapi-contract.e2e-spec.ts` (las respuestas reales cumplen los esquemas). Nuevas dependencias de desarrollo: `yaml` y `ajv`. Hallazgo D-4: `GET /shop/orders` devuelve `primaryProductId`, que el contrato no declara.
+- Subcasos que faltaban: CT-009 (fecha que vence durante la espera de un bloqueo), CT-040 (cambio de horario seguido de compra) y CT-042 (auditoría de importes con más de dos decimales y rollback).
 - Matriz de evidencia CT-001..043 con PASS / PASS (parcial) / BLOCKED en `docs/issue-35-evidence-matrix.md`.
 - Correcciones de las pruebas existentes: fechas de entrega fijas de 2026-11-15 (fallarían desde esa fecha) y `pnpm` en Windows en los dos fixtures de base propia; `ci-security.spec.ts` ahora espera 35 suites.
 
@@ -22,7 +23,7 @@ Refs #35
 | Pruebas unitarias | PASS en CI; en Windows 41 fallos preexistentes | cobertura líneas 89,3 % · ramas 80,3 % |
 | Pruebas de integración | 517/520 PASS | e2e autónomos con PostgreSQL 16 real, tras reintegrar sobre `main`. Las 3 fallas son de `realtime.e2e-spec` (ajena a #35), que pasa 9/9 al repetirla sola; ver H-4 de la matriz |
 | Compilación | PASS | `nest build` |
-| Pruebas funcionales | PASS | 34 CT PASS, 6 parciales, 3 BLOCKED, 0 FAIL |
+| Pruebas funcionales | PASS | 37 CT PASS, 3 parciales, 3 BLOCKED, 0 FAIL |
 
 ## Evidencias
 

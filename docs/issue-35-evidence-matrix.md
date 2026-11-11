@@ -7,7 +7,7 @@ Resultados **ejecutados** sobre PostgreSQL 16 real en contenedores propios (Wind
 | Conjunto | Resultado |
 |---|---|
 | e2e autónomos (33 suites sin las 3 heredadas), tras reintegrar sobre `main` | **517 de 520 PASS** en la corrida completa. Las 3 que fallaron son de `realtime.e2e-spec` (Issue 13, no tocada por #35): `reconnects and resynchronizes…` devolvió 500; ejecutada sola pasa 9/9. Se registra como intermitente (H-4), sin causa confirmada |
-| de ellos, nuevos de #35 | seed 7 · contrato 13 · concurrencia 5 |
+| de ellos, nuevos de #35 | seed 7 · contrato 13 · concurrencia 7 · contrato OpenAPI 10 · migración +1 |
 | Unitarias (84 suites, 982 pruebas) | 940 PASS · 42 FAIL, todos preexistentes en Windows (ver «Fallos conocidos») |
 | Cobertura unitaria | líneas 89,3 % · funciones 84,6 % · ramas 80,3 % (exigido ≥ 80 %) |
 | `tsc --noEmit` / `pnpm lint` | sin errores |
@@ -26,7 +26,7 @@ Leyenda: **PASS** ejecutado y correcto · **PASS (parcial)** ejecutado, con un s
 | CT-006 | PASS | `issue31-auth` (registro con `role` ADMIN/CLIENT/DRIVER → 400, sin cuenta creada) |
 | CT-007 | PASS | `shop-contract-matrix-v12`, `shop-orders-v12` |
 | CT-008 | PASS | `shop-quote-v12` (contacto, fecha, zona y coordenadas nulos/ausentes → 400/422 tipificado) |
-| CT-009 | PASS (parcial) | `shop-quote-v12` (fecha sin offset y fecha pasada). **No ejecutado:** fecha que vence *durante* la espera de un bloqueo |
+| CT-009 | PASS | `shop-quote-v12` (fecha sin offset y fecha pasada), `shop-concurrency-matrix-v12` (la fecha vence mientras la compra espera el bloqueo del producto: 422 `DELIVERY_INVALID`, sin cobro, stock ni registros) |
 | CT-010 | PASS | `shop-checkout-v12` |
 | CT-011 | PASS | `shop-checkout-v12`, `shop-checkout-concurrency-v12` |
 | CT-012 | PASS | `shop-checkout-v12`, `simulated-card.spec` |
@@ -57,12 +57,12 @@ Leyenda: **PASS** ejecutado y correcto · **PASS (parcial)** ejecutado, con un s
 | CT-037 | PASS | `shop-quote-v12`, `shop-contract-matrix-v12` (10 acepta; 11 y 6+5 rechazan sin cambios) |
 | CT-038 | PASS (parcial) | `shop-contract-matrix-v12` (backend rechaza 6 con máximo 5). **No ejecutado:** actualización del frontend |
 | CT-039 | PASS | `shop-quote-v12` (06:59 ✗, 07:00 ✓, 17:00 ✓, 17:01 ✗) |
-| CT-040 | PASS (parcial) | `shop-contract-matrix-v12`, `shop-settings-v12` (cualquier cambio sube la versión e invalida la cotización). **No ejecutado:** cambio de horario específicamente seguido de compra |
+| CT-040 | PASS | `shop-contract-matrix-v12`, `shop-settings-v12`, `shop-concurrency-matrix-v12` (cambio de horario por el ADMIN: la cotización anterior da `SHOP_SETTINGS_CHANGED` sin cobro; la nueva rechaza 10:00 con 08:00–09:00 y acepta 08:30 y compra) |
 | CT-041 | PASS | `shop-checkout-v12`, `shop-contract-matrix-v12`, `shop-concurrency-matrix-v12` |
-| CT-042 | PASS (parcial) | `catalog-v12-migration`. Pendiente de revisar si cubre el rollback con diferencias > 2 decimales |
+| CT-042 | PASS | `catalog-v12-migration` (backfill exacto; importes con más de dos decimales —0,005, 2,675 y 12,345— quedan sin centavos y los identifica la consulta de auditoría, sin truncar; históricos intactos tras migrar; el rollback desde el respaldo devuelve los mismos importes sin columnas de centavos) |
 | CT-043 | PASS | `shop-settings-v12` |
 
-**Totales:** 34 PASS · 6 PASS (parcial) · 3 BLOCKED (CT-028, CT-031, CT-032) · 0 FAIL, de 43. Los 6 parciales (CT-009, 030, 034, 038, 040, 042) tienen el subcaso pendiente indicado.
+**Totales:** 37 PASS · 3 PASS (parcial) · 3 BLOCKED (CT-028, CT-031, CT-032) · 0 FAIL, de 43. Los 3 parciales (CT-030, 034, 038) tienen el subcaso pendiente indicado: las suites heredadas (solo corren bien en Linux/CI) y la etiqueta/actualización en las interfaces web.
 
 ## Validación del OpenAPI candidato (`docs/REGALIA-SHOP-OPENAPI-v1.2.yaml`)
 
