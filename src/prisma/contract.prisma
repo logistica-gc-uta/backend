@@ -57,6 +57,7 @@ model User {
   checkoutAttempts CheckoutAttempt[]
   payments         PaymentAttempt[] @relation("PaymentBuyer")
   receipts         PurchaseReceipt[] @relation("ReceiptBuyer")
+  storeCoverageUpdates StoreCoverage[] @relation("StoreCoverageActor")
 }
 
 model Driver {
@@ -68,6 +69,23 @@ model Driver {
   createdAt   DateTime @default(now())
 
   routes      Route[]
+}
+
+// Singleton physical store location and general delivery coverage (#41).
+// Distinct from Zone, which remains an operational grouping for existing consumers.
+model StoreCoverage {
+  id           String   @id @default(uuid())
+  singletonKey String   @unique @default("GLOBAL")
+  lat          Float
+  lng          Float
+  coverage     Json
+  updatedById  String?
+  updatedBy    User?    @relation("StoreCoverageActor", fields: [updatedById], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now())
+
+  @@check(expression: "\"singletonKey\" = 'GLOBAL'", name: "store_coverage_singleton")
+  @@check(expression: "\"lat\" >= -90 AND \"lat\" <= 90 AND \"lng\" >= -180 AND \"lng\" <= 180 AND json_typeof(\"coverage\") = 'object'", name: "store_coverage_valid")
 }
 
 model Zone {

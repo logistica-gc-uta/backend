@@ -7,6 +7,7 @@ import { DriversModule } from './modules/drivers/drivers.module.js';
 import { OrdersModule } from './modules/orders/orders.module.js';
 import { ProductsModule } from './modules/products/products.module.js';
 import { RoutesModule } from './modules/routes/routes.module.js';
+import { StoreCoverageModule } from './modules/store-coverage/store-coverage.module.js';
 import { ZonesModule } from './modules/zones/zones.module.js';
 import { GlobalRealtimeModule } from './modules/realtime/realtime.module.js';
 import { ShopModule } from './modules/shop/shop.module.js';
@@ -16,6 +17,7 @@ import { ShopModule } from './modules/shop/shop.module.js';
     PrismaModule,
     AuthModule,
     ZonesModule,
+    StoreCoverageModule,
     DriversModule,
     ProductsModule,
     OrdersModule,
