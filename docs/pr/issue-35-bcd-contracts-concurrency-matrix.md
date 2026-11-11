@@ -10,6 +10,7 @@ Refs #35
 
 - `shop-contract-matrix-v12`: catálogo público de 200 regalos (CT-001..005), permisos y datos manipulados (CT-007, 013), reversión total y límites (CT-016, 037) y ajustes versionados del ADMIN (CT-035, 036, 038, 040, 041).
 - `shop-concurrency-matrix-v12`: 12 compradores por 5 unidades, 10 compras contra la tarjeta limitada, 8 reintentos con la misma clave, y cambios de precio y de ajustes mientras la compra espera un bloqueo.
+- Validación del OpenAPI candidato: `shop-openapi-document.spec.ts` (documento válido y coherente) y `shop-openapi-contract.e2e-spec.ts` (las respuestas reales cumplen los esquemas). Nuevas dependencias de desarrollo: `yaml` y `ajv`. Hallazgo D-4: `GET /shop/orders` devuelve `primaryProductId`, que el contrato no declara.
 - Matriz de evidencia CT-001..043 con PASS / PASS (parcial) / BLOCKED en `docs/issue-35-evidence-matrix.md`.
 - Correcciones de las pruebas existentes: fechas de entrega fijas de 2026-11-15 (fallarían desde esa fecha) y `pnpm` en Windows en los dos fixtures de base propia; `ci-security.spec.ts` ahora espera 35 suites.
 

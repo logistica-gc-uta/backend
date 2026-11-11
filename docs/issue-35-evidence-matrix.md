@@ -64,6 +64,19 @@ Leyenda: **PASS** ejecutado y correcto · **PASS (parcial)** ejecutado, con un s
 
 **Totales:** 34 PASS · 6 PASS (parcial) · 3 BLOCKED (CT-028, CT-031, CT-032) · 0 FAIL, de 43. Los 6 parciales (CT-009, 030, 034, 038, 040, 042) tienen el subcaso pendiente indicado.
 
+## Validación del OpenAPI candidato (`docs/REGALIA-SHOP-OPENAPI-v1.2.yaml`)
+
+Pedida por el comentario de contratos del issue. Dos suites nuevas:
+
+- `test/shop-openapi-document.spec.ts` (unitaria, 6 pruebas, PASS): OpenAPI 3.1, base `/api/v1`, todas las referencias `$ref` resuelven, `operationId` únicos, toda operación declara una respuesta 2xx y esquemas de seguridad existentes, parámetros de ruta declarados y los 59 esquemas compilan como JSON Schema 2020-12 (Ajv).
+- `test/shop-openapi-contract.e2e-spec.ts` (e2e sobre PostgreSQL real, 10 pruebas): valida con Ajv el cuerpo **real** de cada respuesta contra el esquema que el contrato declara para ese método, ruta y estado. Cubre registro, login, catálogo público y administrativo, ajustes, quote, checkout, intento, pedidos, comprobante y errores 401/403/409/422 (`ApiError`).
+
+Resultado: 9 PASS y 1 desvío documentado (D-4). El contrato es la autoridad: la prueba no se relajó.
+
+| ID | Severidad | Hallazgo | Estado |
+|---|---|---|---|
+| D-4 | Media | `GET /shop/orders` devuelve `primaryProductId` en cada item (commit `d9319a8`, miniaturas de pedidos) y el esquema `OrderSummary` tiene `additionalProperties: false` sin ese campo. Un consumidor que valide contra el contrato rechazaría la respuesta | Abierto: backend debe agregar el campo al contrato (o quitarlo de la API). La prueba usa `it.failing`: el CI sigue en verde y se pondrá rojo cuando se corrija, para cambiarla a `it` |
+
 ## CP-SHOP-001 … CP-SHOP-034
 
 La definición de estos casos **no está en el repositorio** (solo se menciona `CP-SHOP-016..018,026..029` en `odd/tasks/34-shop-receipts-v12.md`). No se mapean ni se marcan para no inventar resultados. Pendiente: recibir el listado.
@@ -74,7 +87,7 @@ La definición de estos casos **no está en el repositorio** (solo se menciona `
 |---|---|---|---|
 | D-1 | Alta | Las suites de Shop tenían fechas de entrega fijas (`2026-11-15`, 42 ocurrencias): desde esa fecha la cotización las rechaza por «fecha pasada» y el CI se pone en rojo | Corregido: fechas movidas a 2030 (102 pruebas PASS). Conviene generarlas dinámicamente |
 | D-2 | Media | En Windows los fixtures no encuentran `pnpm` (`spawnSync pnpm ENOENT`): 4 suites (136 pruebas) no podían correr | Corregido en los dos fixtures, solo ante ENOENT |
-| D-3 | Baja | `ci-security.spec.ts` fija el número de suites e2e; al agregar suites hay que actualizarlo | Corregido: 36 (33 de `main` + 3 de #35) |
+| D-3 | Baja | `ci-security.spec.ts` fija el número de suites e2e; al agregar suites hay que actualizarlo | Corregido: 37 (33 de `main` + 4 de #35) |
 | H-1 | Informativo | El reintento idempotente devuelve el mismo contenido pero con otro orden de claves JSON | Sin acción |
 | H-2 | Informativo | `PATCH /admin/shop-settings` espera a las compras en curso (checkout toma los ajustes `FOR SHARE`); la compra en curso conserva los ajustes con los que se cotizó | Comportamiento correcto, cubierto por prueba |
 | H-3 | Informativo | Con 12 compradores simultáneos no hubo bloqueos ni agotamiento del pool | Sin acción |

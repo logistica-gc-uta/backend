@@ -73,6 +73,7 @@
     "@types/node": "^24.0.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^7.0.0",
+    "ajv": "^8.20.0",
     "jest": "^30.0.0",
     "newman": "^6.2.2",
     "newman-reporter-htmlextra": "^1.23.1",
@@ -88,6 +89,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.23.13",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "yaml": "^2.9.1"
   }
 }
