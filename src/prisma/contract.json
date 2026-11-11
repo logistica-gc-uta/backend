@@ -1310,7 +1310,7 @@
                 }
               },
               "zoneId": {
-                "nullable": false,
+                "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
@@ -1430,7 +1430,7 @@
               },
               "zone": {
                 "cardinality": "N:1",
-                "nullable": false,
+                "nullable": true,
                 "on": {
                   "localFields": [
                     "zoneId"
@@ -4951,7 +4951,7 @@
                 "zoneId": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
-                  "nullable": false
+                  "nullable": true
                 }
               },
               "foreignKeys": [
@@ -7153,7 +7153,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "e22e1c24292de6991987b5543666555d140b3af27a2da3628aa3eac1e5109e0f"
+    "storageHash": "5e11bbaf1302fbf1e4e29d9e035846311bccdefcfac729378b0e54068f139b98"
   },
   "execution": {
     "executionHash": "59a310d3a48432e67eb44cfdd26f69df0828479942b5b5a6e32c12c5a2e5a46b",

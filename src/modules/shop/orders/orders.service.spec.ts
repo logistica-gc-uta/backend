@@ -274,6 +274,7 @@ describe('ShopOrdersService unit tests (public behavior)', () => {
       expect(detail.buyer.name).toBe('Juan Perez');
       expect(detail.recipient.name).toBe('Maria Lopez');
       expect(detail.delivery.address).toBe('Calle 1 y 2');
+      expect(detail.delivery.zoneId).toBe('z1');
       expect(detail.items).toHaveLength(1);
       expect(detail.items[0].sku).toBe('SKU-1');
 
@@ -316,6 +317,48 @@ describe('ShopOrdersService unit tests (public behavior)', () => {
         .mockResolvedValueOnce([]);
 
       await expect(service.getOrderDetail('user-1', 'ord-bad')).rejects.toThrow();
+    });
+
+    it('accepts a coverage-era snapshot with null zoneId and zoneName', async () => {
+      const orderRow = {
+        id: 'ord-cov',
+        number: 'RG-2026-COV',
+        createdAt: '2026-10-20T10:00:00.000Z',
+        scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+        status: 'PENDING',
+        routeId: null,
+        subtotalCents: BigInt(3650),
+        taxAmountCents: BigInt(548),
+        taxRateBps: 1500,
+        shippingAmountCents: 0,
+        totalCents: BigInt(4198),
+        currency: 'USD',
+        receiptId: 'rcpt-cov',
+        taxEnabled: true,
+        snapshot: {
+          buyer: { id: 'user-1', name: 'Juan Perez', email: 'juan@test.com' },
+          recipient: { name: 'Maria Lopez', phone: '0999999999' },
+          delivery: {
+            zoneId: null,
+            zoneName: null,
+            address: 'Calle 1 y 2',
+            location: { lat: -1.24, lng: -78.61 },
+            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+            notes: null,
+          },
+          items: [
+            { productId: 'p1', sku: 'SKU-1', name: 'Caja Regalo', quantity: 1, unitPriceCents: 3650, lineTotalCents: 3650, imageUrl: null },
+          ],
+        },
+      };
+      mockTx.query
+        .mockResolvedValueOnce([orderRow])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      const detail = await service.getOrderDetail('user-1', 'ord-cov');
+      expect(detail.delivery.zoneId).toBeNull();
+      expect(detail.delivery.zoneName).toBeNull();
+      expect(detail.delivery.address).toBe('Calle 1 y 2');
     });
 
     it('fails closed when delivery coordinates are missing in detail snapshot', async () => {

@@ -180,6 +180,7 @@ export class SecurityFixtureManager {
     });
     this.createdOrderIds.push(order.id);
     if (order.userId === null) throw new Error('Expected the CLIENT order fixture to retain its owner');
+    if (order.zoneId === null) throw new Error('Expected the order fixture to retain its zone');
     return {
       id: order.id,
       userId: order.userId,

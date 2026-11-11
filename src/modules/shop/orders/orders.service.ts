@@ -86,8 +86,8 @@ interface ParsedSnapshot {
     phone?: string;
   };
   delivery?: {
-    zoneId?: string;
-    zoneName?: string;
+    zoneId?: string | null;
+    zoneName?: string | null;
     address?: string;
     location?: {
       lat?: number;
@@ -539,8 +539,6 @@ export class ShopOrdersService {
       };
 
       if (
-        !snap.delivery?.zoneId ||
-        !snap.delivery?.zoneName ||
         !snap.delivery?.address ||
         typeof snap.delivery?.location?.lat !== 'number' ||
         typeof snap.delivery?.location?.lng !== 'number'
@@ -554,8 +552,8 @@ export class ShopOrdersService {
       );
 
       const delivery = {
-        zoneId: snap.delivery.zoneId,
-        zoneName: snap.delivery.zoneName,
+        zoneId: typeof snap.delivery.zoneId === 'string' ? snap.delivery.zoneId : null,
+        zoneName: typeof snap.delivery.zoneName === 'string' ? snap.delivery.zoneName : null,
         address: snap.delivery.address,
         location: {
           lat: snap.delivery.location.lat,

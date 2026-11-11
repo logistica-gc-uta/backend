@@ -472,6 +472,11 @@ export class DispatchInterventionService {
               throw new ConflictException(
                 'New departure requires an effectively available driver',
               );
+            if (!proposal.zoneId) {
+              throw new ConflictException(
+                'New departure requires a persisted zoneId until dispatch coverage grouping lands',
+              );
+            }
             const draft = await this.assignment.confirmInTransaction(
               tx,
               {

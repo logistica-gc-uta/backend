@@ -225,8 +225,8 @@ model Order {
   recipientPhone        String?
   deliveryWindowStart   DateTime?
   deliveryWindowEnd     DateTime?
-  zoneId                String
-  zone                  Zone        @relation(fields: [zoneId], references: [id])
+  zoneId                String?
+  zone                  Zone?       @relation(fields: [zoneId], references: [id])
   routeId               String?
   route                 Route?      @relation(fields: [routeId], references: [id])
   status                OrderStatus @default(PENDING)

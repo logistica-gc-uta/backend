@@ -100,8 +100,8 @@ export class ExcludedOrderDto {
   @ApiProperty({ format: 'uuid' })
   orderId!: string;
 
-  @ApiProperty({ format: 'uuid' })
-  zoneId!: string;
+  @ApiProperty({ format: 'uuid', nullable: true, type: String })
+  zoneId!: string | null;
 
   @ApiProperty({
     enum: [...PLANNING_EXCLUSION_REASONS],

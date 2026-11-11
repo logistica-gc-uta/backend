@@ -126,6 +126,13 @@ describe('RouteAssignmentService', () => {
       new RouteAvailabilityService({ client: tx } as unknown as PrismaService),
     );
   });
+  it('confirms coverage orders with null zoneId onto the requested route zone', async () => {
+    orders[0].zoneId = null;
+    await expect(service.confirmDraft(dto, 'admin')).resolves.toMatchObject({
+      status: 'DRAFT',
+    });
+  });
+
   it('rejects compatibility wrong-zone input with400 before creating claims', async () => {
     orders[0].zoneId = 'other-zone';
     await expect(
