@@ -127,6 +127,28 @@ describe('coverage-geometry.util', () => {
       );
     });
 
+    it('rejects non-finite point coordinates', () => {
+      expect(() => classifyPointInCoverage({ lat: 999, lng: 0 }, square)).toThrow(/finite/i);
+    });
+
+    it('skips topology on trusted reads so a stored degenerate ring can still be classified', () => {
+      const collinear = {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [0, 0],
+            [1, 0],
+            [2, 0],
+            [0, 0],
+          ],
+        ],
+      };
+      expect(parseCoveragePolygon(collinear, { checkTopology: false })).toHaveLength(4);
+      expect(classifyPointInCoverage({ lat: 0, lng: 1 }, collinear)).toBe(
+        CoverageClassification.BOUNDARY,
+      );
+    });
+
     it('does not treat a distant point as boundary of a tiny polygon', () => {
       const tiny = {
         type: 'Polygon',

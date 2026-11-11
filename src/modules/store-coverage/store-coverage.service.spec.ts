@@ -193,4 +193,60 @@ describe('StoreCoverageService', () => {
       position: 'EXTERIOR',
     });
   });
+
+  it('rejects invalid write and evaluate coordinates as STORE_LOCATION_INVALID', async () => {
+    await expect(
+      service.upsertCoverage('admin-1', {
+        location: { lat: 999, lng: 1 },
+        coverage: coverageA,
+      } as any),
+    ).rejects.toMatchObject({
+      response: { error: { code: 'STORE_LOCATION_INVALID' } },
+    });
+    await expect(service.evaluatePoint({ lat: 5, lng: 999 })).rejects.toMatchObject({
+      response: { error: { code: 'STORE_LOCATION_INVALID' } },
+    });
+  });
+
+  it('rethrows non-unique persist failures without retrying', async () => {
+    mockPrisma.client.transaction.mockRejectedValue(new Error('deadlock'));
+    await expect(
+      service.upsertCoverage('admin-1', { location: { lat: 1, lng: 1 }, coverage: coverageA }),
+    ).rejects.toThrow('deadlock');
+    expect(mockPrisma.client.transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed when a locked update returns no row', async () => {
+    mockPrisma.client.transaction.mockImplementation(async (cb: (tx: any) => Promise<unknown>) => {
+      const tx = {
+        execute: jest.fn().mockResolvedValue({ count: 1 }),
+        query: jest.fn().mockResolvedValue([{ id: row.id }]),
+        orm: {
+          public: {
+            StoreCoverage: {
+              where: jest.fn().mockReturnValue({
+                update: jest.fn().mockResolvedValue(null),
+              }),
+            },
+          },
+        },
+      };
+      return cb(tx);
+    });
+
+    await expect(
+      service.upsertCoverage('admin-1', { location: { lat: 1, lng: 1 }, coverage: coverageA }),
+    ).rejects.toMatchObject({
+      response: { error: { code: 'INTERNAL_ERROR' } },
+    });
+  });
+
+  it('fails closed when persisted coverage cannot be parsed', async () => {
+    mockPrisma.client.orm.public.StoreCoverage.where.mockReturnValue({
+      first: jest.fn().mockResolvedValue({ ...row, coverage: { type: 'Point', coordinates: [0, 0] } }),
+    });
+    await expect(service.getCoverage()).rejects.toMatchObject({
+      response: { error: { code: 'INTERNAL_ERROR' } },
+    });
+  });
 });
