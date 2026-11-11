@@ -20,7 +20,7 @@ export interface CanonicalLocation {
 
 export interface CanonicalDelivery {
   recipient: CanonicalRecipient;
-  zoneId: string;
+  zoneId?: string;
   deliveryAddress: string;
   deliveryLocation: CanonicalLocation;
   scheduledDeliveryDate: string;
@@ -38,7 +38,7 @@ export interface RawIntentInput {
   items: { productId: string; quantity: number }[];
   delivery: {
     recipient: { name: string; phone: string };
-    zoneId: string;
+    zoneId?: string;
     deliveryAddress: string;
     deliveryLocation: { lat: number; lng: number };
     scheduledDeliveryDate: string;
@@ -88,7 +88,7 @@ export function buildCanonicalIntent(input: RawIntentInput): CanonicalIntent {
         name: input.delivery.recipient.name.trim(),
         phone: input.delivery.recipient.phone.trim(),
       },
-      zoneId: input.delivery.zoneId.trim(),
+      ...(input.delivery.zoneId !== undefined ? { zoneId: input.delivery.zoneId.trim() } : {}),
       deliveryAddress: input.delivery.deliveryAddress.trim(),
       deliveryLocation: {
         lat: Number(input.delivery.deliveryLocation.lat),

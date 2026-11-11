@@ -83,7 +83,7 @@ The store location is not required to sit inside the polygon. Coverage changes a
 | Issue | Use this contract |
 | --- | --- |
 | [web #32](https://github.com/logistica-gc-uta/frontend-web-logistica/issues/32) | `GET` / `PUT` above. Treat `configured: false` as empty UI, not a fake pin. |
-| [backend #42](https://github.com/logistica-gc-uta/backend/issues/42) | Call `StoreCoverageService.evaluatePoint` (or `POST .../evaluate`) on create/quote/address change. Fail closed on `STORE_NOT_CONFIGURED` and `accepted: false`. Do not auto-cancel existing orders. |
+| [backend #42](https://github.com/logistica-gc-uta/backend/issues/42) | Implemented in `docs/orders-coverage-contract.md`: quote/confirm/ADMIN create call `evaluatePoint`. Fail closed on `STORE_NOT_CONFIGURED` and exterior. |
 | [backend #48](https://github.com/logistica-gc-uta/backend/issues/48) | Use `location` as the common origin and return. Do not keep inventing per-zone depots as the store. |
 
 Do not delete `Zone` until those consumers are adapted. Hourly grouping, OSRM, and live GPS stay out of #41.

@@ -2989,6 +2989,7 @@ components:
         zoneId:
           type: string
           format: uuid
+          description: Deprecated. Optional and ignored for eligibility; persist the FK when sent, otherwise store null.
         deliveryAddress:
           type: string
           minLength: 5
@@ -3004,7 +3005,6 @@ components:
           maxLength: 500
       required:
       - recipient
-      - zoneId
       - deliveryAddress
       - deliveryLocation
       - scheduledDeliveryDate
@@ -3453,10 +3453,15 @@ components:
       type: object
       properties:
         zoneId:
-          type: string
+          type:
+          - string
+          - 'null'
           format: uuid
+          description: Null on new store-coverage orders; legacy rows may still have a zone.
         zoneName:
-          type: string
+          type:
+          - string
+          - 'null'
         address:
           type: string
         location:
@@ -3469,8 +3474,6 @@ components:
           - string
           - 'null'
       required:
-      - zoneId
-      - zoneName
       - address
       - location
       - scheduledDeliveryDate

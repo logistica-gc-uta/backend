@@ -30,10 +30,14 @@ export class OrderItemDto {
 }
 
 export class CreateOrderDto {
-  @ApiProperty({ description: 'ID de la zona de entrega', example: 'cm123abc456' })
+  @ApiPropertyOptional({
+    description:
+      'Deprecated. Ignored for eligibility; persist the FK when sent, otherwise store null.',
+    example: 'cm123abc456',
+  })
+  @ValidateIf((_, value) => value !== undefined)
   @IsString({ message: 'El ID de la zona debe ser una cadena de texto' })
-  @IsNotEmpty({ message: 'El ID de la zona es obligatorio' })
-  zoneId!: string;
+  zoneId?: string;
 
   @ApiProperty({
     description: 'Dirección física detallada de entrega',

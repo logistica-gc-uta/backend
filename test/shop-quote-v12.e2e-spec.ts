@@ -8,6 +8,7 @@ import {
   runPrismaMigrate,
   startOwnedContainer,
 } from './geolocation-migration.fixtures.js';
+import { seedAmbatoStoreCoverage } from './ambato-store-coverage.fixture.js';
 
 jest.setTimeout(240_000);
 
@@ -32,7 +33,6 @@ describe('Shop Quote v1.2 HTTP Contract & DB Verification (owned PostgreSQL fixt
   let unpublishedProductId: string;
   let inactiveCategoryProductId: string;
   let validZoneId: string;
-  let zoneWithoutDepotId: string;
   let nonV4ZoneId: string;
   let nonV4ProductId: string;
 
@@ -148,14 +148,7 @@ describe('Shop Quote v1.2 HTTP Contract & DB Verification (owned PostgreSQL fixt
       depotLng: -78.618,
     });
 
-    zoneWithoutDepotId = randomUUID();
-    await db.zone.create({
-      id: zoneWithoutDepotId,
-      name: 'Zona Sin Deposito',
-      code: `NODEP-${dbSuffix.slice(0, 4)}`,
-      depotLat: null,
-      depotLng: null,
-    });
+    await seedAmbatoStoreCoverage(db);
 
     nonV4ZoneId = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
     await db.zone.create({
@@ -779,27 +772,19 @@ describe('Shop Quote v1.2 HTTP Contract & DB Verification (owned PostgreSQL fixt
     });
   });
 
-  describe('6. Geographic and Zone Validation', () => {
-    it('rejects non-existent zoneId with 404 ZONE_NOT_FOUND', async () => {
-      const fakeZoneId = randomUUID();
+  describe('6. Geographic coverage validation', () => {
+    it('quotes without zoneId when the point is inside coverage', async () => {
+      const body = getValidQuoteBody();
+      const { zoneId: _ignoredZoneId, ...delivery } = body.delivery;
       const res = await http()
         .post('/api/v1/shop/checkout/quote')
         .set(auth(clientToken))
-        .send(
-          getValidQuoteBody({
-            delivery: {
-              ...getValidQuoteBody().delivery,
-              zoneId: fakeZoneId,
-            },
-          }),
-        )
-        .expect(404);
-
-      expectErrorEnvelope(res.body, 'ZONE_NOT_FOUND');
-      expect(res.body.error.details).toEqual({ zoneId: fakeZoneId });
+        .send({ ...body, delivery })
+        .expect(200);
+      expect(res.body.quoteToken).toEqual(expect.any(String));
     });
 
-    it('rejects zone without configured depot with 422 DELIVERY_INVALID', async () => {
+    it('rejects an exterior point with 422 DELIVERY_OUTSIDE_COVERAGE', async () => {
       const res = await http()
         .post('/api/v1/shop/checkout/quote')
         .set(auth(clientToken))
@@ -807,13 +792,13 @@ describe('Shop Quote v1.2 HTTP Contract & DB Verification (owned PostgreSQL fixt
           getValidQuoteBody({
             delivery: {
               ...getValidQuoteBody().delivery,
-              zoneId: zoneWithoutDepotId,
+              deliveryLocation: { lat: 0, lng: 0 },
             },
           }),
         )
         .expect(422);
 
-      expectErrorEnvelope(res.body, 'DELIVERY_INVALID');
+      expectErrorEnvelope(res.body, 'DELIVERY_OUTSIDE_COVERAGE');
     });
   });
 

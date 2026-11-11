@@ -2,11 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { toInstant } from '../../../common/temporal.util.js';
 import { PrismaService } from '../../../database/prisma.service.js';
+import { assertDeliveryCovered } from '../../orders/delivery-coverage.util.js';
+import { assertWithinOperatingHours } from '../../orders/delivery-hours.util.js';
 import { deliveryClock, parseDeliveryTiming } from '../../orders/order-delivery.util.js';
-import { evaluatePlanningEligibility, validateCoordinatePair } from '../../orders/order-geography.util.js';
+import { validateCoordinatePair } from '../../orders/order-geography.util.js';
 import { lockInventoryProduct } from '../../orders/order-inventory.util.js';
 import { ShopSettingsPublicDto } from '../settings/dto/shop-settings.dto.js';
 import { ShopSettingsService } from '../settings/shop-settings.service.js';
+import { StoreCoverageService } from '../../store-coverage/store-coverage.service.js';
 import { shopError } from '../shop-http.filter.js';
 import {
   buildCanonicalIntent,
@@ -51,14 +54,6 @@ interface UserRow {
   id: string;
   name: string;
   email: string;
-}
-
-interface ZoneRow {
-  id: string;
-  name: string;
-  code: string;
-  depotLat: number | null;
-  depotLng: number | null;
 }
 
 interface CheckoutAttemptRow {
@@ -118,7 +113,6 @@ function assertCanonicalIntentMatchesQuote(
   const deliveryMismatch =
     reqDelivery.recipient.name !== qDelivery.recipient.name ||
     reqDelivery.recipient.phone !== qDelivery.recipient.phone ||
-    reqDelivery.zoneId !== qDelivery.zoneId ||
     reqDelivery.deliveryAddress !== qDelivery.deliveryAddress ||
     reqDelivery.deliveryLocation.lat !== qDelivery.deliveryLocation.lat ||
     reqDelivery.deliveryLocation.lng !== qDelivery.deliveryLocation.lng ||
@@ -140,6 +134,7 @@ export class CheckoutConfirmationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly settingsService: ShopSettingsService,
+    private readonly storeCoverage: StoreCoverageService,
   ) {}
 
   private statusForCode(code: string): number {
@@ -156,8 +151,11 @@ export class CheckoutConfirmationService {
       case 'INSUFFICIENT_DEMO_FUNDS':
       case 'DELIVERY_INVALID':
       case 'DELIVERY_OUTSIDE_HOURS':
+      case 'DELIVERY_OUTSIDE_COVERAGE':
       case 'QUANTITY_LIMIT_EXCEEDED':
         return HttpStatus.UNPROCESSABLE_ENTITY; // 422
+      case 'STORE_NOT_CONFIGURED':
+        return HttpStatus.CONFLICT;
       case 'PRODUCT_NOT_FOUND':
       case 'ZONE_NOT_FOUND':
       case 'CHECKOUT_ATTEMPT_NOT_FOUND':
@@ -914,71 +912,12 @@ export class CheckoutConfirmationService {
           );
         }
 
-        // Enforce operating hours in America/Guayaquil
-        const localZonedDateTime = scheduledInstant.toZonedDateTimeISO('America/Guayaquil');
-        const localTime = localZonedDateTime.toPlainTime();
-        const startTime = Temporal.PlainTime.from(currentSettings.deliverySchedule.startTime);
-        const endTime = Temporal.PlainTime.from(currentSettings.deliverySchedule.endTime);
-
-        if (
-          Temporal.PlainTime.compare(localTime, startTime) < 0 ||
-          Temporal.PlainTime.compare(localTime, endTime) > 0
-        ) {
-          const reqTime = `${String(localTime.hour).padStart(2, '0')}:${String(localTime.minute).padStart(2, '0')}`;
-          throw shopError(
-            HttpStatus.UNPROCESSABLE_ENTITY,
-            'DELIVERY_OUTSIDE_HOURS',
-            `Horario de entrega (${reqTime}) fuera del horario comercial (${currentSettings.deliverySchedule.startTime} - ${currentSettings.deliverySchedule.endTime})`,
-            {
-              startTime: currentSettings.deliverySchedule.startTime,
-              endTime: currentSettings.deliverySchedule.endTime,
-              requestedTime: reqTime,
-            },
-          );
-        }
-
-        // Validate zone and depot planning eligibility
-        const zonePlan = this.prisma.client.raw.sql`
-          SELECT id, name, code, "depotLat", "depotLng"
-          FROM public.zone
-          WHERE id = ${dto.delivery.zoneId}
-        `
-          .returnsRow({
-            id: 'pg/text@1',
-            name: 'pg/text@1',
-            code: 'pg/text@1',
-            depotLat: 'pg/float8@1',
-            depotLng: 'pg/float8@1',
-          })
-          .build();
-        const [zoneRow] = await tx.query(zonePlan);
-        const zone = (zoneRow as unknown as ZoneRow) ?? null;
-
-        if (!zone) {
-          throw shopError(
-            HttpStatus.NOT_FOUND,
-            'ZONE_NOT_FOUND',
-            `Zona con ID '${dto.delivery.zoneId}' no encontrada`,
-            { zoneId: dto.delivery.zoneId },
-          );
-        }
-
-        const { planningEligibility } = evaluatePlanningEligibility(
-          {
-            deliveryLat: dto.delivery.deliveryLocation.lat,
-            deliveryLng: dto.delivery.deliveryLocation.lng,
-          },
-          zone,
+        assertWithinOperatingHours(scheduledInstant, currentSettings.deliverySchedule);
+        await assertDeliveryCovered(
+          this.storeCoverage,
+          dto.delivery.deliveryLocation.lat,
+          dto.delivery.deliveryLocation.lng,
         );
-
-        if (!planningEligibility.eligible) {
-          throw shopError(
-            HttpStatus.UNPROCESSABLE_ENTITY,
-            'DELIVERY_INVALID',
-            'La ubicación o zona no es elegible para entrega',
-            { reasons: planningEligibility.reasons },
-          );
-        }
 
         // Exact money calculations
         const moneyResult = calculateMoneyAmounts(moneyLines, {
@@ -1075,7 +1014,7 @@ export class CheckoutConfirmationService {
           ) VALUES (
             ${orderId}, ${buyerUserId}, ${buyerUserId}, 'REGISTERED_CLIENT',
             ${dto.delivery.recipient.name.trim()}, ${dto.delivery.recipient.phone.trim()},
-            ${dto.delivery.zoneId}, 'PENDING', ${subtotalFloat}, ${BigInt(moneyResult.subtotalCents)},
+            NULLIF(${dto.delivery.zoneId ?? ''}, ''), 'PENDING', ${subtotalFloat}, ${BigInt(moneyResult.subtotalCents)},
             ${dto.delivery.deliveryAddress.trim()}, ${scheduledDeliveryIso}::timestamptz,
             ${dto.delivery.deliveryLocation.lat}, ${dto.delivery.deliveryLocation.lng},
             false, clock_timestamp()
@@ -1125,8 +1064,8 @@ export class CheckoutConfirmationService {
             phone: dto.delivery.recipient.phone.trim(),
           },
           delivery: {
-            zoneId: zone.id,
-            zoneName: zone.name,
+            zoneId: null,
+            zoneName: null,
             address: dto.delivery.deliveryAddress.trim(),
             location: {
               lat: dto.delivery.deliveryLocation.lat,

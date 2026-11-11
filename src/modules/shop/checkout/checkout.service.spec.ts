@@ -8,6 +8,7 @@ describe('CheckoutService (unit)', () => {
   let service: CheckoutService;
   let mockPrisma: any;
   let mockSettingsService: any;
+  let mockStoreCoverage: any;
   const originalSecret = process.env.JWT_SECRET;
 
   const buyerUserId = '99999999-9999-4999-8999-999999999999';
@@ -142,7 +143,11 @@ describe('CheckoutService (unit)', () => {
       getPublicSettings: jest.fn().mockResolvedValue(defaultSettings),
     };
 
-    service = new CheckoutService(mockPrisma, mockSettingsService);
+    mockStoreCoverage = {
+      evaluatePoint: jest.fn().mockResolvedValue({ accepted: true, position: 'INTERIOR' }),
+    };
+
+    service = new CheckoutService(mockPrisma, mockSettingsService, mockStoreCoverage);
   });
 
   afterAll(() => {
@@ -236,31 +241,24 @@ describe('CheckoutService (unit)', () => {
     });
   });
 
-  describe('geographic & zone validation', () => {
-    it('throws 404 ZONE_NOT_FOUND when zoneId does not exist', async () => {
-      currentZone = null;
-
-      try {
-        await service.quoteCheckout(buyerUserId, createQuoteRequest());
-        fail('Should have thrown ZONE_NOT_FOUND');
-      } catch (err: any) {
-        expect(err).toBeInstanceOf(HttpException);
-        expect(err.getStatus()).toBe(HttpStatus.NOT_FOUND);
-        expect(err.getResponse().error.code).toBe('ZONE_NOT_FOUND');
-        expect(err.getResponse().error.details).toEqual({ zoneId: testZoneId });
-      }
+  describe('geographic coverage validation', () => {
+    it('quotes without requiring zoneId when the point is covered', async () => {
+      const body = createQuoteRequest();
+      delete (body.delivery as { zoneId?: string }).zoneId;
+      const quote = await service.quoteCheckout(buyerUserId, body);
+      expect(quote.totalCents).toBe(8395);
+      expect(mockStoreCoverage.evaluatePoint).toHaveBeenCalled();
     });
 
-    it('throws 422 DELIVERY_INVALID when zone has no depot coordinates configured', async () => {
-      currentZone = createZoneRow(null, null);
-
+    it('throws 422 DELIVERY_OUTSIDE_COVERAGE for an exterior point', async () => {
+      mockStoreCoverage.evaluatePoint.mockResolvedValue({ accepted: false, position: 'EXTERIOR' });
       try {
         await service.quoteCheckout(buyerUserId, createQuoteRequest());
-        fail('Should have thrown DELIVERY_INVALID');
+        fail('Should have thrown DELIVERY_OUTSIDE_COVERAGE');
       } catch (err: any) {
         expect(err).toBeInstanceOf(HttpException);
         expect(err.getStatus()).toBe(HttpStatus.UNPROCESSABLE_ENTITY);
-        expect(err.getResponse().error.code).toBe('DELIVERY_INVALID');
+        expect(err.getResponse().error.code).toBe('DELIVERY_OUTSIDE_COVERAGE');
       }
     });
   });

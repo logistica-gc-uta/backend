@@ -14,7 +14,7 @@ export interface QuotedTokenDelivery {
     name: string;
     phone: string;
   };
-  zoneId: string;
+  zoneId?: string;
   deliveryAddress: string;
   deliveryLocation: {
     lat: number;
