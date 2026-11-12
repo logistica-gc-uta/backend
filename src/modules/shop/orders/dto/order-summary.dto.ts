@@ -1,36 +1,49 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { OrderStatus } from './orders-query.dto.js';
 
+/** Quién creó el pedido propio: el cliente por sí mismo (Shop) o un ADMIN en su nombre. */
+export const ORDER_SOURCES = ['SHOP', 'ADMIN'] as const;
+export type OrderSource = (typeof ORDER_SOURCES)[number];
+
 export class OrderSummaryDto {
   @ApiProperty({ format: 'uuid', description: 'ID único del pedido' })
   id!: string;
 
-  @ApiProperty({ description: 'Número comercial legible del pedido (ej. RG-2026-...)' })
-  number!: string;
+  @ApiProperty({ enum: ORDER_SOURCES, description: 'Origen del pedido: `SHOP` (lo hizo el cliente) o `ADMIN` (lo registró un ADMIN a su nombre)' })
+  source!: OrderSource;
+
+  @ApiProperty({
+    description:
+      'Si existe un comprobante fiable. Si es false (pedido conservado sin comprobante) el número, los importes y el resumen de ítems son null: nunca se reconstruyen con el catálogo actual.',
+  })
+  receiptAvailable!: boolean;
+
+  @ApiProperty({ type: String, nullable: true, description: 'Número comercial legible del pedido (ej. RG-2026-...); null sin comprobante' })
+  number!: string | null;
 
   @ApiProperty({ format: 'date-time', description: 'Fecha de creación' })
   createdAt!: string;
 
-  @ApiProperty({ format: 'date-time', description: 'Fecha programada de entrega' })
-  scheduledDeliveryDate!: string;
+  @ApiProperty({ type: String, nullable: true, format: 'date-time', description: 'Fecha programada de entrega; null solo en un pedido antiguo conservado sin comprobante ni fecha' })
+  scheduledDeliveryDate!: string | null;
 
   @ApiProperty({ enum: OrderStatus, description: 'Estado actual del pedido' })
   status!: OrderStatus;
 
-  @ApiProperty({ minimum: 0, description: 'Total en centavos (subtotal + tax + shipping)' })
-  totalCents!: number;
+  @ApiProperty({ type: Number, nullable: true, minimum: 0, description: 'Total en centavos (subtotal + tax + shipping); null sin comprobante' })
+  totalCents!: number | null;
 
   @ApiProperty({ enum: ['USD'], default: 'USD' })
   currency!: 'USD';
 
-  @ApiProperty({ enum: ['APPROVED'], default: 'APPROVED' })
-  paymentStatus!: 'APPROVED';
+  @ApiProperty({ type: String, enum: ['APPROVED'], nullable: true, default: 'APPROVED', description: 'null sin comprobante: no se infiere el pago' })
+  paymentStatus!: 'APPROVED' | null;
 
-  @ApiProperty({ format: 'uuid', description: 'ID del comprobante emitido' })
-  receiptId!: string;
+  @ApiProperty({ type: String, nullable: true, format: 'uuid', description: 'ID del comprobante emitido; null sin comprobante' })
+  receiptId!: string | null;
 
-  @ApiProperty({ minimum: 1, description: 'Cantidad total de ítems' })
-  itemsCount!: number;
+  @ApiProperty({ type: Number, nullable: true, minimum: 1, description: 'Cantidad total de ítems; null sin comprobante' })
+  itemsCount!: number | null;
 
   @ApiProperty({ type: String, nullable: true, format: 'uri', description: 'URL de imagen principal o null' })
   primaryImageUrl!: string | null;
@@ -43,20 +56,20 @@ export class OrderSummaryDto {
   })
   primaryProductId!: string | null;
 
-  @ApiProperty({ minimum: 0, description: 'Subtotal en centavos' })
-  subtotalCents!: number;
+  @ApiProperty({ type: Number, nullable: true, minimum: 0, description: 'Subtotal en centavos; null sin comprobante' })
+  subtotalCents!: number | null;
 
-  @ApiProperty({ minimum: 0, description: 'Monto de IVA simulado en centavos' })
-  taxAmountCents!: number;
+  @ApiProperty({ type: Number, nullable: true, minimum: 0, description: 'Monto de IVA simulado en centavos; null sin comprobante' })
+  taxAmountCents!: number | null;
 
-  @ApiProperty({ minimum: 0, maximum: 10000, description: 'Tasa de IVA simulado en bps (1500 = 15%)' })
-  taxRateBps!: number;
+  @ApiProperty({ type: Number, nullable: true, minimum: 0, maximum: 10000, description: 'Tasa de IVA simulado en bps (1500 = 15%); null sin comprobante' })
+  taxRateBps!: number | null;
 
-  @ApiProperty({ default: 0, description: 'Costo de envío en centavos (siempre 0)' })
-  shippingAmountCents!: number;
+  @ApiProperty({ type: Number, nullable: true, default: 0, description: 'Costo de envío en centavos (siempre 0); null sin comprobante' })
+  shippingAmountCents!: number | null;
 
-  @ApiProperty({ description: 'Si el IVA simulado estaba activo al momento de compra' })
-  taxEnabled!: boolean;
+  @ApiProperty({ type: Boolean, nullable: true, description: 'Si el IVA simulado estaba activo al momento de compra; null sin comprobante' })
+  taxEnabled!: boolean | null;
 }
 
 export class OrderListDto {

@@ -3334,14 +3334,28 @@ components:
         id:
           type: string
           format: uuid
-        number:
+        source:
           type: string
+          enum:
+          - SHOP
+          - ADMIN
+          description: Quién creó el pedido propio. SHOP lo hizo el cliente; ADMIN lo registró un ADMIN a su nombre
+        receiptAvailable:
+          type: boolean
+          description: Si existe un comprobante fiable. Si es false (pedido conservado) los campos derivados del comprobante son null y no se reconstruyen con el catálogo actual
+        number:
+          type:
+          - string
+          - 'null'
         createdAt:
           type: string
           format: date-time
         scheduledDeliveryDate:
-          type: string
+          type:
+          - string
+          - 'null'
           format: date-time
+          description: null solo en un pedido antiguo conservado sin comprobante ni fecha programada
         status:
           type: string
           enum:
@@ -3351,7 +3365,9 @@ components:
           - DELIVERED
           - CANCELLED
         totalCents:
-          type: integer
+          type:
+          - integer
+          - 'null'
           minimum: 0
           description: subtotalCents + taxAmountCents + shippingAmountCents (shippingAmountCents=0)
         currency:
@@ -3359,38 +3375,65 @@ components:
           enum:
           - USD
         paymentStatus:
-          type: string
+          type:
+          - string
+          - 'null'
           enum:
           - APPROVED
+          - null
         receiptId:
-          type: string
+          type:
+          - string
+          - 'null'
           format: uuid
         itemsCount:
-          type: integer
+          type:
+          - integer
+          - 'null'
           minimum: 1
         primaryImageUrl:
           type:
           - string
           - 'null'
           format: uri
+        primaryProductId:
+          type:
+          - string
+          - 'null'
+          format: uuid
+          description: Producto de la miniatura (la API ya lo devolvía y el contrato no lo declaraba); null sin comprobante
         subtotalCents:
-          type: integer
+          type:
+          - integer
+          - 'null'
           minimum: 0
         taxAmountCents:
-          type: integer
+          type:
+          - integer
+          - 'null'
           minimum: 0
         taxRateBps:
-          type: integer
+          type:
+          - integer
+          - 'null'
           minimum: 0
           maximum: 10000
         shippingAmountCents:
-          type: integer
-          const: 0
+          type:
+          - integer
+          - 'null'
+          enum:
+          - 0
+          - null
         taxEnabled:
-          type: boolean
+          type:
+          - boolean
+          - 'null'
           description: 'Copia inmutable: si estaba activo el IVA SIMULADO al aprobar la compra'
       required:
       - id
+      - source
+      - receiptAvailable
       - number
       - createdAt
       - scheduledDeliveryDate
@@ -3401,6 +3444,7 @@ components:
       - receiptId
       - itemsCount
       - primaryImageUrl
+      - primaryProductId
       - subtotalCents
       - taxAmountCents
       - taxRateBps
@@ -3465,10 +3509,16 @@ components:
         address:
           type: string
         location:
-          $ref: '#/components/schemas/GeoPoint'
+          oneOf:
+          - $ref: '#/components/schemas/GeoPoint'
+          - type: 'null'
+          description: null en un pedido conservado sin coordenadas
         scheduledDeliveryDate:
-          type: string
+          type:
+          - string
+          - 'null'
           format: date-time
+          description: null solo en un pedido antiguo conservado sin comprobante ni fecha programada
         notes:
           type:
           - string
@@ -3533,14 +3583,28 @@ components:
         id:
           type: string
           format: uuid
-        number:
+        source:
           type: string
+          enum:
+          - SHOP
+          - ADMIN
+          description: Quién creó el pedido propio. SHOP lo hizo el cliente; ADMIN lo registró un ADMIN a su nombre
+        receiptAvailable:
+          type: boolean
+          description: Si existe un comprobante fiable. Si es false (pedido conservado) los campos derivados del comprobante son null y no se reconstruyen con el catálogo actual
+        number:
+          type:
+          - string
+          - 'null'
         createdAt:
           type: string
           format: date-time
         scheduledDeliveryDate:
-          type: string
+          type:
+          - string
+          - 'null'
           format: date-time
+          description: null solo en un pedido antiguo conservado sin comprobante ni fecha programada
         status:
           type: string
           enum:
@@ -3559,19 +3623,27 @@ components:
           enum:
           - USD
         totalCents:
-          type: integer
+          type:
+          - integer
+          - 'null'
           minimum: 0
           description: subtotalCents + taxAmountCents + shippingAmountCents (shippingAmountCents=0)
         paymentStatus:
-          type: string
+          type:
+          - string
+          - 'null'
           enum:
           - APPROVED
           - PENDING
           - REJECTED
+          - null
         buyer:
           $ref: '#/components/schemas/Buyer'
         recipient:
-          $ref: '#/components/schemas/Recipient'
+          oneOf:
+          - $ref: '#/components/schemas/Recipient'
+          - type: 'null'
+          description: null si el pedido conservado no tiene destinatario
         delivery:
           $ref: '#/components/schemas/DeliveryRead'
         items:
@@ -3583,26 +3655,42 @@ components:
           items:
             $ref: '#/components/schemas/TimelineEntry'
         receiptId:
-          type: string
+          type:
+          - string
+          - 'null'
           format: uuid
         subtotalCents:
-          type: integer
+          type:
+          - integer
+          - 'null'
           minimum: 0
         taxAmountCents:
-          type: integer
+          type:
+          - integer
+          - 'null'
           minimum: 0
         taxRateBps:
-          type: integer
+          type:
+          - integer
+          - 'null'
           minimum: 0
           maximum: 10000
         shippingAmountCents:
-          type: integer
-          const: 0
+          type:
+          - integer
+          - 'null'
+          enum:
+          - 0
+          - null
         taxEnabled:
-          type: boolean
+          type:
+          - boolean
+          - 'null'
           description: 'Copia inmutable: si estaba activo el IVA SIMULADO al aprobar la compra'
       required:
       - id
+      - source
+      - receiptAvailable
       - number
       - createdAt
       - scheduledDeliveryDate
