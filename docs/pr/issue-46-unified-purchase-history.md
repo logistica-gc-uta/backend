@@ -11,6 +11,7 @@ Closes #46
 - `GET /shop/orders`: una sola lista ordenada por `createdAt desc, id desc` con los campos nuevos `source` (`SHOP` o `ADMIN`) y `receiptAvailable`. El `JOIN` obligatorio al comprobante pasa a `LEFT JOIN` conservando el filtro del titular.
 - `GET /shop/orders/:id`: el detalle existe sin comprobante; importes, pago e ítems quedan en `null`/vacío (nunca reconstruidos con el catálogo) y el seguimiento se conserva.
 - `GET /shop/orders/:id/receipt`: un pedido propio sin comprobante responde `404 RECEIPT_UNAVAILABLE` y no genera uno; uno ajeno o inexistente sigue dando `404 ORDER_NOT_FOUND`.
+- Un pedido antiguo sin fecha programada se lista con `scheduledDeliveryDate: null` en lugar de fallar.
 - `docs/REGALIA-SHOP-OPENAPI-v1.2.yaml`: `OrderSummary` y `OrderDetail` con los campos nuevos y `null` donde corresponde; se declara `primaryProductId`, que la API ya devolvía.
 - Documentación del contrato y las decisiones en `docs/issue-46-unified-purchase-history.md`.
 
@@ -19,9 +20,9 @@ Closes #46
 | Prueba | Resultado | Evidencia |
 |---|---|---|
 | Análisis estático | PASS | `pnpm lint`, `tsc --noEmit` |
-| Pruebas unitarias | PASS (8 nuevas) | `src/modules/shop/orders/orders.service.spec.ts` |
+| Pruebas unitarias | PASS (nuevas) | `src/modules/shop/orders/orders.service.spec.ts` |
 | Pruebas de integración | PASS (11 nuevas) | `test/unified-purchase-history.e2e-spec.ts` sobre PostgreSQL 16 real en contenedor propio |
-| Regresión | PASS | suites e2e de Shop y de pedidos ADMIN (ver evidencias) |
+| Regresión | PASS | suites e2e de Shop y de pedidos ADMIN; se actualizó una prueba heredada del #34 que fijaba la exclusión de pedidos sin comprobante |
 | Compilación | PASS | `pnpm build` |
 
 Ejemplos del issue cubiertos: el cliente A ve su compra Shop y su compra ADMIN en una sola lista, cada una con su origen, y el cliente B no ve ninguna; un pedido propio anterior sin comprobante tiene detalle disponible y comprobante no disponible, sin precio reconstruido.
