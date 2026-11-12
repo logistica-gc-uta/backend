@@ -48,7 +48,7 @@ export class OrdersController {
     summary: 'Historial propio paginado',
     operationId: 'get__shop_orders',
     description:
-      'Devuelve el historial paginado de compras del cliente autenticado, con datos y precios históricos inmutables.',
+      'Lista única, ordenada por fecha de creación descendente (desempate por id), de los pedidos propios del cliente: los que hizo en Shop y los que un ADMIN registró a su nombre. Cada uno indica su `source` (SHOP o ADMIN) y si tiene comprobante (`receiptAvailable`). Un pedido conservado sin comprobante fiable se lista con importes, número, pago e ítems en null: nunca se reconstruyen con el catálogo actual. Solo se muestran pedidos del titular; los invitados no se vinculan por teléfono.',
   })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1, description: 'Número de página' })
   @ApiQuery({ name: 'pageSize', required: false, type: Number, example: 10, description: 'Elementos por página' })
@@ -97,14 +97,14 @@ export class OrdersController {
     summary: 'Comprobante simulado propio y único',
     operationId: 'get__shop_orders__id__receipt',
     description:
-      'Obtiene el comprobante de compra simulado inmutable del pedido propio para visualización o impresión HTML.',
+      'Obtiene el comprobante de compra simulado inmutable del pedido propio para visualización o impresión HTML. Si el pedido es propio pero se conserva sin comprobante, responde 404 con el código `RECEIPT_UNAVAILABLE` y no genera uno nuevo.',
   })
   @ApiParam({ name: 'id', type: String, format: 'uuid', description: 'ID del pedido' })
   @ApiResponse({ status: 200, description: 'Comprobante de compra obtenido exitosamente', type: ReceiptDto })
   @ApiResponse({ status: 400, description: 'ID de pedido no es un UUID válido' })
   @ApiResponse({ status: 401, description: 'Autenticación requerida' })
   @ApiResponse({ status: 403, description: 'Acceso restringido a rol CLIENT' })
-  @ApiResponse({ status: 404, description: 'Pedido o comprobante no encontrado' })
+  @ApiResponse({ status: 404, description: '`ORDER_NOT_FOUND` (pedido inexistente o ajeno) o `RECEIPT_UNAVAILABLE` (pedido propio sin comprobante)' })
   async getOrderReceipt(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

@@ -165,6 +165,7 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
       DeliveryAttempt: [],
       DispatchIntervention: [],
       LegacyRouteReconciliation: [],
+      DriverAbsence: [],
     };
     const models = Object.fromEntries(
       Object.keys(rows).map((name) => {

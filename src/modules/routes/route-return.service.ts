@@ -6,7 +6,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { nowInstant } from '../../common/temporal.util.js';
+import { businessDay, nowInstant } from '../../common/temporal.util.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { RouteAvailabilityService } from './route-availability.service.js';
 import { RouteReturnResponseDto } from './dto/route-return-response.dto.js';
@@ -117,6 +117,9 @@ export class RouteReturnService {
       );
       if (!returned.returnedAt)
         throw new ConflictException('Persisted return audit missing');
+      // Returning releases the route hold only: an absence covering today stays, so the published
+      // availability must still say "not available" (#44). The HTTP response keeps its historical shape.
+      const today = await this.availability.effective(driver.id, tx, businessDay(nowInstant()));
       changes.push(
         {
           type: 'route.updated',
@@ -126,7 +129,7 @@ export class RouteReturnService {
         {
           type: 'driver.availability.updated',
           driverId: driver.id,
-          available: availability.isAvailable,
+          available: today.isAvailable,
         },
       );
       return {

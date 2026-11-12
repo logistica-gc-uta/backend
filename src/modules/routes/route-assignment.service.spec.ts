@@ -116,6 +116,7 @@ describe('RouteAssignmentService', () => {
             () => (reservation ? [reservation] : []),
           ),
           LegacyRouteReconciliation: model(() => null),
+          DriverAbsence: model(() => null),
         },
       },
     };

@@ -4,22 +4,14 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto, Role } from './dto/register.dto.js';
 import { JwtPayload } from './jwt.strategy.js';
+import {
+  emailAlreadyExists,
+  isEmailUniqueViolation,
+  normalizedEmail,
+} from './email-identity.util.js';
 import { hashNewPassword, verifyPassword } from './password-hash.util.js';
 
 type CreatedUser = Awaited<ReturnType<PrismaService['user']['create']>>;
-
-function normalizedEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
-
-function emailAlreadyExists(): ConflictException {
-  return new ConflictException({
-    statusCode: 409,
-    message: 'El correo electrónico ya se encuentra registrado',
-    error: 'Conflict',
-    code: 'EMAIL_ALREADY_EXISTS',
-  });
-}
 
 function invalidCredentials(): UnauthorizedException {
   return new UnauthorizedException({
@@ -28,47 +20,6 @@ function invalidCredentials(): UnauthorizedException {
     error: 'Unauthorized',
     code: 'INVALID_CREDENTIALS',
   });
-}
-
-function isEmailConstraint(target: unknown): boolean {
-  const values = Array.isArray(target) ? target : [target];
-  return values.some(
-    (value) =>
-      typeof value === 'string' &&
-      /(^|[^a-z0-9])email([^a-z0-9]|$)/i.test(value),
-  );
-}
-
-function isEmailUniqueViolation(error: unknown): boolean {
-  const pending: unknown[] = [error];
-  const seen = new Set<object>();
-
-  for (let index = 0; index < pending.length; index += 1) {
-    const candidate = pending[index];
-    if (!candidate || typeof candidate !== 'object' || seen.has(candidate)) {
-      continue;
-    }
-    seen.add(candidate);
-
-    const record = candidate as Record<string, unknown>;
-    const meta =
-      record.meta && typeof record.meta === 'object'
-        ? (record.meta as Record<string, unknown>)
-        : undefined;
-    const target =
-      meta?.target ??
-      record.constraint ??
-      record.constraint_name ??
-      record.constraintName ??
-      record.message;
-    const isUniqueError = record.code === 'P2002' || record.code === '23505';
-
-    if (isUniqueError && isEmailConstraint(target)) return true;
-
-    pending.push(record.cause, record.originalError);
-  }
-
-  return false;
 }
 
 @Injectable()

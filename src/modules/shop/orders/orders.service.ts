@@ -3,30 +3,47 @@ import { PrismaService } from '../../../database/prisma.service.js';
 import { shopError } from '../shop-http.filter.js';
 import { toIsoTimestamp } from '../settings/shop-settings.service.js';
 import { OrderStatus, ShopOrdersQueryDto } from './dto/orders-query.dto.js';
-import { OrderListDto, OrderSummaryDto } from './dto/order-summary.dto.js';
+import { OrderListDto, OrderSource, OrderSummaryDto } from './dto/order-summary.dto.js';
 import { OrderDetailDto, SoldItemDto, TimelineEntryDto } from './dto/order-detail.dto.js';
 import { ReceiptDto } from './dto/receipt.dto.js';
 
+/**
+ * Una fila del historial propio. Las columnas del comprobante (`r.*`) son null cuando el pedido se conserva
+ * sin comprobante fiable: en ese caso no se reconstruye nada con el catálogo actual.
+ */
 interface RawOrderSummaryRow {
   id: string;
-  number: string;
+  number: string | null;
+  source: string;
   createdAt: unknown;
   scheduledDeliveryDate: unknown;
   status: string;
-  subtotalCents: bigint | number;
-  taxAmountCents: bigint | number;
-  taxRateBps: number;
-  shippingAmountCents: number;
-  totalCents: bigint | number;
-  currency: string;
-  receiptId: string;
-  taxEnabled: boolean;
+  subtotalCents: bigint | number | null;
+  taxAmountCents: bigint | number | null;
+  taxRateBps: number | null;
+  shippingAmountCents: number | null;
+  totalCents: bigint | number | null;
+  currency: string | null;
+  receiptId: string | null;
+  taxEnabled: boolean | null;
   snapshot: unknown;
 }
 
 interface RawOrderDetailRow extends RawOrderSummaryRow {
   routeId: string | null;
+  buyerName: string | null;
+  buyerEmail: string | null;
+  recipientName: string | null;
+  recipientPhone: string | null;
+  deliveryAddress: string | null;
+  deliveryLat: number | null;
+  deliveryLng: number | null;
+  zoneId: string | null;
+  zoneName: string | null;
 }
+
+/** Origen del pedido propio: lo creó el propio cliente (SHOP) o un ADMIN en su nombre (ADMIN). */
+const toSource = (value: string): OrderSource => (value === 'ADMIN' ? 'ADMIN' : 'SHOP');
 
 interface RawReceiptRow {
   id: string;
@@ -173,6 +190,34 @@ function resolveFrozenScheduledDate(snapScheduledDate: unknown, rowScheduledDate
   throw shopError(HttpStatus.INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR', 'Missing scheduled delivery date in frozen record');
 }
 
+/**
+ * Pedido propio conservado SIN comprobante fiable: se muestra con sus datos operativos (fecha, estado, origen)
+ * y todo lo que sale del comprobante en null. Nunca se reconstruyen importes, pago ni ítems con el catálogo actual.
+ */
+function unavailableReceiptSummary(row: RawOrderSummaryRow): OrderSummaryDto {
+  return {
+    id: row.id,
+    number: null,
+    source: toSource(row.source),
+    receiptAvailable: false,
+    createdAt: toIsoTimestamp(row.createdAt),
+    scheduledDeliveryDate: row.scheduledDeliveryDate ? toIsoTimestamp(row.scheduledDeliveryDate) : null,
+    status: row.status as OrderStatus,
+    totalCents: null,
+    currency: 'USD',
+    paymentStatus: null,
+    receiptId: null,
+    itemsCount: null,
+    primaryImageUrl: null,
+    primaryProductId: null,
+    subtotalCents: null,
+    taxAmountCents: null,
+    taxRateBps: null,
+    shippingAmountCents: null,
+    taxEnabled: null,
+  };
+}
+
 @Injectable()
 export class ShopOrdersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -192,8 +237,8 @@ export class ShopOrdersService {
       const countPlan = this.prisma.client.raw.sql`
         SELECT count(*)::int AS total
         FROM public."order" o
-        JOIN public."purchaseReceipt" r ON r."orderId" = o."id"
-        WHERE o."userId" = ${buyerUserId} AND r."buyerId" = ${buyerUserId}
+        LEFT JOIN public."purchaseReceipt" r ON r."orderId" = o."id"
+        WHERE o."userId" = ${buyerUserId} AND (r."id" IS NULL OR r."buyerId" = ${buyerUserId})
           AND (${statusFilter} = '' OR o."status"::text = ${statusFilter})
       `
         .returnsRow({ total: 'pg/int4@1' })
@@ -217,6 +262,7 @@ export class ShopOrdersService {
         SELECT
           o."id",
           r."commercialOrderNumber" AS "number",
+          CASE WHEN o."createdById" IS NOT NULL AND o."createdById" <> o."userId" THEN 'ADMIN' ELSE 'SHOP' END AS "source",
           o."createdAt",
           o."scheduledDeliveryDate",
           o."status"::text AS "status",
@@ -230,8 +276,8 @@ export class ShopOrdersService {
           r."taxEnabled",
           r."snapshot"
         FROM public."order" o
-        JOIN public."purchaseReceipt" r ON r."orderId" = o."id"
-        WHERE o."userId" = ${buyerUserId} AND r."buyerId" = ${buyerUserId}
+        LEFT JOIN public."purchaseReceipt" r ON r."orderId" = o."id"
+        WHERE o."userId" = ${buyerUserId} AND (r."id" IS NULL OR r."buyerId" = ${buyerUserId})
           AND (${statusFilter} = '' OR o."status"::text = ${statusFilter})
         ORDER BY o."createdAt" DESC, o."id" DESC
         LIMIT ${pageSize} OFFSET ${offset}
@@ -239,6 +285,7 @@ export class ShopOrdersService {
         .returnsRow({
           id: 'pg/text@1',
           number: 'pg/text@1',
+          source: 'pg/text@1',
           createdAt: 'pg/timestamptz-temporal@1',
           scheduledDeliveryDate: 'pg/timestamptz-temporal@1',
           status: 'pg/text@1',
@@ -257,6 +304,7 @@ export class ShopOrdersService {
       const rows = (await tx.query(listPlan)) as unknown as RawOrderSummaryRow[];
 
       const items: OrderSummaryDto[] = rows.map((row) => {
+        if (!row.receiptId) return unavailableReceiptSummary(row);
         const snap = parseSnapshot(row.snapshot);
         if (!Array.isArray(snap.items) || snap.items.length === 0) {
           throw shopError(HttpStatus.INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR', 'Snapshot items missing');
@@ -286,6 +334,8 @@ export class ShopOrdersService {
         return {
           id: row.id,
           number: row.number,
+          source: toSource(row.source),
+          receiptAvailable: true,
           createdAt: toIsoTimestamp(row.createdAt),
           scheduledDeliveryDate: scheduledDate,
           status: row.status as OrderStatus,
@@ -325,10 +375,20 @@ export class ShopOrdersService {
         SELECT
           o."id",
           r."commercialOrderNumber" AS "number",
+          CASE WHEN o."createdById" IS NOT NULL AND o."createdById" <> o."userId" THEN 'ADMIN' ELSE 'SHOP' END AS "source",
           o."createdAt",
           o."scheduledDeliveryDate",
           o."status"::text AS "status",
           o."routeId",
+          u."name" AS "buyerName",
+          u."email" AS "buyerEmail",
+          o."recipientName",
+          o."recipientPhone",
+          o."deliveryAddress",
+          o."deliveryLat",
+          o."deliveryLng",
+          o."zoneId",
+          z."name" AS "zoneName",
           r."subtotalCents",
           r."taxAmountCents",
           r."taxRateBps",
@@ -339,12 +399,24 @@ export class ShopOrdersService {
           r."taxEnabled",
           r."snapshot"
         FROM public."order" o
-        JOIN public."purchaseReceipt" r ON r."orderId" = o."id"
-        WHERE o."id" = ${orderId} AND o."userId" = ${buyerUserId} AND r."buyerId" = ${buyerUserId}
+        JOIN public."user" u ON u."id" = o."userId"
+        LEFT JOIN public."zone" z ON z."id" = o."zoneId"
+        LEFT JOIN public."purchaseReceipt" r ON r."orderId" = o."id"
+        WHERE o."id" = ${orderId} AND o."userId" = ${buyerUserId} AND (r."id" IS NULL OR r."buyerId" = ${buyerUserId})
       `
         .returnsRow({
           id: 'pg/text@1',
           number: 'pg/text@1',
+          source: 'pg/text@1',
+          buyerName: 'pg/text@1',
+          buyerEmail: 'pg/text@1',
+          recipientName: 'pg/text@1',
+          recipientPhone: 'pg/text@1',
+          deliveryAddress: 'pg/text@1',
+          deliveryLat: 'pg/float8@1',
+          deliveryLng: 'pg/float8@1',
+          zoneId: 'pg/text@1',
+          zoneName: 'pg/text@1',
           createdAt: 'pg/timestamptz-temporal@1',
           scheduledDeliveryDate: 'pg/timestamptz-temporal@1',
           status: 'pg/text@1',
@@ -487,6 +559,44 @@ export class ShopOrdersService {
         at,
       }));
 
+      // Pedido propio conservado sin comprobante fiable: el seguimiento (estado, ruta, línea de tiempo) no
+      // desaparece, pero importes, pago e ítems no se reconstruyen con el catálogo actual.
+      if (!row.receiptId) {
+        const scheduled = row.scheduledDeliveryDate ? toIsoTimestamp(row.scheduledDeliveryDate) : null;
+        const hasCoordinates = typeof row.deliveryLat === 'number' && typeof row.deliveryLng === 'number';
+        return {
+          id: row.id,
+          number: null,
+          source: toSource(row.source),
+          receiptAvailable: false,
+          createdAt: toIsoTimestamp(row.createdAt),
+          scheduledDeliveryDate: scheduled,
+          status: row.status as OrderStatus,
+          routeId: row.routeId ?? null,
+          currency: 'USD',
+          totalCents: null,
+          paymentStatus: null,
+          buyer: { id: buyerUserId, name: row.buyerName ?? '', email: row.buyerEmail ?? '' },
+          recipient: row.recipientName ? { name: row.recipientName, phone: row.recipientPhone ?? '' } : null,
+          delivery: {
+            zoneId: row.zoneId ?? null,
+            zoneName: row.zoneName ?? null,
+            address: row.deliveryAddress ?? '',
+            location: hasCoordinates ? { lat: row.deliveryLat as number, lng: row.deliveryLng as number } : null,
+            scheduledDeliveryDate: scheduled,
+            notes: null,
+          },
+          items: [],
+          timeline,
+          receiptId: null,
+          subtotalCents: null,
+          taxAmountCents: null,
+          taxRateBps: null,
+          shippingAmountCents: null,
+          taxEnabled: null,
+        };
+      }
+
       // Hydrate and validate snapshot data strictly
       const snap = parseSnapshot(row.snapshot);
       if (!Array.isArray(snap.items) || snap.items.length === 0) {
@@ -574,6 +684,8 @@ export class ShopOrdersService {
       return {
         id: row.id,
         number: row.number,
+        source: toSource(row.source),
+        receiptAvailable: true,
         createdAt: toIsoTimestamp(row.createdAt),
         scheduledDeliveryDate: scheduledDate,
         status: row.status as OrderStatus,
@@ -647,6 +759,24 @@ export class ShopOrdersService {
 
       const [row] = (await tx.query(receiptPlan)) as unknown as [RawReceiptRow | undefined];
       if (!row) {
+        // Solo si el pedido es del propio solicitante se distingue «sin comprobante» de «no existe»: un pedido
+        // ajeno o inexistente sigue dando ORDER_NOT_FOUND sin revelar nada. Nunca se genera un comprobante.
+        const ownPlan = this.prisma.client.raw.sql`
+          SELECT o."id"
+          FROM public."order" o
+          WHERE o."id" = ${orderId} AND o."userId" = ${buyerUserId}
+            AND NOT EXISTS (SELECT 1 FROM public."purchaseReceipt" r WHERE r."orderId" = o."id")
+        `
+          .returnsRow({ id: 'pg/text@1' })
+          .build();
+        const [own] = (await tx.query(ownPlan)) as unknown as [{ id: string } | undefined];
+        if (own) {
+          throw shopError(
+            HttpStatus.NOT_FOUND,
+            'RECEIPT_UNAVAILABLE',
+            'Este pedido se conserva sin comprobante: no hay un comprobante fiable que mostrar',
+          );
+        }
         throw shopError(HttpStatus.NOT_FOUND, 'ORDER_NOT_FOUND', 'Pedido o comprobante no encontrado');
       }
 
