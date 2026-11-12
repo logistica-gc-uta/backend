@@ -12,7 +12,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
-import { isSameBusinessDay, nowInstant } from '../../common/temporal.util.js';
+import { businessDay, isSameBusinessDay, nowInstant } from '../../common/temporal.util.js';
 import { OrderStatus } from '../orders/dto/update-order-status.dto.js';
 import {
   canTransitionRoute,
@@ -419,13 +419,23 @@ export class RouteAssignmentService {
       id: driver.userId,
       role: 'DRIVER',
     }).first();
-    if (
-      !profile ||
-      !(await this.availability.effective(driver.id, tx)).isAvailable
-    )
+    // Absence is evaluated on the route's operational day: absent that day blocks, absent another day does not (#44).
+    const availability = profile
+      ? await this.availability.effective(driver.id, tx, businessDay(route.date))
+      : null;
+    if (!profile || !availability?.isAvailable) {
+      if (availability?.absence)
+        throw new ConflictException({
+          statusCode: 409,
+          message: 'Driver is absent on the route date',
+          error: 'Conflict',
+          code: 'DRIVER_ABSENT',
+          absence: availability.absence,
+        });
       throw new ConflictException(
         'Driver has an unresolved route or reservation hold',
       );
+    }
     const stops = await tx.orm.public.RouteStop.where({ routeId: id }).all();
     const ordered = [...stops].sort(
       (a, b) => (a.sequence ?? 0) - (b.sequence ?? 0),

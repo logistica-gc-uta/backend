@@ -1,4 +1,4 @@
-import { DriverAvailabilityResponseDto } from './dto/driver-availability-response.dto.js';
+import { DriverAbsenceSummaryDto, DriverAvailabilityResponseDto } from './dto/driver-availability-response.dto.js';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 
@@ -65,19 +65,50 @@ export class RouteAvailabilityService {
     return [...blocking].sort();
   }
 
+  /**
+   * Active (not cancelled) absence covering the operational day, or null. Absences are a calendar concept,
+   * independent from route holds (`persistedHolds`) and from the compatibility flag (#44).
+   */
+  async absenceOn(
+    driverId: string,
+    day: Temporal.PlainDate,
+    tx: Pick<Transaction, 'orm'> = this.prisma.client,
+  ): Promise<DriverAbsenceSummaryDto | null> {
+    const date = day.toString();
+    const rows = await tx.orm.public.DriverAbsence.where({
+      driverId,
+      cancelledAt: null,
+    }).all();
+    const hit = rows
+      .filter((row) => !row.cancelledAt && row.startDate <= date && date <= row.endDate)
+      .sort((a, b) => a.startDate.localeCompare(b.startDate) || a.id.localeCompare(b.id))[0];
+    return hit
+      ? { id: hit.id, startDate: hit.startDate, endDate: hit.endDate, reason: hit.reason ?? null }
+      : null;
+  }
+
+  /**
+   * Without `day` the result is exactly the historical shape (holds + compatibility flag), so existing consumers
+   * and Flutter keep working. With `day` the driver's absence on that operational day is also considered:
+   * `isAvailable` is false while absent, and `date` / `absence` are added. Absence never clears or creates holds.
+   */
   async effective(
     driverId: string,
     tx: Pick<Transaction, 'orm'> = this.prisma.client,
-  ): Promise<DriverAvailabilityResponseDto> {
+    day?: Temporal.PlainDate,
+  ): Promise<DriverAvailabilityResponseDto & { date?: string; absence?: DriverAbsenceSummaryDto | null }> {
     const blockingRouteIds = await this.persistedHolds(driverId, tx);
     const driver = await tx.orm.public.Driver.where({ id: driverId }).first();
     const compatibilityFlagBlocks = driver?.isAvailable !== true;
-    return {
+    const base = {
       isAvailable: blockingRouteIds.length === 0 && !compatibilityFlagBlocks,
       hasPersistedHolds: blockingRouteIds.length !== 0,
       compatibilityFlagBlocks,
       blockingRouteIds,
     };
+    if (!day) return base;
+    const absence = await this.absenceOn(driverId, day, tx);
+    return { ...base, isAvailable: base.isAvailable && !absence, date: day.toString(), absence };
   }
 
   // Caller owns the driver's lock. Return or reconciliation resets only the projection;
