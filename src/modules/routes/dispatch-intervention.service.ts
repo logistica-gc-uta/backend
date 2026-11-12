@@ -14,7 +14,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
-import { nowInstant } from '../../common/temporal.util.js';
+import { businessDay, nowInstant } from '../../common/temporal.util.js';
 import { RouteAssignmentService } from './route-assignment.service.js';
 import { RouteAvailabilityService } from './route-availability.service.js';
 import { RouteUrgencyService } from './route-urgency.service.js';
@@ -571,10 +571,10 @@ export class DispatchInterventionService {
               id: next.userId,
               role: 'DRIVER',
             }).first()) ||
-            !(await this.availability.effective(next.id, tx)).isAvailable
+            !(await this.availability.effective(next.id, tx, businessDay(route.date))).isAvailable
           )
             throw new ConflictException(
-              'Driver has an unresolved route or reservation hold',
+              'Driver has an unresolved route or reservation hold, or is absent on the route date',
             );
           const reservation = await db.DriverReservation.where({
             routeId: route.id,

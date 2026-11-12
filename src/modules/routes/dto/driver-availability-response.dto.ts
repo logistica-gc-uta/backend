@@ -28,3 +28,19 @@ export class DriverAvailabilityResponseDto {
   })
   blockingRouteIds!: string[];
 }
+
+export class DriverAbsenceSummaryDto {
+  @ApiProperty() id!: string;
+  @ApiProperty({ example: '2030-02-14', description: 'First absent operational day (America/Guayaquil)' }) startDate!: string;
+  @ApiProperty({ example: '2030-02-15', description: 'Last absent operational day, inclusive' }) endDate!: string;
+  @ApiProperty({ nullable: true, type: String }) reason!: string | null;
+}
+
+/** Availability of a driver on a specific operational day: holds + compatibility flag + calendar absence (#44). */
+export class DriverDayAvailabilityResponseDto extends DriverAvailabilityResponseDto {
+  @ApiProperty({ example: '2030-02-14', description: 'Operational day evaluated (America/Guayaquil)' })
+  date!: string;
+
+  @ApiProperty({ type: DriverAbsenceSummaryDto, nullable: true, description: 'Active absence covering `date`; while present the driver is not assignable that day' })
+  absence!: DriverAbsenceSummaryDto | null;
+}

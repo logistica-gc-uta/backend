@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'d0d70e575dc12d82fbeab635c30dcd5aa849f52f9bccb3251a8e414bdd715ba8'>;
+  StorageHashBase<'e44d61fd753bd3404c42e85b9570cb95731fcf8b6f1659b4e254e2a4774adc70'>;
 export type ExecutionHash =
-  ExecutionHashBase<'dac09e945d150c63cfc477c1d5428bbced3cb831e1bbf2514ac091f711459cce'>;
+  ExecutionHashBase<'bdfc495f40e6c49d2aa05bee4da443a4402d5de7907ef5ef8106c7eff66a4096'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -314,6 +314,18 @@ export type FieldOutputTypes = {
       readonly vehicle: CodecTypes['pg/text@1']['output'];
       readonly isAvailable: CodecTypes['pg/bool@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
+    readonly DriverAbsence: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly driverId: CodecTypes['pg/text@1']['output'];
+      readonly startDate: CodecTypes['pg/text@1']['output'];
+      readonly endDate: CodecTypes['pg/text@1']['output'];
+      readonly reason: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdById: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly cancelledAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly cancelledById: CodecTypes['pg/text@1']['output'] | null;
+      readonly cancelReason: CodecTypes['pg/text@1']['output'] | null;
     };
     readonly DriverReservation: {
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -634,6 +646,18 @@ export type FieldInputTypes = {
       readonly isAvailable: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
+    readonly DriverAbsence: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly driverId: CodecTypes['pg/text@1']['input'];
+      readonly startDate: CodecTypes['pg/text@1']['input'];
+      readonly endDate: CodecTypes['pg/text@1']['input'];
+      readonly reason: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdById: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly cancelledAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly cancelledById: CodecTypes['pg/text@1']['input'] | null;
+      readonly cancelReason: CodecTypes['pg/text@1']['input'] | null;
+    };
     readonly DriverReservation: {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly driverId: CodecTypes['pg/text@1']['input'];
@@ -952,6 +976,18 @@ export type StorageColumnTypes = {
       readonly isAvailable: CodecTypes['pg/bool@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'];
       readonly vehicle: CodecTypes['pg/text@1']['output'];
+    };
+    readonly driverAbsence: {
+      readonly cancelledAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly cancelledById: CodecTypes['pg/text@1']['output'] | null;
+      readonly cancelReason: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly createdById: CodecTypes['pg/text@1']['output'];
+      readonly driverId: CodecTypes['pg/text@1']['output'];
+      readonly endDate: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly reason: CodecTypes['pg/text@1']['output'] | null;
+      readonly startDate: CodecTypes['pg/text@1']['output'];
     };
     readonly driverReservation: {
       readonly driverId: CodecTypes['pg/text@1']['output'];
@@ -1272,6 +1308,18 @@ export type StorageColumnInputTypes = {
       readonly userId: CodecTypes['pg/text@1']['input'];
       readonly vehicle: CodecTypes['pg/text@1']['input'];
     };
+    readonly driverAbsence: {
+      readonly cancelledAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly cancelledById: CodecTypes['pg/text@1']['input'] | null;
+      readonly cancelReason: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly createdById: CodecTypes['pg/text@1']['input'];
+      readonly driverId: CodecTypes['pg/text@1']['input'];
+      readonly endDate: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly reason: CodecTypes['pg/text@1']['input'] | null;
+      readonly startDate: CodecTypes['pg/text@1']['input'];
+    };
     readonly driverReservation: {
       readonly driverId: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -1530,6 +1578,8 @@ export namespace Models {
     contactAudits: public_OrderContactAudit[];
     createdOrders: public_Order[];
     driver: public_Driver | null;
+    driverAbsencesCancelled: public_DriverAbsence[];
+    driverAbsencesCreated: public_DriverAbsence[];
     externalDeclarations: public_ExternalPaymentDeclaration[];
     orders: public_Order[];
     payments: public_PaymentAttempt[];
@@ -1542,6 +1592,8 @@ export namespace Models {
       | 'contactAudits'
       | 'createdOrders'
       | 'driver'
+      | 'driverAbsencesCancelled'
+      | 'driverAbsencesCreated'
       | 'externalDeclarations'
       | 'orders'
       | 'payments'
@@ -1555,9 +1607,26 @@ export namespace Models {
     vehicle: CodecTypes['pg/text@1']['output'];
     isAvailable: CodecTypes['pg/bool@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    absences: public_DriverAbsence[];
     routes: public_Route[];
     user: public_User;
-    readonly [RelationKeys]?: 'routes' | 'user';
+    readonly [RelationKeys]?: 'absences' | 'routes' | 'user';
+  };
+  export type public_DriverAbsence = {
+    id: CodecTypes['pg/text@1']['output'];
+    driverId: CodecTypes['pg/text@1']['output'];
+    startDate: CodecTypes['pg/text@1']['output'];
+    endDate: CodecTypes['pg/text@1']['output'];
+    reason: CodecTypes['pg/text@1']['output'] | null;
+    createdById: CodecTypes['pg/text@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    cancelledAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    cancelledById: CodecTypes['pg/text@1']['output'] | null;
+    cancelReason: CodecTypes['pg/text@1']['output'] | null;
+    cancelledBy: public_User | null;
+    createdBy: public_User;
+    driver: public_Driver;
+    readonly [RelationKeys]?: 'cancelledBy' | 'createdBy' | 'driver';
   };
   export type public_StoreCoverage = {
     id: CodecTypes['pg/text@1']['output'];
@@ -1970,6 +2039,7 @@ export declare const models: {
   public: {
     User: Models.public_User;
     Driver: Models.public_Driver;
+    DriverAbsence: Models.public_DriverAbsence;
     StoreCoverage: Models.public_StoreCoverage;
     Zone: Models.public_Zone;
     Category: Models.public_Category;
@@ -2653,6 +2723,127 @@ type ContractBase = Omit<
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'driver';
                     readonly columns: readonly ['userId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly driverAbsence: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly driverId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly startDate: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly endDate: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly reason: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly createdById: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly cancelledAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
+                readonly cancelledById: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly cancelReason: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'driverAbsence_driverId_startDate_endDate_idx_a101ef33';
+                  readonly prefix: 'driverAbsence_driverId_startDate_endDate_idx';
+                  readonly columns: readonly ['driverId', 'startDate', 'endDate'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'driverAbsence_createdById_idx_8bf640ed';
+                  readonly prefix: 'driverAbsence_createdById_idx';
+                  readonly columns: readonly ['createdById'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'driverAbsence_cancelledById_idx_03ce7bea';
+                  readonly prefix: 'driverAbsence_cancelledById_idx';
+                  readonly columns: readonly ['cancelledById'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'driverAbsence_driverId_idx_8eed3317';
+                  readonly prefix: 'driverAbsence_driverId_idx';
+                  readonly columns: readonly ['driverId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'driverAbsence';
+                    readonly columns: readonly ['driverId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'driver';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'driverAbsence';
+                    readonly columns: readonly ['createdById'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'driverAbsence';
+                    readonly columns: readonly ['cancelledById'];
                   };
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
@@ -4818,6 +5009,10 @@ type ContractBase = Omit<
   readonly roots: {
     readonly user: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
     readonly driver: { readonly namespace: 'public' & NamespaceId; readonly model: 'Driver' };
+    readonly driverAbsence: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'DriverAbsence';
+    };
     readonly storeCoverage: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'StoreCoverage';
@@ -5447,6 +5642,17 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly absences: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'DriverAbsence';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['driverId'];
+                };
+              };
               readonly routes: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -5477,6 +5683,104 @@ type ContractBase = Omit<
                 readonly vehicle: { readonly column: 'vehicle' };
                 readonly isAvailable: { readonly column: 'isAvailable' };
                 readonly createdAt: { readonly column: 'createdAt' };
+              };
+            };
+          };
+          readonly DriverAbsence: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly driverId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly startDate: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly endDate: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly reason: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdById: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly cancelledAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly cancelledById: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly cancelReason: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+            };
+            readonly relations: {
+              readonly cancelledBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['cancelledById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly createdBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['createdById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly driver: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Driver';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['driverId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'driverAbsence';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly driverId: { readonly column: 'driverId' };
+                readonly startDate: { readonly column: 'startDate' };
+                readonly endDate: { readonly column: 'endDate' };
+                readonly reason: { readonly column: 'reason' };
+                readonly createdById: { readonly column: 'createdById' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly cancelledAt: { readonly column: 'cancelledAt' };
+                readonly cancelledById: { readonly column: 'cancelledById' };
+                readonly cancelReason: { readonly column: 'cancelReason' };
               };
             };
           };
@@ -7414,6 +7718,28 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['userId'];
                 };
               };
+              readonly driverAbsencesCancelled: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'DriverAbsence';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['cancelledById'];
+                };
+              };
+              readonly driverAbsencesCreated: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'DriverAbsence';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['createdById'];
+                };
+              };
               readonly externalDeclarations: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -7697,6 +8023,14 @@ type ContractBase = Omit<
           readonly ref: {
             readonly namespace: 'public';
             readonly table: 'driver';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'driverAbsence';
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };

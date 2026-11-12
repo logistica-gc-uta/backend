@@ -66,6 +66,8 @@ model User {
   externalDeclarations ExternalPaymentDeclaration[] @relation("ExternalPaymentActor")
   contactAudits        OrderContactAudit[] @relation("ContactAuditActor")
   adminPurchaseAttempts AdminPurchaseAttempt[] @relation("AdminPurchaseActor")
+  driverAbsencesCreated   DriverAbsence[] @relation("DriverAbsenceCreator")
+  driverAbsencesCancelled DriverAbsence[] @relation("DriverAbsenceCanceller")
 }
 
 model Driver {
@@ -77,6 +79,32 @@ model Driver {
   createdAt   DateTime @default(now())
 
   routes      Route[]
+  absences    DriverAbsence[]
+}
+
+// Absence of a driver for a closed range of operational days (America/Guayaquil, YYYY-MM-DD) (#44).
+// Distinct from DriverReservation (operational hold by a route) and from Driver.isAvailable (compatibility flag).
+// Corrections are made by cancelling and registering a new one; rows are never deleted or edited.
+model DriverAbsence {
+  id            String    @id @default(uuid())
+  driverId      String
+  driver        Driver    @relation(fields: [driverId], references: [id])
+  startDate     String
+  endDate       String
+  reason        String?
+  createdById   String
+  createdBy     User      @relation("DriverAbsenceCreator", fields: [createdById], references: [id])
+  createdAt     DateTime  @default(now())
+  cancelledAt   DateTime?
+  cancelledById String?
+  cancelledBy   User?     @relation("DriverAbsenceCanceller", fields: [cancelledById], references: [id])
+  cancelReason  String?
+
+  @@index([driverId, startDate, endDate])
+  @@index([createdById])
+  @@index([cancelledById])
+  @@check(expression: "\"startDate\" ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' AND \"endDate\" ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' AND \"endDate\" >= \"startDate\" AND (reason IS NULL OR length(reason) BETWEEN 1 AND 300)", name: "driver_absence_valid")
+  @@check(expression: "(\"cancelledAt\" IS NULL AND \"cancelledById\" IS NULL AND \"cancelReason\" IS NULL) OR (\"cancelledAt\" IS NOT NULL AND \"cancelledById\" IS NOT NULL AND (\"cancelReason\" IS NULL OR length(\"cancelReason\") BETWEEN 1 AND 300))", name: "driver_absence_cancellation_consistent")
 }
 
 // Singleton physical store location and general delivery coverage (#41).

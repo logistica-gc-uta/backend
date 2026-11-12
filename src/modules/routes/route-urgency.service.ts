@@ -210,7 +210,7 @@ export class RouteUrgencyService {
     for (const driver of await db.Driver.all()) {
       if (
         (await db.User.where({ id: driver.userId, role: 'DRIVER' }).first()) &&
-        (await this.availability.effective(driver.id, reader)).isAvailable
+        (await this.availability.effective(driver.id, reader, businessDay(order.scheduledDeliveryDate!))).isAvailable
       )
         proposal.availableDriverIds.push(driver.id);
     }

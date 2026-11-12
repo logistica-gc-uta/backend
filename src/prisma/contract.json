@@ -28,6 +28,10 @@
       "model": "Driver",
       "namespace": "public"
     },
+    "driverAbsence": {
+      "model": "DriverAbsence",
+      "namespace": "public"
+    },
     "driverReservation": {
       "model": "DriverReservation",
       "namespace": "public"
@@ -1141,6 +1145,21 @@
               }
             },
             "relations": {
+              "absences": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "driverId"
+                  ]
+                },
+                "to": {
+                  "model": "DriverAbsence",
+                  "namespace": "public"
+                }
+              },
               "routes": {
                 "cardinality": "1:N",
                 "on": {
@@ -1193,6 +1212,166 @@
               },
               "namespaceId": "public",
               "table": "driver"
+            }
+          },
+          "DriverAbsence": {
+            "fields": {
+              "cancelReason": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "cancelledAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "cancelledById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdById": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "driverId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "endDate": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "reason": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "startDate": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "cancelledBy": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "cancelledById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "createdBy": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "createdById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "driver": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "driverId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Driver",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "cancelReason": {
+                  "column": "cancelReason"
+                },
+                "cancelledAt": {
+                  "column": "cancelledAt"
+                },
+                "cancelledById": {
+                  "column": "cancelledById"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "createdById": {
+                  "column": "createdById"
+                },
+                "driverId": {
+                  "column": "driverId"
+                },
+                "endDate": {
+                  "column": "endDate"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "reason": {
+                  "column": "reason"
+                },
+                "startDate": {
+                  "column": "startDate"
+                }
+              },
+              "namespaceId": "public",
+              "table": "driverAbsence"
             }
           },
           "DriverReservation": {
@@ -4304,6 +4483,36 @@
                   "namespace": "public"
                 }
               },
+              "driverAbsencesCancelled": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "cancelledById"
+                  ]
+                },
+                "to": {
+                  "model": "DriverAbsence",
+                  "namespace": "public"
+                }
+              },
+              "driverAbsencesCreated": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "createdById"
+                  ]
+                },
+                "to": {
+                  "model": "DriverAbsence",
+                  "namespace": "public"
+                }
+              },
               "externalDeclarations": {
                 "cardinality": "1:N",
                 "on": {
@@ -5412,6 +5621,168 @@
                   ]
                 }
               ]
+            },
+            "driverAbsence": {
+              "checks": [
+                {
+                  "expression": "(\"cancelledAt\" IS NULL AND \"cancelledById\" IS NULL AND \"cancelReason\" IS NULL) OR (\"cancelledAt\" IS NOT NULL AND \"cancelledById\" IS NOT NULL AND (\"cancelReason\" IS NULL OR length(\"cancelReason\") BETWEEN 1 AND 300))",
+                  "name": "driver_absence_cancellation_consistent_63a24d0f",
+                  "prefix": "driver_absence_cancellation_consistent"
+                },
+                {
+                  "expression": "\"startDate\" ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' AND \"endDate\" ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' AND \"endDate\" >= \"startDate\" AND (reason IS NULL OR length(reason) BETWEEN 1 AND 300)",
+                  "name": "driver_absence_valid_d56413e5",
+                  "prefix": "driver_absence_valid"
+                }
+              ],
+              "columns": {
+                "cancelReason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "cancelledAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "cancelledById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "createdById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "driverId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "endDate": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "reason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "startDate": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "driverId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "driverAbsence"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "driver"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "createdById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "driverAbsence"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "cancelledById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "driverAbsence"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "cancelledById"
+                  ],
+                  "name": "driverAbsence_cancelledById_idx_03ce7bea",
+                  "prefix": "driverAbsence_cancelledById_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "createdById"
+                  ],
+                  "name": "driverAbsence_createdById_idx_8bf640ed",
+                  "prefix": "driverAbsence_createdById_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "driverId"
+                  ],
+                  "name": "driverAbsence_driverId_idx_8eed3317",
+                  "prefix": "driverAbsence_driverId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "driverId",
+                    "startDate",
+                    "endDate"
+                  ],
+                  "name": "driverAbsence_driverId_startDate_endDate_idx_a101ef33",
+                  "prefix": "driverAbsence_driverId_startDate_endDate_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
             },
             "driverReservation": {
               "columns": {
@@ -8260,10 +8631,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "d0d70e575dc12d82fbeab635c30dcd5aa849f52f9bccb3251a8e414bdd715ba8"
+    "storageHash": "e44d61fd753bd3404c42e85b9570cb95731fcf8b6f1659b4e254e2a4774adc70"
   },
   "execution": {
-    "executionHash": "dac09e945d150c63cfc477c1d5428bbced3cb831e1bbf2514ac091f711459cce",
+    "executionHash": "bdfc495f40e6c49d2aa05bee4da443a4402d5de7907ef5ef8106c7eff66a4096",
     "mutations": {
       "defaults": [
         {
@@ -8330,6 +8701,17 @@
             "column": "id",
             "namespace": "public",
             "table": "driver"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "driverAbsence"
           }
         },
         {
