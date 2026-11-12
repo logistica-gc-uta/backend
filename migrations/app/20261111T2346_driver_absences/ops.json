@@ -1,0 +1,323 @@
+[
+  {
+    "id": "table.driverAbsence",
+    "label": "Create table \"driverAbsence\"",
+    "summary": "Creates table \"driverAbsence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "driverAbsence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"driverAbsence\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"driverAbsence\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"driverAbsence\"",
+        "sql": "CREATE TABLE \"public\".\"driverAbsence\" (\n  \"cancelReason\" text,\n  \"cancelledAt\" timestamptz,\n  \"cancelledById\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdById\" text NOT NULL,\n  \"driverId\" text NOT NULL,\n  \"endDate\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"reason\" text,\n  \"startDate\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"driver_absence_cancellation_consistent_63a24d0f\" CHECK ((\"cancelledAt\" IS NULL AND \"cancelledById\" IS NULL AND \"cancelReason\" IS NULL) OR (\"cancelledAt\" IS NOT NULL AND \"cancelledById\" IS NOT NULL AND (\"cancelReason\" IS NULL OR length(\"cancelReason\") BETWEEN 1 AND 300))),\n  CONSTRAINT \"driver_absence_valid_d56413e5\" CHECK (\"startDate\" ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' AND \"endDate\" ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' AND \"endDate\" >= \"startDate\" AND (reason IS NULL OR length(reason) BETWEEN 1 AND 300))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"driverAbsence\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"driverAbsence\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.driverAbsence.driverAbsence_cancelledById_idx_03ce7bea",
+    "label": "Create index \"driverAbsence_cancelledById_idx_03ce7bea\" on \"driverAbsence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "driverAbsence_cancelledById_idx_03ce7bea",
+        "table": "driverAbsence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"driverAbsence_cancelledById_idx_03ce7bea\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"driverAbsence_cancelledById_idx_03ce7bea\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"driverAbsence_cancelledById_idx_03ce7bea\"",
+        "sql": "CREATE INDEX \"driverAbsence_cancelledById_idx_03ce7bea\" ON \"public\".\"driverAbsence\" (\"cancelledById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"driverAbsence_cancelledById_idx_03ce7bea\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"driverAbsence_cancelledById_idx_03ce7bea\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.driverAbsence.driverAbsence_createdById_idx_8bf640ed",
+    "label": "Create index \"driverAbsence_createdById_idx_8bf640ed\" on \"driverAbsence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "driverAbsence_createdById_idx_8bf640ed",
+        "table": "driverAbsence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"driverAbsence_createdById_idx_8bf640ed\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"driverAbsence_createdById_idx_8bf640ed\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"driverAbsence_createdById_idx_8bf640ed\"",
+        "sql": "CREATE INDEX \"driverAbsence_createdById_idx_8bf640ed\" ON \"public\".\"driverAbsence\" (\"createdById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"driverAbsence_createdById_idx_8bf640ed\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"driverAbsence_createdById_idx_8bf640ed\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.driverAbsence.driverAbsence_driverId_idx_8eed3317",
+    "label": "Create index \"driverAbsence_driverId_idx_8eed3317\" on \"driverAbsence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "driverAbsence_driverId_idx_8eed3317",
+        "table": "driverAbsence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"driverAbsence_driverId_idx_8eed3317\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"driverAbsence_driverId_idx_8eed3317\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"driverAbsence_driverId_idx_8eed3317\"",
+        "sql": "CREATE INDEX \"driverAbsence_driverId_idx_8eed3317\" ON \"public\".\"driverAbsence\" (\"driverId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"driverAbsence_driverId_idx_8eed3317\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"driverAbsence_driverId_idx_8eed3317\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.driverAbsence.driverAbsence_driverId_startDate_endDate_idx_a101ef33",
+    "label": "Create index \"driverAbsence_driverId_startDate_endDate_idx_a101ef33\" on \"driverAbsence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "driverAbsence_driverId_startDate_endDate_idx_a101ef33",
+        "table": "driverAbsence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"driverAbsence_driverId_startDate_endDate_idx_a101ef33\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"driverAbsence_driverId_startDate_endDate_idx_a101ef33\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"driverAbsence_driverId_startDate_endDate_idx_a101ef33\"",
+        "sql": "CREATE INDEX \"driverAbsence_driverId_startDate_endDate_idx_a101ef33\" ON \"public\".\"driverAbsence\" (\"driverId\", \"startDate\", \"endDate\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"driverAbsence_driverId_startDate_endDate_idx_a101ef33\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"driverAbsence_driverId_startDate_endDate_idx_a101ef33\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.driverAbsence.driverAbsence_driverId_fkey",
+    "label": "Add foreign key \"driverAbsence_driverId_fkey\" on \"driverAbsence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "driverAbsence_driverId_fkey",
+        "table": "driverAbsence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"driverAbsence_driverId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "driverAbsence_driverId_fkey",
+          "public",
+          "\"public\".\"driverAbsence\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"driverAbsence_driverId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"driverAbsence\"\nADD CONSTRAINT \"driverAbsence_driverId_fkey\"\nFOREIGN KEY (\"driverId\")\nREFERENCES \"public\".\"driver\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"driverAbsence_driverId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "driverAbsence_driverId_fkey",
+          "public",
+          "\"public\".\"driverAbsence\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.driverAbsence.driverAbsence_createdById_fkey",
+    "label": "Add foreign key \"driverAbsence_createdById_fkey\" on \"driverAbsence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "driverAbsence_createdById_fkey",
+        "table": "driverAbsence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"driverAbsence_createdById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "driverAbsence_createdById_fkey",
+          "public",
+          "\"public\".\"driverAbsence\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"driverAbsence_createdById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"driverAbsence\"\nADD CONSTRAINT \"driverAbsence_createdById_fkey\"\nFOREIGN KEY (\"createdById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"driverAbsence_createdById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "driverAbsence_createdById_fkey",
+          "public",
+          "\"public\".\"driverAbsence\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.driverAbsence.driverAbsence_cancelledById_fkey",
+    "label": "Add foreign key \"driverAbsence_cancelledById_fkey\" on \"driverAbsence\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "driverAbsence_cancelledById_fkey",
+        "table": "driverAbsence"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"driverAbsence_cancelledById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "driverAbsence_cancelledById_fkey",
+          "public",
+          "\"public\".\"driverAbsence\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"driverAbsence_cancelledById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"driverAbsence\"\nADD CONSTRAINT \"driverAbsence_cancelledById_fkey\"\nFOREIGN KEY (\"cancelledById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"driverAbsence_cancelledById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "driverAbsence_cancelledById_fkey",
+          "public",
+          "\"public\".\"driverAbsence\""
+        ]
+      }
+    ]
+  }
+]
