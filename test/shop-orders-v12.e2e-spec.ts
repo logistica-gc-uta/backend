@@ -291,7 +291,7 @@ describe('Shop Orders v1.2 History, Detail & Immutable Receipt E2E (owned Postgr
       expect(res.body.totalPages).toBe(0);
     });
 
-    it('excludes legacy unpaid orders (without PurchaseReceipt) from list', async () => {
+    it('lists legacy orders without PurchaseReceipt as unavailable-receipt entries, with no reconstructed money (#46)', async () => {
       // Direct SQL seed of an unpaid legacy order belonging to client
       const legacyOrderId = randomUUID();
       await db.client.orm.public.Order.create({
@@ -307,7 +307,13 @@ describe('Shop Orders v1.2 History, Detail & Immutable Receipt E2E (owned Postgr
         .get('/api/v1/shop/orders')
         .set(auth(users.clientToken));
 
-      expect(res.body.items.some((i: any) => i.id === legacyOrderId)).toBe(false);
+      const entry = res.body.items.find((i: any) => i.id === legacyOrderId);
+      expect(entry).toMatchObject({
+        source: 'SHOP', receiptAvailable: false, number: null, receiptId: null, paymentStatus: null,
+        totalCents: null, subtotalCents: null, itemsCount: null, scheduledDeliveryDate: null, status: 'PENDING',
+      });
+      // El total heredado (15.0, Float) no se reinterpreta como importe del comprobante.
+      expect(JSON.stringify(entry)).not.toContain('1500');
     });
   });
 

@@ -75,6 +75,7 @@ describe('ShopOrdersService unit tests (public behavior)', () => {
           {
             id: 'ord-1',
             number: 'RG-2026-ABC1',
+            source: 'SHOP',
             createdAt: '2026-10-22T12:00:00.000Z',
             scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
             status: 'PENDING',
@@ -104,6 +105,8 @@ describe('ShopOrdersService unit tests (public behavior)', () => {
       expect(result.items[0]).toEqual({
         id: 'ord-1',
         number: 'RG-2026-ABC1',
+        source: 'SHOP',
+        receiptAvailable: true,
         createdAt: '2026-10-22T12:00:00.000Z',
         scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
         status: 'PENDING',
@@ -272,7 +275,7 @@ describe('ShopOrdersService unit tests (public behavior)', () => {
       const detail = await service.getOrderDetail('user-1', 'ord-10');
       expect(detail.id).toBe('ord-10');
       expect(detail.buyer.name).toBe('Juan Perez');
-      expect(detail.recipient.name).toBe('Maria Lopez');
+      expect(detail.recipient!.name).toBe('Maria Lopez');
       expect(detail.delivery.address).toBe('Calle 1 y 2');
       expect(detail.delivery.zoneId).toBe('z1');
       expect(detail.items).toHaveLength(1);
@@ -535,6 +538,175 @@ describe('ShopOrdersService unit tests (public behavior)', () => {
       mockTx.query.mockResolvedValueOnce([badReceiptRow]);
 
       await expect(service.getOrderReceipt('user-1', 'ord-bad-pay')).rejects.toThrow();
+    });
+  });
+
+  describe('historial unificado Shop + ADMIN (#46)', () => {
+    const withReceipt = (id: string, source: string) => ({
+      id,
+      number: `RG-${id}`,
+      source,
+      createdAt: '2026-10-22T12:00:00.000Z',
+      scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+      status: 'PENDING',
+      subtotalCents: BigInt(1000),
+      taxAmountCents: BigInt(150),
+      taxRateBps: 1500,
+      shippingAmountCents: 0,
+      totalCents: BigInt(1150),
+      currency: 'USD',
+      receiptId: `rcpt-${id}`,
+      taxEnabled: true,
+      snapshot: { items: [{ productId: 'p', name: 'Regalo', sku: 'S', quantity: 1, unitPriceCents: 1000, lineTotalCents: 1000 }] },
+    });
+    const withoutReceipt = (id: string, source = 'SHOP') => ({
+      id,
+      number: null,
+      source,
+      createdAt: '2026-09-01T12:00:00.000Z',
+      scheduledDeliveryDate: '2026-09-05T15:00:00.000Z',
+      status: 'DELIVERED',
+      subtotalCents: null,
+      taxAmountCents: null,
+      taxRateBps: null,
+      shippingAmountCents: null,
+      totalCents: null,
+      currency: null,
+      receiptId: null,
+      taxEnabled: null,
+      snapshot: null,
+    });
+
+    it('una sola lista con el origen de cada pedido: Shop, ADMIN y uno conservado sin comprobante', async () => {
+      mockTx.query
+        .mockResolvedValueOnce([{ total: 3 }])
+        .mockResolvedValueOnce([withReceipt('shop-1', 'SHOP'), withReceipt('admin-1', 'ADMIN'), withoutReceipt('legacy-1')]);
+
+      const result = await service.listOrders('user-1', { page: 1, pageSize: 10 });
+
+      expect(result.items.map((i) => [i.id, i.source, i.receiptAvailable])).toEqual([
+        ['shop-1', 'SHOP', true],
+        ['admin-1', 'ADMIN', true],
+        ['legacy-1', 'SHOP', false],
+      ]);
+      expect(result.total).toBe(3);
+    });
+
+    it('un pedido sin comprobante no inventa importes, pago ni ítems: todo lo derivado del comprobante es null', async () => {
+      mockTx.query.mockResolvedValueOnce([{ total: 1 }]).mockResolvedValueOnce([withoutReceipt('legacy-1', 'ADMIN')]);
+
+      const [item] = (await service.listOrders('user-1', { page: 1, pageSize: 10 })).items;
+
+      expect(item).toEqual({
+        id: 'legacy-1',
+        number: null,
+        source: 'ADMIN',
+        receiptAvailable: false,
+        createdAt: '2026-09-01T12:00:00.000Z',
+        scheduledDeliveryDate: '2026-09-05T15:00:00.000Z',
+        status: 'DELIVERED',
+        totalCents: null,
+        currency: 'USD',
+        paymentStatus: null,
+        receiptId: null,
+        itemsCount: null,
+        primaryImageUrl: null,
+        primaryProductId: null,
+        subtotalCents: null,
+        taxAmountCents: null,
+        taxRateBps: null,
+        shippingAmountCents: null,
+        taxEnabled: null,
+      });
+    });
+
+    it('un pedido antiguo sin comprobante y sin fecha programada se lista con la fecha en null: no se inventa una', async () => {
+      mockTx.query
+        .mockResolvedValueOnce([{ total: 1 }])
+        .mockResolvedValueOnce([{ ...withoutReceipt('legacy-1'), scheduledDeliveryDate: null }]);
+      const [item] = (await service.listOrders('user-1', { page: 1, pageSize: 10 })).items;
+      expect(item).toMatchObject({ id: 'legacy-1', receiptAvailable: false, scheduledDeliveryDate: null, totalCents: null });
+    });
+
+    it('el detalle de un pedido sin comprobante conserva el seguimiento y deja importes, pago e ítems sin disponer', async () => {
+      mockTx.query
+        .mockResolvedValueOnce([
+          {
+            ...withoutReceipt('legacy-1', 'ADMIN'),
+            routeId: null,
+            buyerName: 'María Pérez',
+            buyerEmail: 'maria@example.test',
+            recipientName: 'Ana',
+            recipientPhone: '0991234567',
+            deliveryAddress: 'Av. Cevallos',
+            deliveryLat: -1.24,
+            deliveryLng: -78.62,
+            zoneId: null,
+            zoneName: null,
+          },
+        ])
+        .mockResolvedValueOnce([]) // claims
+        .mockResolvedValueOnce([]); // attempts
+
+      const detail = await service.getOrderDetail('user-1', 'legacy-1');
+
+      expect(detail).toMatchObject({
+        id: 'legacy-1',
+        source: 'ADMIN',
+        receiptAvailable: false,
+        number: null,
+        totalCents: null,
+        paymentStatus: null,
+        receiptId: null,
+        subtotalCents: null,
+        taxEnabled: null,
+        items: [],
+        buyer: { id: 'user-1', name: 'María Pérez', email: 'maria@example.test' },
+        recipient: { name: 'Ana', phone: '0991234567' },
+        delivery: { address: 'Av. Cevallos', location: { lat: -1.24, lng: -78.62 }, zoneId: null },
+      });
+      expect(detail.timeline.map((t) => t.code)).toEqual(['PENDING']);
+    });
+
+    it('el detalle sin comprobante tolera un pedido conservado sin destinatario ni coordenadas', async () => {
+      mockTx.query
+        .mockResolvedValueOnce([
+          { ...withoutReceipt('legacy-2'), routeId: null, buyerName: null, buyerEmail: null, recipientName: null, recipientPhone: null, deliveryAddress: null, deliveryLat: null, deliveryLng: null, zoneId: null, zoneName: null },
+        ])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+
+      const detail = await service.getOrderDetail('user-1', 'legacy-2');
+
+      expect(detail.recipient).toBeNull();
+      expect(detail.delivery).toMatchObject({ address: '', location: null });
+    });
+
+    it('el detalle sin comprobante y sin fecha programada informa la fecha en null', async () => {
+      mockTx.query
+        .mockResolvedValueOnce([{ ...withoutReceipt('legacy-3'), scheduledDeliveryDate: null, routeId: null, buyerName: 'M', buyerEmail: 'm@x.test', recipientName: null, recipientPhone: null, deliveryAddress: 'Dir', deliveryLat: null, deliveryLng: null, zoneId: null, zoneName: null }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      const detail = await service.getOrderDetail('user-1', 'legacy-3');
+      expect(detail.scheduledDeliveryDate).toBeNull();
+      expect(detail.delivery.scheduledDeliveryDate).toBeNull();
+    });
+
+    it('el comprobante de un pedido propio sin comprobante responde RECEIPT_UNAVAILABLE y no genera uno', async () => {
+      mockTx.query.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: 'legacy-1' }]);
+      await expect(service.getOrderReceipt('user-1', 'legacy-1')).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        response: { error: { code: 'RECEIPT_UNAVAILABLE' } },
+      });
+      expect(mockTx.execute).not.toHaveBeenCalled();
+    });
+
+    it('un pedido ajeno o inexistente sigue dando ORDER_NOT_FOUND, sin revelar que existe', async () => {
+      mockTx.query.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      await expect(service.getOrderReceipt('user-1', 'de-otro')).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        response: { error: { code: 'ORDER_NOT_FOUND' } },
+      });
     });
   });
 });
