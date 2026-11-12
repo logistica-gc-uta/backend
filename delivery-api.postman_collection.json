@@ -9,7 +9,7 @@
     {
       "listen": "prerequest",
       "script": { "type": "text/javascript", "exec": [
-        "if (!pm.collectionVariables.get('futureOrderDate')) pm.collectionVariables.set('futureOrderDate', new Date(Date.now() + 86400000).toISOString());",
+        "if (!pm.collectionVariables.get('futureOrderDate')) { const d = new Date(Date.now() + 86400000); d.setUTCHours(15, 0, 0, 0); pm.collectionVariables.set('futureOrderDate', d.toISOString()); } // mañana 10:00 en Guayaquil: dentro del horario comercial 07:00-17:00, sin importar a qué hora corra la prueba",
         "const planningYear = new Date().getUTCFullYear() + 3; pm.collectionVariables.set('planningYear', planningYear);",
         "if (pm.request.body && pm.request.body.mode === 'raw') pm.request.body.update(pm.request.body.raw.replace(/2030-02-14T15:00:00.000Z/g, pm.collectionVariables.get('futureOrderDate')).replace(/2031-/g, planningYear + '-'));",
         "if (pm.request.url.toString().includes('2031-')) pm.request.url.update(pm.request.url.toString().replace(/2031-/g, planningYear + '-'));"
