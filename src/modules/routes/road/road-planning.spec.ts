@@ -221,6 +221,8 @@ describe('RoutePlanningService con el motor vial (#47)', () => {
     const customMatrix: RoadMatrix = {
       provider: 'OSRM',
       profile: 'car',
+      distanceUnit: 'm',
+      durationUnit: 's',
       points: [depot, A, B, C],
       // Distancias favorecen unir A+C (distSaving 1.5 km) sobre A+B (distSaving 0 km).
       distancesM: [
@@ -236,6 +238,7 @@ describe('RoutePlanningService con el motor vial (#47)', () => {
         [500, 100, 0, 1200],
         [500, 1200, 1200, 0],
       ],
+      snapDistancesM: [0, 1, 2, 4],
       maxSnapDistanceM: 4,
     };
     const roadsMock: any = {
