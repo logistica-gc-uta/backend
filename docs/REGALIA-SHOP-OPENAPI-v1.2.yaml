@@ -3328,6 +3328,29 @@ components:
       - errorCode
       - updatedAt
       additionalProperties: false
+    OrderPickup:
+      type: object
+      description: Retiro en tienda acordado con el cliente (#50). El acuerdo y el retiro físico son dos eventos distintos
+      properties:
+        state:
+          type: string
+          enum:
+          - PENDING_PICKUP
+          - PICKED_UP
+          description: PENDING_PICKUP el cliente acordó retirar y aún no lo ha hecho; PICKED_UP un ADMIN confirmó el retiro físico
+        agreedAt:
+          type: string
+          format: date-time
+        pickedUpAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - state
+      - agreedAt
+      - pickedUpAt
+      additionalProperties: false
     OrderSummary:
       type: object
       properties:
@@ -3340,6 +3363,14 @@ components:
           - SHOP
           - ADMIN
           description: Quién creó el pedido propio. SHOP lo hizo el cliente; ADMIN lo registró un ADMIN a su nombre
+        pickup:
+          oneOf:
+          - $ref: '#/components/schemas/OrderPickup'
+          - type: 'null'
+          description: Retiro en tienda acordado, o null si el pedido no tiene uno
+        pendingManagement:
+          type: boolean
+          description: true si la entrega espera una gestión de un ADMIN y todavía no hay un retiro acordado
         receiptAvailable:
           type: boolean
           description: Si existe un comprobante fiable. Si es false (pedido conservado) los campos derivados del comprobante son null y no se reconstruyen con el catálogo actual
@@ -3433,6 +3464,8 @@ components:
       required:
       - id
       - source
+      - pickup
+      - pendingManagement
       - receiptAvailable
       - number
       - createdAt
@@ -3589,6 +3622,14 @@ components:
           - SHOP
           - ADMIN
           description: Quién creó el pedido propio. SHOP lo hizo el cliente; ADMIN lo registró un ADMIN a su nombre
+        pickup:
+          oneOf:
+          - $ref: '#/components/schemas/OrderPickup'
+          - type: 'null'
+          description: Retiro en tienda acordado, o null si el pedido no tiene uno
+        pendingManagement:
+          type: boolean
+          description: true si la entrega espera una gestión de un ADMIN y todavía no hay un retiro acordado
         receiptAvailable:
           type: boolean
           description: Si existe un comprobante fiable. Si es false (pedido conservado) los campos derivados del comprobante son null y no se reconstruyen con el catálogo actual
@@ -3690,6 +3731,8 @@ components:
       required:
       - id
       - source
+      - pickup
+      - pendingManagement
       - receiptAvailable
       - number
       - createdAt
