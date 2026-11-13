@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UrgencyStopDto {
   @ApiProperty() orderId!: string;
@@ -18,6 +18,11 @@ export class UrgencyProposalDto {
   @ApiProperty({ type: [String] }) availableDriverIds!: string[];
   @ApiProperty({ type: [String] }) reasons!: string[];
   @ApiProperty() totalDistanceKm!: number;
+  @ApiPropertyOptional({
+    enum: ['HAVERSINE_STRAIGHT_LINE', 'OSRM_ROAD_NETWORK'],
+    description: 'How totalDistanceKm was measured. With the road engine it is the road distance; neither models live traffic',
+  })
+  distanceMethod?: string;
   @ApiProperty({
     description:
       'Read-only snapshot hash; confirmation must revalidate atomically',

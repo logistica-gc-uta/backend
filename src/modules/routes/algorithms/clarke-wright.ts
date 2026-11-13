@@ -17,6 +17,12 @@ export interface ClarkeWrightOptions {
   capacity?: number;
   /** Función de distancia. Por defecto Haversine en km. */
   distance?: DistanceFn;
+  /**
+   * Las distancias NO son simétricas (matriz vial con sentidos de calle). Las decisiones de agrupación usan el
+   * promedio de ambos sentidos y el recorrido final se mide, y se orienta, con el sentido real de cada tramo.
+   * Con Haversine (simétrica) no hace falta y el resultado no cambia.
+   */
+  directional?: boolean;
 }
 
 export interface PlannedRoute {
@@ -79,7 +85,8 @@ export function planRoutes(orders: RoutingOrder[], options: ClarkeWrightOptions)
       throw new Error(`No hay depósito definido para la zona '${zoneId}'`);
     }
 
-    for (const route of planGroup(group, depot, capacity, distance)) {
+    const decision: DistanceFn = options.directional ? (a, b) => (distance(a, b) + distance(b, a)) / 2 : distance;
+    for (const route of planGroup(group, depot, capacity, decision, options.directional ? distance : undefined)) {
       planned.push({
         zoneId,
         deliveryDate,
@@ -96,6 +103,8 @@ function planGroup(
   depot: GeoPoint,
   capacity: number,
   distance: DistanceFn,
+  /** Solo en modo direccional: el sentido real de cada tramo, para orientar la visita. */
+  realDistance?: DistanceFn,
 ): RoutingOrder[][] {
   // Orden por id: el resultado no depende del orden de llegada de los pedidos.
   const orders = [...group].sort((a, b) => a.id.localeCompare(b.id));
@@ -144,6 +153,11 @@ function planGroup(
 
   return [...routes.values()].map((indexes) => {
     const route = indexes.map((index) => orders[index]!);
+    if (realDistance) {
+      // Con sentidos de calle, cada orientación cuesta distinto: se elige la de menor recorrido real.
+      const reversed = [...route].reverse();
+      return routeDistance(reversed, depot, realDistance) < routeDistance(route, depot, realDistance) ? reversed : route;
+    }
     // Se recorre primero la parada más cercana al depósito.
     const first = distance(depot, route[0]!.location);
     const last = distance(depot, route[route.length - 1]!.location);

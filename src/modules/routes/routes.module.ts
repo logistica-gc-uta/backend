@@ -14,11 +14,14 @@ import { RouteExecutionService } from './route-execution.service.js';
 import { RoutesService } from './routes.service.js';
 import { RoutePlanningService } from './route-planning.service.js';
 import { RoutePlanningController } from './route-planning.controller.js';
+import { RoadMetricsService } from './road/road-metrics.service.js';
 
 @Module({
   imports: [AuthModule],
   controllers: [RoutesController, RoutePlanningController, DispatchController],
   providers: [
+    // Motor vial (#47): se construye con la configuración del entorno, no por inyección de parámetros.
+    { provide: RoadMetricsService, useFactory: () => new RoadMetricsService() },
     DispatchInterventionService,
     RouteUrgencyService,
     RouteHistoryService,

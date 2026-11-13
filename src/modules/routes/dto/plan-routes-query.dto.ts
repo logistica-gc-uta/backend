@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsUUID, Matches } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsOptional, IsString, IsUUID, Matches } from 'class-validator';
 
 export class PlanRoutesQueryDto {
   @ApiProperty({
@@ -19,4 +20,14 @@ export class PlanRoutesQueryDto {
   @IsOptional()
   @IsUUID()
   zoneId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Include the road trace of every proposal for the map. Only meaningful when the road engine is active; it asks the engine once per proposal',
+    default: false,
+  })
+  @IsOptional()
+  @Transform(({ value }) => (value === 'true' ? true : value === 'false' ? false : value))
+  @IsBoolean()
+  includeGeometry?: boolean;
 }
