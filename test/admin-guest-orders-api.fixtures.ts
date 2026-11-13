@@ -28,7 +28,7 @@ export function prepareOwnedApiDatabase(database: AdminOrdersDatabase): string {
   // Preserve the historical fixture origin, then exercise the current additive edge.
   database.prisma('unit_b', 'migrate', 'e357d1aa2fdc74464e729ec7cd8bb087b979a13b22e0f88aa005b60be4c16427');
   seedAdminApi(database);
-  database.prisma('unit_b', 'migrate', 'd0d70e575dc12d82fbeab635c30dcd5aa849f52f9bccb3251a8e414bdd715ba8');
+  database.prisma('unit_b', 'migrate');
   database.sql('unit_b', `
     INSERT INTO public."storeCoverage" (id,"singletonKey",lat,lng,coverage)
       VALUES ('b-store','GLOBAL',-1.24908,-78.61675,
