@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../database/prisma.service.js';
+import { requireJwtSecret } from '../../config/runtime-config.js';
 
 export interface JwtPayload {
   sub: string;
@@ -15,7 +16,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'uta_logistica_jwt_secret_key_2026_super_secure',
+      secretOrKey: requireJwtSecret(),
     });
   }
 

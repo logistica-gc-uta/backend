@@ -1,18 +1,23 @@
+# SOLO DESARROLLO LOCAL. No es un archivo de despliegue: en producción PostgreSQL se configura con credenciales propias
+# guardadas en un gestor de secretos y sin publicar su puerto en Internet (ver docs/issue-53-production-config.md).
 services:
   postgres:
     image: postgres:16-alpine
     container_name: logistica_postgres
     restart: always
     environment:
-      POSTGRES_USER: logistica_user
-      POSTGRES_PASSWORD: logistica_password123
-      POSTGRES_DB: logistica_db
+      # Credenciales de desarrollo por defecto; se pueden sobrescribir con POSTGRES_USER/PASSWORD/DB en el .env local.
+      # No se reutilizan fuera de esta máquina: el backend rechaza esta clave en production y demo.
+      POSTGRES_USER: ${POSTGRES_USER:-logistica_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-logistica_password123}
+      POSTGRES_DB: ${POSTGRES_DB:-logistica_db}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      # Solo loopback: la base de desarrollo no queda visible en la red local ni en Internet.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U logistica_user -d logistica_db"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10

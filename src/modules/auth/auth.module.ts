@@ -8,15 +8,19 @@ import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RolesGuard } from './guards/roles.guard.js';
 import { JwtStrategy } from './jwt.strategy.js';
+import { requireJwtSecret } from '../../config/runtime-config.js';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'uta_logistica_jwt_secret_key_2026_super_secure',
-      signOptions: {
-        expiresIn: (process.env.JWT_EXPIRES_IN || '24h') as any,
-      },
+    JwtModule.registerAsync({
+      // Sin secreto de respaldo: el valor sale de la configuración validada (#53).
+      useFactory: () => ({
+        secret: requireJwtSecret(),
+        signOptions: {
+          expiresIn: (process.env.JWT_EXPIRES_IN || '24h') as any,
+        },
+      }),
     }),
   ],
   controllers: [AuthController, AdminClientsController],
