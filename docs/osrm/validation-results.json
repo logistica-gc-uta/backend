@@ -1,0 +1,109 @@
+{
+  "generatedAt": "2026-11-12T22:50:17.291Z",
+  "baseUrlHost": "loopback",
+  "profile": "car",
+  "storeSnapDistanceM": 19.8,
+  "matrixLatency": {
+    "10x10 = 100 puntos": {
+      "points": 100,
+      "requests": 1,
+      "p50Ms": 124,
+      "maxMs": 125
+    },
+    "5x5 = 25 puntos": {
+      "points": 25,
+      "requests": 1,
+      "p50Ms": 56,
+      "maxMs": 61
+    },
+    "8x8 = 64 puntos": {
+      "points": 64,
+      "requests": 1,
+      "p50Ms": 128,
+      "maxMs": 142
+    }
+  },
+  "tiledMatrix": {
+    "points": 200,
+    "tileSize": 50,
+    "concurrency": 4,
+    "totalMs": 512,
+    "requests": 16
+  },
+  "gridPointsTotal": 100,
+  "gridPointsOnNetworkWithin100m": 83,
+  "asymmetry": {
+    "pairs": 3403,
+    "pairsDifferingOver200m": 2125,
+    "maxDifferenceM": 6953
+  },
+  "maxSnapDistanceMInSelectedPoints": 99,
+  "detourSample": {
+    "pairsWithStraightLineBetween600And1500m": 129,
+    "medianRatio": 1.58,
+    "top3": [
+      {
+        "a": {
+          "lat": -1.245,
+          "lng": -78.606
+        },
+        "b": {
+          "lat": -1.245,
+          "lng": -78.597
+        },
+        "straightM": 1001,
+        "roadM": 11156,
+        "ratio": 11.15
+      },
+      {
+        "a": {
+          "lat": -1.256,
+          "lng": -78.597
+        },
+        "b": {
+          "lat": -1.245,
+          "lng": -78.597
+        },
+        "straightM": 1223,
+        "roadM": 9766,
+        "ratio": 7.98
+      },
+      {
+        "a": {
+          "lat": -1.245,
+          "lng": -78.597
+        },
+        "b": {
+          "lat": -1.234,
+          "lng": -78.597
+        },
+        "straightM": 1223,
+        "roadM": 9563,
+        "ratio": 7.82
+      }
+    ]
+  },
+  "sampleVisit": {
+    "stops": 4,
+    "straightLineKm": 12.484,
+    "routeServiceKm": 24.603,
+    "routeServiceSeconds": 2469,
+    "geometryPoints": 796,
+    "matrixVisitKm": 23.875,
+    "matrixVisitSeconds": 2318,
+    "matrixVsRouteServiceDifferenceM": 728
+  },
+  "offNetworkPoint": {
+    "code": "ROAD_POINT_OFF_NETWORK",
+    "details": {
+      "pointIndexes": [
+        1
+      ],
+      "maxSnapDistanceM": 500
+    }
+  },
+  "unreachableEngine": {
+    "code": "ROAD_ENGINE_UNAVAILABLE",
+    "status": 503
+  }
+}

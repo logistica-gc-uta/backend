@@ -11,7 +11,10 @@ import {
   DEFAULT_ROUTE_CAPACITY,
   type RoutingOrder,
 } from './algorithms/clarke-wright.js';
-import type { GeoPoint } from './algorithms/geo.util.js';
+import { type GeoPoint, haversineKm } from './algorithms/geo.util.js';
+import { indexByKey, matrixDistance, pointKey, uniquePoints, type DistanceMatrix } from './algorithms/matrix-distance.js';
+import { RoadMetricsService } from './road/road-metrics.service.js';
+import { RoadMetricsError, type RoadMatrix } from './road/road-metrics.types.js';
 import { independentTripsKm, savingsFigures } from './algorithms/route-metrics.js';
 import { RoutePlanner } from './route-planner.js';
 import { ExclusionReason, type PlanningExclusionReason } from './planning-exclusion-reason.js';
@@ -24,6 +27,7 @@ import type {
 
 export const PLANNING_TIME_ZONE = 'America/Guayaquil';
 export const DISTANCE_METHOD = 'HAVERSINE_STRAIGHT_LINE';
+export const ROAD_DISTANCE_METHOD = 'OSRM_ROAD_NETWORK';
 /**
  * Clarke & Wright is O(n^2 log n) per zone (about 0.45 s for 1000 orders and
  * 5.9 s for 3000 on a development machine; see docs/clarke-wright.md). The cap
@@ -43,7 +47,50 @@ export class RoutePlanningService implements OnModuleDestroy {
   /** Planificador compartido: cálculo en worker, memoizado y sin duplicar trabajo concurrente (P-1 de #15). */
   private readonly planner = new RoutePlanner();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    /** Motor vial (#47). Sin `ROAD_ENGINE=OSRM` conserva la línea recta de siempre. */
+    private readonly roads: RoadMetricsService = new RoadMetricsService(),
+  ) {}
+
+  /**
+   * Matriz vial de la propuesta: depósitos + destinos únicos. Los errores que señalan puntos concretos se
+   * traducen a los pedidos afectados para que el ADMIN sepa cuáles revisar.
+   */
+  private async roadMatrix(routable: RoutingOrder[], depots: Record<string, GeoPoint>) {
+    const points = uniquePoints([...Object.values(depots), ...routable.map((order) => order.location)]);
+    let matrix: RoadMatrix;
+    try {
+      matrix = (await this.roads.matrixFor(points))!;
+    } catch (error) {
+      if (error instanceof RoadMetricsError && Array.isArray(error.details.pointIndexes)) {
+        const affected = new Set((error.details.pointIndexes as number[]).map((index) => pointKey(points[index]!)));
+        const orderIds = routable.filter((order) => affected.has(pointKey(order.location))).map((order) => order.id).sort();
+        throw new RoadMetricsError(error.code, error.message, { ...error.details, orderIds });
+      }
+      throw error;
+    }
+    const km: DistanceMatrix = { points: matrix.points, distanceKm: matrix.distancesM.map((row) => row.map((m) => m / 1000)) };
+    const index = indexByKey(matrix.points);
+    const lookup = (a: GeoPoint, b: GeoPoint) => [index.get(pointKey(a))!, index.get(pointKey(b))!] as const;
+    const roundKm = (value: number) => Math.round(value * 1000) / 1000;
+    return {
+      matrix,
+      km,
+      distanceKm: matrixDistance(km),
+      /** Tramos consecutivos de una visita con su distancia y duración reales (en el sentido recorrido). */
+      legs: (visit: GeoPoint[]) =>
+        visit.slice(1).map((point, i) => {
+          const [from, to] = lookup(visit[i]!, point);
+          return { km: roundKm(matrix.distancesM[from]![to]! / 1000), seconds: Math.round(matrix.durationsS[from]![to]!) };
+        }),
+    };
+  }
+
+  /** Estado del motor vial para el ADMIN (sin exponer la URL ni credenciales). */
+  roadEngineStatus() {
+    return this.roads.status();
+  }
 
   async onModuleDestroy(): Promise<void> {
     await this.planner.close();
@@ -119,26 +166,30 @@ export class RoutePlanningService implements OnModuleDestroy {
     }
 
     const locations = new Map(routable.map((order) => [order.id, order.location]));
+    // Con el motor vial activo, toda la propuesta usa la red vial; si el motor falla se corta con un error
+    // tipado (503/502/422) y no se genera ninguna propuesta con datos incompletos ni en línea recta.
+    const road = this.roads.active ? await this.roadMatrix(routable, depots) : null;
     const planned = await this.planner.plan(routable, {
       depots,
       capacity: DEFAULT_ROUTE_CAPACITY,
+      ...(road ? { matrix: road.km } : {}),
     });
     const proposals: RouteProposalDto[] = planned.map((route) => {
       // Instants are ISO strings of the same business day, sorted chronologically.
       const scheduledInstants = [
         ...new Set(route.orderIds.map((id) => instants.get(id)!)),
       ].sort((a, b) => Temporal.Instant.compare(Temporal.Instant.from(a), Temporal.Instant.from(b)));
+      const depot = depots[route.zoneId]!;
+      const stopPoints = route.orderIds.map((id) => locations.get(id)!);
       const savings = savingsFigures(
-        independentTripsKm(
-          route.orderIds.map((id) => locations.get(id)!),
-          depots[route.zoneId]!,
-        ),
+        independentTripsKm(stopPoints, depot, road ? road.distanceKm : undefined),
         route.totalDistance,
       );
+      const legs = road ? road.legs([depot, ...stopPoints, depot]) : null;
       return {
         zoneId: route.zoneId,
         zoneCode: zones.get(route.zoneId)!.code,
-        depot: depots[route.zoneId]!,
+        depot,
         orderIds: route.orderIds,
         stops: route.orderIds.map((orderId, index) => ({
           sequence: index + 1,
@@ -146,7 +197,16 @@ export class RoutePlanningService implements OnModuleDestroy {
           location: locations.get(orderId)!,
           deliveryAddress: addresses.get(orderId)!,
           scheduledDeliveryDate: instants.get(orderId)!,
+          ...(legs ? { legDistanceKm: legs[index]!.km, legDurationSeconds: legs[index]!.seconds } : {}),
         })),
+        ...(legs
+          ? {
+              straightLineKm: savingsFigures(0, [depot, ...stopPoints, depot].slice(1).reduce((sum, point, i) => sum + haversineKm([depot, ...stopPoints, depot][i]!, point), 0)).plannedKm,
+              totalDurationSeconds: Math.round(legs.reduce((sum, leg) => sum + leg.seconds, 0)),
+              returnLegDistanceKm: legs[legs.length - 1]!.km,
+              returnLegDurationSeconds: legs[legs.length - 1]!.seconds,
+            }
+          : {}),
         totalDistanceKm: savings.plannedKm,
         baselineKm: savings.baselineKm,
         savingsKm: savings.savingsKm,
@@ -156,6 +216,13 @@ export class RoutePlanningService implements OnModuleDestroy {
         routeDate: scheduledInstants[0]!,
       };
     });
+
+    if (road && query.includeGeometry) {
+      for (const proposal of proposals) {
+        const trace = await this.roads.geometry([proposal.depot, ...proposal.stops.map((stop) => stop.location), proposal.depot]);
+        proposal.geometry = { type: 'LineString', coordinates: trace.coordinates };
+      }
+    }
 
     excluded.sort((a, b) => a.orderId.localeCompare(b.orderId));
     // Daily totals add up the figures shown per proposal, so the sum on screen always matches.
@@ -167,7 +234,21 @@ export class RoutePlanningService implements OnModuleDestroy {
       date: query.date,
       timeZone: PLANNING_TIME_ZONE,
       capacity: DEFAULT_ROUTE_CAPACITY,
-      distanceMethod: DISTANCE_METHOD,
+      distanceMethod: road ? ROAD_DISTANCE_METHOD : DISTANCE_METHOD,
+      ...(road
+        ? {
+            roadMetrics: {
+              provider: road.matrix.provider,
+              profile: road.matrix.profile,
+              distanceUnit: 'km' as const,
+              durationUnit: 's' as const,
+              directional: true,
+              trafficAware: false,
+              estimate: true,
+              maxSnapDistanceM: Math.round(road.matrix.maxSnapDistanceM),
+            },
+          }
+        : {}),
       proposals,
       excluded,
       summary: {

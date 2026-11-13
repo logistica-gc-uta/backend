@@ -84,3 +84,6 @@ reports/
 
 # Bocetos locales; no forman parte del backend desplegable.
 /design/
+
+# Mapas y datos procesados de OSRM (#47): pesan ~1 GB y no se versionan
+osrm-data/

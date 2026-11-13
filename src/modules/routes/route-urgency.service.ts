@@ -20,6 +20,9 @@ import {
   type RoutingOrder,
 } from './algorithms/clarke-wright.js';
 import { haversineKm } from './algorithms/geo.util.js';
+import { matrixDistance, uniquePoints } from './algorithms/matrix-distance.js';
+import { RoadMetricsService } from './road/road-metrics.service.js';
+import { RoadMetricsError } from './road/road-metrics.types.js';
 import { UrgencyProposalDto } from './dto/urgency-response.dto.js';
 
 type Reader = Pick<PrismaService['client'], 'orm'>;
@@ -29,12 +32,45 @@ export class RouteUrgencyService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly availability: RouteAvailabilityService,
+    /** Motor vial (#47). Sin `ROAD_ENGINE=OSRM` conserva la línea recta de siempre. */
+    private readonly roads: RoadMetricsService = new RoadMetricsService(),
   ) {}
 
-  // No proposal/claim/route is persisted. Confirmation must re-read under locks.
+  /**
+   * Con el motor vial activo, si el motor falla la urgencia queda BLOQUEADA con el código del error:
+   * no se propone una nueva salida con distancias inexistentes ni en línea recta, y el pedido sigue pendiente.
+   */
   async propose(
     orderId: string,
     reader: Reader = this.prisma.client,
+  ): Promise<UrgencyProposalDto> {
+    try {
+      return await this.proposeWithEngine(orderId, reader);
+    } catch (error) {
+      if (!(error instanceof RoadMetricsError)) throw error;
+      const order = await reader.orm.public.Order.where({ id: orderId }).first();
+      return {
+        orderId,
+        date: businessDay(nowInstant()).toString(),
+        timeZone: 'America/Guayaquil',
+        kind: 'BLOCKED',
+        routeId: null,
+        zoneId: order?.zoneId ?? null,
+        routeDate: order?.scheduledDeliveryDate?.toString() ?? null,
+        orderIds: [],
+        stops: [],
+        availableDriverIds: [],
+        reasons: [error.code],
+        totalDistanceKm: 0,
+        fingerprint: '',
+      };
+    }
+  }
+
+  // No proposal/claim/route is persisted. Confirmation must re-read under locks.
+  private async proposeWithEngine(
+    orderId: string,
+    reader: Reader,
   ): Promise<UrgencyProposalDto> {
     const db = reader.orm.public;
     const order = await db.Order.where({ id: orderId }).first();
@@ -83,7 +119,7 @@ export class RouteUrgencyService {
       lat: o.deliveryLat,
       lng: o.deliveryLng,
     });
-    const make = (
+    const make = async (
       orders: (typeof order)[],
       routeId: string | null,
       routeDate: string,
@@ -102,15 +138,23 @@ export class RouteUrgencyService {
       });
       // Degenerate/zero-savings groups can produce separate tours; flatten the
       // deterministic tours since all validated candidates already fit one vehicle.
+      // Con el motor vial, la matriz se pide una sola vez y sirve para agrupar y para medir la visita.
+      const matrixPoints = uniquePoints([depot, ...routing.map((o) => o.location)]);
+      const roadMatrix = this.roads.active ? await this.roads.matrixFor(matrixPoints) : null;
+      const km = roadMatrix
+        ? { points: roadMatrix.points, distanceKm: roadMatrix.distancesM.map((row) => row.map((m) => m / 1000)) }
+        : null;
+      const distanceFn = km ? matrixDistance(km) : haversineKm;
       const ids = planRoutes(routing, {
         depots: { [zone.id]: depot },
         capacity: DEFAULT_ROUTE_CAPACITY,
+        ...(km ? { distance: distanceFn, directional: true } : {}),
       }).flatMap((r) => r.orderIds);
       const locations = new Map(routing.map((o) => [o.id, o.location]));
       const points = [depot, ...ids.map((id) => locations.get(id)!), depot];
       const distance = points
         .slice(1)
-        .reduce((sum, p, i) => sum + haversineKm(points[i]!, p), 0);
+        .reduce((sum, p, i) => sum + distanceFn(points[i]!, p), 0);
       return {
         ...base,
         kind: routeId ? ('INSERT' as const) : ('NEW_ROUTE' as const),
@@ -119,6 +163,7 @@ export class RouteUrgencyService {
         orderIds: ids,
         stops: ids.map((id, i) => ({ orderId: id, sequence: i + 1 })),
         totalDistanceKm: Math.round(distance * 1000) / 1000,
+        distanceMethod: km ? 'OSRM_ROAD_NETWORK' : 'HAVERSINE_STRAIGHT_LINE',
         fingerprint: createHash('sha256')
           .update(
             JSON.stringify({
@@ -190,7 +235,7 @@ export class RouteUrgencyService {
         orders.push(current);
       }
       if (orders.length !== stops.length + 1) continue;
-      return make(orders, route.id, route.date.toString(), {
+      return await make(orders, route.id, route.date.toString(), {
         status: route.status,
         driverId: route.driverId,
         stops: stops.map((s) => ({
@@ -201,7 +246,7 @@ export class RouteUrgencyService {
         claims: claims.map((c) => c.id).sort(),
       });
     }
-    const proposal = make(
+    const proposal = await make(
       [order],
       null,
       order.scheduledDeliveryDate!.toString(),

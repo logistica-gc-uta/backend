@@ -39,7 +39,7 @@ Ejemplos del issue: si el cliente no acepta el retiro no se entrega, no se crea 
 
 **Seguridad y permisos:** solo ADMIN, con el actor tomado del JWT y claves idempotentes; la base de datos exige la auditoría en la misma transacción; el cliente solo ve el seguimiento de sus pedidos.
 
-**Compatibilidad con otros componentes:** el enum de estados no cambia. `ci-security.spec.ts` espera 39 suites e2e.
+**Compatibilidad con otros componentes:** el enum de estados no cambia. `ci-security.spec.ts` espera 41 suites e2e.
 
 **Limitaciones conocidas:** el retiro tras una emergencia (#51/#52) queda bloqueado porque «original en recuperación pendiente» aún no existe y no se inventó un estado; no hay una acción para revertir un acuerdo si el cliente no se presenta (pregunta abierta al líder); no hay llamadas automáticas, recobro ni reposición.
 
