@@ -99,6 +99,7 @@ elif [ "$1" = "inspect" ]; then
   fi
   exit 0
 elif [ "$1" = "exec" ]; then
+  cat >/dev/null
   echo "1"
   exit 0
 elif [ "$1" = "rm" ]; then

@@ -4,11 +4,34 @@ import { enrichOrderWithGeography } from './order-geography.util.js';
 
 type Product = Partial<Scalars<Models.public_Product>>;
 type Item = Partial<Scalars<Models.public_OrderItem>> & { product?: Product };
+type Pickup = Partial<Scalars<Models.public_OrderPickup>>;
 type Source = Partial<Scalars<Models.public_Order>> & {
   items?: Item[];
   zone?: Partial<Scalars<Models.public_Zone>> | null;
   user?: { id: string; name: string } | null;
+  pickup?: Pickup | null;
 };
+
+export interface OrderPickupSummary {
+  state: 'PENDING_PICKUP' | 'PICKED_UP';
+  agreedAt: string;
+  pickedUpAt: string | null;
+}
+
+function toIsoString(value: unknown): string {
+  return value instanceof Date ? value.toISOString() : String(value);
+}
+
+/** Projects only public store-pickup state and timestamps without actor or request IDs (#50). */
+function projectOrderPickup(pickup: Pickup | null): OrderPickupSummary | null {
+  if (!pickup || !pickup.agreedAt) return null;
+  const pickedUpAt = pickup.confirmedAt ? toIsoString(pickup.confirmedAt) : null;
+  return {
+    state: pickedUpAt ? 'PICKED_UP' : 'PENDING_PICKUP',
+    agreedAt: toIsoString(pickup.agreedAt),
+    pickedUpAt,
+  };
+}
 
 /** Explicit API allowlist. Call only AFTER authorization; phone permission is not authorization. */
 export function projectOrder(order: Source, includeContact: boolean) {
@@ -51,6 +74,7 @@ export function projectOrder(order: Source, includeContact: boolean) {
       depotLat: order.zone.depotLat ?? null, depotLng: order.zone.depotLng ?? null,
       createdAt: order.zone.createdAt,
     } : null } : {}),
+    ...(order.pickup !== undefined ? { pickup: projectOrderPickup(order.pickup) } : {}),
   };
   return order.zone !== undefined ? enrichOrderWithGeography(result) : result;
 }

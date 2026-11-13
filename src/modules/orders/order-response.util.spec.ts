@@ -52,4 +52,57 @@ describe('order response allowlist', () => {
     });
     expect(projectOrder({ id: 'guest', userId: null, user: null }, true).user).toBeNull();
   });
+
+  it('projects pickup state cleanly when included and strips internal actor or request fields', () => {
+    expect(projectOrder(source, true)).not.toHaveProperty('pickup');
+    expect(projectOrder({ ...source, pickup: null }, true).pickup).toBeNull();
+
+    const agreedAt = Temporal.Instant.from('2026-11-13T15:00:00Z');
+    const confirmedAt = Temporal.Instant.from('2026-11-13T16:30:00Z');
+
+    const pending = projectOrder(
+      {
+        ...source,
+        pickup: {
+          id: 'pickup-1',
+          orderId: 'order',
+          agreedAt,
+          agreedById: 'secret-admin-1',
+          agreementRequestId: 'secret-req-1',
+          confirmedAt: null,
+          confirmedById: null,
+          confirmationRequestId: null,
+        },
+      } as Parameters<typeof projectOrder>[0],
+      true,
+    );
+    expect(pending.pickup).toEqual({
+      state: 'PENDING_PICKUP',
+      agreedAt: '2026-11-13T15:00:00Z',
+      pickedUpAt: null,
+    });
+    expect(JSON.stringify(pending.pickup)).not.toMatch(/secret|agreedById|confirmedById|RequestId/);
+
+    const pickedUp = projectOrder(
+      {
+        ...source,
+        pickup: {
+          id: 'pickup-1',
+          orderId: 'order',
+          agreedAt,
+          agreedById: 'secret-admin-1',
+          agreementRequestId: 'secret-req-1',
+          confirmedAt,
+          confirmedById: 'secret-admin-2',
+          confirmationRequestId: 'secret-req-2',
+        },
+      } as Parameters<typeof projectOrder>[0],
+      false,
+    );
+    expect(pickedUp.pickup).toEqual({
+      state: 'PICKED_UP',
+      agreedAt: '2026-11-13T15:00:00Z',
+      pickedUpAt: '2026-11-13T16:30:00Z',
+    });
+  });
 });

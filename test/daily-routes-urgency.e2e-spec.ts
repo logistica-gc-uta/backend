@@ -450,8 +450,12 @@ describe('Daily operational window and midnight continuity (PostgreSQL16 + HTTP)
   it('runs a full zone-free (zoneId null) daily lifecycle: order -> proposal -> confirm -> assign -> start -> deliver -> complete -> return', async () => {
     const todayDay = localDay(0);
     const futureToday = Temporal.Now.instant().add({ minutes: 30 });
+    const futureLocal = futureToday.toZonedDateTimeISO(BUSINESS_TZ);
+    const futureTime = futureLocal.toPlainTime();
     const isSameToday =
-      futureToday.toZonedDateTimeISO(BUSINESS_TZ).toPlainDate().toString() === todayDay;
+      futureLocal.toPlainDate().toString() === todayDay &&
+      Temporal.PlainTime.compare(futureTime, Temporal.PlainTime.from('07:00')) >= 0 &&
+      Temporal.PlainTime.compare(futureTime, Temporal.PlainTime.from('17:00')) <= 0;
     const slot = isSameToday ? futureToday : localNoonInstant(0);
 
     let orderId: string;
