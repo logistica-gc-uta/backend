@@ -3,11 +3,11 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { Worker } from 'node:worker_threads';
 import { planRoutes, type ClarkeWrightOptions, type PlannedRoute, type RoutingOrder } from './algorithms/clarke-wright.js';
-import { matrixDistance, type DistanceMatrix } from './algorithms/matrix-distance.js';
+import { matrixDistance, matrixDuration, type DistanceMatrix } from './algorithms/matrix-distance.js';
 import type { PlanRequest } from './algorithms/plan-routes.worker.js';
 
-type PlanOptions = Pick<ClarkeWrightOptions, 'depots' | 'capacity'> & {
-  /** Matriz vial (km, direccional). Sin ella se usa la línea recta de siempre. */
+type PlanOptions = Pick<ClarkeWrightOptions, 'depots' | 'capacity' | 'timeWindowMarginMinutes'> & {
+  /** Matriz vial (km y duraciones en s, direccional). Sin ella se usa la línea recta de siempre. */
   matrix?: DistanceMatrix;
 };
 
@@ -24,14 +24,26 @@ export function resolveWorkerFile(entry = process.argv[1]): string | undefined {
 /** Clave de contenido: la misma entrada produce siempre la misma clave, así que nunca sirve datos viejos. */
 export function planKey(orders: readonly RoutingOrder[], options: PlanOptions): string {
   const hash = createHash('sha256');
-  hash.update(JSON.stringify([options.capacity ?? null, Object.entries(options.depots).sort(([a], [b]) => a.localeCompare(b))]));
+  hash.update(
+    JSON.stringify([
+      options.capacity ?? null,
+      options.timeWindowMarginMinutes ?? null,
+      Object.entries(options.depots).sort(([a], [b]) => a.localeCompare(b)),
+    ]),
+  );
   for (const order of [...orders].sort((a, b) => a.id.localeCompare(b.id))) {
-    hash.update(`|${order.id},${order.zoneId},${order.deliveryDate},${order.location.lat},${order.location.lng}`);
+    hash.update(
+      `|${order.id},${order.zoneId},${order.deliveryDate},${order.location.lat},${order.location.lng},${order.scheduledAtMs ?? ''}`,
+    );
   }
   // La red vial cambia el resultado: dos matrices distintas nunca comparten caché.
   if (options.matrix) {
     hash.update('|matrix');
-    for (const row of options.matrix.distanceKm) hash.update(row.join(','));
+    for (const row of options.matrix.distanceKm) hash.update(`|${row.join(',')}`);
+    if (options.matrix.durationS) {
+      hash.update('|durationS');
+      for (const row of options.matrix.durationS) hash.update(`|${row.join(',')}`);
+    }
   }
   return hash.digest('hex');
 }
@@ -99,7 +111,14 @@ export class RoutePlanner {
     }
     this.stats.inlineRuns++;
     const { matrix, ...base } = options;
-    return matrix ? planRoutes(orders, { ...base, distance: matrixDistance(matrix), directional: true }) : planRoutes(orders, base);
+    return matrix
+      ? planRoutes(orders, {
+          ...base,
+          distance: matrixDistance(matrix),
+          duration: matrixDuration(matrix),
+          directional: true,
+        })
+      : planRoutes(orders, base);
   }
 
   private runInWorker(orders: RoutingOrder[], options: PlanOptions): Promise<PlannedRoute[]> {

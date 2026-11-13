@@ -6,6 +6,8 @@ export interface RoutingOrder {
   /** Fecha de entrega (YYYY-MM-DD). Pedidos de fechas distintas nunca comparten ruta. */
   deliveryDate: string;
   location: GeoPoint;
+  /** Instante programado de entrega en milisegundos desde época Unix (opcional). */
+  scheduledAtMs?: number;
 }
 
 export type DistanceFn = (a: GeoPoint, b: GeoPoint) => number;
@@ -15,8 +17,12 @@ export interface ClarkeWrightOptions {
   depots: Record<string, GeoPoint>;
   /** Máximo de pedidos por ruta. Por defecto 4 (regla de negocio). */
   capacity?: number;
-  /** Función de distancia. Por defecto Haversine en km. */
+  /** Función de distancia en km. Por defecto Haversine en km. */
   distance?: DistanceFn;
+  /** Función de duración en segundos para priorizar el costo vial (opcional). */
+  duration?: DistanceFn;
+  /** Margen máximo (en minutos) entre extremos horarios de una misma ruta (opcional). */
+  timeWindowMarginMinutes?: number;
   /**
    * Las distancias NO son simétricas (matriz vial con sentidos de calle). Las decisiones de agrupación usan el
    * promedio de ambos sentidos y el recorrido final se mide, y se orienta, con el sentido real de cada tramo.
@@ -35,32 +41,52 @@ export interface PlannedRoute {
 }
 
 export const DEFAULT_ROUTE_CAPACITY = 4;
+const EXACT_BUCKET_PERMUTATION_LIMIT = 120;
 
 interface Saving {
   i: number;
   j: number;
-  value: number;
+  primary: number;
+  secondary: number;
+}
+
+interface EmittedRoute {
+  planned: PlannedRoute;
+  earliestScheduledAtMs: number;
 }
 
 /**
  * Arma rutas con la heurística de ahorros de Clarke & Wright (1964) para el
- * VRP con capacidad: agrupa por zona y fecha, parte con una ruta por pedido y
- * fusiona rutas por mayor ahorro de distancia sin superar la capacidad.
+ * VRP con capacidad: agrupa por zona y fecha (y por ventanas horarias compatibles
+ * si se especifica `timeWindowMarginMinutes`), parte con una ruta por pedido y
+ * fusiona rutas por mayor ahorro sin superar la capacidad.
  *
  * Es una función pura y determinista: no accede a la base de datos.
  */
 export function planRoutes(orders: RoutingOrder[], options: ClarkeWrightOptions): PlannedRoute[] {
   const capacity = options.capacity ?? DEFAULT_ROUTE_CAPACITY;
   const distance = options.distance ?? haversineKm;
+  const duration = options.duration;
 
   if (!Number.isInteger(capacity) || capacity < 1) {
     throw new Error('La capacidad por ruta debe ser un entero mayor o igual a 1');
   }
+  if (
+    options.timeWindowMarginMinutes !== undefined &&
+    (!Number.isInteger(options.timeWindowMarginMinutes) || options.timeWindowMarginMinutes < 0)
+  ) {
+    throw new Error('El margen de ventana horaria debe ser un entero no negativo');
+  }
+  const marginMs =
+    options.timeWindowMarginMinutes !== undefined ? options.timeWindowMarginMinutes * 60_000 : undefined;
 
   const seen = new Set<string>();
   for (const order of orders) {
     if (seen.has(order.id)) {
       throw new Error(`Pedido duplicado en la entrada: '${order.id}'`);
+    }
+    if (order.scheduledAtMs !== undefined && !Number.isFinite(order.scheduledAtMs)) {
+      throw new Error(`Instante programado inválido para el pedido '${order.id}'`);
     }
     seen.add(order.id);
   }
@@ -76,7 +102,16 @@ export function planRoutes(orders: RoutingOrder[], options: ClarkeWrightOptions)
     }
   }
 
-  const planned: PlannedRoute[] = [];
+  const decisionDistance: DistanceFn = options.directional
+    ? (a, b) => (distance(a, b) + distance(b, a)) / 2
+    : distance;
+  const decisionDuration: DistanceFn | undefined = duration
+    ? options.directional
+      ? (a, b) => (duration(a, b) + duration(b, a)) / 2
+      : duration
+    : undefined;
+
+  const emitted: EmittedRoute[] = [];
   for (const key of [...groups.keys()].sort()) {
     const group = groups.get(key)!;
     const { zoneId, deliveryDate } = group[0]!;
@@ -85,26 +120,104 @@ export function planRoutes(orders: RoutingOrder[], options: ClarkeWrightOptions)
       throw new Error(`No hay depósito definido para la zona '${zoneId}'`);
     }
 
-    const decision: DistanceFn = options.directional ? (a, b) => (distance(a, b) + distance(b, a)) / 2 : distance;
-    for (const route of planGroup(group, depot, capacity, decision, options.directional ? distance : undefined)) {
-      planned.push({
-        zoneId,
-        deliveryDate,
-        orderIds: route.map((order) => order.id),
-        totalDistance: routeDistance(route, depot, distance),
-      });
+    const subgroups = marginMs !== undefined ? partitionByTimeWindow(group, marginMs) : [group];
+    for (const subgroup of subgroups) {
+      const plannedGroup = planGroup(
+        subgroup,
+        depot,
+        capacity,
+        decisionDistance,
+        decisionDuration,
+        distance,
+        duration,
+        Boolean(options.directional),
+      );
+      for (const route of plannedGroup) {
+        emitted.push({
+          planned: {
+            zoneId,
+            deliveryDate,
+            orderIds: route.map((order) => order.id),
+            totalDistance: routeDistance(route, depot, distance),
+          },
+          earliestScheduledAtMs: earliestScheduledMs(route),
+        });
+      }
     }
   }
-  return planned;
+
+  emitted.sort(compareEmittedRoutes);
+  return emitted.map((entry) => entry.planned);
+}
+
+function compareEmittedRoutes(a: EmittedRoute, b: EmittedRoute): number {
+  const keyA = `${a.planned.zoneId}|${a.planned.deliveryDate}`;
+  const keyB = `${b.planned.zoneId}|${b.planned.deliveryDate}`;
+  if (keyA !== keyB) return keyA < keyB ? -1 : 1;
+  if (a.earliestScheduledAtMs !== b.earliestScheduledAtMs) {
+    return a.earliestScheduledAtMs - b.earliestScheduledAtMs;
+  }
+  return (a.planned.orderIds[0] ?? '').localeCompare(b.planned.orderIds[0] ?? '');
+}
+
+function earliestScheduledMs(route: RoutingOrder[]): number {
+  let min = Number.POSITIVE_INFINITY;
+  for (const order of route) {
+    if (order.scheduledAtMs !== undefined && order.scheduledAtMs < min) {
+      min = order.scheduledAtMs;
+    }
+  }
+  return min;
+}
+
+/**
+ * Particiona pedidos del mismo día y zona por extremos horarios (`max - min <= marginMs`, inclusivo),
+ * sin encadenar vecinos. Los pedidos sin hora programada (si los hubiera) van en un subgrupo final.
+ */
+function partitionByTimeWindow(group: RoutingOrder[], marginMs: number): RoutingOrder[][] {
+  const scheduled: RoutingOrder[] = [];
+  const unscheduled: RoutingOrder[] = [];
+  for (const order of group) {
+    if (order.scheduledAtMs !== undefined) {
+      scheduled.push(order);
+    } else {
+      unscheduled.push(order);
+    }
+  }
+
+  scheduled.sort((a, b) => a.scheduledAtMs! - b.scheduledAtMs! || a.id.localeCompare(b.id));
+
+  const subgroups: RoutingOrder[][] = [];
+  let cluster: RoutingOrder[] = [];
+  let clusterMinMs = 0;
+
+  for (const order of scheduled) {
+    const t = order.scheduledAtMs!;
+    if (cluster.length === 0) {
+      cluster = [order];
+      clusterMinMs = t;
+    } else if (t - clusterMinMs <= marginMs) {
+      cluster.push(order);
+    } else {
+      subgroups.push(cluster);
+      cluster = [order];
+      clusterMinMs = t;
+    }
+  }
+  if (cluster.length > 0) subgroups.push(cluster);
+  if (unscheduled.length > 0) subgroups.push(unscheduled);
+  return subgroups;
 }
 
 function planGroup(
   group: RoutingOrder[],
   depot: GeoPoint,
   capacity: number,
-  distance: DistanceFn,
-  /** Solo en modo direccional: el sentido real de cada tramo, para orientar la visita. */
-  realDistance?: DistanceFn,
+  decisionDistance: DistanceFn,
+  decisionDuration: DistanceFn | undefined,
+  realDistance: DistanceFn,
+  realDuration: DistanceFn | undefined,
+  directional: boolean,
 ): RoutingOrder[][] {
   // Orden por id: el resultado no depende del orden de llegada de los pedidos.
   const orders = [...group].sort((a, b) => a.id.localeCompare(b.id));
@@ -116,17 +229,26 @@ function planGroup(
     routeOf.push(index);
   });
 
-  const toDepot = orders.map((order) => distance(depot, order.location));
+  const toDepotDist = orders.map((order) => decisionDistance(depot, order.location));
+  const toDepotDur = decisionDuration ? orders.map((order) => decisionDuration(depot, order.location)) : undefined;
+
   const savings: Saving[] = [];
   for (let i = 0; i < orders.length; i++) {
     for (let j = i + 1; j < orders.length; j++) {
-      const value = toDepot[i]! + toDepot[j]! - distance(orders[i]!.location, orders[j]!.location);
-      if (value > 0) {
-        savings.push({ i, j, value });
+      const distSaving =
+        toDepotDist[i]! + toDepotDist[j]! - decisionDistance(orders[i]!.location, orders[j]!.location);
+      if (decisionDuration && toDepotDur) {
+        const durSaving =
+          toDepotDur[i]! + toDepotDur[j]! - decisionDuration(orders[i]!.location, orders[j]!.location);
+        if (durSaving > 0 || (durSaving === 0 && distSaving > 0)) {
+          savings.push({ i, j, primary: durSaving, secondary: distSaving });
+        }
+      } else if (distSaving > 0) {
+        savings.push({ i, j, primary: distSaving, secondary: 0 });
       }
     }
   }
-  savings.sort((a, b) => b.value - a.value || a.i - b.i || a.j - b.j);
+  savings.sort((a, b) => b.primary - a.primary || b.secondary - a.secondary || a.i - b.i || a.j - b.j);
 
   for (const { i, j } of savings) {
     const routeI = routeOf[i]!;
@@ -153,16 +275,199 @@ function planGroup(
 
   return [...routes.values()].map((indexes) => {
     const route = indexes.map((index) => orders[index]!);
-    if (realDistance) {
-      // Con sentidos de calle, cada orientación cuesta distinto: se elige la de menor recorrido real.
-      const reversed = [...route].reverse();
-      return routeDistance(reversed, depot, realDistance) < routeDistance(route, depot, realDistance) ? reversed : route;
+    if (route.some((order) => order.scheduledAtMs !== undefined)) {
+      return orderScheduledRoute(route, depot, realDistance, realDuration);
     }
-    // Se recorre primero la parada más cercana al depósito.
-    const first = distance(depot, route[0]!.location);
-    const last = distance(depot, route[route.length - 1]!.location);
-    return last < first ? route.reverse() : route;
+    return orientUnscheduledRoute(route, depot, decisionDistance, realDistance, realDuration, directional);
   });
+}
+
+function orientUnscheduledRoute(
+  route: RoutingOrder[],
+  depot: GeoPoint,
+  decisionDistance: DistanceFn,
+  realDistance: DistanceFn,
+  realDuration: DistanceFn | undefined,
+  directional: boolean,
+): RoutingOrder[] {
+  if (directional) {
+    // Con sentidos de calle, cada orientación cuesta distinto: se elige la de menor recorrido real.
+    const reversed = [...route].reverse();
+    if (realDuration) {
+      const revDur = routeDistance(reversed, depot, realDuration);
+      const fwdDur = routeDistance(route, depot, realDuration);
+      if (revDur !== fwdDur) return revDur < fwdDur ? reversed : route;
+    }
+    return routeDistance(reversed, depot, realDistance) < routeDistance(route, depot, realDistance) ? reversed : route;
+  }
+
+  if (realDuration) {
+    const firstDur = realDuration(depot, route[0]!.location);
+    const lastDur = realDuration(depot, route[route.length - 1]!.location);
+    if (firstDur !== lastDur) return lastDur < firstDur ? route.reverse() : route;
+  }
+
+  // Se recorre primero la parada más cercana al depósito.
+  const first = decisionDistance(depot, route[0]!.location);
+  const last = decisionDistance(depot, route[route.length - 1]!.location);
+  return last < first ? route.reverse() : route;
+}
+
+/**
+ * Ordena las paradas de una ruta con horario programado: estrictamente cronológico
+ * (`scheduledAtMs` ascendente) y, dentro de cada instante compartido, minimizando el costo
+ * real de ida y vuelta (`duration` primario, `distance` secundario, desempate lexicográfico).
+ */
+function orderScheduledRoute(
+  route: RoutingOrder[],
+  depot: GeoPoint,
+  realDistance: DistanceFn,
+  realDuration: DistanceFn | undefined,
+): RoutingOrder[] {
+  const sorted = [...route].sort((a, b) => {
+    const ta = a.scheduledAtMs ?? Number.POSITIVE_INFINITY;
+    const tb = b.scheduledAtMs ?? Number.POSITIVE_INFINITY;
+    if (ta !== tb) return ta - tb;
+    return a.id.localeCompare(b.id);
+  });
+
+  const buckets: RoutingOrder[][] = [];
+  for (const order of sorted) {
+    const currentTime = order.scheduledAtMs ?? Number.POSITIVE_INFINITY;
+    const lastBucket = buckets[buckets.length - 1];
+    if (!lastBucket || (lastBucket[0]!.scheduledAtMs ?? Number.POSITIVE_INFINITY) !== currentTime) {
+      buckets.push([order]);
+    } else {
+      lastBucket.push(order);
+    }
+  }
+
+  if (permutationProductExceedsLimit(buckets, EXACT_BUCKET_PERMUTATION_LIMIT)) {
+    return greedyBucketOrder(buckets, depot, realDistance, realDuration);
+  }
+  return exactBucketOrder(buckets, depot, realDistance, realDuration);
+}
+
+function permutationProductExceedsLimit(buckets: readonly RoutingOrder[][], limit: number): boolean {
+  let product = 1;
+  for (const bucket of buckets) {
+    for (let k = 2; k <= bucket.length; k++) {
+      product *= k;
+      if (product > limit) return true;
+    }
+  }
+  return false;
+}
+
+function exactBucketOrder(
+  buckets: readonly RoutingOrder[][],
+  depot: GeoPoint,
+  realDistance: DistanceFn,
+  realDuration: DistanceFn | undefined,
+): RoutingOrder[] {
+  let bestRoute: RoutingOrder[] | undefined;
+  let bestDuration = Number.POSITIVE_INFINITY;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  let bestIds: string[] = [];
+
+  const current: RoutingOrder[] = [];
+
+  const search = (bucketIdx: number, usedMask: number) => {
+    if (bucketIdx === buckets.length) {
+      const candDuration = realDuration ? routeDistance(current, depot, realDuration) : 0;
+      const candDistance = routeDistance(current, depot, realDistance);
+      const candIds = current.map((o) => o.id);
+      if (
+        !bestRoute ||
+        isBetterTour(candDuration, candDistance, candIds, bestDuration, bestDistance, bestIds, Boolean(realDuration))
+      ) {
+        bestRoute = [...current];
+        bestDuration = candDuration;
+        bestDistance = candDistance;
+        bestIds = candIds;
+      }
+      return;
+    }
+
+    const bucket = buckets[bucketIdx]!;
+    if (usedMask === (1 << bucket.length) - 1) {
+      search(bucketIdx + 1, 0);
+      return;
+    }
+
+    for (let idx = 0; idx < bucket.length; idx++) {
+      if ((usedMask & (1 << idx)) !== 0) continue;
+      current.push(bucket[idx]!);
+      search(bucketIdx, usedMask | (1 << idx));
+      current.pop();
+    }
+  };
+
+  search(0, 0);
+  return bestRoute!;
+}
+
+function isBetterTour(
+  candDuration: number,
+  candDistance: number,
+  candIds: readonly string[],
+  bestDuration: number,
+  bestDistance: number,
+  bestIds: readonly string[],
+  hasDuration: boolean,
+): boolean {
+  if (hasDuration && candDuration !== bestDuration) {
+    return candDuration < bestDuration;
+  }
+  if (candDistance !== bestDistance) {
+    return candDistance < bestDistance;
+  }
+  for (let k = 0; k < candIds.length; k++) {
+    const cmp = candIds[k]!.localeCompare(bestIds[k]!);
+    if (cmp !== 0) return cmp < 0;
+  }
+  return false;
+}
+
+function greedyBucketOrder(
+  buckets: readonly RoutingOrder[][],
+  depot: GeoPoint,
+  realDistance: DistanceFn,
+  realDuration: DistanceFn | undefined,
+): RoutingOrder[] {
+  const ordered: RoutingOrder[] = [];
+  let prev = depot;
+
+  for (const bucket of buckets) {
+    const remaining = [...bucket];
+    while (remaining.length > 0) {
+      let bestIdx = 0;
+      let bestDur = realDuration ? realDuration(prev, remaining[0]!.location) : 0;
+      let bestDist = realDistance(prev, remaining[0]!.location);
+
+      for (let idx = 1; idx < remaining.length; idx++) {
+        const candidate = remaining[idx]!;
+        const candDur = realDuration ? realDuration(prev, candidate.location) : 0;
+        const candDist = realDistance(prev, candidate.location);
+        const better = realDuration
+          ? candDur < bestDur ||
+            (candDur === bestDur &&
+              (candDist < bestDist || (candDist === bestDist && candidate.id.localeCompare(remaining[bestIdx]!.id) < 0)))
+          : candDist < bestDist || (candDist === bestDist && candidate.id.localeCompare(remaining[bestIdx]!.id) < 0);
+        if (better) {
+          bestIdx = idx;
+          bestDur = candDur;
+          bestDist = candDist;
+        }
+      }
+
+      const [chosen] = remaining.splice(bestIdx, 1);
+      ordered.push(chosen!);
+      prev = chosen!.location;
+    }
+  }
+
+  return ordered;
 }
 
 function routeDistance(route: RoutingOrder[], depot: GeoPoint, distance: DistanceFn): number {
