@@ -1,4 +1,9 @@
-import { evaluatePlanningEligibility } from '../orders/order-geography.util.js';
+import {
+  evaluatePlanningEligibility,
+  orderBelongsToRouteZone,
+  type GeoPoint,
+} from '../orders/order-geography.util.js';
+import { StoreCoverageService } from '../store-coverage/store-coverage.service.js';
 import { canMutateRouteStructure } from './route-lifecycle.policy.js';
 import { AssignRouteDto } from './dto/assign-route.dto.js';
 import { RouteAvailabilityService } from './route-availability.service.js';
@@ -50,17 +55,6 @@ function assertOperationalDay(
   }
 }
 
-/** Coverage-era orders persist zoneId null; they may join a route whose zone ADMIN selected. */
-function orderBelongsToRouteZone(
-  orderZoneId: string | null | undefined,
-  routeZoneId: string | null | undefined,
-): boolean {
-  return (
-    routeZoneId == null ||
-    orderZoneId == null ||
-    orderZoneId === routeZoneId
-  );
-}
 interface RouteSnapshot {
   id: string;
   status: string | null;
@@ -78,7 +72,21 @@ export class RouteAssignmentService {
     @Optional()
     @Inject(REALTIME_PUBLISHER)
     private readonly realtime?: RealtimePublisher,
+    @Optional()
+    private readonly storeCoverage?: StoreCoverageService,
   ) {}
+
+  private async resolveStoreOrigin(tx: Transaction): Promise<GeoPoint | null> {
+    const coverage = this.storeCoverage ? await this.storeCoverage.getCoverage() : null;
+    if (coverage?.configured) {
+      return { lat: coverage.location.lat, lng: coverage.location.lng };
+    }
+    const row = await tx.orm.public.StoreCoverage?.where({ singletonKey: 'GLOBAL' }).first();
+    if (row && typeof row.lat === 'number' && typeof row.lng === 'number') {
+      return { lat: row.lat, lng: row.lng };
+    }
+    return null;
+  }
 
   private async publishCommitted(changes: readonly RealtimeChange[]) {
     if (!changes.length || !this.realtime) return;
@@ -144,6 +152,7 @@ export class RouteAssignmentService {
     date: Temporal.Instant,
     routeId?: string,
   ) {
+    const storeOrigin = zoneId == null ? await this.resolveStoreOrigin(tx) : null;
     for (const id of [...orderIds].sort()) {
       // Lock identity, never overwrite a status observed before acquiring the lock.
       const order = await tx.orm.public.Order.where({ id }).update({ id });
@@ -184,6 +193,16 @@ export class RouteAssignmentService {
           'Orders require PENDING eligibility, one zone and a scheduled instant on the route business day',
         );
       }
+      if (zoneId == null) {
+        const orderZone = order.zoneId
+          ? await tx.orm.public.Zone.where({ id: order.zoneId }).first()
+          : null;
+        if (!evaluatePlanningEligibility(order, orderZone, storeOrigin).planningEligibility.eligible) {
+          throw new ConflictException(
+            'Orders on a zone-free route require configured StoreCoverage or zone depot origin and valid delivery coordinates',
+          );
+        }
+      }
     }
   }
 
@@ -215,6 +234,10 @@ export class RouteAssignmentService {
     const stops = await tx.orm.public.RouteStop.where({ routeId }).all();
     if (stops.some((s) => s.isLegacy || s.outcome !== 'PENDING' || !s.sequence))
       throw new ConflictException('Verified pending stops required');
+    const storeOrigin = await this.resolveStoreOrigin(tx);
+    const routeZone = route.zoneId
+      ? await tx.orm.public.Zone.where({ id: route.zoneId }).first()
+      : null;
     for (const id of [...orderIds].sort()) {
       const order = await tx.orm.public.Order.where({ id }).update({ id });
       if (!order) throw new NotFoundException('Order not found');
@@ -233,17 +256,15 @@ export class RouteAssignmentService {
               false,
               order.requiresAdministrativeReview,
             );
+      const orderZone = routeZone ?? (order.zoneId
+        ? await tx.orm.public.Zone.where({ id: order.zoneId }).first()
+        : null);
       if (
         !eligible ||
         !orderBelongsToRouteZone(order.zoneId, route.zoneId) ||
         !order.scheduledDeliveryDate ||
         !isSameBusinessDay(order.scheduledDeliveryDate, route.date) ||
-        !evaluatePlanningEligibility(
-          order,
-          route.zoneId
-            ? await tx.orm.public.Zone.where({ id: route.zoneId }).first()
-            : null,
-        ).planningEligibility.eligible ||
+        !evaluatePlanningEligibility(order, orderZone, storeOrigin).planningEligibility.eligible ||
         (existing ? claim?.routeId !== routeId || !claim.claimedAt : !!claim)
       )
         throw new ConflictException(
@@ -299,13 +320,14 @@ export class RouteAssignmentService {
     const result = await this.transaction(actorId, async (tx) => {
       // Hold the shared driver before creating the route and locking sorted orders.
       await this.lockDriver(tx, dto.driverId);
-      if (!(await tx.orm.public.Zone.where({ id: dto.zoneId }).first()))
+      const zoneId = dto.zoneId ?? null;
+      if (zoneId != null && !(await tx.orm.public.Zone.where({ id: zoneId }).first()))
         throw new NotFoundException('Zone not found');
       let date: Temporal.Instant | null = null;
       for (const id of [...dto.orderIds].sort()) {
         const order = await tx.orm.public.Order.where({ id }).first();
         if (!order) throw new NotFoundException('Proposal order not found');
-        if (!orderBelongsToRouteZone(order.zoneId, dto.zoneId))
+        if (!orderBelongsToRouteZone(order.zoneId, zoneId))
           throw new BadRequestException(
             'Order does not belong to the requested zone',
           );
@@ -324,7 +346,7 @@ export class RouteAssignmentService {
       const draft = await this.confirmInTransaction(
         tx,
         {
-          zoneId: dto.zoneId,
+          zoneId,
           orderIds: dto.orderIds,
           routeDate: date.toString(),
         },
@@ -368,15 +390,16 @@ export class RouteAssignmentService {
     date: Temporal.Instant,
   ): Promise<RouteAssignmentResponseDto> {
     assertOperationalDay(date);
-    if (!(await tx.orm.public.Zone.where({ id: dto.zoneId }).first()))
+    const zoneId = dto.zoneId ?? null;
+    if (zoneId != null && !(await tx.orm.public.Zone.where({ id: zoneId }).first()))
       throw new NotFoundException('Zone not found');
     const route = await tx.orm.public.Route.create({
       status: 'DRAFT',
       driverId: null,
-      zoneId: dto.zoneId,
+      zoneId,
       date,
     });
-    await this.lockOrders(tx, dto.orderIds, dto.zoneId, date);
+    await this.lockOrders(tx, dto.orderIds, zoneId, date);
     const claimedAt = nowInstant();
     for (const [index, orderId] of dto.orderIds.entries()) {
       await tx.orm.public.RouteStop.create({

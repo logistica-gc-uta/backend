@@ -117,10 +117,17 @@ export class RoutePlanningService implements OnModuleDestroy {
     const marginMinutes = this.shopSettings
       ? await this.shopSettings.getRouteTimeWindowMarginMinutes()
       : DEFAULT_TIME_WINDOW_MARGIN_MINUTES;
+const STORE_ROUTE_GROUP_KEY = '__STORE__';
+
     const coverage = this.storeCoverage ? await this.storeCoverage.getCoverage() : null;
+    const storeRow = !coverage
+      ? await this.prisma.client.orm.public.StoreCoverage?.where({ singletonKey: 'GLOBAL' }).first()
+      : null;
     const storeOrigin: GeoPoint | null = coverage?.configured
       ? { lat: coverage.location.lat, lng: coverage.location.lng }
-      : null;
+      : storeRow && typeof storeRow.lat === 'number' && typeof storeRow.lng === 'number'
+        ? { lat: storeRow.lat, lng: storeRow.lng }
+        : null;
 
     let orderQuery = this.prisma.order
       .where({ status: 'PENDING' })
@@ -144,41 +151,45 @@ export class RoutePlanningService implements OnModuleDestroy {
     const instants = new Map<string, string>();
     const addresses = new Map<string, string>();
     const depots: Record<string, GeoPoint> = {};
-    const zones = new Map<string, { code: string }>();
+    const zones = new Map<string, { zoneId: string | null; code: string | null }>();
     const perZone = new Map<string, number>();
 
     for (const order of candidates) {
       const { deliveryLocation, planningEligibility } =
-        evaluatePlanningEligibility(order, order.zone);
+        evaluatePlanningEligibility(order, order.zone, storeOrigin);
       const reasons: PlanningExclusionReason[] = [...planningEligibility.reasons];
       if (claimed.has(order.id)) reasons.push(ExclusionReason.ACTIVE_ROUTE_CLAIM);
       if (order.requiresAdministrativeReview) {
         reasons.push(ExclusionReason.ADMINISTRATIVE_REVIEW_REQUIRED);
       }
-      const zoneId = order.zoneId;
-      if (reasons.length || !deliveryLocation || !order.zone || !zoneId) {
-        excluded.push({ orderId: order.id, zoneId, reasons });
+      const groupKey = order.zoneId ?? STORE_ROUTE_GROUP_KEY;
+      const depot =
+        storeOrigin ??
+        (order.zone &&
+        typeof order.zone.depotLat === 'number' &&
+        typeof order.zone.depotLng === 'number'
+          ? { lat: order.zone.depotLat, lng: order.zone.depotLng }
+          : null);
+      if (reasons.length || !deliveryLocation || !depot) {
+        excluded.push({ orderId: order.id, zoneId: order.zoneId, reasons });
         continue;
       }
 
-      const count = (perZone.get(zoneId) ?? 0) + 1;
+      const count = (perZone.get(groupKey) ?? 0) + 1;
       if (count > MAX_ORDERS_PER_ZONE) {
         throw new UnprocessableEntityException(
-          `Zone '${order.zone.code}' has more than ${MAX_ORDERS_PER_ZONE} plannable orders for ${query.date}; narrow the request`,
+          `Zone '${order.zone?.code ?? 'STORE'}' has more than ${MAX_ORDERS_PER_ZONE} plannable orders for ${query.date}; narrow the request`,
         );
       }
-      perZone.set(zoneId, count);
+      perZone.set(groupKey, count);
 
-      depots[zoneId] = storeOrigin ?? {
-        lat: order.zone.depotLat as number,
-        lng: order.zone.depotLng as number,
-      };
-      zones.set(zoneId, { code: order.zone.code });
+      depots[groupKey] = depot;
+      zones.set(groupKey, { zoneId: order.zoneId ?? null, code: order.zone?.code ?? null });
       instants.set(order.id, order.scheduledDeliveryDate!.toString());
       addresses.set(order.id, order.deliveryAddress);
       routable.push({
         id: order.id,
-        zoneId,
+        zoneId: groupKey,
         deliveryDate: query.date,
         location: deliveryLocation,
         scheduledAtMs: order.scheduledDeliveryDate!.epochMilliseconds,
@@ -207,9 +218,10 @@ export class RoutePlanningService implements OnModuleDestroy {
         route.totalDistance,
       );
       const legs = road ? road.legs([depot, ...stopPoints, depot]) : null;
+      const zoneInfo = zones.get(route.zoneId)!;
       return {
-        zoneId: route.zoneId,
-        zoneCode: zones.get(route.zoneId)!.code,
+        zoneId: zoneInfo.zoneId,
+        zoneCode: zoneInfo.code,
         depot,
         orderIds: route.orderIds,
         stops: route.orderIds.map((orderId, index) => ({

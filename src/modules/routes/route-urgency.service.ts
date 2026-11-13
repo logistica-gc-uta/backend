@@ -1,13 +1,18 @@
 import { createHash } from 'node:crypto';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import {
   businessDay,
   isSameBusinessDay,
   nowInstant,
 } from '../../common/temporal.util.js';
-import { evaluatePlanningEligibility } from '../orders/order-geography.util.js';
+import {
+  evaluatePlanningEligibility,
+  orderBelongsToRouteZone,
+  type GeoPoint,
+} from '../orders/order-geography.util.js';
 import { OrderStatus } from '../orders/dto/update-order-status.dto.js';
+import { StoreCoverageService } from '../store-coverage/store-coverage.service.js';
 import {
   canMutateRouteStructure,
   isOrderPlanningEligible,
@@ -27,6 +32,8 @@ import { UrgencyProposalDto } from './dto/urgency-response.dto.js';
 
 type Reader = Pick<PrismaService['client'], 'orm'>;
 
+const STORE_URGENCY_GROUP_KEY = '__STORE__';
+
 @Injectable()
 export class RouteUrgencyService {
   constructor(
@@ -34,6 +41,8 @@ export class RouteUrgencyService {
     private readonly availability: RouteAvailabilityService,
     /** Motor vial (#47). Sin `ROAD_ENGINE=OSRM` conserva la línea recta de siempre. */
     private readonly roads: RoadMetricsService = new RoadMetricsService(),
+    @Optional()
+    private readonly storeCoverage?: StoreCoverageService,
   ) {}
 
   /**
@@ -76,8 +85,17 @@ export class RouteUrgencyService {
     const order = await db.Order.where({ id: orderId }).first();
     if (!order) throw new NotFoundException('Order not found');
     const date = businessDay(nowInstant()).toString();
-    const zone = await db.Zone.where({ id: order.zoneId }).first();
-    const geography = evaluatePlanningEligibility(order, zone);
+    const coverage = this.storeCoverage ? await this.storeCoverage.getCoverage() : null;
+    const storeRow = !coverage
+      ? await db.StoreCoverage?.where({ singletonKey: 'GLOBAL' }).first()
+      : null;
+    const storeOrigin: GeoPoint | null = coverage?.configured
+      ? { lat: coverage.location.lat, lng: coverage.location.lng }
+      : storeRow && typeof storeRow.lat === 'number' && typeof storeRow.lng === 'number'
+        ? { lat: storeRow.lat, lng: storeRow.lng }
+        : null;
+    const zone = order.zoneId ? await db.Zone.where({ id: order.zoneId }).first() : null;
+    const geography = evaluatePlanningEligibility(order, zone, storeOrigin);
     const reasons: string[] = [...geography.planningEligibility.reasons];
     const activeClaim = await db.OrderClaim.where({
       orderId,
@@ -107,8 +125,12 @@ export class RouteUrgencyService {
       totalDistanceKm: 0,
       fingerprint: '',
     };
-    if (reasons.length || !zone || !geography.deliveryLocation) return base;
-    const depot = { lat: zone.depotLat!, lng: zone.depotLng! };
+    const depot: GeoPoint | null =
+      storeOrigin ??
+      (zone && typeof zone.depotLat === 'number' && typeof zone.depotLng === 'number'
+        ? { lat: zone.depotLat, lng: zone.depotLng }
+        : null);
+    if (reasons.length || !depot || !geography.deliveryLocation) return base;
     const snapshot = (o: typeof order) => ({
       id: o.id,
       status: o.status,
@@ -125,17 +147,13 @@ export class RouteUrgencyService {
       routeDate: string,
       evidence: unknown,
     ) => {
-      const routing: RoutingOrder[] = orders.map((o) => {
-        if (!o.zoneId) {
-          throw new Error('Urgent dispatch grouping requires a persisted zoneId');
-        }
-        return {
-          id: o.id,
-          zoneId: o.zoneId,
-          deliveryDate: date,
-          location: { lat: o.deliveryLat!, lng: o.deliveryLng! },
-        };
-      });
+      const routingGroupKey = order.zoneId ?? STORE_URGENCY_GROUP_KEY;
+      const routing: RoutingOrder[] = orders.map((o) => ({
+        id: o.id,
+        zoneId: routingGroupKey,
+        deliveryDate: date,
+        location: { lat: o.deliveryLat!, lng: o.deliveryLng! },
+      }));
       // Degenerate/zero-savings groups can produce separate tours; flatten the
       // deterministic tours since all validated candidates already fit one vehicle.
       // Con el motor vial, la matriz se pide una sola vez y sirve para agrupar y para medir la visita.
@@ -146,7 +164,7 @@ export class RouteUrgencyService {
         : null;
       const distanceFn = km ? matrixDistance(km) : haversineKm;
       const ids = planRoutes(routing, {
-        depots: { [zone.id]: depot },
+        depots: { [routingGroupKey]: depot },
         capacity: DEFAULT_ROUTE_CAPACITY,
         ...(km ? { distance: distanceFn, directional: true } : {}),
       }).flatMap((r) => r.orderIds);
@@ -180,9 +198,10 @@ export class RouteUrgencyService {
           .digest('hex'),
       };
     };
-    const routes = await db.Route.where({ zoneId: zone.id }).all();
+    const routes = await db.Route.all();
     for (const route of [...routes].sort((a, b) => a.id.localeCompare(b.id))) {
       if (
+        !orderBelongsToRouteZone(order.zoneId, route.zoneId) ||
         !canMutateRouteStructure(route.status as RouteStatus | null) ||
         !isSameBusinessDay(route.date, order.scheduledDeliveryDate!)
       )
@@ -204,6 +223,9 @@ export class RouteUrgencyService {
         releasedAt: null,
       }).all();
       if (claims.length !== stops.length) continue;
+      const routeZone = route.zoneId
+        ? await db.Zone.where({ id: route.zoneId }).first()
+        : null;
       const orders = [order];
       for (const stop of stops) {
         const current = await db.Order.where({ id: stop.orderId }).first();
@@ -221,15 +243,19 @@ export class RouteUrgencyService {
             : current.status === 'ASSIGNED' &&
               current.routeId === route.id &&
               !current.requiresAdministrativeReview);
+        const currentZone = current?.zoneId
+          ? await db.Zone.where({ id: current.zoneId }).first()
+          : routeZone;
         if (
           !current ||
           !eligible ||
           !claim ||
-          current.zoneId !== zone.id ||
+          !orderBelongsToRouteZone(current.zoneId, route.zoneId) ||
+          !orderBelongsToRouteZone(current.zoneId, order.zoneId) ||
           !current.scheduledDeliveryDate ||
           !isSameBusinessDay(current.scheduledDeliveryDate, route.date) ||
-          !evaluatePlanningEligibility(current, zone).planningEligibility
-            .eligible
+          !evaluatePlanningEligibility(current, currentZone, storeOrigin)
+            .planningEligibility.eligible
         )
           break;
         orders.push(current);

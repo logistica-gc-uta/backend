@@ -3,7 +3,11 @@ import {
   assertDeliveryFuture,
   deliveryClock,
 } from '../orders/order-delivery.util.js';
-import { evaluatePlanningEligibility } from '../orders/order-geography.util.js';
+import {
+  evaluatePlanningEligibility,
+  type GeoPoint,
+} from '../orders/order-geography.util.js';
+import { StoreCoverageService } from '../store-coverage/store-coverage.service.js';
 import {
   BadRequestException,
   ConflictException,
@@ -61,6 +65,8 @@ export class DispatchInterventionService {
     @Optional()
     @Inject(REALTIME_PUBLISHER)
     private readonly realtime?: RealtimePublisher,
+    @Optional()
+    private readonly storeCoverage?: StoreCoverageService,
   ) {}
 
   private async publishCommitted(changes: readonly RealtimeChange[]) {
@@ -315,11 +321,21 @@ export class DispatchInterventionService {
       timing,
       await deliveryClock(tx, this.prisma.client.raw),
     );
+    const storeCoverage = this.storeCoverage ? await this.storeCoverage.getCoverage() : null;
+    const storeRow = !storeCoverage
+      ? await db.StoreCoverage?.where({ singletonKey: 'GLOBAL' }).first()
+      : null;
+    const storeOrigin: GeoPoint | null = storeCoverage?.configured
+      ? { lat: storeCoverage.location.lat, lng: storeCoverage.location.lng }
+      : storeRow && typeof storeRow.lat === 'number' && typeof storeRow.lng === 'number'
+        ? { lat: storeRow.lat, lng: storeRow.lng }
+        : null;
+    const orderZone = order.zoneId
+      ? await db.Zone.where({ id: order.zoneId }).first()
+      : null;
     if (
-      !evaluatePlanningEligibility(
-        order,
-        await db.Zone.where({ id: order.zoneId }).first(),
-      ).planningEligibility.eligible
+      !evaluatePlanningEligibility(order, orderZone, storeOrigin)
+        .planningEligibility.eligible
     )
       throw new ConflictException(
         'Confirmed delivery and depot coordinates required',
@@ -713,15 +729,10 @@ export class DispatchInterventionService {
               throw new ConflictException(
                 'New departure requires an effectively available driver',
               );
-            if (!proposal.zoneId) {
-              throw new ConflictException(
-                'New departure requires a persisted zoneId until dispatch coverage grouping lands',
-              );
-            }
             const draft = await this.assignment.confirmInTransaction(
               tx,
               {
-                zoneId: proposal.zoneId,
+                zoneId: proposal.zoneId ?? null,
                 routeDate: proposal.routeDate!,
                 orderIds: proposal.orderIds,
               },

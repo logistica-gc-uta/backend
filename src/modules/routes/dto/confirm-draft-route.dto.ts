@@ -1,19 +1,23 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   ArrayMinSize,
   ArrayUnique,
   IsArray,
   IsISO8601,
+  IsOptional,
   IsString,
   Matches,
+  ValidateIf,
 } from 'class-validator';
 
 export class ConfirmDraftRouteDto {
-  @ApiProperty()
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
   @IsString()
   @Matches(/\S/)
-  zoneId!: string;
+  zoneId?: string | null;
 
   @ApiProperty({
     format: 'date-time',

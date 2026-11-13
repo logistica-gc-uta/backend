@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { nowInstant } from '../../common/temporal.util.js';
+import { orderBelongsToRouteZone } from '../orders/order-geography.util.js';
 import { RouteStartResponseDto } from './dto/route-start-response.dto.js';
 import { canTransitionRoute, RouteStatus } from './route-lifecycle.policy.js';
 import {
@@ -131,7 +132,7 @@ export class RouteExecutionService {
         }).first();
         if (
           !order ||
-          order.zoneId !== route.zoneId ||
+          !orderBelongsToRouteZone(order.zoneId, route.zoneId) ||
           order.routeId !== id ||
           order.status !== 'ASSIGNED' ||
           order.requiresAdministrativeReview
