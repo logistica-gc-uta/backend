@@ -1,6 +1,6 @@
-# OSRM local para el issue #47
+# OSRM para el issue #47 (desarrollo y VPS)
 
-Guía para levantar el motor vial y validarlo. El líder decidió alojarlo como **contenedor Docker en la VPS del backend** (sección 7); los pasos 1 a 6 sirven igual en una máquina de desarrollo. La VPS no se ha probado: comprueba antes sus recursos (ver `docs/issue-47-road-engine.md`).
+Guía para levantar el motor vial y validarlo. El líder decidió alojarlo como **contenedor Docker en la VPS del backend** (sección 7), pero **la VPS todavía no existe**: mientras tanto los pasos 1 a 6 sirven igual en cualquier máquina de desarrollo con Docker, y las pruebas automáticas usan un OSRM simulado (`test/fake-osrm.ts`) que no necesita descargar nada. El motor está **apagado por defecto**: solo se enciende con `ROAD_ENGINE=OSRM` en el `.env` de quien lo quiera probar.
 
 > Los mapas (`.osm.pbf`) y los datos procesados (`.osrm*`, ~1,1 GB) **no se versionan**: guárdalos fuera del repositorio.
 
@@ -55,11 +55,11 @@ El script rechaza cualquier URL que no sea `127.0.0.1` o `localhost`: nunca se v
 docker rm -f regalia-osrm
 ```
 
-## 7. En la VPS (contenedor Docker junto al backend)
+## 7. Contenedor del `docker-compose.yml` (para la VPS, y también para desarrollo)
 
 El servicio `osrm` está en `docker-compose.yml` bajo el perfil opt-in `road`: `docker compose up` normal NO lo arranca.
 
-1. Comprueba en la VPS al menos ~1,5 GB de RAM libres y ~1,5 GB de disco (medidos con Ecuador completo; no se midieron en la VPS).
+1. Comprueba en la máquina (la VPS cuando exista) al menos ~1,5 GB de RAM libres y ~1,5 GB de disco (medidos con Ecuador completo en una máquina de desarrollo; no se midieron en una VPS).
 2. Descarga el mapa y prepara los datos (pasos 1 y 2) en una carpeta fuera del repositorio, por ejemplo `/opt/regalia/osrm-data`.
 3. Arranca el motor (solo escucha en loopback y tiene tope de memoria):
 

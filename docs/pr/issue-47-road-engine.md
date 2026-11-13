@@ -15,7 +15,7 @@ Closes #47
 - Urgencias: se miden por calles; si el motor falla quedan `BLOCKED` con el código del error.
 - Errores tipados: `ROAD_ENGINE_UNAVAILABLE` (503), `ROAD_ENGINE_BAD_RESPONSE` (502), `ROAD_ROUTE_NOT_FOUND`, `ROAD_POINT_OFF_NETWORK` y `ROAD_MATRIX_TOO_LARGE` (422), con los pedidos afectados.
 - Configuración solo en el backend (`ROAD_ENGINE`, `OSRM_BASE_URL`, …); documentada en `.env.example`.
-- `docker-compose.yml`: servicio `osrm` opt-in (perfil `road`), solo en loopback y con tope de memoria, según lo decidido por el líder: contenedor Docker en la VPS junto al backend. `docker compose up` normal no lo arranca.
+- `docker-compose.yml`: servicio `osrm` opt-in (perfil `road`), solo en loopback y con tope de memoria, según lo decidido por el líder: contenedor Docker en la VPS junto al backend (la VPS aún no existe: mientras tanto sirve cualquier máquina con Docker). `docker compose up` normal no lo arranca.
 - Validación con OSRM real: `benchmarks/osrm/validate.ts`, resultados en `docs/osrm/validation-results.json`, runbook en `docs/osrm/README.md` y análisis en `docs/issue-47-road-engine.md`.
 
 ## Pruebas realizadas
@@ -45,7 +45,7 @@ Ejemplos del issue: dos pedidos a 1,0 km en línea recta pero separados por un o
 
 **Compatibilidad con otros componentes:** el motor vial está apagado por defecto. `ci-security.spec.ts` espera 39 suites e2e.
 
-**Limitaciones conocidas:** no hay tráfico en vivo (las duraciones son estimadas); una propuesta de más de 300 puntos se rechaza (no se puede planificar por calles una zona de 2000 pedidos todavía); OSRM se aloja como contenedor Docker en la VPS (decisión del líder), pero no se probó en esa VPS; el trazado puede ser ~3 % más largo que la suma de tramos de la matriz; no se midió carga concurrente ni un servidor de producción; no hay caché ni respaldo (fuera de alcance).
+**Limitaciones conocidas:** no hay tráfico en vivo (las duraciones son estimadas); una propuesta de más de 300 puntos se rechaza (no se puede planificar por calles una zona de 2000 pedidos todavía); OSRM se aloja como contenedor Docker en la VPS (decisión del líder), pero la VPS aún no existe y no se probó en ella; el trazado puede ser ~3 % más largo que la suma de tramos de la matriz; no se midió carga concurrente ni un servidor de producción; no hay caché ni respaldo (fuera de alcance).
 
 ## Checklist de entrega
 
