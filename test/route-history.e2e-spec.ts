@@ -145,9 +145,12 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
     ).expect(200);
     await post(`/${routeId}/complete`, {}, 'other', 'DRIVER').expect(200);
     const completed = (await get(`/routes/${routeId}`).expect(200)).body;
-    const scheduled = Temporal.Now.instant()
-      .add({ hours: 24 })
-      .round({ smallestUnit: 'microsecond' });
+    // Mediodía de Guayaquil de mañana: la ventana acordada nunca cruza la medianoche.
+    const scheduled = Temporal.Now.zonedDateTimeISO('America/Guayaquil')
+      .toPlainDate()
+      .add({ days: 1 })
+      .toZonedDateTime({ timeZone: 'America/Guayaquil', plainTime: '12:00' })
+      .toInstant();
     const dispatch = (body: object) =>
       request(host.app.getHttpServer())
         .post('/api/v1/dispatch/interventions')
