@@ -4037,6 +4037,16 @@ components:
           type: string
           format: date-time
       additionalProperties: false
+    RoutePlanningSettings:
+      type: object
+      required:
+      - timeWindowMarginMinutes
+      properties:
+        timeWindowMarginMinutes:
+          type: integer
+          minimum: 5
+          maximum: 180
+      additionalProperties: false
     ShopSettingsAdmin:
       type: object
       properties:
@@ -4054,6 +4064,8 @@ components:
           $ref: '#/components/schemas/ShopLimits'
         deliverySchedule:
           $ref: '#/components/schemas/DeliverySchedule'
+        routePlanning:
+          $ref: '#/components/schemas/RoutePlanningSettings'
         updatedAt:
           type: string
           format: date-time
@@ -4072,6 +4084,7 @@ components:
       - tax
       - limits
       - deliverySchedule
+      - routePlanning
       - updatedAt
       - updatedById
       - createdAt
@@ -4123,6 +4136,8 @@ components:
           $ref: '#/components/schemas/ShopLimitsPatch'
         deliverySchedule:
           $ref: '#/components/schemas/DeliverySchedulePatch'
+        routePlanning:
+          $ref: '#/components/schemas/RoutePlanningSettings'
       additionalProperties: false
       description: Update atómico de campos ADMIN. No se edita shipping ni timeZone. Incrementa version;
         409 SETTINGS_VERSION_CONFLICT si expectedVersion es obsoleto.
