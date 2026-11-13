@@ -8,7 +8,7 @@ implemented. Scheduling-day/timezone policy remains incomplete; no general calen
 
 | Operation                        | ADMIN request                                                               | Successful response                                                    |
 | -------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `POST /api/v1/routes`            | `zoneId`, explicit ISO timestamp `routeDate`, 1–4 unique ordered `orderIds` | 201 DRAFT, no driver reservation                                       |
+| `POST /api/v1/routes`            | optional/nullable `zoneId`, explicit ISO timestamp `routeDate`, 1–4 unique ordered `orderIds` | 201 DRAFT, no driver reservation                                       |
 | `POST /api/v1/routes/:id/assign` | UUID route path, `driverId`                                                 | 200 ASSIGNED, operational reservation and compatibility order pointers |
 
 Existing JWT/database-role guards and validated JWT actor authorize both
@@ -18,8 +18,16 @@ syntax and unknown body fields fail with 400; unauthenticated calls fail with
 lifecycle conflicts with 409. Responses retain `id`, `driverId`, `zoneId`, `date`
 and `createdAt`, with typed DRAFT/ASSIGNED status and serialized Temporal instants.
 
-The existing ADMIN `POST /api/v1/routes/assign` accepts the unchanged
-`driverId`, `zoneId`, `orderIds` body and responds201 with ASSIGNED route fields.
+The existing ADMIN `POST /api/v1/routes/assign` accepts `driverId`,
+`orderIds`, and optional/nullable `zoneId` and responds 201 with ASSIGNED route
+fields (`zoneId: null` when omitted or null). When `zoneId` is omitted or `null`
+on either `POST /api/v1/routes` or `POST /api/v1/routes/assign`, the created
+route persists `zoneId: null` and requires each locked order to satisfy
+`evaluatePlanningEligibility` against configured `StoreCoverage` (or the order's
+own zone depot) in addition to valid delivery coordinates. Across execution
+(`start`) and completion (`complete`), `orderBelongsToRouteZone(order.zoneId, route.zoneId)`
+allows `zoneId: null` routes to serve `zoneId: null` or zoned orders without
+requiring a zone match, while non-null route and order zones must still match.
 The validated JWT actor is passed server-side. The wrapper derives route date
 only from all selected orders' exact common non-null scheduledDeliveryDate;
 null/mismatch rejects409 before persistence. No current-time or calendar/day

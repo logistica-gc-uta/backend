@@ -34,8 +34,8 @@ Se seleccionan los pedidos **`PENDING`** con `scheduledDeliveryDate` dentro del 
 | --- | --- |
 | `MISSING_DELIVERY_COORDINATES` | El destino no tiene coordenadas |
 | `INVALID_DELIVERY_COORDINATES` | Las coordenadas del destino están mal formadas o fuera de rango |
-| `MISSING_ZONE` | El pedido no tiene zona asociada |
-| `MISSING_ZONE_DEPOT_COORDINATES` | La zona no tiene depósito |
+| `MISSING_ZONE` | El pedido no tiene zona asociada y tampoco hay cobertura global de tienda (`StoreCoverage`) configurada |
+| `MISSING_ZONE_DEPOT_COORDINATES` | La zona no tiene depósito y tampoco hay `StoreCoverage` configurada |
 | `INVALID_ZONE_DEPOT_COORDINATES` | El depósito de la zona tiene coordenadas inválidas |
 | `ACTIVE_ROUTE_CLAIM` | Ya está reservado por otra propuesta confirmada (ruta `DRAFT`) |
 | `ADMINISTRATIVE_REVIEW_REQUIRED` | **El administrador debe revisarlo a mano.** Ocurre cuando una entrega falló (visita fallida): el pedido no se replanifica hasta que un ADMIN intervenga y acuerde una nueva fecha |
@@ -47,10 +47,10 @@ La elegibilidad geográfica reutiliza `evaluatePlanningEligibility` (#9), por lo
 ### Qué garantiza cada propuesta
 
 - Máximo **4 paradas** (`capacity`). Las rutas de 1 a 3 paradas son válidas cuando no hay otros pedidos compatibles dentro del margen horario.
-- Todos los pedidos son de **una sola zona** y del **día solicitado**.
-- **Agrupación por ventana horaria (#48):** dentro de cada zona y día calendario, se agrupan únicamente pedidos con horas programadas compatibles según los extremos del grupo (`max(hora) − min(hora) <= timeWindowMarginMinutes`, inclusivo, sin encadenar vecinos). El margen se lee de `ShopBusinessSettings.routePlanning.timeWindowMarginMinutes` (por defecto **30 minutos**, configurable entre 5 y 180 minutos en `GET/PATCH /api/v1/admin/shop-settings`). Por ejemplo, con margen de `30` min y pedidos a las `10:00`, `10:25` y `10:50`, `10:00` y `10:25` comparten ruta (`25 <= 30`) mientras que `10:50` abre otra (`10:50 − 10:00 = 50 > 30`).
+- **Todos los pedidos de una propuesta** comparten grupo operativo (`zoneId` igual, o `zoneId: null` agrupados por tienda común) y **día solicitado**.
+- **Agrupación por ventana horaria (#48):** dentro de cada grupo y día calendario, se agrupan únicamente pedidos con horas programadas compatibles según los extremos del grupo (`max(hora) − min(hora) <= timeWindowMarginMinutes`, inclusivo, sin encadenar vecinos). El margen se lee de `ShopBusinessSettings.routePlanning.timeWindowMarginMinutes` (por defecto **30 minutos**, configurable entre 5 y 180 minutos en `GET/PATCH /api/v1/admin/shop-settings`). Por ejemplo, con margen de `30` min y pedidos a las `10:00`, `10:25` y `10:50`, `10:00` y `10:25` comparten ruta (`25 <= 30`) mientras que `10:50` abre otra (`10:50 − 10:00 = 50 > 30`).
 - **Prioridad cronológica de paradas (#48):** dentro de cada ruta propuesta, las paradas se ordenan primero por hora programada ascendente (`scheduledDeliveryDate`), y ante empates horarios por métrica vial/distancia e identificador.
-- **Origen y retorno común de tienda (#48):** cuando `StoreCoverage` está configurado (`GET /api/v1/store-coverage` con `configured: true`), todas las propuestas salen y regresan a `storeCoverage.location` (`depot`). Solo cuando `StoreCoverage` no está configurado se usa el depósito configurado en la zona (`zone.depotLat`/`depotLng`).
+- **Origen y retorno común de tienda (#48, #49):** cuando `StoreCoverage` está configurado (`GET /api/v1/store-coverage` con `configured: true`), todas las propuestas salen y regresan a `storeCoverage.location` (`depot`), y los pedidos sin zona (`zoneId: null`) generan propuestas con `zoneId: null` y `zoneCode: null`. Solo cuando `StoreCoverage` no está configurado se usa el depósito configurado en la zona (`zone.depotLat`/`depotLng`).
 - `orderIds` y `stops[].sequence` van en el orden de visita (`stopOrder = sequence`).
 - Un pedido aparece en una sola propuesta.
 - Es determinista: los mismos datos dan la misma propuesta.
@@ -132,7 +132,7 @@ Los límites del día son la medianoche local de Guayaquil, no la UTC: `2026-10-
 
 El ejemplo está abreviado: solo muestra una de las dos propuestas y una de sus paradas. Cada parada trae `deliveryAddress` (sin nombre ni datos del cliente).
 
-Para confirmar una propuesta: `POST /api/v1/routes` con `{ "zoneId", "routeDate", "orderIds" }` tomados de la propuesta.
+Para confirmar una propuesta: `POST /api/v1/routes` con `{ "zoneId", "routeDate", "orderIds" }` tomados de la propuesta (`zoneId` es opcional y puede ser `null` en propuestas sin zona basadas en `StoreCoverage`).
 
 ## Límite de tamaño
 
@@ -165,5 +165,4 @@ bash test/run-newman-isolated.sh --report
 
 ## Pendiente fuera de este issue
 
-- Retiro completo de la dependencia operacional en `Zone` / `zoneId` para pedidos sin zona (`#49`).
 - Tráfico en vivo o tiempos garantizados de llegada (ETA en tiempo real).

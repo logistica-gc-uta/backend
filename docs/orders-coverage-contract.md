@@ -43,11 +43,11 @@ Old `qtk_v1` tokens that still contain `zoneId` remain verifiable. Confirm compa
 
 ## Persistence
 
-New orders store `Order.zoneId` only when the client still sent one. Omitted zoneId is `null`. Existing rows keep their zone. Route.zoneId is unchanged (#49). There is no fake default zone.
+New orders store `Order.zoneId` only when the client still sent one. Omitted zoneId is `null`. Existing rows keep their zone. As of #49, `Route.zoneId` is optional and nullable (`string | null`) across planning, draft confirmation, route assignment, execution, completion, urgent dispatch proposals, and interventions. There is no fake default zone.
 
 Receipt snapshots stop inventing zone names. Delivery on the receipt is address + coordinates + schedule (+ notes). `zoneId`/`zoneName` are null when unused. Shop order detail reads those nulls; it does not require a zone name.
 
-Planning proposals still skip null-`zoneId` orders (`MISSING_ZONE`) until backend #49 groups by coverage. Route confirm/assign may attach a null-`zoneId` order to a route whose `Route.zoneId` ADMIN selected; a different persisted order zone still conflicts. Existing zoned orders remain plannable.
+Planning proposals (`GET /api/v1/route-proposals`), route confirmation/assignment (`POST /api/v1/routes`, `POST /api/v1/routes/assign`), execution/progress, and urgent dispatch (`GET /api/v1/dispatch/orders/:id/proposal`, `POST /api/v1/dispatch/interventions`) plan and dispatch null-`zoneId` orders using configured `StoreCoverage` as the origin depot (`zoneId: null`, `zoneCode: null` on proposals). `orderBelongsToRouteZone(order.zoneId, route.zoneId)` also allows null-`zoneId` orders to join either `zoneId: null` routes or a `Route.zoneId` selected by ADMIN, while rejecting conflicting non-null zones. Existing zoned orders remain plannable (using `StoreCoverage` when configured, or their zone depot).
 
 ## Legacy CLIENT create
 
@@ -63,6 +63,6 @@ Optional `scheduledDeliveryDate` and optional coordinates remain. Omitted date s
 | --- | --- |
 | [web #33](https://github.com/logistica-gc-uta/frontend-web-logistica/issues/33) | Quote/confirm bodies without required `zoneId`. Treat `configured: false` / `STORE_NOT_CONFIGURED` and `DELIVERY_OUTSIDE_COVERAGE` as hard stops. |
 | [web #34](https://github.com/logistica-gc-uta/frontend-web-logistica/issues/34) | ADMIN create with point + schedule; same hour codes. |
-| [backend #49](https://github.com/logistica-gc-uta/backend/issues/49) | Dispatch must not require a client-selected zone. New orders may have `zoneId` null until that work. |
+| [backend #49](https://github.com/logistica-gc-uta/backend/issues/49) | Implemented: planning, route confirmation/assignment (`zoneId?: string | null`), execution/progress, urgent dispatch proposals, and dispatch interventions operate without requiring `Zone`/`zoneId` when `StoreCoverage` is configured. |
 
 Do not implement #45 payments, OSRM, GPS, or delete Zone/Route APIs here.

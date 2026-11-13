@@ -4280,7 +4280,7 @@
                     "routes"
                   ]
                 },
-                "description": "The proposal fields zoneId, routeDate and orderIds feed POST /routes unchanged.",
+                "description": "The proposal fields routeDate, orderIds, and optional nullable zoneId feed POST /routes unchanged.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
