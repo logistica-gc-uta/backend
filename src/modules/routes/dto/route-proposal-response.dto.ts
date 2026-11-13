@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PLANNING_EXCLUSION_REASONS, type PlanningExclusionReason } from '../planning-exclusion-reason.js';
 
 export class GeoPointDto {
@@ -31,6 +31,27 @@ export class RouteProposalStopDto {
     description: 'Exact scheduled delivery instant of the order',
   })
   scheduledDeliveryDate!: string;
+
+  @ApiPropertyOptional({
+    description: 'Road distance in km from the previous point (the depot for the first stop). Only with the road engine (#47)',
+    example: 1.482,
+  })
+  legDistanceKm?: number;
+
+  @ApiPropertyOptional({
+    description: 'Estimated travel time in seconds from the previous point (the depot for the first stop). Only with the road engine; no live traffic, not an ETA',
+    example: 214,
+  })
+  legDurationSeconds?: number;
+}
+
+/** Trazado vial de una propuesta para dibujarlo en el mapa (solo con el motor vial y `includeGeometry=true`). */
+export class RoadGeometryDto {
+  @ApiProperty({ enum: ['LineString'] })
+  type!: 'LineString';
+
+  @ApiProperty({ description: 'GeoJSON coordinates [lng, lat] in visiting order: depot -> stops -> depot', type: 'array', items: { type: 'array', items: { type: 'number' } } })
+  coordinates!: [number, number][];
 }
 
 export class RouteProposalDto {
@@ -55,10 +76,31 @@ export class RouteProposalDto {
 
   @ApiProperty({
     description:
-      'Round trip depot -> stops -> depot in kilometres, rounded to 3 decimals',
+      'Round trip depot -> stops -> depot in kilometres, rounded to 3 decimals. With the road engine it is the road distance, measured in the real direction of each leg; otherwise a straight line',
     example: 4.213,
   })
   totalDistanceKm!: number;
+
+  @ApiPropertyOptional({
+    description: 'Straight-line (Haversine) kilometres of the same visiting order, to contrast with the road distance. Only with the road engine (#47)',
+    example: 3.01,
+  })
+  straightLineKm?: number;
+
+  @ApiPropertyOptional({
+    description: 'Estimated round-trip travel time in seconds. Only with the road engine; an estimate with no live traffic, not a promised arrival time',
+    example: 812,
+  })
+  totalDurationSeconds?: number;
+
+  @ApiPropertyOptional({ description: 'Road distance in km of the last leg back to the depot. Only with the road engine', example: 1.9 })
+  returnLegDistanceKm?: number;
+
+  @ApiPropertyOptional({ description: 'Estimated seconds of the last leg back to the depot. Only with the road engine', example: 260 })
+  returnLegDurationSeconds?: number;
+
+  @ApiPropertyOptional({ type: RoadGeometryDto, description: 'Road trace for the map. Only when requested with includeGeometry=true and the road engine is active' })
+  geometry?: RoadGeometryDto;
 
   @ApiProperty({
     description:
@@ -140,6 +182,18 @@ export class RouteProposalSummaryDto {
   savingsPercent!: number;
 }
 
+/** Procedencia de las métricas viales: qué son, en qué unidades y qué NO garantizan. */
+export class RoadMetricsInfoDto {
+  @ApiProperty({ enum: ['OSRM'] }) provider!: 'OSRM';
+  @ApiProperty({ example: 'car' }) profile!: string;
+  @ApiProperty({ enum: ['km'] }) distanceUnit!: 'km';
+  @ApiProperty({ enum: ['s'] }) durationUnit!: 's';
+  @ApiProperty({ description: 'Distances are not assumed symmetric: each leg uses its own direction of travel' }) directional!: boolean;
+  @ApiProperty({ description: 'Always false: no live traffic is modelled' }) trafficAware!: boolean;
+  @ApiProperty({ description: 'Always true: durations are estimates, not a guaranteed arrival time' }) estimate!: boolean;
+  @ApiProperty({ description: 'Largest distance in metres a point had to be snapped to the road network' }) maxSnapDistanceM!: number;
+}
+
 export class RouteProposalResponseDto {
   @ApiProperty({ example: '2030-02-14' })
   date!: string;
@@ -152,10 +206,14 @@ export class RouteProposalResponseDto {
 
   @ApiProperty({
     example: 'HAVERSINE_STRAIGHT_LINE',
+    enum: ['HAVERSINE_STRAIGHT_LINE', 'OSRM_ROAD_NETWORK'],
     description:
-      'Distances are straight-line (Haversine), not road distance; traffic, closures and travel time are not modelled',
+      'HAVERSINE_STRAIGHT_LINE: straight-line distances, not road distance. OSRM_ROAD_NETWORK: distances and estimated durations over the road network (see roadMetrics). Neither models live traffic',
   })
   distanceMethod!: string;
+
+  @ApiPropertyOptional({ type: RoadMetricsInfoDto, description: 'Provenance of the road metrics; present only when distanceMethod is OSRM_ROAD_NETWORK' })
+  roadMetrics?: RoadMetricsInfoDto;
 
   @ApiProperty({ type: [RouteProposalDto] })
   proposals!: RouteProposalDto[];

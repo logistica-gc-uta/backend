@@ -39,11 +39,34 @@ export class RoutePlanningController {
   @ApiResponse({ status: 404, description: 'Zone not found' })
   @ApiResponse({
     status: 422,
-    description: 'Too many plannable orders in one zone for a single request',
+    description:
+      'Too many plannable orders in one zone for a single request, or (road engine) ROAD_ROUTE_NOT_FOUND / ROAD_POINT_OFF_NETWORK / ROAD_MATRIX_TOO_LARGE with the affected order ids',
+  })
+  @ApiResponse({
+    status: 502,
+    description: 'ROAD_ENGINE_BAD_RESPONSE: the road engine answered with incomplete data; nothing is proposed',
+  })
+  @ApiResponse({
+    status: 503,
+    description: 'ROAD_ENGINE_UNAVAILABLE: the road engine did not answer; no routes are proposed and nothing is persisted',
   })
   async propose(
     @Query() query: PlanRoutesQueryDto,
   ): Promise<RouteProposalResponseDto> {
     return this.planning.propose(query);
+  }
+
+  @Get('road-engine')
+  @Roles(Role.ADMIN)
+  @ApiOperation({
+    summary: 'Estado del motor vial (solo ADMIN)',
+    description:
+      'Indica si las propuestas usan la red vial (OSRM) o la línea recta, y si el motor responde ahora. No expone la URL ni credenciales de la instancia. Si el motor no responde, las propuestas nuevas se rechazan con ROAD_ENGINE_UNAVAILABLE: no se generan rutas con datos incompletos ni en línea recta, los pedidos siguen pendientes y las rutas ya generadas no se cancelan.',
+  })
+  @ApiResponse({ status: 200, description: 'Estado actual del motor vial' })
+  @ApiResponse({ status: 401, description: 'Authentication required' })
+  @ApiResponse({ status: 403, description: 'Current ADMIN role required' })
+  async roadEngine() {
+    return this.planning.roadEngineStatus();
   }
 }
