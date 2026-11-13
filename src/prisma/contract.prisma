@@ -24,6 +24,7 @@ enum RouteStatus {
   ASSIGNED
   IN_PROGRESS
   COMPLETED
+  INTERRUPTED
 }
 
 enum VisitOutcome {
@@ -73,6 +74,10 @@ model User {
   lossesDeclared          OrderItemLoss[] @relation("LossDeclaredBy")
   lossReplacementsPrepared OrderItemLoss[] @relation("LossReplacementPreparedBy")
   lossesRecovered         OrderItemLoss[] @relation("LossRecoveredBy")
+  lossesCancelled         OrderItemLoss[] @relation("LossCancelledBy")
+  emergenciesDeclared     RouteEmergency[] @relation("EmergencyDeclaredBy")
+  emergenciesClosed       RouteEmergency[] @relation("EmergencyClosedBy")
+  unitRecoveriesConfirmed RouteUnitRecovery[] @relation("UnitRecoveryConfirmedBy")
   stockMovements          ProductStockMovement[] @relation("StockMovementBy")
 }
 
@@ -177,6 +182,7 @@ model Product {
   orderItems  OrderItem[]
   images      ProductImage[]
   losses      OrderItemLoss[]
+  unitRecoveries RouteUnitRecovery[]
   stockMovements ProductStockMovement[]
 
   @@check(expression: "stock >= 0 AND (\"priceCents\" IS NULL OR \"priceCents\" BETWEEN 1 AND 9007199254740991)", name: "product_catalog_amount_inventory")
@@ -248,7 +254,9 @@ model Route {
   returnedById  String?
   returnedBy    User? @relation("RouteReturnedBy", fields: [returnedById], references: [id])
 
-  orders    Order[]
+  orders         Order[]
+  emergency      RouteEmergency?
+  unitRecoveries RouteUnitRecovery[]
 
   @@index([driverId])
   @@index([driverId], unique: true, where: "(status = 'IN_PROGRESS')", name: "one_in_progress_route_per_driver")
@@ -299,6 +307,7 @@ model Order {
   adminPurchaseAttempts AdminPurchaseAttempt[]
   pickup                OrderPickup?
   losses                OrderItemLoss[]
+  unitRecoveries        RouteUnitRecovery[]
 
   @@index([userId])
   @@index([createdById])
@@ -326,7 +335,8 @@ model OrderItem {
   quantity  Int      @default(1)
   price     Float
   unitPriceCents BigInt?
-  losses    OrderItemLoss[]
+  losses         OrderItemLoss[]
+  unitRecoveries RouteUnitRecovery[]
 }
 
 
@@ -341,6 +351,8 @@ model RouteStop {
   outcome   VisitOutcome?
   isLegacy  Boolean @default(false)
   createdAt DateTime?
+
+  unitRecoveries RouteUnitRecovery[]
 
   @@unique([routeId, orderId])
   @@index([orderId])
@@ -430,7 +442,7 @@ model DispatchIntervention {
 
   @@index([orderId])
   @@index([routeId])
-  @@check(expression: "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'RELEASE_DRAFT', 'LOSS_DECLARE', 'REPLACEMENT_PREPARE', 'ORIGINAL_RECOVER') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500", name: "dispatch_audit_valid")
+  @@check(expression: "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'RELEASE_DRAFT', 'LOSS_DECLARE', 'REPLACEMENT_PREPARE', 'ORIGINAL_RECOVER', 'LOSS_CANCEL', 'EMERGENCY_DECLARE', 'UNIT_RECOVERY_CONFIRM', 'EMERGENCY_CLOSE', 'EMERGENCY_DRIVER_RELEASE', 'EMERGENCY_REQUEUE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500", name: "dispatch_audit_valid")
 }
 
 // Agreed store pickup of an order (#50). It is a fulfilment alternative AFTER an explicit customer agreement, not a
@@ -481,23 +493,30 @@ model OrderItemLoss {
   recoveredBy            User?     @relation("LossRecoveredBy", fields: [recoveredById], references: [id])
   recoveryCondition      String?
   recoveryRequestId      String?   @unique
+  cancelledAt            DateTime?
+  cancelledById          String?
+  cancelledBy            User?     @relation("LossCancelledBy", fields: [cancelledById], references: [id])
+  cancelReason           String?
+  cancelRequestId        String?   @unique
   createdAt              DateTime  @default(now())
 
   movements              ProductStockMovement[]
 
-  @@unique([orderItemId, unitNumber])
+  @@index([orderItemId, unitNumber], unique: true, where: "(\"cancelledAt\" IS NULL)", name: "active_order_item_loss_unit")
   @@index([orderId])
   @@index([productId])
   @@index([declaredById])
   @@index([replacementPreparedById])
   @@index([recoveredById])
+  @@index([cancelledById])
   @@check(expression: "\"unitNumber\" >= 1", name: "order_item_loss_unit_positive")
   @@check(expression: "(\"replacementPreparedAt\" IS NULL AND \"replacementPreparedById\" IS NULL AND \"replacementRequestId\" IS NULL) OR (\"replacementPreparedAt\" IS NOT NULL AND \"replacementPreparedById\" IS NOT NULL AND \"replacementRequestId\" IS NOT NULL AND \"replacementPreparedAt\" >= \"declaredAt\")", name: "order_item_loss_replacement_consistent")
   @@check(expression: "(\"recoveredAt\" IS NULL AND \"recoveredById\" IS NULL AND \"recoveryCondition\" IS NULL AND \"recoveryRequestId\" IS NULL) OR (\"recoveredAt\" IS NOT NULL AND \"recoveredById\" IS NOT NULL AND \"recoveryCondition\" IN ('SELLABLE', 'DAMAGED') AND \"recoveryRequestId\" IS NOT NULL AND \"recoveredAt\" >= \"declaredAt\")", name: "order_item_loss_recovery_consistent")
+  @@check(expression: "(\"cancelledAt\" IS NULL AND \"cancelledById\" IS NULL AND \"cancelReason\" IS NULL AND \"cancelRequestId\" IS NULL) OR (\"cancelledAt\" IS NOT NULL AND \"cancelledById\" IS NOT NULL AND \"cancelReason\" IS NOT NULL AND length(trim(\"cancelReason\")) BETWEEN 1 AND 500 AND \"cancelRequestId\" IS NOT NULL AND \"cancelledAt\" >= \"declaredAt\" AND \"recoveredAt\" IS NULL)", name: "order_item_loss_cancellation_consistent")
 }
 
-// Historial de existencias ligado a una pérdida (#52). Único por (pérdida, tipo): un reemplazo descuenta una vez y una
-// recuperación vendible suma una vez, aunque se repita la petición o compitan dos administradores.
+// Historial de existencias ligado a una pérdida (#52). Único por (pérdida, tipo): un reemplazo descuenta una vez, una
+// recuperación vendible suma una vez y la anulación de pérdida con reemplazo preparado devuelve una existencia.
 model ProductStockMovement {
   id          String        @id @default(uuid())
   productId   String
@@ -514,8 +533,67 @@ model ProductStockMovement {
   @@unique([lossId, kind])
   @@index([productId, createdAt])
   @@index([createdById])
-  @@check(expression: "(kind = 'REPLACEMENT_OUT' AND delta = -1) OR (kind = 'RECOVERY_IN' AND delta = 1)", name: "product_stock_movement_valid")
+  @@check(expression: "(kind = 'REPLACEMENT_OUT' AND delta = -1) OR (kind = 'RECOVERY_IN' AND delta = 1) OR (kind = 'REPLACEMENT_CANCEL_IN' AND delta = 1)", name: "product_stock_movement_valid")
   @@check(expression: "\"stockAfter\" >= 0", name: "product_stock_movement_after_nonnegative")
+}
+
+// Emergencia operativa sobre una ruta en ejecución (#51). Preserva las paradas realizadas, libera pedidos pendientes
+// con revisión administrativa y habilita la custodia/recuperación individual por unidad.
+model RouteEmergency {
+  id                   String    @id @default(uuid())
+  routeId              String    @unique
+  route                Route     @relation(fields: [routeId], references: [id])
+  reason               String
+  declaredAt           DateTime
+  declaredById         String
+  declaredBy           User      @relation("EmergencyDeclaredBy", fields: [declaredById], references: [id])
+  declarationRequestId String    @unique
+  closedAt             DateTime?
+  closedById           String?
+  closedBy             User?     @relation("EmergencyClosedBy", fields: [closedById], references: [id])
+  closeReason          String?
+  closeRequestId       String?   @unique
+  createdAt            DateTime  @default(now())
+
+  unitRecoveries       RouteUnitRecovery[]
+
+  @@index([declaredById])
+  @@index([closedById])
+  @@check(expression: "length(trim(reason)) BETWEEN 1 AND 500", name: "route_emergency_reason_valid")
+  @@check(expression: "(\"closedAt\" IS NULL AND \"closedById\" IS NULL AND \"closeReason\" IS NULL AND \"closeRequestId\" IS NULL) OR (\"closedAt\" IS NOT NULL AND \"closedById\" IS NOT NULL AND \"closeReason\" IS NOT NULL AND length(trim(\"closeReason\")) BETWEEN 1 AND 500 AND \"closeRequestId\" IS NOT NULL AND \"closedAt\" >= \"declaredAt\")", name: "route_emergency_closure_consistent")
+}
+
+// Custodia y recuperación física por unidad de pedido tras una emergencia en ruta (#51).
+model RouteUnitRecovery {
+  id                String         @id @default(uuid())
+  emergencyId       String
+  emergency         RouteEmergency @relation(fields: [emergencyId], references: [id])
+  routeId           String
+  route             Route          @relation(fields: [routeId], references: [id])
+  stopId            String
+  stop              RouteStop      @relation(fields: [stopId], references: [id])
+  orderId           String
+  order             Order          @relation(fields: [orderId], references: [id])
+  orderItemId       String
+  orderItem         OrderItem      @relation(fields: [orderItemId], references: [id])
+  unitNumber        Int
+  productId         String
+  product           Product        @relation(fields: [productId], references: [id])
+  recoveredAt       DateTime?
+  recoveredById     String?
+  recoveredBy       User?          @relation("UnitRecoveryConfirmedBy", fields: [recoveredById], references: [id])
+  recoveryRequestId String?        @unique
+  createdAt         DateTime       @default(now())
+
+  @@unique([emergencyId, orderItemId, unitNumber])
+  @@index([routeId])
+  @@index([stopId])
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([productId])
+  @@index([recoveredById])
+  @@check(expression: "\"unitNumber\" >= 1", name: "route_unit_recovery_unit_positive")
+  @@check(expression: "(\"recoveredAt\" IS NULL AND \"recoveredById\" IS NULL AND \"recoveryRequestId\" IS NULL) OR (\"recoveredAt\" IS NOT NULL AND \"recoveredById\" IS NOT NULL AND \"recoveryRequestId\" IS NOT NULL)", name: "route_unit_recovery_consistent")
 }
 
 // Singleton commercial settings with optimistic CAS and full audit trail (#33-A)

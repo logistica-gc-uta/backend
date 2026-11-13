@@ -92,8 +92,16 @@
       "model": "Route",
       "namespace": "public"
     },
+    "routeEmergency": {
+      "model": "RouteEmergency",
+      "namespace": "public"
+    },
     "routeStop": {
       "model": "RouteStop",
+      "namespace": "public"
+    },
+    "routeUnitRecovery": {
+      "model": "RouteUnitRecovery",
       "namespace": "public"
     },
     "shopBusinessSettings": {
@@ -228,6 +236,10 @@
               {
                 "name": "COMPLETED",
                 "value": "COMPLETED"
+              },
+              {
+                "name": "INTERRUPTED",
+                "value": "INTERRUPTED"
               }
             ]
           },
@@ -2077,6 +2089,21 @@
                   "namespace": "public"
                 }
               },
+              "unitRecoveries": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "orderId"
+                  ]
+                },
+                "to": {
+                  "model": "RouteUnitRecovery",
+                  "namespace": "public"
+                }
+              },
               "user": {
                 "cardinality": "N:1",
                 "nullable": true,
@@ -2486,6 +2513,21 @@
                   "model": "Product",
                   "namespace": "public"
                 }
+              },
+              "unitRecoveries": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "orderItemId"
+                  ]
+                },
+                "to": {
+                  "model": "RouteUnitRecovery",
+                  "namespace": "public"
+                }
               }
             },
             "storage": {
@@ -2516,6 +2558,34 @@
           "OrderItemLoss": {
             "fields": {
               "attemptId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "cancelReason": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "cancelRequestId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "cancelledAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "cancelledById": {
                 "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
@@ -2636,6 +2706,22 @@
               }
             },
             "relations": {
+              "cancelledBy": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "cancelledById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
               "declaredBy": {
                 "cardinality": "N:1",
                 "nullable": false,
@@ -2752,6 +2838,18 @@
               "fields": {
                 "attemptId": {
                   "column": "attemptId"
+                },
+                "cancelReason": {
+                  "column": "cancelReason"
+                },
+                "cancelRequestId": {
+                  "column": "cancelRequestId"
+                },
+                "cancelledAt": {
+                  "column": "cancelledAt"
+                },
+                "cancelledById": {
+                  "column": "cancelledById"
                 },
                 "createdAt": {
                   "column": "createdAt"
@@ -3352,6 +3450,21 @@
                 },
                 "to": {
                   "model": "ProductStockMovement",
+                  "namespace": "public"
+                }
+              },
+              "unitRecoveries": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "productId"
+                  ]
+                },
+                "to": {
+                  "model": "RouteUnitRecovery",
                   "namespace": "public"
                 }
               }
@@ -4053,6 +4166,22 @@
                   "namespace": "public"
                 }
               },
+              "emergency": {
+                "cardinality": "1:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "routeId"
+                  ]
+                },
+                "to": {
+                  "model": "RouteEmergency",
+                  "namespace": "public"
+                }
+              },
               "orders": {
                 "cardinality": "1:N",
                 "on": {
@@ -4097,6 +4226,21 @@
                 },
                 "to": {
                   "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "unitRecoveries": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "routeId"
+                  ]
+                },
+                "to": {
+                  "model": "RouteUnitRecovery",
                   "namespace": "public"
                 }
               },
@@ -4158,6 +4302,191 @@
               },
               "namespaceId": "public",
               "table": "route"
+            }
+          },
+          "RouteEmergency": {
+            "fields": {
+              "closeReason": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "closeRequestId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "closedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "closedById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "declarationRequestId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "declaredAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "declaredById": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "reason": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "routeId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "closedBy": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "closedById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "declaredBy": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "declaredById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "route": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "routeId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Route",
+                  "namespace": "public"
+                }
+              },
+              "unitRecoveries": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "emergencyId"
+                  ]
+                },
+                "to": {
+                  "model": "RouteUnitRecovery",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "closeReason": {
+                  "column": "closeReason"
+                },
+                "closeRequestId": {
+                  "column": "closeRequestId"
+                },
+                "closedAt": {
+                  "column": "closedAt"
+                },
+                "closedById": {
+                  "column": "closedById"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "declarationRequestId": {
+                  "column": "declarationRequestId"
+                },
+                "declaredAt": {
+                  "column": "declaredAt"
+                },
+                "declaredById": {
+                  "column": "declaredById"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "reason": {
+                  "column": "reason"
+                },
+                "routeId": {
+                  "column": "routeId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "routeEmergency"
             }
           },
           "RouteStop": {
@@ -4250,6 +4579,21 @@
                   "model": "Route",
                   "namespace": "public"
                 }
+              },
+              "unitRecoveries": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "stopId"
+                  ]
+                },
+                "to": {
+                  "model": "RouteUnitRecovery",
+                  "namespace": "public"
+                }
               }
             },
             "storage": {
@@ -4278,6 +4622,250 @@
               },
               "namespaceId": "public",
               "table": "routeStop"
+            }
+          },
+          "RouteUnitRecovery": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "emergencyId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "orderId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "orderItemId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "productId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "recoveredAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "recoveredById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "recoveryRequestId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "routeId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "stopId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "unitNumber": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "emergency": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "emergencyId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "RouteEmergency",
+                  "namespace": "public"
+                }
+              },
+              "order": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "orderId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Order",
+                  "namespace": "public"
+                }
+              },
+              "orderItem": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "orderItemId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "OrderItem",
+                  "namespace": "public"
+                }
+              },
+              "product": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "productId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Product",
+                  "namespace": "public"
+                }
+              },
+              "recoveredBy": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "recoveredById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "route": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "routeId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Route",
+                  "namespace": "public"
+                }
+              },
+              "stop": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "stopId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "RouteStop",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "emergencyId": {
+                  "column": "emergencyId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "orderId": {
+                  "column": "orderId"
+                },
+                "orderItemId": {
+                  "column": "orderItemId"
+                },
+                "productId": {
+                  "column": "productId"
+                },
+                "recoveredAt": {
+                  "column": "recoveredAt"
+                },
+                "recoveredById": {
+                  "column": "recoveredById"
+                },
+                "recoveryRequestId": {
+                  "column": "recoveryRequestId"
+                },
+                "routeId": {
+                  "column": "routeId"
+                },
+                "stopId": {
+                  "column": "stopId"
+                },
+                "unitNumber": {
+                  "column": "unitNumber"
+                }
+              },
+              "namespaceId": "public",
+              "table": "routeUnitRecovery"
             }
           },
           "ShopBusinessSettings": {
@@ -5194,6 +5782,36 @@
                   "namespace": "public"
                 }
               },
+              "emergenciesClosed": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "closedById"
+                  ]
+                },
+                "to": {
+                  "model": "RouteEmergency",
+                  "namespace": "public"
+                }
+              },
+              "emergenciesDeclared": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "declaredById"
+                  ]
+                },
+                "to": {
+                  "model": "RouteEmergency",
+                  "namespace": "public"
+                }
+              },
               "externalDeclarations": {
                 "cardinality": "1:N",
                 "on": {
@@ -5217,6 +5835,21 @@
                   ],
                   "targetFields": [
                     "replacementPreparedById"
+                  ]
+                },
+                "to": {
+                  "model": "OrderItemLoss",
+                  "namespace": "public"
+                }
+              },
+              "lossesCancelled": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "cancelledById"
                   ]
                 },
                 "to": {
@@ -5356,6 +5989,21 @@
                 },
                 "to": {
                   "model": "StoreCoverage",
+                  "namespace": "public"
+                }
+              },
+              "unitRecoveriesConfirmed": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "recoveredById"
+                  ]
+                },
+                "to": {
+                  "model": "RouteUnitRecovery",
                   "namespace": "public"
                 }
               },
@@ -6170,8 +6818,8 @@
             "dispatchIntervention": {
               "checks": [
                 {
-                  "expression": "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'RELEASE_DRAFT', 'LOSS_DECLARE', 'REPLACEMENT_PREPARE', 'ORIGINAL_RECOVER') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500",
-                  "name": "dispatch_audit_valid_3cf23df8",
+                  "expression": "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'RELEASE_DRAFT', 'LOSS_DECLARE', 'REPLACEMENT_PREPARE', 'ORIGINAL_RECOVER', 'LOSS_CANCEL', 'EMERGENCY_DECLARE', 'UNIT_RECOVERY_CONFIRM', 'EMERGENCY_CLOSE', 'EMERGENCY_DRIVER_RELEASE', 'EMERGENCY_REQUEUE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500",
+                  "name": "dispatch_audit_valid_11fbfe53",
                   "prefix": "dispatch_audit_valid"
                 }
               ],
@@ -7508,6 +8156,11 @@
             "orderItemLoss": {
               "checks": [
                 {
+                  "expression": "(\"cancelledAt\" IS NULL AND \"cancelledById\" IS NULL AND \"cancelReason\" IS NULL AND \"cancelRequestId\" IS NULL) OR (\"cancelledAt\" IS NOT NULL AND \"cancelledById\" IS NOT NULL AND \"cancelReason\" IS NOT NULL AND length(trim(\"cancelReason\")) BETWEEN 1 AND 500 AND \"cancelRequestId\" IS NOT NULL AND \"cancelledAt\" >= \"declaredAt\" AND \"recoveredAt\" IS NULL)",
+                  "name": "order_item_loss_cancellation_consistent_1c788b6a",
+                  "prefix": "order_item_loss_cancellation_consistent"
+                },
+                {
                   "expression": "(\"recoveredAt\" IS NULL AND \"recoveredById\" IS NULL AND \"recoveryCondition\" IS NULL AND \"recoveryRequestId\" IS NULL) OR (\"recoveredAt\" IS NOT NULL AND \"recoveredById\" IS NOT NULL AND \"recoveryCondition\" IN ('SELLABLE', 'DAMAGED') AND \"recoveryRequestId\" IS NOT NULL AND \"recoveredAt\" >= \"declaredAt\")",
                   "name": "order_item_loss_recovery_consistent_6470312d",
                   "prefix": "order_item_loss_recovery_consistent"
@@ -7525,6 +8178,26 @@
               ],
               "columns": {
                 "attemptId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "cancelReason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "cancelRequestId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "cancelledAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "cancelledById": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": true
@@ -7710,9 +8383,43 @@
                     "namespaceId": "public",
                     "tableName": "user"
                   }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "cancelledById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "orderItemLoss"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
                 }
               ],
               "indexes": [
+                {
+                  "columns": [
+                    "orderItemId",
+                    "unitNumber"
+                  ],
+                  "name": "active_order_item_loss_unit_2b134a02",
+                  "prefix": "active_order_item_loss_unit",
+                  "unique": true,
+                  "where": "(\"cancelledAt\" IS NULL)"
+                },
+                {
+                  "columns": [
+                    "cancelledById"
+                  ],
+                  "name": "orderItemLoss_cancelledById_idx_03ce7bea",
+                  "prefix": "orderItemLoss_cancelledById_idx",
+                  "unique": false
+                },
                 {
                   "columns": [
                     "declaredById"
@@ -7785,8 +8492,7 @@
                 },
                 {
                   "columns": [
-                    "orderItemId",
-                    "unitNumber"
+                    "cancelRequestId"
                   ]
                 }
               ]
@@ -8413,8 +9119,8 @@
                   "prefix": "product_stock_movement_after_nonnegative"
                 },
                 {
-                  "expression": "(kind = 'REPLACEMENT_OUT' AND delta = -1) OR (kind = 'RECOVERY_IN' AND delta = 1)",
-                  "name": "product_stock_movement_valid_50f99fc3",
+                  "expression": "(kind = 'REPLACEMENT_OUT' AND delta = -1) OR (kind = 'RECOVERY_IN' AND delta = 1) OR (kind = 'REPLACEMENT_CANCEL_IN' AND delta = 1)",
+                  "name": "product_stock_movement_valid_22f76b30",
                   "prefix": "product_stock_movement_valid"
                 }
               ],
@@ -8778,8 +9484,8 @@
             "route": {
               "checks": [
                 {
-                  "expression": "\"status\" IN ('DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED')",
-                  "name": "route_status_check_16cb52d8",
+                  "expression": "\"status\" IN ('DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'INTERRUPTED')",
+                  "name": "route_status_check_736c4cf9",
                   "prefix": "route_status_check"
                 }
               ],
@@ -8999,6 +9705,171 @@
               },
               "uniques": []
             },
+            "routeEmergency": {
+              "checks": [
+                {
+                  "expression": "(\"closedAt\" IS NULL AND \"closedById\" IS NULL AND \"closeReason\" IS NULL AND \"closeRequestId\" IS NULL) OR (\"closedAt\" IS NOT NULL AND \"closedById\" IS NOT NULL AND \"closeReason\" IS NOT NULL AND length(trim(\"closeReason\")) BETWEEN 1 AND 500 AND \"closeRequestId\" IS NOT NULL AND \"closedAt\" >= \"declaredAt\")",
+                  "name": "route_emergency_closure_consistent_faa95e7a",
+                  "prefix": "route_emergency_closure_consistent"
+                },
+                {
+                  "expression": "length(trim(reason)) BETWEEN 1 AND 500",
+                  "name": "route_emergency_reason_valid_1db11f3d",
+                  "prefix": "route_emergency_reason_valid"
+                }
+              ],
+              "columns": {
+                "closeReason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "closeRequestId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "closedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "closedById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "declarationRequestId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "declaredAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "declaredById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "reason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "routeId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "routeId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "routeEmergency"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "route"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "declaredById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "routeEmergency"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "closedById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "routeEmergency"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "closedById"
+                  ],
+                  "name": "routeEmergency_closedById_idx_3fbe6e44",
+                  "prefix": "routeEmergency_closedById_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "declaredById"
+                  ],
+                  "name": "routeEmergency_declaredById_idx_dd0c7dda",
+                  "prefix": "routeEmergency_declaredById_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "routeId"
+                  ]
+                },
+                {
+                  "columns": [
+                    "declarationRequestId"
+                  ]
+                },
+                {
+                  "columns": [
+                    "closeRequestId"
+                  ]
+                }
+              ]
+            },
             "routeStop": {
               "checks": [
                 {
@@ -9126,6 +9997,277 @@
                   "columns": [
                     "routeId",
                     "orderId"
+                  ]
+                }
+              ]
+            },
+            "routeUnitRecovery": {
+              "checks": [
+                {
+                  "expression": "(\"recoveredAt\" IS NULL AND \"recoveredById\" IS NULL AND \"recoveryRequestId\" IS NULL) OR (\"recoveredAt\" IS NOT NULL AND \"recoveredById\" IS NOT NULL AND \"recoveryRequestId\" IS NOT NULL)",
+                  "name": "route_unit_recovery_consistent_7b99d583",
+                  "prefix": "route_unit_recovery_consistent"
+                },
+                {
+                  "expression": "\"unitNumber\" >= 1",
+                  "name": "route_unit_recovery_unit_positive_861d7482",
+                  "prefix": "route_unit_recovery_unit_positive"
+                }
+              ],
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "emergencyId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "orderId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "orderItemId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "productId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "recoveredAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "recoveredById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "recoveryRequestId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "routeId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "stopId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "unitNumber": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "emergencyId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "routeUnitRecovery"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "routeEmergency"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "routeId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "routeUnitRecovery"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "route"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "stopId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "routeUnitRecovery"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "routeStop"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "orderId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "routeUnitRecovery"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "order"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "orderItemId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "routeUnitRecovery"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "orderItem"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "productId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "routeUnitRecovery"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "product"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "recoveredById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "routeUnitRecovery"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "emergencyId"
+                  ],
+                  "name": "routeUnitRecovery_emergencyId_idx_ced4adec",
+                  "prefix": "routeUnitRecovery_emergencyId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "orderId"
+                  ],
+                  "name": "routeUnitRecovery_orderId_idx_d284871b",
+                  "prefix": "routeUnitRecovery_orderId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "orderItemId"
+                  ],
+                  "name": "routeUnitRecovery_orderItemId_idx_99e2d9f7",
+                  "prefix": "routeUnitRecovery_orderItemId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "productId"
+                  ],
+                  "name": "routeUnitRecovery_productId_idx_5858600a",
+                  "prefix": "routeUnitRecovery_productId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "recoveredById"
+                  ],
+                  "name": "routeUnitRecovery_recoveredById_idx_2e510b5c",
+                  "prefix": "routeUnitRecovery_recoveredById_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "routeId"
+                  ],
+                  "name": "routeUnitRecovery_routeId_idx_91ae2fd6",
+                  "prefix": "routeUnitRecovery_routeId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "stopId"
+                  ],
+                  "name": "routeUnitRecovery_stopId_idx_8804d4e7",
+                  "prefix": "routeUnitRecovery_stopId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "recoveryRequestId"
+                  ]
+                },
+                {
+                  "columns": [
+                    "emergencyId",
+                    "orderItemId",
+                    "unitNumber"
                   ]
                 }
               ]
@@ -9981,7 +11123,8 @@
                 "DRAFT",
                 "ASSIGNED",
                 "IN_PROGRESS",
-                "COMPLETED"
+                "COMPLETED",
+                "INTERRUPTED"
               ]
             },
             "VisitFailureReason": {
@@ -10005,10 +11148,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "1749c53799fc77a70513636955c4c1b5a1668789c3d6dcb5017d4647b1ab9677"
+    "storageHash": "defd240814f2524f7af9bf379253487edc9887ac231ea845a81baa9c7f768009"
   },
   "execution": {
-    "executionHash": "024d1809858c6bb7373711dbe1d80eb0d04bc76935824a61fd0eb5415dadcc38",
+    "executionHash": "197f1c374ba6fd8fc85f656c8567a0200cbdc7b2a6e63079ef2b9e5b94a20e6e",
     "mutations": {
       "defaults": [
         {
@@ -10261,7 +11404,29 @@
           "ref": {
             "column": "id",
             "namespace": "public",
+            "table": "routeEmergency"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
             "table": "routeStop"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "routeUnitRecovery"
           }
         },
         {
