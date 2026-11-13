@@ -74,8 +74,7 @@ export class RouteReturnService {
       if (route.returnedAt && route.returnedById === actorId)
         return {
           id,
-          // RouteReturnResponseDto.status is widened when the DTO is updated outside T2 surfaces.
-          status: routeStatus as RouteReturnResponseDto['status'],
+          status: routeStatus,
           returnedAt: route.returnedAt.toString(),
           availability: await this.availability.effective(driver.id, tx),
         };
@@ -130,16 +129,15 @@ export class RouteReturnService {
         },
       );
       if (routeStatus === 'INTERRUPTED') {
-        // T3 widens RealtimeChange in realtime.contract.ts for route-scoped dispatch.incident.updated.
         changes.push({
           type: 'dispatch.incident.updated',
           routeId: returned.id,
           action: 'EMERGENCY_DRIVER_RETURN',
-        } as unknown as RealtimeChange);
+        });
       }
       return {
         id,
-        status: routeStatus as RouteReturnResponseDto['status'],
+        status: routeStatus,
         returnedAt: returned.returnedAt.toString(),
         availability,
       };

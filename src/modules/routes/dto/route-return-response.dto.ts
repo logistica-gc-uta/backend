@@ -5,8 +5,8 @@ export class RouteReturnResponseDto {
   @ApiProperty({ format: 'uuid' })
   id!: string;
 
-  @ApiProperty({ enum: ['COMPLETED'] })
-  status!: 'COMPLETED';
+  @ApiProperty({ enum: ['COMPLETED', 'INTERRUPTED'] })
+  status!: 'COMPLETED' | 'INTERRUPTED';
 
   @ApiProperty({ type: DriverAvailabilityResponseDto })
   availability!: DriverAvailabilityResponseDto;

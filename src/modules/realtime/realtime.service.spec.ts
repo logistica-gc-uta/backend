@@ -10,6 +10,7 @@ const OTHER_USER_ID = '22222222-2222-4222-8222-222222222222';
 const ORDER_ID = '33333333-3333-4333-8333-333333333333';
 const ROUTE_ID = '44444444-4444-4444-8444-444444444444';
 const DRIVER_ID = '55555555-5555-4555-8555-555555555555';
+const EMERGENCY_ID = '66666666-6666-4666-8666-666666666666';
 
 function signedToken(
   sub = USER_ID,
@@ -267,5 +268,70 @@ describe('RealtimeService', () => {
       { type: 'order.status.updated', orderId: ORDER_ID, status: 'DELIVERED' },
     ])).resolves.toBeUndefined();
     expect(socket.emit).toHaveBeenCalledTimes(1);
+  });
+
+  it('publishes INTERRUPTED route updates and route- or order-scoped #51/#52 incident actions including LOSS_CANCEL and EMERGENCY_DECLARE', async () => {
+    const service = new RealtimeService(createPrisma({
+      users: {
+        [USER_ID]: { id: USER_ID, role: Role.DRIVER },
+        [OTHER_USER_ID]: { id: OTHER_USER_ID, role: Role.ADMIN },
+      },
+      orders: { [ORDER_ID]: { id: ORDER_ID, userId: USER_ID, routeId: null } },
+      routes: { [ROUTE_ID]: { id: ROUTE_ID, driverId: DRIVER_ID } },
+      drivers: { [DRIVER_ID]: { id: DRIVER_ID, userId: USER_ID } },
+    }));
+    const routeDriver = createSocket(signedToken(USER_ID, Role.DRIVER), [`route:${ROUTE_ID}`]);
+    const adminIncidents = createSocket(signedToken(OTHER_USER_ID, Role.ADMIN), ['incidents:admin']);
+    service.attach({
+      sockets: new Map([
+        ['route-driver', routeDriver],
+        ['admin-incidents', adminIncidents],
+      ]),
+    } as never);
+
+    await service.publish([
+      { type: 'route.updated', routeId: ROUTE_ID, status: 'INTERRUPTED' },
+      {
+        type: 'dispatch.incident.updated',
+        routeId: ROUTE_ID,
+        emergencyId: EMERGENCY_ID,
+        action: 'EMERGENCY_DECLARE',
+      },
+      {
+        type: 'dispatch.incident.updated',
+        orderId: ORDER_ID,
+        action: 'LOSS_CANCEL',
+        requiresAdministrativeReview: true,
+      },
+    ]);
+
+    expect(routeDriver.emit).toHaveBeenCalledWith(
+      'route.updated',
+      expect.objectContaining({
+        data: { routeId: ROUTE_ID, status: 'INTERRUPTED' },
+      }),
+    );
+    expect(adminIncidents.emit).toHaveBeenNthCalledWith(
+      1,
+      'dispatch.incident.updated',
+      expect.objectContaining({
+        data: {
+          routeId: ROUTE_ID,
+          emergencyId: EMERGENCY_ID,
+          action: 'EMERGENCY_DECLARE',
+        },
+      }),
+    );
+    expect(adminIncidents.emit).toHaveBeenNthCalledWith(
+      2,
+      'dispatch.incident.updated',
+      expect.objectContaining({
+        data: {
+          orderId: ORDER_ID,
+          action: 'LOSS_CANCEL',
+          requiresAdministrativeReview: true,
+        },
+      }),
+    );
   });
 });

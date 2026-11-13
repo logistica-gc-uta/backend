@@ -7,7 +7,7 @@ import type { RealtimeChange, RealtimeEnvelope, RealtimePublisher } from './real
 
 const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 const ORDER_STATUSES = new Set(['PENDING', 'ASSIGNED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED']);
-const ROUTE_STATUSES = new Set(['DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED']);
+const ROUTE_STATUSES = new Set(['DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'INTERRUPTED']);
 const INCIDENT_ACTIONS = new Set([
   'CONFIRM',
   'REJECT',
@@ -17,6 +17,20 @@ const INCIDENT_ACTIONS = new Set([
   'PRIORITIZE',
   'CONTACT',
   'RESCHEDULE',
+  'PICKUP_AGREE',
+  'PICKUP_DECLINE',
+  'PICKUP_CONFIRM',
+  'RELEASE_DRAFT',
+  'LOSS_DECLARE',
+  'REPLACEMENT_PREPARE',
+  'ORIGINAL_RECOVER',
+  'LOSS_CANCEL',
+  'EMERGENCY_DECLARE',
+  'UNIT_RECOVERY_CONFIRM',
+  'EMERGENCY_CLOSE',
+  'EMERGENCY_DRIVER_RELEASE',
+  'EMERGENCY_DRIVER_RETURN',
+  'EMERGENCY_REQUEUE',
 ]);
 
 type RealtimeRole = Role.ADMIN | Role.CLIENT | Role.DRIVER;
@@ -229,10 +243,8 @@ export class RealtimeService implements RealtimePublisher {
     const namespace = this.namespace;
     if (!prepared || !namespace) return;
 
-    const resource = change.type === 'dispatch.incident.updated' ? 'order' : prepared.resource;
-    const id = change.type === 'dispatch.incident.updated'
-      ? normalizedUuid(change.orderId)
-      : prepared.id;
+    const resource = prepared.resource;
+    const id = prepared.id;
     const room = change.type === 'dispatch.incident.updated'
       ? 'incidents:admin'
       : `${prepared.resource}:${prepared.id}`;
@@ -292,15 +304,27 @@ export class RealtimeService implements RealtimePublisher {
       return { resource: 'route', id: normalizedUuid(change.routeId), data };
     }
 
-    if (change.type === 'dispatch.incident.updated' && isUuid(change.orderId)) {
-      const data: Record<string, string | boolean> = { orderId: normalizedUuid(change.orderId) };
+    if (change.type === 'dispatch.incident.updated') {
+      const orderId = isUuid(change.orderId) ? normalizedUuid(change.orderId) : null;
+      const routeId = isUuid(change.routeId) ? normalizedUuid(change.routeId) : null;
+      const emergencyId = isUuid(change.emergencyId) ? normalizedUuid(change.emergencyId) : null;
+      const target = orderId
+        ? { resource: 'order' as const, id: orderId }
+        : routeId
+          ? { resource: 'route' as const, id: routeId }
+          : null;
+      if (!target) return null;
+      const data: Record<string, string | boolean> = {};
+      if (orderId) data.orderId = orderId;
+      if (routeId) data.routeId = routeId;
+      if (emergencyId) data.emergencyId = emergencyId;
       if (typeof change.action === 'string' && INCIDENT_ACTIONS.has(change.action)) {
         data.action = change.action;
       }
       if (typeof change.requiresAdministrativeReview === 'boolean') {
         data.requiresAdministrativeReview = change.requiresAdministrativeReview;
       }
-      return { resource: 'order', id: normalizedUuid(change.orderId), data };
+      return { ...target, data };
     }
 
     if (

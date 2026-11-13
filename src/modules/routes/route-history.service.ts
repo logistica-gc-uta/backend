@@ -49,6 +49,25 @@ export class RouteHistoryService {
           order.routeId.in(routes.map((route) => route.id)),
         ).all()
       : [];
+    const routeIds = routes.map((route) => route.id);
+    const emergencies = this.prisma.client.orm.public.RouteEmergency
+      ? await this.prisma.client.orm.public.RouteEmergency.where((e) =>
+          e.routeId.in(routeIds),
+        ).all()
+      : [];
+    const emergencyByRoute = new Map(emergencies.map((e) => [e.routeId, e]));
+    const unitRecoveries =
+      emergencies.length && this.prisma.client.orm.public.RouteUnitRecovery
+        ? await this.prisma.client.orm.public.RouteUnitRecovery.where((u) =>
+            u.routeId.in(routeIds),
+          ).all()
+        : [];
+    const unitsByRoute = new Map<string, typeof unitRecoveries>();
+    for (const unit of unitRecoveries) {
+      const group = unitsByRoute.get(unit.routeId) ?? [];
+      group.push(unit);
+      unitsByRoute.set(unit.routeId, group);
+    }
     const legacyCommercialOrder = (order: (typeof directOrders)[number]) => {
       const { subtotalCents: _subtotalCents, ...legacyOrder } = order;
       return legacyOrder;
@@ -100,6 +119,29 @@ export class RouteHistoryService {
                 order.scheduledDeliveryDate?.toString() ?? null,
               stopOrder: order.stopOrder,
             }));
+      const emergency = emergencyByRoute.get(route.id) ?? null;
+      const routeUnits = unitsByRoute.get(route.id) ?? [];
+      const isInterrupted = route.status === 'INTERRUPTED';
+      const stopsSummary = {
+        total: ordered.length,
+        successful: ordered.filter((s) => s.outcome === 'SUCCESSFUL').length,
+        failed: ordered.filter((s) => s.outcome === 'FAILED').length,
+        pending: ordered.filter((s) => !s.outcome || s.outcome === 'PENDING').length,
+      };
+      const emergencySummary = emergency
+        ? {
+            id: emergency.id,
+            reason: emergency.reason,
+            declaredAt: emergency.declaredAt.toString(),
+            declaredById: emergency.declaredById,
+            closedAt: emergency.closedAt?.toString() ?? null,
+            closedById: emergency.closedById ?? null,
+            closeReason: emergency.closeReason ?? null,
+            totalUnitsCount: routeUnits.length,
+            recoveredUnitsCount: routeUnits.filter((u) => u.recoveredAt != null).length,
+            pendingUnitsCount: routeUnits.filter((u) => u.recoveredAt == null).length,
+          }
+        : null;
       return {
         ...route,
         status: route.status ?? 'UNVERIFIED',
@@ -132,6 +174,9 @@ export class RouteHistoryService {
             })),
         })),
         events,
+        ...(isInterrupted || emergency
+          ? { stopsSummary, emergency: emergencySummary }
+          : {}),
       };
     });
   }

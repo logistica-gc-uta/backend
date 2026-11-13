@@ -2,7 +2,14 @@
 export type RealtimeChange =
   | { type: 'order.status.updated'; orderId: string; status?: string; requiresAdministrativeReview?: boolean }
   | { type: 'route.updated'; routeId: string; status?: string }
-  | { type: 'dispatch.incident.updated'; orderId: string; action?: string; requiresAdministrativeReview?: boolean }
+  | {
+      type: 'dispatch.incident.updated';
+      orderId?: string | null;
+      routeId?: string | null;
+      emergencyId?: string | null;
+      action?: string;
+      requiresAdministrativeReview?: boolean;
+    }
   | { type: 'driver.availability.updated'; driverId: string; available: boolean };
 
 export interface RealtimeEnvelope {

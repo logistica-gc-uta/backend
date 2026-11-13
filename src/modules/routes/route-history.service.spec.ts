@@ -233,4 +233,122 @@ describe('Batched stable route history', () => {
     expect(await service.project([])).toEqual([]);
     expect(stopQuery.all).not.toHaveBeenCalled();
   });
+
+  it('projects INTERRUPTED routes accurately with pending/released driver return and stops/emergency summary', async () => {
+    const { service, stopQuery, attemptQuery } = setup();
+    stopQuery.all.mockResolvedValue([
+      {
+        id: 's1',
+        routeId: 'int-route',
+        orderId: 'o1',
+        sequence: 1,
+        outcome: 'SUCCESSFUL',
+        isLegacy: false,
+        createdAt: timestamp,
+        order: {
+          id: 'o1',
+          routeId: 'int-route',
+          deliveryAddress: 'Addr 1',
+          status: 'DELIVERED',
+          scheduledDeliveryDate: timestamp,
+        },
+      },
+      {
+        id: 's2',
+        routeId: 'int-route',
+        orderId: 'o2',
+        sequence: 2,
+        outcome: 'PENDING',
+        isLegacy: false,
+        createdAt: timestamp,
+        order: {
+          id: 'o2',
+          routeId: null,
+          deliveryAddress: 'Addr 2',
+          status: 'PENDING',
+          scheduledDeliveryDate: timestamp,
+        },
+      },
+    ]);
+    attemptQuery.all.mockResolvedValue([]);
+    (service as any).prisma.client.orm.public.RouteEmergency = {
+      where: jest.fn().mockReturnThis(),
+      all: jest.fn().mockResolvedValue([
+        {
+          id: 'em-1',
+          routeId: 'int-route',
+          reason: 'Vehicle breakdown',
+          declaredAt: timestamp,
+          declaredById: 'admin-1',
+          closedAt: null,
+          closedById: null,
+          closeReason: null,
+        },
+      ]),
+    };
+    (service as any).prisma.client.orm.public.RouteUnitRecovery = {
+      where: jest.fn().mockReturnThis(),
+      all: jest.fn().mockResolvedValue([
+        { id: 'u1', routeId: 'int-route', recoveredAt: null },
+        { id: 'u2', routeId: 'int-route', recoveredAt: timestamp },
+      ]),
+    };
+
+    const [held]: any = await service.project([
+      {
+        id: 'int-route',
+        status: 'INTERRUPTED',
+        startedAt: timestamp,
+        startedById: 'driver-1',
+        completedAt: null,
+        completedById: null,
+        returnedAt: null,
+        returnedById: null,
+      },
+    ]);
+
+    expect(held.status).toBe('INTERRUPTED');
+    expect(held.orders.map((o: any) => [o.id, o.stopOrder])).toEqual([
+      ['o1', 1],
+      ['o2', 2],
+    ]);
+    expect(held.events).toEqual([
+      { kind: 'STARTED', actorId: 'driver-1', recordedAt: timestamp.toString() },
+    ]);
+    expect(held.stopsSummary).toEqual({
+      total: 2,
+      successful: 1,
+      failed: 0,
+      pending: 1,
+    });
+    expect(held.emergency).toEqual({
+      id: 'em-1',
+      reason: 'Vehicle breakdown',
+      declaredAt: timestamp.toString(),
+      declaredById: 'admin-1',
+      closedAt: null,
+      closedById: null,
+      closeReason: null,
+      totalUnitsCount: 2,
+      recoveredUnitsCount: 1,
+      pendingUnitsCount: 1,
+    });
+
+    const [released]: any = await service.project([
+      {
+        id: 'int-route',
+        status: 'INTERRUPTED',
+        startedAt: timestamp,
+        startedById: 'driver-1',
+        completedAt: null,
+        completedById: null,
+        returnedAt: timestamp,
+        returnedById: 'admin-1',
+      },
+    ]);
+    expect(released.events).toEqual([
+      { kind: 'STARTED', actorId: 'driver-1', recordedAt: timestamp.toString() },
+      { kind: 'RETURNED', actorId: 'admin-1', recordedAt: timestamp.toString() },
+    ]);
+  });
 });

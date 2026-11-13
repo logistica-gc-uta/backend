@@ -223,12 +223,11 @@ export class DispatchEmergencyService {
         requiresAdministrativeReview: true,
       });
     }
-    // T3 widens RealtimeChange in realtime.contract.ts for route-scoped dispatch.incident.updated.
     changes.push({
       type: 'dispatch.incident.updated',
       routeId: route.id,
       action: 'EMERGENCY_DECLARE',
-    } as unknown as RealtimeChange);
+    });
 
     return audit;
   }
@@ -347,12 +346,11 @@ export class DispatchEmergencyService {
       null,
     );
 
-    // T3 widens RealtimeChange in realtime.contract.ts for route-scoped dispatch.incident.updated.
     changes.push({
       type: 'dispatch.incident.updated',
       routeId: route.id,
       action: 'EMERGENCY_CLOSE',
-    } as unknown as RealtimeChange);
+    });
 
     return audit;
   }
@@ -453,12 +451,11 @@ export class DispatchEmergencyService {
         driverId: driver.id,
         available: today.isAvailable,
       },
-      // T3 widens RealtimeChange in realtime.contract.ts for route-scoped dispatch.incident.updated.
       {
         type: 'dispatch.incident.updated',
         routeId: route.id,
         action: 'EMERGENCY_DRIVER_RELEASE',
-      } as unknown as RealtimeChange,
+      },
     );
 
     return audit;
@@ -582,12 +579,16 @@ export class DispatchEmergencyService {
     orderId: string,
   ): Promise<boolean> {
     const db = tx.orm.public;
-    const units = await db.RouteUnitRecovery.where({ orderId }).all();
+    const units = db.RouteUnitRecovery
+      ? await db.RouteUnitRecovery.where({ orderId }).all()
+      : [];
     if (units.length === 0) return true;
-    const activeLosses = await db.OrderItemLoss.where({
-      orderId,
-      cancelledAt: null,
-    }).all();
+    const activeLosses = db.OrderItemLoss
+      ? await db.OrderItemLoss.where({
+          orderId,
+          cancelledAt: null,
+        }).all()
+      : [];
     return units.every((unit) => {
       if (unit.recoveredAt !== null) return true;
       return activeLosses.some(
