@@ -5219,6 +5219,41 @@
               "response": []
             },
             {
+              "name": "GET Dispatch Emergencies (ADMIN)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('Emergencies endpoint returns array', () => { const b = pm.response.json(); pm.expect(b).to.be.an('array'); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/dispatch/emergencies",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "dispatch",
+                    "emergencies"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
               "name": "PATCH Admin Shop Settings - restore original delivery schedule",
               "event": [
                 {

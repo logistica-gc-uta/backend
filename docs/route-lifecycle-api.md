@@ -78,3 +78,10 @@ common non-null scheduledDeliveryDate and confirms/assigns in one transaction.
 Null/mismatch409, unavailable/claimed409, invalid body400; no planning algorithm
 or calendar policy is introduced. Explicit confirmation and assignment reuse
 the same private transaction primitives. All dependencies remain unreviewed.
+
+## Emergency interruption (`INTERRUPTED`), unit recovery & `LOSS_CANCEL` (#51)
+
+- `RouteStatus` adds `INTERRUPTED` (`IN_PROGRESS -> INTERRUPTED`).
+- `POST /api/v1/routes/:id/return` (DRIVER) accepts `COMPLETED` and `INTERRUPTED` routes with `startedAt` + `startedById` evidence, releasing `DriverReservation`, recomputing `DriverAvailability` (preserving `#44` `DriverAbsence`), and emitting `dispatch.incident.updated` (`EMERGENCY_DRIVER_RETURN`) when `INTERRUPTED`.
+- ADMIN `POST /api/v1/dispatch/interventions` supports `EMERGENCY_DECLARE`, `UNIT_RECOVERY_CONFIRM`, `EMERGENCY_CLOSE`, `EMERGENCY_DRIVER_RELEASE`, `EMERGENCY_REQUEUE`, and `LOSS_CANCEL`.
+- ADMIN read endpoints `GET /api/v1/dispatch/emergencies` (`RouteEmergencySummaryDto[]`) and `GET /api/v1/dispatch/routes/:id/emergency` (`RouteEmergencyDetailDto`) expose incident custody, driver return state, and `#52` loss integration. See [issue-51-emergency-recovery.md](issue-51-emergency-recovery.md) and [issue-52-loss-replacement-recovery.md](issue-52-loss-replacement-recovery.md).
