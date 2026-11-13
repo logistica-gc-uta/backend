@@ -35,6 +35,8 @@
     "perf:run": "tsx benchmarks/load/run.ts",
     "perf:report": "tsx benchmarks/load/report.ts",
     "perf:status": "tsx benchmarks/load/cli.ts status",
+    "seed:shop-demo": "tsx src/prisma/seed-shop-demo.ts",
+    "seed:shop-images": "tsx src/prisma/seed-shop-images.ts",
     "benchmark:routing": "node --expose-gc --import tsx benchmarks/routing/run.ts"
   },
   "dependencies": {
