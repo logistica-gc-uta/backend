@@ -43,7 +43,7 @@ Ejemplos del issue: dos pedidos a 1,0 km en línea recta pero separados por un o
 
 **Seguridad y permisos:** solo ADMIN; la URL y las credenciales del motor viven en el backend y no se exponen; el validador solo acepta instancias locales.
 
-**Compatibilidad con otros componentes:** el motor vial está apagado por defecto. `ci-security.spec.ts` espera 39 suites e2e.
+**Compatibilidad con otros componentes:** el motor vial está apagado por defecto. `ci-security.spec.ts` espera 40 suites e2e (las de `main` más las 2 de este PR).
 
 **Limitaciones conocidas:** no hay tráfico en vivo (las duraciones son estimadas); una propuesta de más de 300 puntos se rechaza (no se puede planificar por calles una zona de 2000 pedidos todavía); OSRM se aloja como contenedor Docker en la VPS (decisión del líder), pero la VPS aún no existe y no se probó en ella; el trazado puede ser ~3 % más largo que la suma de tramos de la matriz; no se midió carga concurrente ni un servidor de producción; no hay caché ni respaldo (fuera de alcance).
 
