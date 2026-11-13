@@ -24,6 +24,7 @@ import {
   DispatchAuditDto,
   DispatchInterventionDto,
 } from './dto/dispatch-intervention.dto.js';
+import { OrderItemLossDto } from './dto/order-item-loss.dto.js';
 import { RouteUrgencyService } from './route-urgency.service.js';
 import {
   UrgencyInboxDto,
@@ -77,6 +78,19 @@ export class DispatchController {
   @ApiResponse({ status: 403, description: 'Current ADMIN role required' })
   audit() {
     return this.interventions.audit();
+  }
+
+  @Get('orders/:id/losses')
+  @ApiOperation({
+    summary:
+      'ADMIN: pérdidas de unidades de un pedido con su reemplazo, la recuperación del original y los movimientos de existencias (#52)',
+  })
+  @ApiResponse({ status: 200, type: [OrderItemLossDto] })
+  @ApiResponse({ status: 404, description: 'Order not found' })
+  @ApiResponse({ status: 401, description: 'Authentication required' })
+  @ApiResponse({ status: 403, description: 'Current ADMIN role required' })
+  losses(@Param('id', ParseUUIDPipe) id: string) {
+    return this.interventions.listLosses(id);
   }
 
   @Get('inbox')

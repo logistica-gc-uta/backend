@@ -6,6 +6,8 @@ import {
   IsArray,
   IsBoolean,
   IsIn,
+  IsInt,
+  Min,
   IsString,
   IsUUID,
   Matches,
@@ -25,7 +27,11 @@ export const DISPATCH_ACTIONS = [
   'PICKUP_DECLINE',
   'PICKUP_CONFIRM',
   'RELEASE_DRAFT',
+  'LOSS_DECLARE',
+  'REPLACEMENT_PREPARE',
+  'ORIGINAL_RECOVER',
 ] as const;
+export const RECOVERY_CONDITIONS = ['SELLABLE', 'DAMAGED'] as const;
 export class DispatchInterventionDto {
   @ApiProperty({
     format: 'uuid',
@@ -101,6 +107,37 @@ export class DispatchInterventionDto {
   @ValidateIf((o) => o.deliveryWindowEnd !== undefined)
   @IsString()
   deliveryWindowEnd?: string;
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Ítem del pedido al que pertenece la unidad perdida (#52)',
+  })
+  @ValidateIf((o) => o.orderItemId !== undefined)
+  @IsUUID()
+  orderItemId?: string;
+  @ApiPropertyOptional({
+    minimum: 1,
+    description:
+      'Unidad perdida dentro del ítem (1..cantidad); obligatoria si el ítem tiene más de una unidad (#52)',
+  })
+  @ValidateIf((o) => o.unitNumber !== undefined)
+  @IsInt()
+  @Min(1)
+  unitNumber?: number;
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Pérdida registrada de la que se prepara el reemplazo o se recupera el original (#52)',
+  })
+  @ValidateIf((o) => o.lossId !== undefined)
+  @IsUUID()
+  lossId?: string;
+  @ApiPropertyOptional({
+    enum: RECOVERY_CONDITIONS,
+    description:
+      'Estado comprobado del original recuperado: solo SELLABLE suma una unidad al stock disponible (#52)',
+  })
+  @ValidateIf((o) => o.recoveryCondition !== undefined)
+  @IsIn(RECOVERY_CONDITIONS)
+  recoveryCondition?: (typeof RECOVERY_CONDITIONS)[number];
 }
 export class DispatchAuditDto {
   @ApiProperty() id!: string;
