@@ -146,6 +146,7 @@ export class OrdersService {
       .where({ userId })
       .include('items', (i) => i.include('product'))
       .include('zone')
+      .include('pickup')
       .all();
     return orders.map((order) => projectOrder(order, false));
   }
@@ -172,6 +173,7 @@ export class OrdersService {
       .include('items', (i) => i.include('product'))
       .include('zone')
       .include('user', (user) => user.select('id', 'name'))
+      .include('pickup')
       .all();
     return { items: orders.map((order) => projectOrder(order, true)), total: counts.total, page: dto.page, pageSize: dto.pageSize };
   }
@@ -181,6 +183,7 @@ export class OrdersService {
       .where({ id })
       .include('items', (i) => i.include('product'))
       .include('zone')
+      .include('pickup')
       .first();
 
     if (!order) {

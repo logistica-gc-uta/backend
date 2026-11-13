@@ -157,6 +157,10 @@ describe('Retiro en tienda acordado (#50): PostgreSQL + JWT HTTP', () => {
       expect(await count('Route')).toBe(routes);
       const order = (await api('get', `/orders/${orderId}`).expect(200)).body;
       expect(order.status).toBe('PENDING'); // el acuerdo no es una entrega
+      expect(order.pickup).toMatchObject({ state: 'PENDING_PICKUP', pickedUpAt: null });
+      expect(order.pickup.agreedAt).toEqual(expect.any(String));
+      const adminListBefore = (await api('get', '/orders?pageSize=50').expect(200)).body.items.find((o: any) => o.id === orderId);
+      expect(adminListBefore?.pickup).toMatchObject({ state: 'PENDING_PICKUP', pickedUpAt: null });
       const view = await tracking(orderId);
       expect(view).toMatchObject({ pendingManagement: false, status: 'PENDING', pickup: { state: 'PENDING_PICKUP', pickedUpAt: null } });
       expect(view.pickup.agreedAt).toEqual(expect.any(String));
@@ -183,7 +187,12 @@ describe('Retiro en tienda acordado (#50): PostgreSQL + JWT HTTP', () => {
       const confirmed = (await intervene(body, ids.admin2).expect(200)).body;
 
       expect(confirmed).toMatchObject({ action: 'PICKUP_CONFIRM', outcome: 'APPLIED', actorId: ids.admin2 });
-      expect((await api('get', `/orders/${orderId}`).expect(200)).body.status).toBe('DELIVERED');
+      const deliveredOrder = (await api('get', `/orders/${orderId}`).expect(200)).body;
+      expect(deliveredOrder.status).toBe('DELIVERED');
+      expect(deliveredOrder.pickup).toMatchObject({ state: 'PICKED_UP' });
+      expect(deliveredOrder.pickup.pickedUpAt).toEqual(expect.any(String));
+      const adminListAfter = (await api('get', '/orders?pageSize=50').expect(200)).body.items.find((o: any) => o.id === orderId);
+      expect(adminListAfter?.pickup).toMatchObject({ state: 'PICKED_UP' });
       const pickup = await db.orm.public.OrderPickup.where({ orderId }).first();
       expect(pickup).toMatchObject({ agreedById: ids.admin, confirmedById: ids.admin2 });
       expect(pickup!.confirmedAt).toBeTruthy();

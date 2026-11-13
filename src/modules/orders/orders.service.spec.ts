@@ -521,6 +521,36 @@ describe('OrdersService', () => {
 
       const result = await service.findOne('order-1', adminUser);
       expect(result).toMatchObject(expectedEnrichedOrder);
+      expect(prismaMock.order.include).toHaveBeenCalledWith('pickup');
+    });
+
+    it('ADMIN debe recibir pickup cuando el pedido tiene retiro acordado o confirmado y null si no tiene', async () => {
+      const agreedAt = Temporal.Instant.from('2026-11-13T15:00:00Z');
+      prismaMock.order.first.mockResolvedValue({ ...sampleOrder, pickup: null });
+      const withoutPickup = await service.findOne('order-1', adminUser);
+      expect(withoutPickup).toHaveProperty('pickup', null);
+
+      prismaMock.order.first.mockResolvedValue({
+        ...sampleOrder,
+        pickup: {
+          id: 'pickup-1',
+          orderId: 'order-1',
+          agreedAt,
+          agreedById: 'admin-1',
+          agreementRequestId: 'req-1',
+          confirmedAt: null,
+          confirmedById: null,
+          confirmationRequestId: null,
+        },
+      });
+      const pendingPickup = await service.findOne('order-1', adminUser);
+      expect(pendingPickup).toMatchObject({
+        pickup: {
+          state: 'PENDING_PICKUP',
+          agreedAt: '2026-11-13T15:00:00Z',
+          pickedUpAt: null,
+        },
+      });
     });
 
     it('CLIENT debe poder leer sus propios pedidos con modelo enriquecido', async () => {
@@ -956,17 +986,30 @@ describe('OrdersService', () => {
       const result = await service.findMyOrders('user-1');
       expect(result[0]).toHaveProperty('deliveryLocation', null);
       expect(result[0]).toHaveProperty('planningEligibility.eligible', false);
+      expect(prismaMock.order.include).toHaveBeenCalledWith('pickup');
     });
   });
 
   describe('findAll', () => {
-    it('debe retornar todos los pedidos para ADMIN enriquecidos con deliveryLocation y planningEligibility', async () => {
+    it('debe retornar todos los pedidos para ADMIN enriquecidos con deliveryLocation, planningEligibility y pickup', async () => {
+      const agreedAt = Temporal.Instant.from('2026-11-13T15:00:00Z');
+      const confirmedAt = Temporal.Instant.from('2026-11-13T16:00:00Z');
       const orders = [
         {
           id: 'order-1',
           deliveryLat: -1.25,
           deliveryLng: -78.62,
           zone: { id: 'zone-1', depotLat: -1.24, depotLng: -78.61 },
+          pickup: {
+            id: 'pickup-1',
+            orderId: 'order-1',
+            agreedAt,
+            agreedById: 'admin-1',
+            agreementRequestId: 'req-1',
+            confirmedAt,
+            confirmedById: 'admin-1',
+            confirmationRequestId: 'req-2',
+          },
         },
       ];
       prismaMock.order.all.mockResolvedValue(orders);
@@ -974,6 +1017,12 @@ describe('OrdersService', () => {
       const result = await service.findAll();
       expect(result.items[0]).toHaveProperty('deliveryLocation', { lat: -1.25, lng: -78.62 });
       expect(result.items[0]).toHaveProperty('planningEligibility.eligible', true);
+      expect(result.items[0]).toHaveProperty('pickup', {
+        state: 'PICKED_UP',
+        agreedAt: '2026-11-13T15:00:00Z',
+        pickedUpAt: '2026-11-13T16:00:00Z',
+      });
+      expect(prismaMock.order.include).toHaveBeenCalledWith('pickup');
       expect(result).toMatchObject({ total: 1, page: 1, pageSize: 20 });
     });
   });

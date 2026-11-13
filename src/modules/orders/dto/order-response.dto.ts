@@ -158,6 +158,29 @@ export class OrderCreatedResponseDto {
   createdAt: Date;
 }
 
+export class OrderPickupSummaryDto {
+  @ApiProperty({
+    enum: ['PENDING_PICKUP', 'PICKED_UP'],
+    example: 'PENDING_PICKUP',
+    description: 'Estado del retiro en tienda acordado (#50)',
+  })
+  state: 'PENDING_PICKUP' | 'PICKED_UP';
+
+  @ApiProperty({
+    example: '2026-11-13T15:00:00Z',
+    description: 'Fecha y hora en que se registró el acuerdo de retiro en tienda',
+  })
+  agreedAt: string;
+
+  @ApiProperty({
+    example: null,
+    nullable: true,
+    type: String,
+    description: 'Fecha y hora de confirmación física del retiro o null si sigue pendiente',
+  })
+  pickedUpAt: string | null;
+}
+
 export class OrderResponseDto extends OrderCreatedResponseDto {
   @ApiProperty({
     description: 'Lista de ítems con sus productos asociados incluidos en el pedido',
@@ -193,6 +216,13 @@ export class OrderResponseDto extends OrderCreatedResponseDto {
     nullable: true,
   })
   user?: UserSummaryDto | null;
+
+  @ApiPropertyOptional({
+    description: 'Estado del retiro en tienda acordado (#50) o null si el pedido no tiene retiro',
+    type: () => OrderPickupSummaryDto,
+    nullable: true,
+  })
+  pickup?: OrderPickupSummaryDto | null;
 }
 
 export class AdminOrdersPageDto {

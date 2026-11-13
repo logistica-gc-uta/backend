@@ -36,7 +36,7 @@ Errores tipados (409): `PICKUP_ALREADY_AGREED`, `PICKUP_NOT_AGREED`, `PICKUP_ALR
 
 ### Seguimiento
 
-`GET /shop/orders` y `GET /shop/orders/:id` incorporan `pickup` (`{state: PENDING_PICKUP | PICKED_UP, agreedAt, pickedUpAt} | null`) y `pendingManagement` (`true` si la entrega espera gestión y aún no hay retiro). La línea de tiempo del detalle suma `PICKUP_AGREED` («Pendiente de retiro en tienda») y `PICKED_UP` («Entregado: retirado en tienda»). La bandeja de incidencias del ADMIN (`GET /dispatch/inbox`) trae `pickup` por incidencia.
+`GET /shop/orders`, `GET /shop/orders/:id`, `GET /orders` y `GET /orders/:id` incorporan `pickup` (`{state: PENDING_PICKUP | PICKED_UP, agreedAt, pickedUpAt} | null`), mientras `GET /shop/orders` y `GET /shop/orders/:id` añaden además `pendingManagement` (`true` si la entrega espera gestión y aún no hay retiro). La línea de tiempo del detalle suma `PICKUP_AGREED` («Pendiente de retiro en tienda») y `PICKED_UP` («Entregado: retirado en tienda»). La bandeja de incidencias del ADMIN (`GET /dispatch/inbox`) trae `pickup` por incidencia.
 
 Recorrido: **Entrega pendiente de gestión** (`pendingManagement`) → **Pendiente de retiro en tienda** (`pickup.state = PENDING_PICKUP`) → **Entregado por retiro** (`status = DELIVERED`, `pickup.state = PICKED_UP`).
 
