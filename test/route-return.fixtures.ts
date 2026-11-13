@@ -1,5 +1,9 @@
 export const RETURN_ROUTE = 'f8541a2e-d9cb-4b09-8d9d-5c21e527cb7c';
-export const RETURN_DATE = '2026-10-10T00:00:00Z';
+export const RETURN_DATE = Temporal.Now.zonedDateTimeISO('America/Guayaquil')
+  .toPlainDate()
+  .toZonedDateTime({ timeZone: 'America/Guayaquil', plainTime: '00:00:00' })
+  .toInstant()
+  .toString();
 // Fresh owned database only. Existing audit pairs are seeded explicitly, not invented by return.
 export const RETURN_FIXTURE = `
 INSERT INTO public."user" (id,name,email,password,role) VALUES

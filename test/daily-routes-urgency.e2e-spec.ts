@@ -446,4 +446,388 @@ describe('Daily operational window and midnight continuity (PostgreSQL16 + HTTP)
       (await db.orm.public.Order.where({ id: order.id }).first())?.status,
     ).toBe('DELIVERED');
   });
+
+  it('runs a full zone-free (zoneId null) daily lifecycle: order -> proposal -> confirm -> assign -> start -> deliver -> complete -> return', async () => {
+    const todayDay = localDay(0);
+    const futureToday = Temporal.Now.instant().add({ minutes: 30 });
+    const isSameToday =
+      futureToday.toZonedDateTimeISO(BUSINESS_TZ).toPlainDate().toString() === todayDay;
+    const slot = isSameToday ? futureToday : localNoonInstant(0);
+
+    let orderId: string;
+    if (isSameToday) {
+      const created = await api(
+        'post',
+        '/orders',
+        {
+          deliveryAddress: 'Av. Los Chasquis 200, Ambato',
+          deliveryLat: -1.251,
+          deliveryLng: -78.618,
+          scheduledDeliveryDate: slot.toString(),
+          items: [{ productId: ids.product, quantity: 1 }],
+        },
+        ids.client,
+        'CLIENT',
+      ).expect(201);
+      expect(created.body.zoneId).toBeNull();
+      orderId = created.body.id;
+    } else {
+      const seeded = await db.orm.public.Order.create({
+        userId: ids.client,
+        zoneId: null,
+        status: 'PENDING',
+        deliveryAddress: 'Av. Los Chasquis 200, Ambato',
+        deliveryLat: -1.251,
+        deliveryLng: -78.618,
+        scheduledDeliveryDate: slot,
+      });
+      orderId = seeded.id;
+    }
+
+    const proposalRes = await api(
+      'get',
+      `/route-proposals?date=${todayDay}`,
+    ).expect(200);
+    expect(proposalRes.body.canConfirm).toBe(true);
+    expect(proposalRes.body.excluded).toEqual([]);
+    expect(proposalRes.body.proposals).toHaveLength(1);
+    const proposal = proposalRes.body.proposals[0];
+    expect(proposal).toMatchObject({
+      zoneId: null,
+      zoneCode: null,
+      depot: { lat: -1.2491, lng: -78.6167 },
+      orderIds: [orderId],
+    });
+
+    // Confirm without zoneId
+    const draft = await api('post', '/routes', {
+      routeDate: proposal.routeDate,
+      orderIds: proposal.orderIds,
+    }).expect(201);
+    expect(draft.body).toMatchObject({
+      status: 'DRAFT',
+      zoneId: null,
+    });
+
+    const assigned = await api('post', `/routes/${draft.body.id}/assign`, {
+      driverId: ids.driver,
+    }).expect(200);
+    expect(assigned.body).toMatchObject({
+      status: 'ASSIGNED',
+      zoneId: null,
+      driverId: ids.driver,
+    });
+
+    const started = await api(
+      'post',
+      `/routes/${draft.body.id}/start`,
+      {},
+      ids.driverUser,
+      'DRIVER',
+    ).expect(200);
+    expect(started.body.status).toBe('IN_PROGRESS');
+
+    await api(
+      'patch',
+      `/orders/${orderId}/status`,
+      { status: 'IN_TRANSIT' },
+      ids.driverUser,
+      'DRIVER',
+    ).expect(200);
+    await api(
+      'patch',
+      `/orders/${orderId}/status`,
+      { status: 'DELIVERED' },
+      ids.driverUser,
+      'DRIVER',
+    ).expect(200);
+
+    const completed = await api(
+      'post',
+      `/routes/${draft.body.id}/complete`,
+      {},
+      ids.driverUser,
+      'DRIVER',
+    ).expect(200);
+    expect(completed.body.status).toBe('COMPLETED');
+
+    const returned = await api(
+      'post',
+      `/routes/${draft.body.id}/return`,
+      {},
+      ids.driverUser,
+      'DRIVER',
+    ).expect(200);
+    expect(returned.body.returnedAt).toBeTruthy();
+    expect(
+      (await db.orm.public.Driver.where({ id: ids.driver }).first())?.isAvailable,
+    ).toBe(true);
+    expect(
+      (await db.orm.public.Order.where({ id: orderId }).first())?.status,
+    ).toBe('DELIVERED');
+  });
+
+  it('handles urgent dispatch for zoneId null orders: INSERT into today DRAFT/ASSIGNED ignoring 0-stop/expired/IN_PROGRESS, NEW_ROUTE, and BLOCKED NO_AVAILABLE_DRIVER', async () => {
+    const todayNoon = localNoonInstant(0);
+    const yesterdayNoon = localNoonInstant(-1);
+
+    // Second driver for IN_PROGRESS route so primary driver remains free later
+    const driver2UserId = randomUUID();
+    const driver2Id = randomUUID();
+    await db.orm.public.User.create({
+      id: driver2UserId,
+      role: 'DRIVER',
+      name: 'Driver 2',
+      email: `${driver2UserId}@fixture.invalid`,
+      password: 'fixture-password',
+    });
+    await db.orm.public.Driver.create({
+      id: driver2Id,
+      userId: driver2UserId,
+      vehicle: 'Van',
+      isAvailable: true,
+    });
+
+    // 1. 0-stop empty released DRAFT (today) - must be ignored
+    await db.orm.public.Route.create({
+      status: 'DRAFT',
+      driverId: null,
+      zoneId: null,
+      date: todayNoon,
+    });
+
+    // 2. Expired yesterday DRAFT with 1 stop - must be ignored
+    const yesterdayOrder = await db.orm.public.Order.create({
+      userId: ids.client,
+      zoneId: null,
+      status: 'PENDING',
+      deliveryAddress: 'Expired Draft St',
+      deliveryLat: -1.252,
+      deliveryLng: -78.619,
+      scheduledDeliveryDate: yesterdayNoon,
+    });
+    await db.transaction(async (tx) => {
+      const stale = await tx.orm.public.Route.create({
+        status: 'DRAFT',
+        driverId: null,
+        zoneId: null,
+        date: yesterdayNoon,
+      });
+      await tx.orm.public.OrderClaim.create({
+        orderId: yesterdayOrder.id,
+        routeId: stale.id,
+        claimedAt: yesterdayNoon,
+      });
+      await tx.orm.public.RouteStop.create({
+        routeId: stale.id,
+        orderId: yesterdayOrder.id,
+        sequence: 1,
+        outcome: 'PENDING',
+        isLegacy: false,
+      });
+    });
+
+    // 3. Today IN_PROGRESS route with 1 stop - must be ignored
+    const inProgressOrder = await db.orm.public.Order.create({
+      userId: ids.client,
+      zoneId: null,
+      status: 'PENDING',
+      deliveryAddress: 'In Progress St',
+      deliveryLat: -1.253,
+      deliveryLng: -78.62,
+      scheduledDeliveryDate: todayNoon,
+    });
+    const activeDraft = await api('post', '/routes', {
+      routeDate: todayNoon.toString(),
+      orderIds: [inProgressOrder.id],
+    }).expect(201);
+    await api('post', `/routes/${activeDraft.body.id}/assign`, {
+      driverId: driver2Id,
+    }).expect(200);
+    await api(
+      'post',
+      `/routes/${activeDraft.body.id}/start`,
+      {},
+      driver2UserId,
+      'DRIVER',
+    ).expect(200);
+
+    // 4. Valid today non-empty zoneId: null DRAFT route - must be chosen for INSERT
+    const draftOrder = await db.orm.public.Order.create({
+      userId: ids.client,
+      zoneId: null,
+      status: 'PENDING',
+      deliveryAddress: 'Today Draft St',
+      deliveryLat: -1.25,
+      deliveryLng: -78.617,
+      scheduledDeliveryDate: todayNoon,
+    });
+    const todayDraftRes = await api('post', '/routes', {
+      routeDate: todayNoon.toString(),
+      orderIds: [draftOrder.id],
+    }).expect(201);
+
+    const urgentInsertOrder = await db.orm.public.Order.create({
+      userId: ids.client,
+      zoneId: null,
+      status: 'PENDING',
+      deliveryAddress: 'Urgent Insert St',
+      deliveryLat: -1.251,
+      deliveryLng: -78.618,
+      scheduledDeliveryDate: todayNoon,
+    });
+
+    const insertProposal = await api(
+      'get',
+      `/dispatch/orders/${urgentInsertOrder.id}/proposal`,
+    ).expect(200);
+    expect(insertProposal.body).toMatchObject({
+      kind: 'INSERT',
+      routeId: todayDraftRes.body.id,
+      zoneId: null,
+    });
+    expect(insertProposal.body.orderIds).toEqual(
+      expect.arrayContaining([draftOrder.id, urgentInsertOrder.id]),
+    );
+
+    const confirmedInsert = await api('post', '/dispatch/interventions', {
+      requestId: randomUUID(),
+      action: 'CONFIRM',
+      orderId: urgentInsertOrder.id,
+      reason: 'Insert urgent zone-free order into today draft',
+      fingerprint: insertProposal.body.fingerprint,
+    }).expect(200);
+    expect(confirmedInsert.body).toMatchObject({
+      action: 'CONFIRM',
+      outcome: 'APPLIED',
+      routeId: todayDraftRes.body.id,
+    });
+
+    // 5. Assign todayDraft so we have a clean test, or fill it / release not needed:
+    // Mark todayDraft COMPLETED? Instead create a separate ASSIGNED? Wait: ASSIGNED < 4 would also match INSERT.
+    // Let's release todayDraft using RELEASE_DRAFT (wait: todayDraft is not expired! Instead, assign it and fill to 4 stops or mark it COMPLETED):
+    // Easiest way to leave ZERO insertable routes: insert 2 more urgent orders OR assign & fill capacity 4.
+    // Actually we can assign todayDraft and add 2 orders or assign a new urgent order after setting todayDraft to ASSIGNED with 4 stops? No, let's assign todayDraft to driver2? driver2 is busy; assign to ids.driver -> then ids.driver becomes busy.
+    // Let's seed a NEW third driver and fill todayDraft stops directly? Better: mark todayDraft status ASSIGNED -> IN_PROGRESS is forbidden by trigger without start; simply fill stops 3 and 4 on todayDraft via RouteStop or assign + let driver2 be unavailable, and seed driver3!
+    // Even simpler: use db.transaction only for 2 filler stops on todayDraft so it reaches capacity 4!
+    const f3 = await db.orm.public.Order.create({
+      userId: ids.client,
+      zoneId: null,
+      status: 'PENDING',
+      deliveryAddress: 'Filler 3 St',
+      deliveryLat: -1.254,
+      deliveryLng: -78.621,
+      scheduledDeliveryDate: todayNoon,
+    });
+    const f4 = await db.orm.public.Order.create({
+      userId: ids.client,
+      zoneId: null,
+      status: 'PENDING',
+      deliveryAddress: 'Filler 4 St',
+      deliveryLat: -1.255,
+      deliveryLng: -78.622,
+      scheduledDeliveryDate: todayNoon,
+    });
+    await db.transaction(async (tx) => {
+      await tx.orm.public.OrderClaim.create({
+        orderId: f3.id,
+        routeId: todayDraftRes.body.id,
+        claimedAt: todayNoon,
+      });
+      await tx.orm.public.RouteStop.create({
+        routeId: todayDraftRes.body.id,
+        orderId: f3.id,
+        sequence: 3,
+        outcome: 'PENDING',
+        isLegacy: false,
+      });
+      await tx.orm.public.OrderClaim.create({
+        orderId: f4.id,
+        routeId: todayDraftRes.body.id,
+        claimedAt: todayNoon,
+      });
+      await tx.orm.public.RouteStop.create({
+        routeId: todayDraftRes.body.id,
+        orderId: f4.id,
+        sequence: 4,
+        outcome: 'PENDING',
+        isLegacy: false,
+      });
+    });
+
+    // Now no route can accept INSERT -> urgent order proposes NEW_ROUTE with zoneId: null
+    const urgentNewRouteOrder = await db.orm.public.Order.create({
+      userId: ids.client,
+      zoneId: null,
+      status: 'PENDING',
+      deliveryAddress: 'Urgent New Route St',
+      deliveryLat: -1.256,
+      deliveryLng: -78.623,
+      scheduledDeliveryDate: todayNoon,
+    });
+    const newRouteProposal = await api(
+      'get',
+      `/dispatch/orders/${urgentNewRouteOrder.id}/proposal`,
+    ).expect(200);
+    expect(newRouteProposal.body).toMatchObject({
+      kind: 'NEW_ROUTE',
+      zoneId: null,
+      routeId: null,
+      orderIds: [urgentNewRouteOrder.id],
+      availableDriverIds: [ids.driver],
+    });
+
+    const confirmedNewRoute = await api('post', '/dispatch/interventions', {
+      requestId: randomUUID(),
+      action: 'CONFIRM',
+      orderId: urgentNewRouteOrder.id,
+      driverId: ids.driver,
+      reason: 'Confirm zone-free NEW_ROUTE departure',
+      fingerprint: newRouteProposal.body.fingerprint,
+    }).expect(200);
+    expect(confirmedNewRoute.body).toMatchObject({
+      action: 'CONFIRM',
+      outcome: 'APPLIED',
+      orderId: urgentNewRouteOrder.id,
+    });
+    const createdRoute = await db.orm.public.Route.where({
+      id: confirmedNewRoute.body.routeId,
+    }).first();
+    expect(createdRoute?.zoneId).toBeNull();
+    expect(createdRoute?.status).toBe('ASSIGNED');
+
+    // Now all drivers are reserved/unavailable and the newly created ASSIGNED route has 1 stop -> wait:
+    // That newly created ASSIGNED route has 1 stop and would accept INSERT!
+    // To test BLOCKED NO_AVAILABLE_DRIVER cleanly, block all drivers AND mark the newly created ASSIGNED route as full (or IN_PROGRESS via HTTP start)!
+    await api(
+      'post',
+      `/routes/${confirmedNewRoute.body.routeId}/start`,
+      {},
+      ids.driverUser,
+      'DRIVER',
+    ).expect(200);
+
+    const blockedOrder = await db.orm.public.Order.create({
+      userId: ids.client,
+      zoneId: null,
+      status: 'PENDING',
+      deliveryAddress: 'Blocked No Driver St',
+      deliveryLat: -1.257,
+      deliveryLng: -78.624,
+      scheduledDeliveryDate: todayNoon,
+    });
+    const blockedProposal = await api(
+      'get',
+      `/dispatch/orders/${blockedOrder.id}/proposal`,
+    ).expect(200);
+    expect(blockedProposal.body).toMatchObject({
+      kind: 'BLOCKED',
+      zoneId: null,
+      reasons: ['NO_AVAILABLE_DRIVER'],
+      availableDriverIds: [],
+    });
+    expect(
+      (await db.orm.public.Order.where({ id: blockedOrder.id }).first())?.status,
+    ).toBe('PENDING');
+  });
 });

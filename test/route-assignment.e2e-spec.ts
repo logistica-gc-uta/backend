@@ -697,8 +697,11 @@ describe('Confirmed draft and assignment: owned PostgreSQL16 and real JWT', () =
       document.paths['/api/v1/routes/{id}/assign'].post?.responses['200'],
     ).toBeDefined();
     expect(document.components?.schemas?.ConfirmDraftRouteDto).toMatchObject({
-      required: ['zoneId', 'routeDate', 'orderIds'],
-      properties: { orderIds: { maxItems: 4, minItems: 1, uniqueItems: true } },
+      required: ['routeDate', 'orderIds'],
+      properties: {
+        zoneId: { nullable: true },
+        orderIds: { maxItems: 4, minItems: 1, uniqueItems: true },
+      },
     });
   });
 });
