@@ -156,7 +156,8 @@ export class SecurityFixtureManager {
       status,
     });
     this.createdRouteIds.push(route.id);
-    if (route.driverId === null) throw new Error('Expected the route fixture to retain its driver');
+    if (route.driverId === null || route.zoneId === null)
+      throw new Error('Expected the route fixture to retain its driver and zone');
     return {
       id: route.id,
       driverId: route.driverId,

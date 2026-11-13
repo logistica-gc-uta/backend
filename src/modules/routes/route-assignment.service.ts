@@ -35,15 +35,19 @@ type Transaction = Parameters<
 /** Coverage-era orders persist zoneId null; they may join a route whose zone ADMIN selected. */
 function orderBelongsToRouteZone(
   orderZoneId: string | null | undefined,
-  routeZoneId: string,
+  routeZoneId: string | null | undefined,
 ): boolean {
-  return orderZoneId == null || orderZoneId === routeZoneId;
+  return (
+    routeZoneId == null ||
+    orderZoneId == null ||
+    orderZoneId === routeZoneId
+  );
 }
 interface RouteSnapshot {
   id: string;
   status: string | null;
   driverId: string | null;
-  zoneId: string;
+  zoneId: string | null;
   date: Temporal.Instant;
   createdAt: Temporal.Instant;
 }
@@ -118,7 +122,7 @@ export class RouteAssignmentService {
   private async lockOrders(
     tx: Transaction,
     orderIds: string[],
-    zoneId: string,
+    zoneId: string | null,
     date: Temporal.Instant,
     routeId?: string,
   ) {
@@ -218,7 +222,9 @@ export class RouteAssignmentService {
         !isSameBusinessDay(order.scheduledDeliveryDate, route.date) ||
         !evaluatePlanningEligibility(
           order,
-          await tx.orm.public.Zone.where({ id: route.zoneId }).first(),
+          route.zoneId
+            ? await tx.orm.public.Zone.where({ id: route.zoneId }).first()
+            : null,
         ).planningEligibility.eligible ||
         (existing ? claim?.routeId !== routeId || !claim.claimedAt : !!claim)
       )
