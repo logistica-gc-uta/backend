@@ -106,6 +106,8 @@ describe('ShopOrdersService unit tests (public behavior)', () => {
         id: 'ord-1',
         number: 'RG-2026-ABC1',
         source: 'SHOP',
+        pickup: null,
+        pendingManagement: false,
         receiptAvailable: true,
         createdAt: '2026-10-22T12:00:00.000Z',
         scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
@@ -601,6 +603,8 @@ describe('ShopOrdersService unit tests (public behavior)', () => {
         id: 'legacy-1',
         number: null,
         source: 'ADMIN',
+        pickup: null,
+        pendingManagement: false,
         receiptAvailable: false,
         createdAt: '2026-09-01T12:00:00.000Z',
         scheduledDeliveryDate: '2026-09-05T15:00:00.000Z',
@@ -707,6 +711,95 @@ describe('ShopOrdersService unit tests (public behavior)', () => {
         status: HttpStatus.NOT_FOUND,
         response: { error: { code: 'ORDER_NOT_FOUND' } },
       });
+    });
+  });
+
+  describe('seguimiento del retiro en tienda (#50)', () => {
+    const base = (id: string, extra: Record<string, unknown> = {}) => ({
+      id,
+      number: null,
+      source: 'SHOP',
+      createdAt: '2026-09-01T12:00:00.000Z',
+      scheduledDeliveryDate: '2026-09-05T15:00:00.000Z',
+      status: 'PENDING',
+      subtotalCents: null,
+      taxAmountCents: null,
+      taxRateBps: null,
+      shippingAmountCents: null,
+      totalCents: null,
+      currency: null,
+      receiptId: null,
+      taxEnabled: null,
+      snapshot: null,
+      pickupAgreedAt: null,
+      pickupConfirmedAt: null,
+      pendingReview: false,
+      ...extra,
+    });
+
+    it('el pedido sin retiro y con gestión pendiente se marca pendingManagement; sin ninguna de las dos, no', async () => {
+      mockTx.query
+        .mockResolvedValueOnce([{ total: 2 }])
+        .mockResolvedValueOnce([base('failed', { pendingReview: true }), base('normal')]);
+      const { items } = await service.listOrders('user-1', { page: 1, pageSize: 10 });
+      expect(items.map((i) => [i.id, i.pickup, i.pendingManagement])).toEqual([
+        ['failed', null, true],
+        ['normal', null, false],
+      ]);
+    });
+
+    it('un retiro acordado y no realizado figura PENDING_PICKUP y ya no está pendiente de gestión', async () => {
+      mockTx.query.mockResolvedValueOnce([{ total: 1 }]).mockResolvedValueOnce([
+        base('p1', { pickupAgreedAt: '2026-09-02T10:00:00.000Z', pendingReview: true }),
+      ]);
+      const [item] = (await service.listOrders('user-1', { page: 1, pageSize: 10 })).items;
+      expect(item!.pickup).toEqual({ state: 'PENDING_PICKUP', agreedAt: '2026-09-02T10:00:00.000Z', pickedUpAt: null });
+      expect(item!.pendingManagement).toBe(false);
+      expect(item!.status).toBe('PENDING'); // el acuerdo por sí solo no es una entrega
+    });
+
+    it('el retiro confirmado figura PICKED_UP con su momento y el pedido entregado', async () => {
+      mockTx.query.mockResolvedValueOnce([{ total: 1 }]).mockResolvedValueOnce([
+        base('p2', { status: 'DELIVERED', pickupAgreedAt: '2026-09-02T10:00:00.000Z', pickupConfirmedAt: '2026-09-03T16:30:00.000Z' }),
+      ]);
+      const [item] = (await service.listOrders('user-1', { page: 1, pageSize: 10 })).items;
+      expect(item).toMatchObject({ status: 'DELIVERED', pendingManagement: false });
+      expect(item!.pickup).toEqual({ state: 'PICKED_UP', agreedAt: '2026-09-02T10:00:00.000Z', pickedUpAt: '2026-09-03T16:30:00.000Z' });
+    });
+
+    it('el detalle suma al seguimiento el acuerdo y el retiro físico como eventos distintos, en orden', async () => {
+      mockTx.query
+        .mockResolvedValueOnce([
+          {
+            ...base('p3', { status: 'DELIVERED', pickupAgreedAt: '2026-09-02T10:00:00.000Z', pickupConfirmedAt: '2026-09-03T16:30:00.000Z' }),
+            routeId: null, buyerName: 'María', buyerEmail: 'm@x.test', recipientName: 'Ana', recipientPhone: '099', deliveryAddress: 'Dir', deliveryLat: null, deliveryLng: null, zoneId: null, zoneName: null,
+          },
+        ])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      const detail = await service.getOrderDetail('user-1', 'p3');
+      expect(detail.timeline.map((t) => [t.code, t.label])).toEqual([
+        ['PENDING', 'Pedido registrado'],
+        ['PICKUP_AGREED', 'Pendiente de retiro en tienda'],
+        ['PICKED_UP', 'Entregado: retirado en tienda'],
+      ]);
+      expect(detail.pickup).toMatchObject({ state: 'PICKED_UP' });
+      expect(detail.pendingManagement).toBe(false);
+    });
+
+    it('un retiro solo acordado deja el seguimiento en «pendiente de retiro» sin entrega', async () => {
+      mockTx.query
+        .mockResolvedValueOnce([
+          {
+            ...base('p4', { pickupAgreedAt: '2026-09-02T10:00:00.000Z', pendingReview: true }),
+            routeId: null, buyerName: 'María', buyerEmail: 'm@x.test', recipientName: 'Ana', recipientPhone: '099', deliveryAddress: 'Dir', deliveryLat: null, deliveryLng: null, zoneId: null, zoneName: null,
+          },
+        ])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([]);
+      const detail = await service.getOrderDetail('user-1', 'p4');
+      expect(detail.timeline.map((t) => t.code)).toEqual(['PENDING', 'PICKUP_AGREED']);
+      expect(detail.pickup).toMatchObject({ state: 'PENDING_PICKUP', pickedUpAt: null });
     });
   });
 });
