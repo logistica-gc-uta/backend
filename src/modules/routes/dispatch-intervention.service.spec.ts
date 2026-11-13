@@ -174,6 +174,7 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
       LegacyRouteReconciliation: [],
       DriverAbsence: [],
       OrderPickup: [],
+      StoreCoverage: [],
     };
     const models = Object.fromEntries(
       Object.keys(rows).map((name) => {
@@ -903,6 +904,81 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
       await expect(
         call({ action: 'RELEASE_DRAFT', routeId: 'empty-draft' }),
       ).rejects.toMatchObject({ response: { code: 'DRAFT_ALREADY_RELEASED' } });
+    });
+  });
+
+  describe('cobertura global sin Zone (zoneId null)', () => {
+    it('confirma NEW_ROUTE urgente cuando proposal.zoneId es null usando StoreCoverage', async () => {
+      rows.Zone = [];
+      rows.Order = [currentOrder('urgent', { zoneId: null })];
+      rows.StoreCoverage!.push({ singletonKey: 'GLOBAL', lat: -1.24, lng: -78.61 });
+      propose.mockResolvedValue({
+        kind: 'NEW_ROUTE',
+        orderId: 'urgent',
+        routeId: null,
+        zoneId: null,
+        routeDate: rows.Order[0]!.scheduledDeliveryDate.toString(),
+        orderIds: ['urgent'],
+        availableDriverIds: ['driver'],
+        fingerprint: 'fp-null-new',
+      });
+
+      const outcome = await call({
+        action: 'CONFIRM',
+        orderId: 'urgent',
+        driverId: 'driver',
+        fingerprint: 'fp-null-new',
+      });
+
+      expect(outcome).toMatchObject({
+        action: 'CONFIRM',
+        outcome: 'APPLIED',
+        orderId: 'urgent',
+      });
+      expect(rows.Route[0]).toMatchObject({
+        zoneId: null,
+        status: 'ASSIGNED',
+        driverId: 'driver',
+      });
+    });
+
+    it('reprograma (RESCHEDULE) un pedido con zoneId null cuando StoreCoverage está configurada', async () => {
+      failed('COMPLETED');
+      rows.Zone = [];
+      rows.Order![0].zoneId = null;
+      rows.StoreCoverage!.push({ singletonKey: 'GLOBAL', lat: -1.24, lng: -78.61 });
+
+      const agreed = await call(agreement({ attemptId: 'failure' }));
+      const outcome = await call({
+        action: 'RESCHEDULE',
+        orderId: 'urgent',
+        agreementId: agreed.id,
+      });
+
+      expect(outcome).toMatchObject({
+        action: 'RESCHEDULE',
+        outcome: 'APPLIED',
+        orderId: 'urgent',
+      });
+      expect(rows.Order![0]).toMatchObject({
+        status: 'PENDING',
+        requiresAdministrativeReview: false,
+      });
+    });
+
+    it('rechaza RESCHEDULE de pedido con zoneId null si falta StoreCoverage', async () => {
+      failed('COMPLETED');
+      rows.Zone = [];
+      rows.Order![0].zoneId = null;
+
+      const agreed = await call(agreement({ attemptId: 'failure' }));
+      await expect(
+        call({
+          action: 'RESCHEDULE',
+          orderId: 'urgent',
+          agreementId: agreed.id,
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
   });
 });

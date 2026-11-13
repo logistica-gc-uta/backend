@@ -29,6 +29,7 @@ describe('Urgency proposals (CP-RUT-003/004/008/009)', () => {
       DeliveryAttempt: [],
       DispatchIntervention: [],
       OrderPickup: [],
+      StoreCoverage: [],
     };
     writes = jest.fn(() => {
       throw new Error('Read-only proposal wrote data');
@@ -215,5 +216,190 @@ describe('Urgency proposals (CP-RUT-003/004/008/009)', () => {
       pickedUpAt: '2030-02-15T16:00:00Z',
     });
     expect(writes).not.toHaveBeenCalled();
+  });
+
+  it('proposes NEW_ROUTE for zoneId null order when StoreCoverage origin is configured', async () => {
+    rows.Zone = [];
+    rows.Order = [order('urgent-store', { zoneId: null })];
+    rows.StoreCoverage = [{ singletonKey: 'GLOBAL', lat: -1.24, lng: -78.61 }];
+
+    const p = await service.propose('urgent-store');
+    expect(p.kind).toBe('NEW_ROUTE');
+    expect(p.zoneId).toBeNull();
+    expect(p.orderIds).toEqual(['urgent-store']);
+    expect(p.availableDriverIds).toEqual(['driver']);
+  });
+
+  it('proposes BLOCKED NO_AVAILABLE_DRIVER for zoneId null order when StoreCoverage is configured but no driver is free', async () => {
+    rows.Zone = [];
+    rows.Order = [order('urgent-store', { zoneId: null })];
+    rows.StoreCoverage = [{ singletonKey: 'GLOBAL', lat: -1.24, lng: -78.61 }];
+    const blockedSvc = new RouteUrgencyService(
+      {
+        client: {
+          orm: {
+            public: {
+              ...Object.fromEntries(
+                Object.entries(rows).map(([name]) => {
+                  const query = (filter: any = {}) => ({
+                    where: (next: any) => query({ ...filter, ...next }),
+                    first: async () =>
+                      rows[name]!.find((r) =>
+                        Object.entries(filter).every(([k, v]) => r[k] === v),
+                      ) ?? null,
+                    all: async () =>
+                      rows[name]!.filter((r) =>
+                        Object.entries(filter).every(([k, v]) => r[k] === v),
+                      ),
+                    create: writes,
+                    update: writes,
+                    delete: writes,
+                  });
+                  return [name, { ...query(), where: query }];
+                }),
+              ),
+            },
+          },
+          transaction: writes,
+        },
+      } as any,
+      { effective: async () => ({ isAvailable: false }) } as any,
+    );
+
+    const p = await blockedSvc.propose('urgent-store');
+    expect(p.kind).toBe('BLOCKED');
+    expect(p.reasons).toEqual(['NO_AVAILABLE_DRIVER']);
+    expect(p.availableDriverIds).toEqual([]);
+  });
+
+  it('proposes BLOCKED MISSING_ZONE for zoneId null order when StoreCoverage is not configured', async () => {
+    rows.Zone = [];
+    rows.Order = [order('urgent-store', { zoneId: null })];
+
+    const p = await service.propose('urgent-store');
+    expect(p.kind).toBe('BLOCKED');
+    expect(p.reasons).toContain('MISSING_ZONE');
+  });
+
+  it('proposes INSERT for zoneId null urgent order into today non-empty zoneId null DRAFT or ASSIGNED route and ignores 0-stop, expired, IN_PROGRESS, COMPLETED, and full routes', async () => {
+    rows.Zone = [];
+    rows.Order = [order('urgent-store', { zoneId: null })];
+    rows.StoreCoverage = [{ singletonKey: 'GLOBAL', lat: -1.24, lng: -78.61 }];
+
+    // 0-stop released DRAFT
+    rows.Route!.push({
+      id: 'empty-draft',
+      status: 'DRAFT',
+      zoneId: null,
+      date: instant(),
+      driverId: null,
+    });
+    // Expired yesterday DRAFT with 1 stop
+    rows.Route!.push({
+      id: 'yesterday-draft',
+      status: 'DRAFT',
+      zoneId: null,
+      date: instant().subtract({ hours: 24 }),
+      driverId: null,
+    });
+    rows.Order!.push(order('y-old', { zoneId: null, status: 'PENDING', routeId: null }));
+    rows.RouteStop!.push({
+      id: 'y-stop',
+      routeId: 'yesterday-draft',
+      orderId: 'y-old',
+      sequence: 1,
+      isLegacy: false,
+      outcome: 'PENDING',
+    });
+    rows.OrderClaim!.push({
+      id: 'y-claim',
+      orderId: 'y-old',
+      routeId: 'yesterday-draft',
+      claimedAt: instant(),
+      releasedAt: null,
+    });
+    // IN_PROGRESS today route with 1 stop
+    rows.Route!.push({
+      id: 'in-progress',
+      status: 'IN_PROGRESS',
+      zoneId: null,
+      date: instant(),
+      driverId: 'driver',
+    });
+    rows.Order!.push(order('ip-old', { zoneId: null, status: 'IN_TRANSIT', routeId: 'in-progress' }));
+    rows.RouteStop!.push({
+      id: 'ip-stop',
+      routeId: 'in-progress',
+      orderId: 'ip-old',
+      sequence: 1,
+      isLegacy: false,
+      outcome: 'PENDING',
+    });
+    rows.OrderClaim!.push({
+      id: 'ip-claim',
+      orderId: 'ip-old',
+      routeId: 'in-progress',
+      claimedAt: instant(),
+      releasedAt: null,
+    });
+    // Active today zoneId: null DRAFT route with 1 stop (should be chosen)
+    rows.Route!.push({
+      id: 'today-draft',
+      status: 'DRAFT',
+      zoneId: null,
+      date: instant(),
+      driverId: null,
+    });
+    rows.Order!.push(order('td-old', { zoneId: null, status: 'PENDING', routeId: null }));
+    rows.RouteStop!.push({
+      id: 'td-stop',
+      routeId: 'today-draft',
+      orderId: 'td-old',
+      sequence: 1,
+      isLegacy: false,
+      outcome: 'PENDING',
+    });
+    rows.OrderClaim!.push({
+      id: 'td-claim',
+      orderId: 'td-old',
+      routeId: 'today-draft',
+      claimedAt: instant(),
+      releasedAt: null,
+    });
+
+    const models = Object.fromEntries(
+      Object.entries(rows).map(([name]) => {
+        const query = (filter: any = {}) => ({
+          where: (next: any) => query({ ...filter, ...next }),
+          first: async () =>
+            rows[name]!.find((r) =>
+              Object.entries(filter).every(([k, v]) => r[k] === v),
+            ) ?? null,
+          all: async () =>
+            rows[name]!.filter((r) =>
+              Object.entries(filter).every(([k, v]) => r[k] === v),
+            ),
+          create: writes,
+          update: writes,
+          delete: writes,
+        });
+        return [name, { ...query(), where: query }];
+      }),
+    );
+    const coverageSvc = {
+      getCoverage: async () => ({ configured: true, location: { lat: -1.24, lng: -78.61 } }),
+    } as any;
+    const svc = new RouteUrgencyService(
+      { client: { orm: { public: models }, transaction: writes } } as any,
+      { effective: async () => ({ isAvailable: true }) } as any,
+      undefined,
+      coverageSvc,
+    );
+
+    const p = await svc.propose('urgent-store');
+    expect(p.kind).toBe('INSERT');
+    expect(p.routeId).toBe('today-draft');
+    expect(p.zoneId).toBeNull();
+    expect(p.orderIds).toEqual(expect.arrayContaining(['td-old', 'urgent-store']));
   });
 });

@@ -306,6 +306,29 @@ describe('Route progress transactional decisions', () => {
     expect(rows.Driver[0].isAvailable).toBe(false);
     expect(rows.OrderClaim[0].releasedAt).not.toBeNull();
   });
+  it.each([
+    [null, null],
+    [null, 'zone'],
+    ['zone', null],
+  ])('completes route when orderZone=%s and routeZone=%s', async (orderZone, routeZone) => {
+    rows.Order[0].zoneId = orderZone;
+    rows.Route[0].zoneId = routeZone;
+    await service.updateOrder('order', 'actor', OrderStatus.IN_TRANSIT);
+    await service.updateOrder('order', 'actor', OrderStatus.DELIVERED);
+    await expect(service.complete('route', 'actor')).resolves.toMatchObject({
+      id: 'route',
+      status: 'COMPLETED',
+    });
+  });
+  it('rejects completion when non-null order and route zones mismatch', async () => {
+    rows.Order[0].zoneId = 'zone-a';
+    rows.Route[0].zoneId = 'zone-b';
+    await service.updateOrder('order', 'actor', OrderStatus.IN_TRANSIT);
+    await service.updateOrder('order', 'actor', OrderStatus.DELIVERED);
+    await expect(service.complete('route', 'actor')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
   it('rejects completion when attempt identity does not match the resolved visit', async () => {
     await service.fail('route', 'stop', 'actor', dto);
     rows.DeliveryAttempt[0].driverId = 'other-driver';
