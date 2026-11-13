@@ -1,0 +1,128 @@
+[
+  {
+    "id": "dropCheckConstraint.shopBusinessSettings.shop_settings_valid_abaee184",
+    "label": "Drop check constraint \"shop_settings_valid_abaee184\" on \"shopBusinessSettings\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "shop_settings_valid_abaee184",
+        "table": "shopBusinessSettings"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"shop_settings_valid_abaee184\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shop_settings_valid_abaee184",
+          "public",
+          "\"public\".\"shopBusinessSettings\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"shop_settings_valid_abaee184\"",
+        "sql": "ALTER TABLE \"public\".\"shopBusinessSettings\" DROP CONSTRAINT \"shop_settings_valid_abaee184\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"shop_settings_valid_abaee184\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shop_settings_valid_abaee184",
+          "public",
+          "\"public\".\"shopBusinessSettings\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.shopBusinessSettings.routeTimeWindowMarginMinutes",
+    "label": "Add column \"routeTimeWindowMarginMinutes\" to \"shopBusinessSettings\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "routeTimeWindowMarginMinutes",
+        "table": "shopBusinessSettings"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"routeTimeWindowMarginMinutes\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "shopBusinessSettings",
+          "routeTimeWindowMarginMinutes"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"routeTimeWindowMarginMinutes\"",
+        "sql": "ALTER TABLE \"public\".\"shopBusinessSettings\" ADD COLUMN \"routeTimeWindowMarginMinutes\" int4 DEFAULT 30 NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"routeTimeWindowMarginMinutes\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "shopBusinessSettings",
+          "routeTimeWindowMarginMinutes"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.shopBusinessSettings.shop_settings_valid_a76e081c",
+    "label": "Add check constraint \"shop_settings_valid_a76e081c\" on \"shopBusinessSettings\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "shop_settings_valid_a76e081c",
+        "table": "shopBusinessSettings"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"shop_settings_valid_a76e081c\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shop_settings_valid_a76e081c",
+          "public",
+          "\"public\".\"shopBusinessSettings\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"shop_settings_valid_a76e081c\"",
+        "sql": "ALTER TABLE \"public\".\"shopBusinessSettings\" ADD CONSTRAINT \"shop_settings_valid_a76e081c\" CHECK (version >= 1 AND currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"shippingIncludedInPrices\" = true AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"maxUnitsPerSkuPerOrder\" BETWEEN 1 AND 100 AND \"deliveryTimeZone\" = 'America/Guayaquil' AND \"deliveryBoundariesInclusive\" = true AND \"deliveryStartTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryEndTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryStartTime\" < \"deliveryEndTime\" AND \"routeTimeWindowMarginMinutes\" BETWEEN 5 AND 180)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"shop_settings_valid_a76e081c\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "shop_settings_valid_a76e081c",
+          "public",
+          "\"public\".\"shopBusinessSettings\""
+        ]
+      }
+    ]
+  }
+]

@@ -5,7 +5,7 @@ import { matrixDistance, pointKey, uniquePoints, type DistanceMatrix } from '../
 import { RoutePlanner, planKey } from '../route-planner.js';
 import { RoutePlanningService, ROAD_DISTANCE_METHOD } from '../route-planning.service.js';
 import { RoadMetricsService } from './road-metrics.service.js';
-import { DEFAULT_ROAD_CONFIG, RoadMetricsError } from './road-metrics.types.js';
+import { DEFAULT_ROAD_CONFIG, RoadMetricsError, type RoadMatrix } from './road-metrics.types.js';
 
 const depot = { lat: -1.241, lng: -78.619 };
 const A = { lat: -1.236, lng: -78.628 };
@@ -106,11 +106,20 @@ describe('RoadMetricsService (#47)', () => {
 describe('RoutePlanningService con el motor vial (#47)', () => {
   const NOON = Temporal.Instant.from('2030-02-14T17:00:00Z');
   const zone = { id: 'z1', name: 'Zona', code: 'CEN-01', depotLat: depot.lat, depotLng: depot.lng };
-  const order = (id: string, at: { lat: number; lng: number }) => ({
+  const order = (
+    id: string,
+    at: { lat: number; lng: number },
+    scheduledDeliveryDate: Temporal.Instant = NOON,
+  ) => ({
     id, zoneId: zone.id, zone, deliveryAddress: `Calle ${id}`, status: 'PENDING', requiresAdministrativeReview: false,
-    scheduledDeliveryDate: NOON, deliveryLat: at.lat, deliveryLng: at.lng,
+    scheduledDeliveryDate, deliveryLat: at.lat, deliveryLng: at.lng,
   });
-  const build = (rows: any[], roads: RoadMetricsService) => {
+  const build = (
+    rows: any[],
+    roads: RoadMetricsService,
+    storeCoverage?: any,
+    shopSettings?: any,
+  ) => {
     const chain: any = { where: jest.fn(() => chain), include: jest.fn(() => chain), all: jest.fn(async () => rows) };
     const claimChain: any = { where: jest.fn(() => claimChain), all: jest.fn(async () => []) };
     const prisma: any = {
@@ -118,7 +127,7 @@ describe('RoutePlanningService con el motor vial (#47)', () => {
       zone: { where: () => ({ first: async () => zone }) },
       client: { orm: { public: { OrderClaim: claimChain } }, transaction: jest.fn() },
     };
-    return new RoutePlanningService(prisma, roads);
+    return new RoutePlanningService(prisma, roads, storeCoverage, shopSettings);
   };
   const road = (fetchImpl: typeof fetch, extra = {}) => new RoadMetricsService({ ...DEFAULT_ROAD_CONFIG, engine: 'OSRM', baseUrl: 'http://osrm.test', ...extra }, fetchImpl);
 
@@ -182,5 +191,88 @@ describe('RoutePlanningService con el motor vial (#47)', () => {
 
   it('el estado del motor vial se consulta a través del servicio', async () => {
     expect(await build([], road(createFakeOsrmFetch())).roadEngineStatus()).toMatchObject({ engine: 'OSRM', available: true });
+  });
+
+  it('con OSRM activo agrupa primero por ventana horaria y no fusiona 10:00+10:20 con 15:00 aunque sean vecinos', async () => {
+    const t1000 = Temporal.Instant.from('2030-02-14T10:00:00Z');
+    const t1020 = Temporal.Instant.from('2030-02-14T10:20:00Z');
+    const t1500 = Temporal.Instant.from('2030-02-14T15:00:00Z');
+    const service = build(
+      [
+        order('a', B, t1000),
+        order('b', { lat: -1.238, lng: -78.610 }, t1020),
+        order('c', { lat: B.lat + 0.0001, lng: B.lng + 0.0001 }, t1500),
+      ],
+      road(createFakeOsrmFetch({ riverLng: -78.62, bridgeLat: -1.215 })),
+    );
+
+    const result = await service.propose({ date: '2030-02-14' });
+
+    expect(result.distanceMethod).toBe(ROAD_DISTANCE_METHOD);
+    expect(result.timeWindowMarginMinutes).toBe(30);
+    expect(result.proposals).toHaveLength(2);
+    expect(result.proposals[0]!.orderIds).toEqual(['a', 'b']);
+    expect(result.proposals[1]!.orderIds).toEqual(['c']);
+  });
+
+  it('con OSRM activo pasa durationsS a RoutePlanner usando duración como costo primario y reporta totalDistanceKm en km', async () => {
+    const C = { lat: -1.239, lng: -78.605 };
+    const t1000 = Temporal.Instant.from('2030-02-14T10:00:00Z');
+    const customMatrix: RoadMatrix = {
+      provider: 'OSRM',
+      profile: 'car',
+      distanceUnit: 'm',
+      durationUnit: 's',
+      points: [depot, A, B, C],
+      // Distancias favorecen unir A+C (distSaving 1.5 km) sobre A+B (distSaving 0 km).
+      distancesM: [
+        [0, 1000, 1000, 1000],
+        [1000, 0, 2000, 500],
+        [1000, 2000, 0, 3000],
+        [1000, 500, 3000, 0],
+      ],
+      // Duraciones favorecen unir A+B (durSaving 900s > 0) mientras A+C tiene durSaving -200s < 0.
+      durationsS: [
+        [0, 500, 500, 500],
+        [500, 0, 100, 1200],
+        [500, 100, 0, 1200],
+        [500, 1200, 1200, 0],
+      ],
+      snapDistancesM: [0, 1, 2, 4],
+      maxSnapDistanceM: 4,
+    };
+    const roadsMock: any = {
+      active: true,
+      matrixFor: jest.fn(async () => customMatrix),
+    };
+    const service = build([order('a', A, t1000), order('b', B, t1000), order('c', C, t1000)], roadsMock);
+
+    const result = await service.propose({ date: '2030-02-14' });
+
+    expect(roadsMock.matrixFor).toHaveBeenCalledTimes(1);
+    expect(result.proposals).toHaveLength(2);
+    const paired = result.proposals.find((p) => p.orderIds.length === 2)!;
+    expect(paired.orderIds).toEqual(['a', 'b']);
+    expect(paired.totalDurationSeconds).toBe(1100);
+    expect(paired.totalDistanceKm).toBe(4);
+  });
+
+  it('con OSRM activo y StoreCoverage configurado usa la ubicación de la tienda como origen en matriz y geometría', async () => {
+    const storeLocation = { lat: -1.24908, lng: -78.61675 };
+    const storeCoverage: any = {
+      getCoverage: jest.fn(async () => ({
+        configured: true,
+        location: storeLocation,
+        coverage: { type: 'Polygon', coordinates: [] },
+        updatedAt: '2030-02-14T00:00:00.000Z',
+        updatedById: null,
+      })),
+    };
+    const service = build([order('a', B)], road(createFakeOsrmFetch()), storeCoverage);
+
+    const result = await service.propose({ date: '2030-02-14', includeGeometry: true });
+
+    expect(result.proposals[0]!.depot).toEqual(storeLocation);
+    expect(result.proposals[0]!.geometry!.coordinates[0]).toEqual([storeLocation.lng, storeLocation.lat]);
   });
 });

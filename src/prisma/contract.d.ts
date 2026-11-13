@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'b5cbec5e55f8808d4442a200be9ff3b6d62e770ea9021d18110262f36e544233'>;
+  StorageHashBase<'43c5b496e829fac9432660009b97051986b46f1c7907aebc529e25875912b1a6'>;
 export type ExecutionHash =
   ExecutionHashBase<'c6d45c7e494f6d496c74f5913d1dbd508bf7f38e7dac3f1b4b42b6bcd2b2c921'>;
 export type ProfileHash =
@@ -514,6 +514,7 @@ export type FieldOutputTypes = {
       readonly deliveryStartTime: CodecTypes['pg/text@1']['output'];
       readonly deliveryEndTime: CodecTypes['pg/text@1']['output'];
       readonly deliveryBoundariesInclusive: CodecTypes['pg/bool@1']['output'];
+      readonly routeTimeWindowMarginMinutes: CodecTypes['pg/int4@1']['output'];
       readonly updatedById: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -856,6 +857,7 @@ export type FieldInputTypes = {
       readonly deliveryStartTime: CodecTypes['pg/text@1']['input'];
       readonly deliveryEndTime: CodecTypes['pg/text@1']['input'];
       readonly deliveryBoundariesInclusive: CodecTypes['pg/bool@1']['input'];
+      readonly routeTimeWindowMarginMinutes: CodecTypes['pg/int4@1']['input'];
       readonly updatedById: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
@@ -1191,6 +1193,7 @@ export type StorageColumnTypes = {
       readonly deliveryTimeZone: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly maxUnitsPerSkuPerOrder: CodecTypes['pg/int4@1']['output'];
+      readonly routeTimeWindowMarginMinutes: CodecTypes['pg/int4@1']['output'];
       readonly shippingAmountCents: CodecTypes['pg/int4@1']['output'];
       readonly shippingIncludedInPrices: CodecTypes['pg/bool@1']['output'];
       readonly shippingStatus: CodecTypes['pg/text@1']['output'];
@@ -1533,6 +1536,7 @@ export type StorageColumnInputTypes = {
       readonly deliveryTimeZone: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly maxUnitsPerSkuPerOrder: CodecTypes['pg/int4@1']['input'];
+      readonly routeTimeWindowMarginMinutes: CodecTypes['pg/int4@1']['input'];
       readonly shippingAmountCents: CodecTypes['pg/int4@1']['input'];
       readonly shippingIncludedInPrices: CodecTypes['pg/bool@1']['input'];
       readonly shippingStatus: CodecTypes['pg/text@1']['input'];
@@ -1951,6 +1955,7 @@ export namespace Models {
     deliveryStartTime: CodecTypes['pg/text@1']['output'];
     deliveryEndTime: CodecTypes['pg/text@1']['output'];
     deliveryBoundariesInclusive: CodecTypes['pg/bool@1']['output'];
+    routeTimeWindowMarginMinutes: CodecTypes['pg/int4@1']['output'];
     updatedById: CodecTypes['pg/text@1']['output'] | null;
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     updatedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -4662,6 +4667,15 @@ type ContractBase = Omit<
                   readonly default: {
                     readonly kind: 'literal';
                     readonly value: DefaultLiteralValue<'pg/bool@1', true>;
+                  };
+                };
+                readonly routeTimeWindowMarginMinutes: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/int4@1', 30>;
                   };
                 };
                 readonly updatedById: {
@@ -7522,6 +7536,10 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
               };
+              readonly routeTimeWindowMarginMinutes: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
               readonly updatedById: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -7583,6 +7601,9 @@ type ContractBase = Omit<
                 readonly deliveryEndTime: { readonly column: 'deliveryEndTime' };
                 readonly deliveryBoundariesInclusive: {
                   readonly column: 'deliveryBoundariesInclusive';
+                };
+                readonly routeTimeWindowMarginMinutes: {
+                  readonly column: 'routeTimeWindowMarginMinutes';
                 };
                 readonly updatedById: { readonly column: 'updatedById' };
                 readonly createdAt: { readonly column: 'createdAt' };

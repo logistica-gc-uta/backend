@@ -1,12 +1,15 @@
 import {
   Injectable,
   NotFoundException,
+  Optional,
   type OnModuleDestroy,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { driverRouteDay } from '../drivers/driver-route-date.util.js';
 import { evaluatePlanningEligibility } from '../orders/order-geography.util.js';
+import { ShopSettingsService } from '../shop/settings/shop-settings.service.js';
+import { StoreCoverageService } from '../store-coverage/store-coverage.service.js';
 import {
   DEFAULT_ROUTE_CAPACITY,
   type RoutingOrder,
@@ -28,6 +31,7 @@ import type {
 export const PLANNING_TIME_ZONE = 'America/Guayaquil';
 export const DISTANCE_METHOD = 'HAVERSINE_STRAIGHT_LINE';
 export const ROAD_DISTANCE_METHOD = 'OSRM_ROAD_NETWORK';
+export const DEFAULT_TIME_WINDOW_MARGIN_MINUTES = 30;
 /**
  * Clarke & Wright is O(n^2 log n) per zone (about 0.45 s for 1000 orders and
  * 5.9 s for 3000 on a development machine; see docs/clarke-wright.md). The cap
@@ -51,6 +55,8 @@ export class RoutePlanningService implements OnModuleDestroy {
     private readonly prisma: PrismaService,
     /** Motor vial (#47). Sin `ROAD_ENGINE=OSRM` conserva la línea recta de siempre. */
     private readonly roads: RoadMetricsService = new RoadMetricsService(),
+    @Optional() private readonly storeCoverage?: StoreCoverageService,
+    @Optional() private readonly shopSettings?: ShopSettingsService,
   ) {}
 
   /**
@@ -70,7 +76,11 @@ export class RoutePlanningService implements OnModuleDestroy {
       }
       throw error;
     }
-    const km: DistanceMatrix = { points: matrix.points, distanceKm: matrix.distancesM.map((row) => row.map((m) => m / 1000)) };
+    const km: DistanceMatrix = {
+      points: matrix.points,
+      distanceKm: matrix.distancesM.map((row) => row.map((m) => m / 1000)),
+      durationS: matrix.durationsS,
+    };
     const index = indexByKey(matrix.points);
     const lookup = (a: GeoPoint, b: GeoPoint) => [index.get(pointKey(a))!, index.get(pointKey(b))!] as const;
     const roundKm = (value: number) => Math.round(value * 1000) / 1000;
@@ -102,6 +112,14 @@ export class RoutePlanningService implements OnModuleDestroy {
     if (query.zoneId && !(await this.prisma.zone.where({ id: query.zoneId }).first())) {
       throw new NotFoundException(`Zone '${query.zoneId}' not found`);
     }
+
+    const marginMinutes = this.shopSettings
+      ? await this.shopSettings.getRouteTimeWindowMarginMinutes()
+      : DEFAULT_TIME_WINDOW_MARGIN_MINUTES;
+    const coverage = this.storeCoverage ? await this.storeCoverage.getCoverage() : null;
+    const storeOrigin: GeoPoint | null = coverage?.configured
+      ? { lat: coverage.location.lat, lng: coverage.location.lng }
+      : null;
 
     let orderQuery = this.prisma.order
       .where({ status: 'PENDING' })
@@ -150,7 +168,7 @@ export class RoutePlanningService implements OnModuleDestroy {
       }
       perZone.set(zoneId, count);
 
-      depots[zoneId] = {
+      depots[zoneId] = storeOrigin ?? {
         lat: order.zone.depotLat as number,
         lng: order.zone.depotLng as number,
       };
@@ -162,6 +180,7 @@ export class RoutePlanningService implements OnModuleDestroy {
         zoneId,
         deliveryDate: query.date,
         location: deliveryLocation,
+        scheduledAtMs: order.scheduledDeliveryDate!.epochMilliseconds,
       });
     }
 
@@ -172,6 +191,7 @@ export class RoutePlanningService implements OnModuleDestroy {
     const planned = await this.planner.plan(routable, {
       depots,
       capacity: DEFAULT_ROUTE_CAPACITY,
+      timeWindowMarginMinutes: marginMinutes,
       ...(road ? { matrix: road.km } : {}),
     });
     const proposals: RouteProposalDto[] = planned.map((route) => {
@@ -234,6 +254,7 @@ export class RoutePlanningService implements OnModuleDestroy {
       date: query.date,
       timeZone: PLANNING_TIME_ZONE,
       capacity: DEFAULT_ROUTE_CAPACITY,
+      timeWindowMarginMinutes: marginMinutes,
       distanceMethod: road ? ROAD_DISTANCE_METHOD : DISTANCE_METHOD,
       ...(road
         ? {

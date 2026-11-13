@@ -84,7 +84,7 @@ The store location is not required to sit inside the polygon. Coverage changes a
 | --- | --- |
 | [web #32](https://github.com/logistica-gc-uta/frontend-web-logistica/issues/32) | `GET` / `PUT` above. Treat `configured: false` as empty UI, not a fake pin. |
 | [backend #42](https://github.com/logistica-gc-uta/backend/issues/42) | Implemented in `docs/orders-coverage-contract.md`: quote/confirm/ADMIN create call `evaluatePoint`. Fail closed on `STORE_NOT_CONFIGURED` and exterior. |
-| [backend #48](https://github.com/logistica-gc-uta/backend/issues/48) | Use `location` as the common origin and return. Do not keep inventing per-zone depots as the store. |
+| [backend #48](https://github.com/logistica-gc-uta/backend/issues/48) | Implemented in `docs/route-planning.md`: `GET /api/v1/route-proposals` uses `storeCoverage.location` as the common origin and return depot when configured, keeping `zone.depotLat`/`depotLng` fallback only when unconfigured. |
 
 Do not delete `Zone` until those consumers are adapted. Hourly grouping, OSRM, and live GPS stay out of #41.
 

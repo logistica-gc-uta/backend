@@ -3837,6 +3837,13 @@
                   "kind": "scalar"
                 }
               },
+              "routeTimeWindowMarginMinutes": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
               "shippingAmountCents": {
                 "nullable": false,
                 "type": {
@@ -3966,6 +3973,9 @@
                 },
                 "maxUnitsPerSkuPerOrder": {
                   "column": "maxUnitsPerSkuPerOrder"
+                },
+                "routeTimeWindowMarginMinutes": {
+                  "column": "routeTimeWindowMarginMinutes"
                 },
                 "shippingAmountCents": {
                   "column": "shippingAmountCents"
@@ -8123,8 +8133,8 @@
                   "prefix": "shop_settings_singleton"
                 },
                 {
-                  "expression": "version >= 1 AND currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"shippingIncludedInPrices\" = true AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"maxUnitsPerSkuPerOrder\" BETWEEN 1 AND 100 AND \"deliveryTimeZone\" = 'America/Guayaquil' AND \"deliveryBoundariesInclusive\" = true AND \"deliveryStartTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryEndTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryStartTime\" < \"deliveryEndTime\"",
-                  "name": "shop_settings_valid_abaee184",
+                  "expression": "version >= 1 AND currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"shippingIncludedInPrices\" = true AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"maxUnitsPerSkuPerOrder\" BETWEEN 1 AND 100 AND \"deliveryTimeZone\" = 'America/Guayaquil' AND \"deliveryBoundariesInclusive\" = true AND \"deliveryStartTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryEndTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryStartTime\" < \"deliveryEndTime\" AND \"routeTimeWindowMarginMinutes\" BETWEEN 5 AND 180",
+                  "name": "shop_settings_valid_a76e081c",
                   "prefix": "shop_settings_valid"
                 }
               ],
@@ -8193,6 +8203,15 @@
                   "default": {
                     "kind": "literal",
                     "value": 10
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "routeTimeWindowMarginMinutes": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": 30
                   },
                   "nativeType": "int4",
                   "nullable": false
@@ -8981,7 +9000,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "b5cbec5e55f8808d4442a200be9ff3b6d62e770ea9021d18110262f36e544233"
+    "storageHash": "43c5b496e829fac9432660009b97051986b46f1c7907aebc529e25875912b1a6"
   },
   "execution": {
     "executionHash": "c6d45c7e494f6d496c74f5913d1dbd508bf7f38e7dac3f1b4b42b6bcd2b2c921",

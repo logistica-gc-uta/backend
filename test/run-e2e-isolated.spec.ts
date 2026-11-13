@@ -61,7 +61,7 @@ describe('complete isolated E2E routing and ownership', () => {
     for (let index = 0; index < migrations.length; index++) {
       expect(migrations[index].args[migrations[index].args.indexOf('--to') + 1]).toBe(index % 2 === 0
         ? 'eb8ebd14b89f17eea5458cd12220be7bd572fa8f0e3771b68d2089c880e18f83'
-        : 'b5cbec5e55f8808d4442a200be9ff3b6d62e770ea9021d18110262f36e544233');
+        : '43c5b496e829fac9432660009b97051986b46f1c7907aebc529e25875912b1a6');
     }
     expect(result.calls.filter(c => c.args.includes('verify'))).toHaveLength(3);
     expect(result.calls.some(c => c.cmd === 'docker' && c.args[0] === 'stop')).toBe(true);

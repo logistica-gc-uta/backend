@@ -46,16 +46,20 @@ La elegibilidad geográfica reutiliza `evaluatePlanningEligibility` (#9), por lo
 
 ### Qué garantiza cada propuesta
 
-- Máximo **4 paradas** (`capacity`).
+- Máximo **4 paradas** (`capacity`). Las rutas de 1 a 3 paradas son válidas cuando no hay otros pedidos compatibles dentro del margen horario.
 - Todos los pedidos son de **una sola zona** y del **día solicitado**.
-- La ruta empieza y termina en el **depósito de su zona** (`depot`).
+- **Agrupación por ventana horaria (#48):** dentro de cada zona y día calendario, se agrupan únicamente pedidos con horas programadas compatibles según los extremos del grupo (`max(hora) − min(hora) <= timeWindowMarginMinutes`, inclusivo, sin encadenar vecinos). El margen se lee de `ShopBusinessSettings.routePlanning.timeWindowMarginMinutes` (por defecto **30 minutos**, configurable entre 5 y 180 minutos en `GET/PATCH /api/v1/admin/shop-settings`). Por ejemplo, con margen de `30` min y pedidos a las `10:00`, `10:25` y `10:50`, `10:00` y `10:25` comparten ruta (`25 <= 30`) mientras que `10:50` abre otra (`10:50 − 10:00 = 50 > 30`).
+- **Prioridad cronológica de paradas (#48):** dentro de cada ruta propuesta, las paradas se ordenan primero por hora programada ascendente (`scheduledDeliveryDate`), y ante empates horarios por métrica vial/distancia e identificador.
+- **Origen y retorno común de tienda (#48):** cuando `StoreCoverage` está configurado (`GET /api/v1/store-coverage` con `configured: true`), todas las propuestas salen y regresan a `storeCoverage.location` (`depot`). Solo cuando `StoreCoverage` no está configurado se usa el depósito configurado en la zona (`zone.depotLat`/`depotLng`).
 - `orderIds` y `stops[].sequence` van en el orden de visita (`stopOrder = sequence`).
 - Un pedido aparece en una sola propuesta.
 - Es determinista: los mismos datos dan la misma propuesta.
 
-### Trazabilidad de la distancia
+### Trazabilidad de la distancia y métricas viales (#47, #48)
 
-`distanceMethod = HAVERSINE_STRAIGHT_LINE`: la distancia es en **línea recta**, no por carretera. No modela tráfico, cierres de calles ni tiempos de viaje. `totalDistanceKm` es el recorrido ida y vuelta depósito → paradas → depósito, redondeado a 3 decimales.
+- Con `ROAD_ENGINE` desactivado (`distanceMethod = HAVERSINE_STRAIGHT_LINE`): la distancia es en **línea recta**, no por carretera. No modela tráfico, cierres de calles ni tiempos de viaje.
+- Con `ROAD_ENGINE=OSRM` activo (`distanceMethod = OSRM_ROAD_NETWORK`): las propuestas priorizan primero las ventanas horarias compatibles y, dentro de cada ventana, usan la **duración vial estimada de OSRM** (`durationsS`, sin tráfico en vivo ni ETA garantizado) como costo principal de ahorro y ordenación, y la **distancia vial** (`distancesM` en km) como desempate y para reportar `totalDistanceKm` y `legDistanceKm`. Si OSRM falla o responde incompleto (`503`, `502`, `422`), la consulta falla cerrada sin persistir nada ni degradar silenciosamente a línea recta.
+- `totalDistanceKm` es el recorrido ida y vuelta depósito → paradas → depósito, redondeado a 3 decimales.
 
 ### Ahorro frente a no optimizar
 
@@ -73,9 +77,9 @@ Cada propuesta y el resumen del día comparan la ruta propuesta con una **línea
 - Una ruta de un solo pedido ahorra 0. Si la línea base es 0 (pedidos en el depósito) el ahorro es 0 y nunca se divide entre 0.
 - Es un ahorro **en línea recta frente a una línea base deliberadamente simple**; no equivale al ahorro frente a una operación real. Rotúlese como «distancia estimada en línea recta, no por calles».
 
-### Confirmación: mismo día de negocio
+### Confirmación: mismo día de negocio y ventana horaria
 
-El enunciado agrupa por **fecha** (la hora es solo aproximada), por eso la propuesta junta los pedidos de todo el día `America/Guayaquil`, aunque estén programados a horas distintas. `POST /routes` acepta esa propuesta tal cual: exige que cada pedido esté programado dentro del **mismo día de negocio** que `routeDate` (ver [route-assignment.md](./route-assignment.md)).
+La planificación agrupa por zona, día `America/Guayaquil` y ventana horaria compatible (`max − min <= timeWindowMarginMinutes`), de modo que horas alejadas (por ejemplo `15:00Z` y `18:00Z` con margen `30` min) nunca se mezclan en una misma ruta. `POST /routes` acepta cada propuesta tal cual: exige que todos sus pedidos pertenezcan al **mismo día de negocio** que `routeDate` (ver [route-assignment.md](./route-assignment.md)).
 
 - `scheduledInstants`: instantes distintos de los pedidos, en orden cronológico.
 - `routeDate`: el instante programado **más temprano** de la propuesta; es el valor a enviar a `POST /routes`. Cualquier instante de ese mismo día sería aceptado.
@@ -91,6 +95,7 @@ Los límites del día son la medianoche local de Guayaquil, no la UTC: `2026-10-
   "date": "2030-02-14",
   "timeZone": "America/Guayaquil",
   "capacity": 4,
+  "timeWindowMarginMinutes": 30,
   "distanceMethod": "HAVERSINE_STRAIGHT_LINE",
   "proposals": [
     {
@@ -160,5 +165,5 @@ bash test/run-newman-isolated.sh --report
 
 ## Pendiente fuera de este issue
 
-- Distancia por carretera en lugar de línea recta (la función de distancia del algoritmo ya es inyectable).
-- Ventanas horarias (VRPTW) y reintento de pedidos fallidos (#12).
+- Retiro completo de la dependencia operacional en `Zone` / `zoneId` para pedidos sin zona (`#49`).
+- Tráfico en vivo o tiempos garantizados de llegada (ETA en tiempo real).

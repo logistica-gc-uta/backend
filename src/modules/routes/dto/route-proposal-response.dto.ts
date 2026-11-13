@@ -205,6 +205,13 @@ export class RouteProposalResponseDto {
   capacity!: number;
 
   @ApiProperty({
+    example: 30,
+    description:
+      'Maximum allowed spread in minutes (inclusive, max - min <= timeWindowMarginMinutes) between scheduled delivery instants within a single proposed route',
+  })
+  timeWindowMarginMinutes!: number;
+
+  @ApiProperty({
     example: 'HAVERSINE_STRAIGHT_LINE',
     enum: ['HAVERSINE_STRAIGHT_LINE', 'OSRM_ROAD_NETWORK'],
     description:

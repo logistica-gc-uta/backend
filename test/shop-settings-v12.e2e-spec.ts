@@ -184,6 +184,9 @@ describe('Shop Settings v1.2 HTTP contract & DB verification (owned PostgreSQL f
           endTime: '17:00',
           boundariesInclusive: true,
         },
+        routePlanning: {
+          timeWindowMarginMinutes: 30,
+        },
         updatedAt: expect.any(String),
         updatedById: null,
         createdAt: expect.any(String),
@@ -255,6 +258,8 @@ describe('Shop Settings v1.2 HTTP contract & DB verification (owned PostgreSQL f
       ['(d) tax.enabled:null + rateBps change', { tax: { enabled: null, rateBps: 1200 } }],
       ['(e) deliverySchedule.startTime:null + valid endTime change', { deliverySchedule: { startTime: null, endTime: '16:00' } }],
       ['(f) endTime:null + valid startTime change', { deliverySchedule: { startTime: '08:00', endTime: null } }],
+      ['(g) routePlanning:null + valid tax change', { routePlanning: null, tax: { rateBps: 1200 } }],
+      ['(h) routePlanning.timeWindowMarginMinutes:null', { routePlanning: { timeWindowMarginMinutes: null } }],
     ])('rejects explicitly supplied null payload: %s with 400 VALIDATION_ERROR without altering projection or audit', async (_label, payload) => {
       const pubBefore = await http().get('/api/v1/shop/settings').expect(200);
       const adminBefore = await http().get('/api/v1/admin/shop-settings').set(auth(adminToken)).expect(200);
@@ -281,6 +286,7 @@ describe('Shop Settings v1.2 HTTP contract & DB verification (owned PostgreSQL f
       ['empty tax object', { tax: {} }],
       ['empty limits object', { limits: {} }],
       ['empty deliverySchedule object', { deliverySchedule: {} }],
+      ['empty routePlanning object', { routePlanning: {} }],
     ])('rejects empty nested patch %s with 400 VALIDATION_ERROR without altering projection or audit', async (_label, payload) => {
       const pubBefore = await http().get('/api/v1/shop/settings').expect(200);
       const adminBefore = await http().get('/api/v1/admin/shop-settings').set(auth(adminToken)).expect(200);
@@ -360,6 +366,29 @@ describe('Shop Settings v1.2 HTTP contract & DB verification (owned PostgreSQL f
       expectErrorEnvelope(high.body, 'VALIDATION_ERROR');
     });
 
+    it('rejects out of bounds or non-integer routePlanning.timeWindowMarginMinutes (< 5, > 180, float)', async () => {
+      const low = await http()
+        .patch('/api/v1/admin/shop-settings')
+        .set(auth(adminToken))
+        .send({ expectedVersion: 1, routePlanning: { timeWindowMarginMinutes: 4 } })
+        .expect(400);
+      expectErrorEnvelope(low.body, 'VALIDATION_ERROR');
+
+      const high = await http()
+        .patch('/api/v1/admin/shop-settings')
+        .set(auth(adminToken))
+        .send({ expectedVersion: 1, routePlanning: { timeWindowMarginMinutes: 181 } })
+        .expect(400);
+      expectErrorEnvelope(high.body, 'VALIDATION_ERROR');
+
+      const nonInt = await http()
+        .patch('/api/v1/admin/shop-settings')
+        .set(auth(adminToken))
+        .send({ expectedVersion: 1, routePlanning: { timeWindowMarginMinutes: 30.5 } })
+        .expect(400);
+      expectErrorEnvelope(nonInt.body, 'VALIDATION_ERROR');
+    });
+
     it('rejects delivery schedule with startTime >= endTime or invalid format', async () => {
       const invalid = await http()
         .patch('/api/v1/admin/shop-settings')
@@ -418,20 +447,48 @@ describe('Shop Settings v1.2 HTTP contract & DB verification (owned PostgreSQL f
       expect(res.body.limits.maxUnitsPerSkuPerOrder).toBe(15);
       expect(res.body.updatedById).toBe(adminUserId);
 
-      // Verify public endpoint reflects new values
+      // Verify public endpoint reflects new values without leaking routePlanning
       const pub = await http().get('/api/v1/shop/settings').expect(200);
       expect(pub.body.version).toBe(2);
       expect(pub.body.tax.rateBps).toBe(1200);
       expect(pub.body.limits.maxUnitsPerSkuPerOrder).toBe(15);
+      expect(pub.body.routePlanning).toBeUndefined();
 
-      // Verify DB audit record persisted
+      // Patch routePlanning.timeWindowMarginMinutes separately and verify audit + DB column
+      const marginPatch = await http()
+        .patch('/api/v1/admin/shop-settings')
+        .set(auth(adminToken))
+        .send({
+          expectedVersion: 2,
+          routePlanning: { timeWindowMarginMinutes: 45 },
+        })
+        .expect(200);
+      expect(marginPatch.body.version).toBe(3);
+      expect(marginPatch.body.routePlanning).toEqual({ timeWindowMarginMinutes: 45 });
+
+      const pubAfterMargin = await http().get('/api/v1/shop/settings').expect(200);
+      expect(pubAfterMargin.body.version).toBe(3);
+      expect(pubAfterMargin.body.routePlanning).toBeUndefined();
+
+      // Restore version expectation for subsequent partial schedule test (expectedVersion: 3 -> 4)
+      await http()
+        .patch('/api/v1/admin/shop-settings')
+        .set(auth(adminToken))
+        .send({
+          expectedVersion: 3,
+          routePlanning: { timeWindowMarginMinutes: 30 },
+        })
+        .expect(200);
+
+      // Verify DB audit records persisted
       const audits = await db.client.orm.public.ShopSettingsAudit.all();
-      expect(audits.length).toBe(1);
+      expect(audits.length).toBe(3);
       expect(audits[0].expectedVersion).toBe(1);
       expect(audits[0].newVersion).toBe(2);
       expect(audits[0].actorId).toBe(adminUserId);
       expect(audits[0].changedFields).toHaveProperty('tax');
       expect(audits[0].changedFields).toHaveProperty('limits');
+      expect(audits[1].changedFields).toEqual({ routePlanning: { timeWindowMarginMinutes: 45 } });
     });
 
     it('validates partial schedule updates against existing DB schedule boundaries', async () => {
@@ -441,7 +498,7 @@ describe('Shop Settings v1.2 HTTP contract & DB verification (owned PostgreSQL f
         .patch('/api/v1/admin/shop-settings')
         .set(auth(adminToken))
         .send({
-          expectedVersion: 2,
+          expectedVersion: 4,
           deliverySchedule: { startTime: '18:00' },
         })
         .expect(400);
@@ -452,11 +509,11 @@ describe('Shop Settings v1.2 HTTP contract & DB verification (owned PostgreSQL f
         .patch('/api/v1/admin/shop-settings')
         .set(auth(adminToken))
         .send({
-          expectedVersion: 2,
+          expectedVersion: 4,
           deliverySchedule: { startTime: '08:00' },
         })
         .expect(200);
-      expect(successPartial.body.version).toBe(3);
+      expect(successPartial.body.version).toBe(5);
       expect(successPartial.body.deliverySchedule.startTime).toBe('08:00');
       expect(successPartial.body.deliverySchedule.endTime).toBe('17:00');
     });
@@ -507,6 +564,12 @@ describe('Shop Settings v1.2 HTTP contract & DB verification (owned PostgreSQL f
       ['schedule full-day boundary 00:00 < 23:59', (v: number) => ({ expectedVersion: v, deliverySchedule: { startTime: '00:00', endTime: '23:59' } }), (res: any) => {
         expect(res.body.deliverySchedule.startTime).toBe('00:00');
         expect(res.body.deliverySchedule.endTime).toBe('23:59');
+      }],
+      ['routePlanning.timeWindowMarginMinutes lower bound 5', (v: number) => ({ expectedVersion: v, routePlanning: { timeWindowMarginMinutes: 5 } }), (res: any) => {
+        expect(res.body.routePlanning.timeWindowMarginMinutes).toBe(5);
+      }],
+      ['routePlanning.timeWindowMarginMinutes upper bound 180', (v: number) => ({ expectedVersion: v, routePlanning: { timeWindowMarginMinutes: 180 } }), (res: any) => {
+        expect(res.body.routePlanning.timeWindowMarginMinutes).toBe(180);
       }],
     ])('accepts S4 boundary: %s', async (_label, makePayload, assertions) => {
       const adminBefore = await http().get('/api/v1/admin/shop-settings').set(auth(adminToken)).expect(200);

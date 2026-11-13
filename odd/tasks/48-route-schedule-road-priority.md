@@ -1,0 +1,50 @@
+# Feature: 48-route-schedule-road-priority
+
+Branch: feat/48-route-schedule-road-priority | Base: main (1e36c3b) | Runner: pnpm test (Jest ESM) + test/run-e2e-isolated.sh + pnpm run test:api:isolated
+Delivery strategy: T1 migration + ShopSettings admin CAS in own work-unit commit; T2+T3 routing algorithm + RoutePlanningService + docs/Newman in next work-unit commit(s) (~400 lines max); T4 independent verification.
+
+## Specs
+
+- **S1 — Time-window grouping by cluster extremes (`<= marginMinutes` inclusive)**: Group compatible scheduled hours within the same zone and calendar day using group extremes: `max(scheduledTime) - min(scheduledTime) <= marginMinutes` (inclusive). Reference example approved by user: with `30` min margin and stops at `10:00`, `10:25`, `10:50`, `10:00` and `10:25` group together (`25 <= 30`) while `10:50` starts a separate group (`10:50 - 10:00 = 50 > 30`), never chaining neighbors. Same for `10:00 + 10:20` vs `15:00`: never mixed into one route.
+- **S2 — Road metrics primary/tie-break cost & OSRM durations**: Prioritize compatible scheduled-hour groups first. Within each compatible group, when `ROAD_ENGINE=OSRM` is active, pass `durationsS` and `distancesM` to `RoutePlanner` and use **OSRM road duration** (`durationsS`, estimated travel seconds) as primary routing cost and **road distance** (`distancesM` -> km) for tie-breaks; fall back to Haversine/distance when `ROAD_ENGINE` is inactive. Never promise exact ETA, live traffic, or global optimum.
+- **S3 — Stop ordering & max capacity**: Order stops within each proposed route prioritizing requested scheduled hour (earliest `scheduledDeliveryDate` first, breaking ties by road metric / deterministic ID). Respect `DEFAULT_ROUTE_CAPACITY = 4` stops max per route; smaller routes (1–3 stops) are valid and must not be merged across incompatible time windows.
+- **S4 — Determinism & backward compatibility for unscheduled callers**: Proposals remain deterministic regardless of input array order (`planKey` cache key must reflect `timeWindowMarginMinutes`, `scheduledAtMs`, and `durationsS`). Callers omitting schedule/margin options (e.g. `RouteUrgencyService`) retain exact baseline behavior.
+- **S5 — Common store origin & return (`StoreCoverage`)**: Per `docs/store-coverage-contract.md` (`backend #48`), when `StoreCoverageService` returns `{ configured: true, location }`, use `storeCoverage.location` as the common origin and return depot across proposals instead of inventing per-zone depots. Keep existing `zone.depotLat`/`depotLng` fallback only when `StoreCoverage` is unconfigured/omitted, and keep `MISSING_ZONE` exclusion for `zoneId == null` orders until `#49`.
+- **S6 — Read-only `GET /api/v1/route-proposals`**: Proposals remain strictly read-only (never create/modify routes, claims, or orders); fail closed on OSRM errors (`503/502/422`) with zero DB mutations. Update Swagger/docs and Newman planning assertions (`15:00Z` vs `18:00Z` no longer mix into one route; `StoreCoverage` common origin when configured).
+- **S7 — Configurable margin in `ShopBusinessSettings`**: Persist `routeTimeWindowMarginMinutes` (`Int @default(30)`, DB `CHECK` `"routeTimeWindowMarginMinutes" BETWEEN 5 AND 180`) in `ShopBusinessSettings` via formal Prisma 8 migration (`contract emit` + `migration plan --from e44d61fd...`). Expose `routePlanning: { timeWindowMarginMinutes }` on `GET /api/v1/admin/shop-settings` and `PATCH /api/v1/admin/shop-settings` with optimistic `expectedVersion` CAS and `ShopSettingsAudit`, keeping `GET /api/v1/shop/settings` public projection unchanged.
+
+## Tasks
+
+- [x] **T1** (`S7`, Route: inline — single unit; Risk: items 1, 3, 5; Commit: `6669d2a`): Add `routeTimeWindowMarginMinutes` (`Int @default(30)`, `BETWEEN 5 AND 180`) to `ShopBusinessSettings`, emit contract, plan Prisma 8 migration from tip `e44d61fd`, update `ShopSettingsAdminDto` / `ShopSettingsPatchDto` / `ShopSettingsService` / Swagger docs, write unit & E2E RED->GREEN tests (`shop-settings.service.spec.ts`, `test/shop-settings-v12.e2e-spec.ts`), keep `GET /api/v1/shop/settings` unchanged.
+- [x] **T2** (`S1, S2, S3, S4`, Route: delegated `gentle-ai-worker` (Context backstop >150k); Risk: item 3; Commit: `fda0da1`): Extend `clarke-wright.ts`, `matrix-distance.ts`, `route-planner.ts`, and `plan-routes.worker.ts` for extreme-window clustering (`max - min <= marginMs`), chronological stop ordering, OSRM duration primary cost + distance tie-break, `planKey` updates, and unit RED->GREEN tests (`clarke-wright.spec.ts`, `route-planner.spec.ts`).
+- [x] **T3** (`S1, S2, S3, S4, S5, S6, S7`, Route: delegated `gentle-ai-worker` (Context backstop >150k); Risk: item 3; Commit: `a92d04c`): Update `RoutePlanningService`, `RoutesModule`, proposal DTO/Swagger/docs, and `delivery-api.postman_collection.json`; add unit & E2E tests (`route-planning.service.spec.ts`, `road-planning.spec.ts`, `test/road-engine.e2e-spec.ts`) covering `StoreCoverage` origin, dynamic margin from `ShopBusinessSettings`, `10:00/10:25/10:50`, OSRM fail-closed, plus differential check vs `main` for shared callers (`RouteUrgencyService`, `GET /shop/settings`).
+- [x] **T4** (`S1-S7`, Route: inline fallback after `gentle-ai-verify` admission rejection + parent verification; Risk: items 1, 3, 5; Commit: `2fd0739` + closing doc commit): Fix strict `RoadMatrix` test fixtures (`9af02bc`) and stale `unit_b` migration stop hash in `test/admin-guest-orders-api.fixtures.ts` (`2fd0739`), run full unit coverage, lint, build, all isolated PostgreSQL E2E suites, isolated Newman (`test:api:isolated`), and differential baseline check on `main` (`1e36c3b`).
+
+## Log
+
+- **L1 (user request & approved criteria verbatim)**:
+  - "ya lo aprove y esta echo merge, actualiza el main con pull, comienza con la planificacio para implementar https://github.com/logistica-gc-uta/backend/issues/48"
+  - Approved criteria ("si esta aprovado , continua"):
+    1. Marginal grouping by extremes (`max - min <= margin` inclusive, e.g. `10:00, 10:25, 10:50` at 30 min -> `[10:00, 10:25]` + `[10:50]`, max 4 stops).
+    2. Compatible schedule first, OSRM duration primary / road distance tie-break (Haversine fallback when OSRM inactive), stops ordered earliest requested hour first.
+    3. `routeTimeWindowMarginMinutes` persisted in `ShopBusinessSettings` (`@default(30)`, `5..180`), exposed on ADMIN `GET/PATCH /api/v1/admin/shop-settings` with CAS + audit, `GET /api/v1/shop/settings` unchanged.
+- **L2 (T1 completed — `6669d2a`)**:
+  - RED observed on `pnpm test -- src/modules/shop/settings/shop-settings.service.spec.ts`.
+  - Schema + contract emitted (`a2fd787bf37564e662b981accae124f9d7bde83c91b8ca1c8b16e338a9384973`), migration planned at `migrations/app/20261113T0339_route_schedule_margin_settings`, isolated E2E target updated in `test/run-e2e-isolated.mjs` + `test/run-e2e-isolated.spec.ts`.
+  - GREEN: `shop-settings.service.spec.ts` 35/35, `test/run-e2e-isolated.spec.ts` 9/9, `test/shop-settings-v12.e2e-spec.ts` 39/39, `oxlint` 0 errors, `nest build` OK. Committed as `6669d2a`.
+- **L3 (T2 completed — `fda0da1`)**:
+  - `gentle-ai-worker` (`mwefkt9r-2-bo6r`) implemented `clarke-wright.ts`, `matrix-distance.ts`, `plan-routes.worker.ts`, `route-planner.ts`, and unit tests.
+  - Parent verified: `pnpm run build` OK, 4/4 suites (`clarke-wright.spec.ts`, `route-planner.spec.ts`, `road-planning.spec.ts`, `route-urgency.service.spec.ts`) 76/76 passed (including compiled worker test), `oxlint` 0 errors. Committed as `fda0da1`.
+- **L4 (T3 completed — `a92d04c`)**:
+  - `gentle-ai-worker` (`mwefrzr4-3-w60w`) updated `RoutesModule`, `RoutePlanningService`, `RouteProposalResponseDto`, `RoutePlanningController`, docs, Newman `06-Planning`, unit tests, and `test/road-engine.e2e-spec.ts`.
+  - Parent verified: `oxlint` 0 errors, `nest build` OK, 25/26 suites in `src/modules/routes/` passed (423/433; `dispatch-intervention.service.spec.ts` had 10 failures around `nowInstant()` near local midnight — checking against `main` in T4 differential check), `test/road-engine.e2e-spec.ts` 21/21 (`road-engine-real` 2 skipped as env off), `pnpm run test:api:isolated` Newman 104/104 requests & 439/439 assertions passed (0 failed). Committed as `a92d04c`.
+- **L5 (T4 fixes & verification — `9af02bc`, `2fd0739`)**:
+  - `9af02bc`: Completed strict `RoadMatrix` fields in `src/modules/routes/road/road-planning.spec.ts`.
+  - `2fd0739`: Updated `test/admin-guest-orders-api.fixtures.ts` (`database.prisma('unit_b', 'migrate')`) so ephemeral `unit_b` includes migration `20261113T0339_route_schedule_margin_settings` (`4/4` previously failing suites — `138/138` tests — passed in `job-20`).
+  - `pnpm run lint` (`oxlint`: 0 errors) and `pnpm run build` (`nest build`: exit 0).
+  - Focused suites (`8/8` suites, `181/181` tests) passed (`job-22`).
+  - Full unit coverage (`pnpm run test:cov --coverageThreshold='{"global":{"statements":80,"branches":80,"functions":80,"lines":80}}'`): `101/101` suites passed, `1235/1235` tests passed, exit `0` (`89.97%` Stmts / `81.5%` Branch / `87.81%` Funcs / `91.68%` Lines in `job-23`).
+  - Full isolated PostgreSQL E2E (`env -u DATABASE_URL -u JWT_SECRET pnpm run test:e2e:isolated` in `job-22`): `35 passed`, `1 skipped` (`road-engine-real.e2e-spec.ts`), `1 failed` (`test/urgent-dispatch.e2e-spec.ts` line 919 at `23:25-05:00` crossing midnight `00:05`, `602 passed / 2 skipped / 1 failed` of `605` tests).
+  - Differential check (`job-24` at `23:31-05:00`): `test/urgent-dispatch.e2e-spec.ts` fails identically on untouched `main` (`1e36c3b`, `MAIN_EXIT=1`, `1 failed / 20 passed`) and `HEAD` (`2fd0739`, `HEAD_EXIT=1`, `1 failed / 20 passed`) at line `919` (`today().add({ minutes: 30 }) + 5 min` crossing local midnight).
+  - Isolated Newman (`pnpm run test:api:isolated` in `job-22`): `104/104` requests, `439/439` assertions, `0` failures.
+  - `gentle-ai-verify` subagent launch rejected by runtime admission guard (`No supported Risk: item N declaration recognized in launch task/context; do not retry, run checks inline`); completed full inline verification above.

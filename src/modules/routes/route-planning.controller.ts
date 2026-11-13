@@ -25,9 +25,9 @@ export class RoutePlanningController {
   @Roles(Role.ADMIN)
   @ApiOperation({
     summary:
-      'Propose routes with Clarke & Wright for a day (read-only; nothing is persisted)',
+      'Propose routes grouped by compatible delivery time window and road/distance savings (read-only; nothing is persisted)',
     description:
-      'Selects the PENDING, geographically ready orders scheduled on the given America/Guayaquil calendar day, groups them by zone and returns temporary proposals of at most four stops that start and end at the zone depot. Distances are straight-line (Haversine). Orders that cannot be planned are listed in `excluded` with their reasons. A proposal is confirmed as DRAFT with POST /routes (using its `zoneId`, `routeDate` and `orderIds`) and assigned with POST /routes/:id/assign.',
+      'Selects the PENDING, geographically ready orders scheduled on the given America/Guayaquil calendar day, groups them by zone and compatible scheduled-hour window (max - min <= ShopBusinessSettings.routePlanning.timeWindowMarginMinutes, default 30 min), and returns temporary proposals of at most four stops ordered chronologically (earliest scheduledDeliveryDate first). When StoreCoverage is configured, its store location is used as the common origin and return depot across proposals (falling back to zone depot coordinates otherwise). When ROAD_ENGINE=OSRM is active, OSRM estimated road durations (no live traffic, not an ETA) are used as the primary routing cost with road distance for tie-breaks; otherwise straight-line Haversine distance is used. Orders that cannot be planned are listed in `excluded` with their reasons. A proposal is confirmed as DRAFT with POST /routes (using its `zoneId`, `routeDate` and `orderIds`) and assigned with POST /routes/:id/assign.',
   })
   @ApiResponse({ status: 200, type: RouteProposalResponseDto })
   @ApiResponse({

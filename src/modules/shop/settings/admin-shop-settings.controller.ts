@@ -52,9 +52,9 @@ export class AdminShopSettingsController {
   @Patch()
   @ApiOperation({
     summary:
-      'Actualizar tasa IVA simulada, límite SKU y horario mediante control optimista de versión',
+      'Actualizar tasa IVA simulada, límite SKU, horario y margen de planificación de rutas mediante control optimista de versión',
     description:
-      'La configuración ADMIN se valida, audita y versiona en PostgreSQL. La tasa de IVA no es fiscal. 00:00<startTime<endTime<=23:59; horarios iniciales 07:00-17:00 inclusive America/Guayaquil. Sólo ADMIN; shipping no editable.',
+      'La configuración ADMIN se valida, audita y versiona en PostgreSQL. La tasa de IVA no es fiscal. 00:00<startTime<endTime<=23:59; horarios iniciales 07:00-17:00 inclusive America/Guayaquil; routePlanning.timeWindowMarginMinutes entre 5 y 180 min (default 30). Sólo ADMIN; shipping no editable.',
   })
   @ApiBody({ type: ShopSettingsPatchDto })
   @ApiResponse({
