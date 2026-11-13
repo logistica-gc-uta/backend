@@ -8,6 +8,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { RouteAssignmentService } from './route-assignment.service.js';
 import { ConfirmDraftRouteDto } from './dto/confirm-draft-route.dto.js';
 import { AssignDraftRouteDto } from './dto/assign-draft-route.dto.js';
+import { AssignRouteDto } from './dto/assign-route.dto.js';
 
 describe('RouteAssignmentService', () => {
   const todayLocal = Temporal.Now.zonedDateTimeISO('America/Guayaquil').toPlainDate();
@@ -346,5 +347,255 @@ describe('RouteAssignmentService', () => {
     await expect(
       validate({ driverId: 'driver', actor: 'spoof' }, AssignDraftRouteDto),
     ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      validate({ routeDate: routeIso, orderIds: ['order'] }, ConfirmDraftRouteDto),
+    ).resolves.toBeInstanceOf(ConfirmDraftRouteDto);
+    await expect(
+      validate({ zoneId: null, routeDate: routeIso, orderIds: ['order'] }, ConfirmDraftRouteDto),
+    ).resolves.toBeInstanceOf(ConfirmDraftRouteDto);
+    await expect(
+      validate({ driverId: 'driver', orderIds: ['order'] }, AssignRouteDto),
+    ).resolves.toBeInstanceOf(AssignRouteDto);
+    await expect(
+      validate({ driverId: 'driver', zoneId: null, orderIds: ['order'] }, AssignRouteDto),
+    ).resolves.toBeInstanceOf(AssignRouteDto);
+  });
+
+  it('confirms draft route without zoneId using StoreCoverage origin and accepts zoneId null orders', async () => {
+    const storeTx = {
+      orm: {
+        public: {
+          User: { where: () => ({ first: async () => ({ id: 'admin', role: 'ADMIN' }) }) },
+          Zone: { where: () => ({ first: async () => null }) },
+          Driver: { where: () => ({ first: async () => driver, update: async () => driver }) },
+          StoreCoverage: {
+            where: () => ({
+              first: async () => ({ singletonKey: 'GLOBAL', lat: -1.24, lng: -78.61 }),
+            }),
+          },
+          Route: {
+            where: () => ({ first: async () => null, all: async () => [] }),
+            create: async (value: any) => ({
+              id: 'route-null',
+              createdAt: Temporal.Instant.from(dto.routeDate),
+              ...value,
+            }),
+          },
+          Order: {
+            where: ({ id }: any) => ({
+              first: async () => orders.find((row) => row.id === id) ?? null,
+              update: async (value: any) => {
+                const row = orders.find((o) => o.id === id);
+                if (row) Object.assign(row, value);
+                return row;
+              },
+            }),
+          },
+          OrderClaim: {
+            where: () => ({ first: async () => null, all: async () => claims }),
+            create: async (value: any) => {
+              const claim = { id: 'claim', ...value };
+              claims.push(claim);
+              return claim;
+            },
+          },
+          RouteStop: {
+            where: () => ({ first: async () => null, all: async () => [] }),
+            create: async (value: any) => value,
+          },
+          DriverReservation: { where: () => ({ first: async () => null, all: async () => [] }) },
+          LegacyRouteReconciliation: { where: () => ({ first: async () => null }) },
+          DriverAbsence: { where: () => ({ first: async () => null }) },
+        },
+      },
+    };
+    orders = [
+      {
+        id: 'order',
+        zoneId: null,
+        status: 'PENDING',
+        requiresAdministrativeReview: false,
+        scheduledDeliveryDate: Temporal.Instant.from(dto.routeDate),
+        deliveryLat: -1.25,
+        deliveryLng: -78.62,
+      },
+    ];
+    const coverageService = {
+      getCoverage: async () => ({ configured: true, location: { lat: -1.24, lng: -78.61 } }),
+    } as any;
+    const svc = new RouteAssignmentService(
+      { client: { transaction: async (fn: any) => fn(storeTx) } } as unknown as PrismaService,
+      new RouteAvailabilityService({ client: storeTx } as unknown as PrismaService),
+      undefined,
+      coverageService,
+    );
+
+    const created = await svc.confirmDraft(
+      { routeDate: routeIso, orderIds: ['order'] },
+      'admin',
+    );
+    expect(created).toMatchObject({ zoneId: null, status: 'DRAFT' });
+    expect(claims).toHaveLength(1);
+  });
+
+  it('rejects draft confirmation without zoneId when neither StoreCoverage nor order zone depot is configured', async () => {
+    const emptyTx = {
+      orm: {
+        public: {
+          User: { where: () => ({ first: async () => ({ id: 'admin', role: 'ADMIN' }) }) },
+          Zone: { where: () => ({ first: async () => null }) },
+          StoreCoverage: { where: () => ({ first: async () => null }) },
+          Route: {
+            where: () => ({ first: async () => null, all: async () => [] }),
+            create: async (value: any) => ({ id: 'route-null', ...value }),
+          },
+          Order: {
+            where: ({ id }: any) => ({
+              first: async () => orders.find((row) => row.id === id) ?? null,
+              update: async (value: any) => value,
+            }),
+          },
+          OrderClaim: { where: () => ({ first: async () => null, all: async () => [] }) },
+          RouteStop: { where: () => ({ first: async () => null, all: async () => [] }) },
+        },
+      },
+    };
+    orders = [
+      {
+        id: 'order',
+        zoneId: null,
+        status: 'PENDING',
+        requiresAdministrativeReview: false,
+        scheduledDeliveryDate: Temporal.Instant.from(dto.routeDate),
+        deliveryLat: -1.25,
+        deliveryLng: -78.62,
+      },
+    ];
+    const svc = new RouteAssignmentService(
+      { client: { transaction: async (fn: any) => fn(emptyTx) } } as unknown as PrismaService,
+      new RouteAvailabilityService({ client: emptyTx } as unknown as PrismaService),
+    );
+
+    await expect(
+      svc.confirmDraft({ routeDate: routeIso, orderIds: ['order'] }, 'admin'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(claims).toHaveLength(0);
+  });
+
+  it('assigns legacy route with omitted or null zoneId when StoreCoverage is configured', async () => {
+    const createdStops: any[] = [];
+    const storeTx = {
+      orm: {
+        public: {
+          User: { where: () => ({ first: async () => ({ id: 'admin', role: 'ADMIN' }) }) },
+          Zone: { where: () => ({ first: async () => null }) },
+          Driver: { where: () => ({ first: async () => driver, update: async () => driver }) },
+          StoreCoverage: {
+            where: () => ({
+              first: async () => ({ singletonKey: 'GLOBAL', lat: -1.24, lng: -78.61 }),
+            }),
+          },
+          Route: (() => {
+            let storedRoute: any = null;
+            return {
+              where: () => ({
+                first: async () => storedRoute,
+                all: async () => [],
+                update: async (value: any) => {
+                  storedRoute = {
+                    ...(storedRoute ?? {}),
+                    ...value,
+                  };
+                  return storedRoute;
+                },
+              }),
+              create: async (value: any) => {
+                storedRoute = {
+                  id: 'route-legacy-null',
+                  createdAt: Temporal.Instant.from(dto.routeDate),
+                  ...value,
+                };
+                return storedRoute;
+              },
+            };
+          })(),
+          Order: {
+            where: ({ id }: any) => ({
+              first: async () => orders.find((row) => row.id === id) ?? null,
+              update: async (value: any) => {
+                const row = orders.find((o) => o.id === id);
+                if (row) Object.assign(row, value);
+                return row;
+              },
+            }),
+          },
+          OrderClaim: {
+            where: (filter?: any) => ({
+              first: async () =>
+                filter?.id
+                  ? claims.find((c) => c.id === filter.id) ?? null
+                  : claims.find((c) => !c.releasedAt) ?? null,
+              all: async () => claims,
+              update: async (value: any) => {
+                const row = claims.find((c) => c.id === filter?.id) ?? claims[0];
+                if (row) Object.assign(row, value);
+                return row;
+              },
+            }),
+            create: async (value: any) => {
+              const claim = { id: 'claim', ...value };
+              claims.push(claim);
+              return claim;
+            },
+          },
+          RouteStop: {
+            where: () => ({
+              first: async () => createdStops[0] ?? null,
+              all: async () => createdStops,
+            }),
+            create: async (value: any) => {
+              createdStops.push(value);
+              return value;
+            },
+          },
+          DriverReservation: {
+            where: () => ({ first: async () => null, all: async () => [] }),
+            create: async (value: any) => value,
+          },
+          LegacyRouteReconciliation: {
+            where: () => ({ first: async () => null, all: async () => [] }),
+          },
+          DriverAbsence: {
+            where: () => ({ first: async () => null, all: async () => [] }),
+          },
+        },
+      },
+    };
+    orders = [
+      {
+        id: 'order',
+        zoneId: null,
+        status: 'PENDING',
+        requiresAdministrativeReview: false,
+        scheduledDeliveryDate: Temporal.Instant.from(dto.routeDate),
+        deliveryLat: -1.25,
+        deliveryLng: -78.62,
+      },
+    ];
+    const coverageService = {
+      getCoverage: async () => ({ configured: true, location: { lat: -1.24, lng: -78.61 } }),
+    } as any;
+    const svc = new RouteAssignmentService(
+      { client: { transaction: async (fn: any) => fn(storeTx) } } as unknown as PrismaService,
+      new RouteAvailabilityService({ client: storeTx } as unknown as PrismaService),
+      undefined,
+      coverageService,
+    );
+
+    const created = await svc.assignLegacy(
+      { driverId: 'driver', orderIds: ['order'] },
+      'admin',
+    );
+    expect(created).toMatchObject({ zoneId: null, status: 'ASSIGNED', driverId: 'driver' });
   });
 });
