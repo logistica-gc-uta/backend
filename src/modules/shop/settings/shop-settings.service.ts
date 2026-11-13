@@ -60,6 +60,7 @@ interface RawSettingsRow {
   deliveryStartTime: string;
   deliveryEndTime: string;
   deliveryBoundariesInclusive: boolean;
+  routeTimeWindowMarginMinutes: number;
   updatedById: string | null;
   createdAt: unknown;
   updatedAt: unknown;
@@ -110,6 +111,9 @@ export class ShopSettingsService {
       tax: publicDto.tax,
       limits: publicDto.limits,
       deliverySchedule: publicDto.deliverySchedule,
+      routePlanning: {
+        timeWindowMarginMinutes: row.routeTimeWindowMarginMinutes,
+      },
       updatedAt: publicDto.updatedAt,
       updatedById: row.updatedById ?? null,
       createdAt: createdAtIso,
@@ -124,6 +128,11 @@ export class ShopSettingsService {
   async getAdminSettings(): Promise<ShopSettingsAdminDto> {
     const row = await this.loadSingletonRow();
     return this.mapToAdminDto(row);
+  }
+
+  async getRouteTimeWindowMarginMinutes(tx?: Transaction): Promise<number> {
+    const row = await this.loadSingletonRow(tx);
+    return row.routeTimeWindowMarginMinutes;
   }
 
   private async loadSingletonRow(tx?: Transaction): Promise<RawSettingsRow> {
@@ -298,6 +307,21 @@ export class ShopSettingsService {
         }
       }
 
+      const newMarginMinutes =
+        patch.routePlanning?.timeWindowMarginMinutes !== undefined
+          ? patch.routePlanning.timeWindowMarginMinutes
+          : current.routeTimeWindowMarginMinutes;
+
+      if (
+        patch.routePlanning?.timeWindowMarginMinutes !== undefined &&
+        patch.routePlanning.timeWindowMarginMinutes !== current.routeTimeWindowMarginMinutes
+      ) {
+        changedFields['routePlanning'] = {
+          timeWindowMarginMinutes: patch.routePlanning.timeWindowMarginMinutes,
+        };
+        hasChange = true;
+      }
+
       if (!hasChange) {
         throw shopError(
           HttpStatus.BAD_REQUEST,
@@ -318,6 +342,7 @@ export class ShopSettingsService {
         maxUnitsPerSkuPerOrder: newMaxUnits,
         deliveryStartTime: mergedStartTime,
         deliveryEndTime: mergedEndTime,
+        routeTimeWindowMarginMinutes: newMarginMinutes,
         updatedById: actorId,
         updatedAt: now,
       });
@@ -338,6 +363,7 @@ export class ShopSettingsService {
             maxUnitsPerSkuPerOrder: current.maxUnitsPerSkuPerOrder,
             deliveryStartTime: current.deliveryStartTime,
             deliveryEndTime: current.deliveryEndTime,
+            routeTimeWindowMarginMinutes: current.routeTimeWindowMarginMinutes,
             updatedById: current.updatedById,
             updatedAt: toIsoTimestamp(current.updatedAt),
           },
@@ -348,6 +374,7 @@ export class ShopSettingsService {
             maxUnitsPerSkuPerOrder: newMaxUnits,
             deliveryStartTime: mergedStartTime,
             deliveryEndTime: mergedEndTime,
+            routeTimeWindowMarginMinutes: newMarginMinutes,
             updatedById: actorId,
             updatedAt: nowIso,
           },
@@ -363,6 +390,7 @@ export class ShopSettingsService {
         maxUnitsPerSkuPerOrder: newMaxUnits,
         deliveryStartTime: mergedStartTime,
         deliveryEndTime: mergedEndTime,
+        routeTimeWindowMarginMinutes: newMarginMinutes,
         updatedById: actorId,
         updatedAt: now,
       };
@@ -412,11 +440,22 @@ export class ShopSettingsService {
       );
     }
 
-    if (!patch.tax && !patch.limits && !patch.deliverySchedule) {
+    if (
+      patch.routePlanning !== undefined &&
+      (patch.routePlanning === null || typeof patch.routePlanning !== 'object')
+    ) {
       throw shopError(
         HttpStatus.BAD_REQUEST,
         'VALIDATION_ERROR',
-        'At least one editable setting section (tax, limits, deliverySchedule) must be provided',
+        'routePlanning must be an object if provided, not null',
+      );
+    }
+
+    if (!patch.tax && !patch.limits && !patch.deliverySchedule && !patch.routePlanning) {
+      throw shopError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'At least one editable setting section (tax, limits, deliverySchedule, routePlanning) must be provided',
       );
     }
 
@@ -516,6 +555,22 @@ export class ShopSettingsService {
           HttpStatus.BAD_REQUEST,
           'VALIDATION_ERROR',
           'deliverySchedule.endTime must be a valid HH:mm time string (00:00 to 23:59)',
+        );
+      }
+    }
+
+    if (patch.routePlanning) {
+      if (
+        patch.routePlanning.timeWindowMarginMinutes === undefined ||
+        patch.routePlanning.timeWindowMarginMinutes === null ||
+        !Number.isInteger(patch.routePlanning.timeWindowMarginMinutes) ||
+        patch.routePlanning.timeWindowMarginMinutes < 5 ||
+        patch.routePlanning.timeWindowMarginMinutes > 180
+      ) {
+        throw shopError(
+          HttpStatus.BAD_REQUEST,
+          'VALIDATION_ERROR',
+          'routePlanning.timeWindowMarginMinutes must be an integer between 5 and 180',
         );
       }
     }

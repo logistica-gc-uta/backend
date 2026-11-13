@@ -57,6 +57,17 @@ export class DeliveryScheduleDto {
   readonly boundariesInclusive: boolean = true;
 }
 
+export class RoutePlanningSettingsDto {
+  @ApiProperty({
+    example: 30,
+    minimum: 5,
+    maximum: 180,
+    description:
+      'Time window tolerance (in minutes) to group orders with compatible scheduled hours into the same route proposal.',
+  })
+  readonly timeWindowMarginMinutes!: number;
+}
+
 export class ShopSettingsPublicDto {
   @ApiProperty({ example: 1, minimum: 1 })
   readonly version!: number;
@@ -81,6 +92,9 @@ export class ShopSettingsPublicDto {
 }
 
 export class ShopSettingsAdminDto extends ShopSettingsPublicDto {
+  @ApiProperty({ type: RoutePlanningSettingsDto })
+  readonly routePlanning!: RoutePlanningSettingsDto;
+
   @ApiProperty({
     example: 'a0000000-0000-4000-8000-000000000001',
     nullable: true,
@@ -128,6 +142,14 @@ export class DeliverySchedulePatchDto {
   readonly endTime?: string;
 }
 
+export class RoutePlanningSettingsPatchDto {
+  @ApiProperty({ example: 30, minimum: 5, maximum: 180 })
+  @IsInt()
+  @Min(5)
+  @Max(180)
+  readonly timeWindowMarginMinutes!: number;
+}
+
 export class ShopSettingsPatchDto {
   @ApiProperty({ example: 1, minimum: 1 })
   @IsInt()
@@ -157,4 +179,12 @@ export class ShopSettingsPatchDto {
   @IsNotEmptyObject()
   @Type(() => DeliverySchedulePatchDto)
   readonly deliverySchedule?: DeliverySchedulePatchDto;
+
+  @ApiPropertyOptional({ type: RoutePlanningSettingsPatchDto })
+  @ValidateIf((_, val) => val !== undefined)
+  @IsObject()
+  @ValidateNested()
+  @IsNotEmptyObject()
+  @Type(() => RoutePlanningSettingsPatchDto)
+  readonly routePlanning?: RoutePlanningSettingsPatchDto;
 }

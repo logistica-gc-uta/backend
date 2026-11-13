@@ -21,6 +21,7 @@ describe('ShopSettingsService (unit)', () => {
     deliveryStartTime: '07:00',
     deliveryEndTime: '17:00',
     deliveryBoundariesInclusive: true,
+    routeTimeWindowMarginMinutes: 30,
     updatedById: null,
     createdAt: new Date('2026-10-23T12:00:00.000Z'),
     updatedAt: new Date('2026-10-23T12:00:00.000Z'),
@@ -110,6 +111,7 @@ describe('ShopSettingsService (unit)', () => {
       });
       expect((res as any).updatedById).toBeUndefined();
       expect((res as any).createdAt).toBeUndefined();
+      expect((res as any).routePlanning).toBeUndefined();
     });
 
     it('throws 500 when database settings row is missing, refusing to synthesize silent JS defaults', async () => {
@@ -158,10 +160,25 @@ describe('ShopSettingsService (unit)', () => {
           endTime: '17:00',
           boundariesInclusive: true,
         },
+        routePlanning: {
+          timeWindowMarginMinutes: 30,
+        },
         updatedAt: '2026-10-23T12:00:00.000Z',
         updatedById: null,
         createdAt: '2026-10-23T12:00:00.000Z',
       });
+    });
+
+    it('getRouteTimeWindowMarginMinutes returns persisted margin and fails closed when missing', async () => {
+      mockPrisma.client.orm.public.ShopBusinessSettings.where = jest.fn().mockReturnValue({
+        first: jest.fn().mockResolvedValue(mockDbRow),
+      });
+      await expect((service as any).getRouteTimeWindowMarginMinutes()).resolves.toBe(30);
+
+      mockPrisma.client.orm.public.ShopBusinessSettings.where = jest.fn().mockReturnValue({
+        first: jest.fn().mockResolvedValue(null),
+      });
+      await expect((service as any).getRouteTimeWindowMarginMinutes()).rejects.toThrow(HttpException);
     });
   });
 
@@ -272,7 +289,41 @@ describe('ShopSettingsService (unit)', () => {
       ['(d) tax.enabled: null', { expectedVersion: 1, tax: { enabled: null, rateBps: 1200 } }],
       ['(e) deliverySchedule.startTime: null', { expectedVersion: 1, deliverySchedule: { startTime: null, endTime: '16:00' } }],
       ['(f) deliverySchedule.endTime: null', { expectedVersion: 1, deliverySchedule: { startTime: '08:00', endTime: null } }],
+      ['(g) routePlanning: null', { expectedVersion: 1, routePlanning: null, tax: { rateBps: 1200 } }],
+      ['(h) routePlanning.timeWindowMarginMinutes: null', { expectedVersion: 1, routePlanning: { timeWindowMarginMinutes: null } }],
     ])('rejects explicitly supplied null payload %s', async (_label, patch) => {
+      await expect(
+        service.patchAdminSettings('admin-1', patch as any),
+      ).rejects.toThrow(HttpException);
+    });
+
+    it('updates routePlanning.timeWindowMarginMinutes within bounds 5..180 and records audit', async () => {
+      const res45 = await service.patchAdminSettings('admin-uuid-1', {
+        expectedVersion: 1,
+        routePlanning: { timeWindowMarginMinutes: 45 },
+      } as any);
+      expect(res45.version).toBe(2);
+      expect((res45 as any).routePlanning).toEqual({ timeWindowMarginMinutes: 45 });
+
+      const resMin = await service.patchAdminSettings('admin-uuid-1', {
+        expectedVersion: 1,
+        routePlanning: { timeWindowMarginMinutes: 5 },
+      } as any);
+      expect((resMin as any).routePlanning).toEqual({ timeWindowMarginMinutes: 5 });
+
+      const resMax = await service.patchAdminSettings('admin-uuid-1', {
+        expectedVersion: 1,
+        routePlanning: { timeWindowMarginMinutes: 180 },
+      } as any);
+      expect((resMax as any).routePlanning).toEqual({ timeWindowMarginMinutes: 180 });
+    });
+
+    it.each([
+      ['below lower bound (4)', { expectedVersion: 1, routePlanning: { timeWindowMarginMinutes: 4 } }],
+      ['above upper bound (181)', { expectedVersion: 1, routePlanning: { timeWindowMarginMinutes: 181 } }],
+      ['non-integer (30.5)', { expectedVersion: 1, routePlanning: { timeWindowMarginMinutes: 30.5 } }],
+      ['empty routePlanning object', { expectedVersion: 1, routePlanning: {} }],
+    ])('rejects invalid routePlanning margin %s', async (_label, patch) => {
       await expect(
         service.patchAdminSettings('admin-1', patch as any),
       ).rejects.toThrow(HttpException);

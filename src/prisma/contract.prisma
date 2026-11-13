@@ -439,6 +439,7 @@ model ShopBusinessSettings {
   deliveryStartTime           String   @default("07:00")
   deliveryEndTime             String   @default("17:00")
   deliveryBoundariesInclusive Boolean  @default(true)
+  routeTimeWindowMarginMinutes Int     @default(30)
   updatedById                 String?
   updatedBy                   User?    @relation(fields: [updatedById], references: [id])
   createdAt                   DateTime @default(now())
@@ -447,7 +448,7 @@ model ShopBusinessSettings {
   audits                      ShopSettingsAudit[]
 
   @@check(expression: "\"singletonKey\" = 'GLOBAL'", name: "shop_settings_singleton")
-  @@check(expression: "version >= 1 AND currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"shippingIncludedInPrices\" = true AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"maxUnitsPerSkuPerOrder\" BETWEEN 1 AND 100 AND \"deliveryTimeZone\" = 'America/Guayaquil' AND \"deliveryBoundariesInclusive\" = true AND \"deliveryStartTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryEndTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryStartTime\" < \"deliveryEndTime\"", name: "shop_settings_valid")
+  @@check(expression: "version >= 1 AND currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"shippingIncludedInPrices\" = true AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"maxUnitsPerSkuPerOrder\" BETWEEN 1 AND 100 AND \"deliveryTimeZone\" = 'America/Guayaquil' AND \"deliveryBoundariesInclusive\" = true AND \"deliveryStartTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryEndTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryStartTime\" < \"deliveryEndTime\" AND \"routeTimeWindowMarginMinutes\" BETWEEN 5 AND 180", name: "shop_settings_valid")
 }
 
 // Append-only audit log for atomic shop settings CAS modifications
