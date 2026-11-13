@@ -1,0 +1,1142 @@
+[
+  {
+    "id": "dropCheckConstraint.dispatchIntervention.dispatch_audit_valid_4c96a65c",
+    "label": "Drop check constraint \"dispatch_audit_valid_4c96a65c\" on \"dispatchIntervention\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "dispatch_audit_valid_4c96a65c",
+        "table": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"dispatch_audit_valid_4c96a65c\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatch_audit_valid_4c96a65c",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"dispatch_audit_valid_4c96a65c\"",
+        "sql": "ALTER TABLE \"public\".\"dispatchIntervention\" DROP CONSTRAINT \"dispatch_audit_valid_4c96a65c\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"dispatch_audit_valid_4c96a65c\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatch_audit_valid_4c96a65c",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.orderItemLoss",
+    "label": "Create table \"orderItemLoss\"",
+    "summary": "Creates table \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"orderItemLoss\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"orderItemLoss\"",
+        "sql": "CREATE TABLE \"public\".\"orderItemLoss\" (\n  \"attemptId\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"declarationRequestId\" text NOT NULL,\n  \"declaredAt\" timestamptz NOT NULL,\n  \"declaredById\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"orderId\" text NOT NULL,\n  \"orderItemId\" text NOT NULL,\n  \"productId\" text NOT NULL,\n  \"recoveredAt\" timestamptz,\n  \"recoveredById\" text,\n  \"recoveryCondition\" text,\n  \"recoveryRequestId\" text,\n  \"replacementPreparedAt\" timestamptz,\n  \"replacementPreparedById\" text,\n  \"replacementRequestId\" text,\n  \"unitNumber\" int4 NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"order_item_loss_recovery_consistent_6470312d\" CHECK ((\"recoveredAt\" IS NULL AND \"recoveredById\" IS NULL AND \"recoveryCondition\" IS NULL AND \"recoveryRequestId\" IS NULL) OR (\"recoveredAt\" IS NOT NULL AND \"recoveredById\" IS NOT NULL AND \"recoveryCondition\" IN ('SELLABLE', 'DAMAGED') AND \"recoveryRequestId\" IS NOT NULL AND \"recoveredAt\" >= \"declaredAt\")),\n  CONSTRAINT \"order_item_loss_replacement_consistent_90323337\" CHECK ((\"replacementPreparedAt\" IS NULL AND \"replacementPreparedById\" IS NULL AND \"replacementRequestId\" IS NULL) OR (\"replacementPreparedAt\" IS NOT NULL AND \"replacementPreparedById\" IS NOT NULL AND \"replacementRequestId\" IS NOT NULL AND \"replacementPreparedAt\" >= \"declaredAt\")),\n  CONSTRAINT \"order_item_loss_unit_positive_861d7482\" CHECK (\"unitNumber\" >= 1)\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"orderItemLoss\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.productStockMovement",
+    "label": "Create table \"productStockMovement\"",
+    "summary": "Creates table \"productStockMovement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "productStockMovement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"productStockMovement\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productStockMovement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"productStockMovement\"",
+        "sql": "CREATE TABLE \"public\".\"productStockMovement\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"createdById\" text NOT NULL,\n  \"delta\" int4 NOT NULL,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"lossId\" text NOT NULL,\n  \"productId\" text NOT NULL,\n  \"stockAfter\" int4 NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"product_stock_movement_after_nonnegative_df9a1fe7\" CHECK (\"stockAfter\" >= 0),\n  CONSTRAINT \"product_stock_movement_valid_50f99fc3\" CHECK ((kind = 'REPLACEMENT_OUT' AND delta = -1) OR (kind = 'RECOVERY_IN' AND delta = 1))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"productStockMovement\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productStockMovement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.dispatchIntervention.dispatch_audit_valid_3cf23df8",
+    "label": "Add check constraint \"dispatch_audit_valid_3cf23df8\" on \"dispatchIntervention\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "dispatch_audit_valid_3cf23df8",
+        "table": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"dispatch_audit_valid_3cf23df8\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatch_audit_valid_3cf23df8",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"dispatch_audit_valid_3cf23df8\"",
+        "sql": "ALTER TABLE \"public\".\"dispatchIntervention\" ADD CONSTRAINT \"dispatch_audit_valid_3cf23df8\" CHECK (action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'RELEASE_DRAFT', 'LOSS_DECLARE', 'REPLACEMENT_PREPARE', 'ORIGINAL_RECOVER') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"dispatch_audit_valid_3cf23df8\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatch_audit_valid_3cf23df8",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.orderItemLoss.orderItemLoss_declarationRequestId_key",
+    "label": "Add unique constraint on \"orderItemLoss\" (declarationRequestId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "orderItemLoss_declarationRequestId_key",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"orderItemLoss_declarationRequestId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_declarationRequestId_key",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"orderItemLoss_declarationRequestId_key\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\" ADD CONSTRAINT \"orderItemLoss_declarationRequestId_key\" UNIQUE (\"declarationRequestId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"orderItemLoss_declarationRequestId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_declarationRequestId_key",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.orderItemLoss.orderItemLoss_replacementRequestId_key",
+    "label": "Add unique constraint on \"orderItemLoss\" (replacementRequestId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "orderItemLoss_replacementRequestId_key",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"orderItemLoss_replacementRequestId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_replacementRequestId_key",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"orderItemLoss_replacementRequestId_key\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\" ADD CONSTRAINT \"orderItemLoss_replacementRequestId_key\" UNIQUE (\"replacementRequestId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"orderItemLoss_replacementRequestId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_replacementRequestId_key",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.orderItemLoss.orderItemLoss_recoveryRequestId_key",
+    "label": "Add unique constraint on \"orderItemLoss\" (recoveryRequestId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "orderItemLoss_recoveryRequestId_key",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"orderItemLoss_recoveryRequestId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_recoveryRequestId_key",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"orderItemLoss_recoveryRequestId_key\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\" ADD CONSTRAINT \"orderItemLoss_recoveryRequestId_key\" UNIQUE (\"recoveryRequestId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"orderItemLoss_recoveryRequestId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_recoveryRequestId_key",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.orderItemLoss.orderItemLoss_orderItemId_unitNumber_key",
+    "label": "Add unique constraint on \"orderItemLoss\" (orderItemId, unitNumber)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "orderItemLoss_orderItemId_unitNumber_key",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"orderItemLoss_orderItemId_unitNumber_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_orderItemId_unitNumber_key",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"orderItemLoss_orderItemId_unitNumber_key\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\" ADD CONSTRAINT \"orderItemLoss_orderItemId_unitNumber_key\" UNIQUE (\"orderItemId\", \"unitNumber\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"orderItemLoss_orderItemId_unitNumber_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_orderItemId_unitNumber_key",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.productStockMovement.productStockMovement_lossId_kind_key",
+    "label": "Add unique constraint on \"productStockMovement\" (lossId, kind)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "productStockMovement_lossId_kind_key",
+        "table": "productStockMovement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"productStockMovement_lossId_kind_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productStockMovement_lossId_kind_key",
+          "public",
+          "\"public\".\"productStockMovement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"productStockMovement_lossId_kind_key\"",
+        "sql": "ALTER TABLE \"public\".\"productStockMovement\" ADD CONSTRAINT \"productStockMovement_lossId_kind_key\" UNIQUE (\"lossId\", \"kind\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"productStockMovement_lossId_kind_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productStockMovement_lossId_kind_key",
+          "public",
+          "\"public\".\"productStockMovement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orderItemLoss.orderItemLoss_declaredById_idx_dd0c7dda",
+    "label": "Create index \"orderItemLoss_declaredById_idx_dd0c7dda\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "orderItemLoss_declaredById_idx_dd0c7dda",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"orderItemLoss_declaredById_idx_dd0c7dda\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss_declaredById_idx_dd0c7dda\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"orderItemLoss_declaredById_idx_dd0c7dda\"",
+        "sql": "CREATE INDEX \"orderItemLoss_declaredById_idx_dd0c7dda\" ON \"public\".\"orderItemLoss\" (\"declaredById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"orderItemLoss_declaredById_idx_dd0c7dda\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss_declaredById_idx_dd0c7dda\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orderItemLoss.orderItemLoss_orderId_idx_d284871b",
+    "label": "Create index \"orderItemLoss_orderId_idx_d284871b\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "orderItemLoss_orderId_idx_d284871b",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"orderItemLoss_orderId_idx_d284871b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss_orderId_idx_d284871b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"orderItemLoss_orderId_idx_d284871b\"",
+        "sql": "CREATE INDEX \"orderItemLoss_orderId_idx_d284871b\" ON \"public\".\"orderItemLoss\" (\"orderId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"orderItemLoss_orderId_idx_d284871b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss_orderId_idx_d284871b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orderItemLoss.orderItemLoss_orderItemId_idx_99e2d9f7",
+    "label": "Create index \"orderItemLoss_orderItemId_idx_99e2d9f7\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "orderItemLoss_orderItemId_idx_99e2d9f7",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"orderItemLoss_orderItemId_idx_99e2d9f7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss_orderItemId_idx_99e2d9f7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"orderItemLoss_orderItemId_idx_99e2d9f7\"",
+        "sql": "CREATE INDEX \"orderItemLoss_orderItemId_idx_99e2d9f7\" ON \"public\".\"orderItemLoss\" (\"orderItemId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"orderItemLoss_orderItemId_idx_99e2d9f7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss_orderItemId_idx_99e2d9f7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orderItemLoss.orderItemLoss_productId_idx_5858600a",
+    "label": "Create index \"orderItemLoss_productId_idx_5858600a\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "orderItemLoss_productId_idx_5858600a",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"orderItemLoss_productId_idx_5858600a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss_productId_idx_5858600a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"orderItemLoss_productId_idx_5858600a\"",
+        "sql": "CREATE INDEX \"orderItemLoss_productId_idx_5858600a\" ON \"public\".\"orderItemLoss\" (\"productId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"orderItemLoss_productId_idx_5858600a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss_productId_idx_5858600a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orderItemLoss.orderItemLoss_recoveredById_idx_2e510b5c",
+    "label": "Create index \"orderItemLoss_recoveredById_idx_2e510b5c\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "orderItemLoss_recoveredById_idx_2e510b5c",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"orderItemLoss_recoveredById_idx_2e510b5c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss_recoveredById_idx_2e510b5c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"orderItemLoss_recoveredById_idx_2e510b5c\"",
+        "sql": "CREATE INDEX \"orderItemLoss_recoveredById_idx_2e510b5c\" ON \"public\".\"orderItemLoss\" (\"recoveredById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"orderItemLoss_recoveredById_idx_2e510b5c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss_recoveredById_idx_2e510b5c\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orderItemLoss.orderItemLoss_replacementPreparedById_idx_7117e726",
+    "label": "Create index \"orderItemLoss_replacementPreparedById_idx_7117e726\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "orderItemLoss_replacementPreparedById_idx_7117e726",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"orderItemLoss_replacementPreparedById_idx_7117e726\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss_replacementPreparedById_idx_7117e726\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"orderItemLoss_replacementPreparedById_idx_7117e726\"",
+        "sql": "CREATE INDEX \"orderItemLoss_replacementPreparedById_idx_7117e726\" ON \"public\".\"orderItemLoss\" (\"replacementPreparedById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"orderItemLoss_replacementPreparedById_idx_7117e726\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss_replacementPreparedById_idx_7117e726\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.productStockMovement.productStockMovement_createdById_idx_8bf640ed",
+    "label": "Create index \"productStockMovement_createdById_idx_8bf640ed\" on \"productStockMovement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "productStockMovement_createdById_idx_8bf640ed",
+        "table": "productStockMovement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"productStockMovement_createdById_idx_8bf640ed\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productStockMovement_createdById_idx_8bf640ed\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"productStockMovement_createdById_idx_8bf640ed\"",
+        "sql": "CREATE INDEX \"productStockMovement_createdById_idx_8bf640ed\" ON \"public\".\"productStockMovement\" (\"createdById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"productStockMovement_createdById_idx_8bf640ed\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productStockMovement_createdById_idx_8bf640ed\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.productStockMovement.productStockMovement_lossId_idx_644dfa54",
+    "label": "Create index \"productStockMovement_lossId_idx_644dfa54\" on \"productStockMovement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "productStockMovement_lossId_idx_644dfa54",
+        "table": "productStockMovement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"productStockMovement_lossId_idx_644dfa54\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productStockMovement_lossId_idx_644dfa54\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"productStockMovement_lossId_idx_644dfa54\"",
+        "sql": "CREATE INDEX \"productStockMovement_lossId_idx_644dfa54\" ON \"public\".\"productStockMovement\" (\"lossId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"productStockMovement_lossId_idx_644dfa54\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productStockMovement_lossId_idx_644dfa54\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.productStockMovement.productStockMovement_productId_createdAt_idx_58d1a09b",
+    "label": "Create index \"productStockMovement_productId_createdAt_idx_58d1a09b\" on \"productStockMovement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "productStockMovement_productId_createdAt_idx_58d1a09b",
+        "table": "productStockMovement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"productStockMovement_productId_createdAt_idx_58d1a09b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productStockMovement_productId_createdAt_idx_58d1a09b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"productStockMovement_productId_createdAt_idx_58d1a09b\"",
+        "sql": "CREATE INDEX \"productStockMovement_productId_createdAt_idx_58d1a09b\" ON \"public\".\"productStockMovement\" (\"productId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"productStockMovement_productId_createdAt_idx_58d1a09b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productStockMovement_productId_createdAt_idx_58d1a09b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.productStockMovement.productStockMovement_productId_idx_5858600a",
+    "label": "Create index \"productStockMovement_productId_idx_5858600a\" on \"productStockMovement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "productStockMovement_productId_idx_5858600a",
+        "table": "productStockMovement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"productStockMovement_productId_idx_5858600a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productStockMovement_productId_idx_5858600a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"productStockMovement_productId_idx_5858600a\"",
+        "sql": "CREATE INDEX \"productStockMovement_productId_idx_5858600a\" ON \"public\".\"productStockMovement\" (\"productId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"productStockMovement_productId_idx_5858600a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productStockMovement_productId_idx_5858600a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.orderItemLoss.orderItemLoss_orderId_fkey",
+    "label": "Add foreign key \"orderItemLoss_orderId_fkey\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "orderItemLoss_orderId_fkey",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"orderItemLoss_orderId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_orderId_fkey",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"orderItemLoss_orderId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\"\nADD CONSTRAINT \"orderItemLoss_orderId_fkey\"\nFOREIGN KEY (\"orderId\")\nREFERENCES \"public\".\"order\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"orderItemLoss_orderId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_orderId_fkey",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.orderItemLoss.orderItemLoss_orderItemId_fkey",
+    "label": "Add foreign key \"orderItemLoss_orderItemId_fkey\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "orderItemLoss_orderItemId_fkey",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"orderItemLoss_orderItemId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_orderItemId_fkey",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"orderItemLoss_orderItemId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\"\nADD CONSTRAINT \"orderItemLoss_orderItemId_fkey\"\nFOREIGN KEY (\"orderItemId\")\nREFERENCES \"public\".\"orderItem\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"orderItemLoss_orderItemId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_orderItemId_fkey",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.orderItemLoss.orderItemLoss_productId_fkey",
+    "label": "Add foreign key \"orderItemLoss_productId_fkey\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "orderItemLoss_productId_fkey",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"orderItemLoss_productId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_productId_fkey",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"orderItemLoss_productId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\"\nADD CONSTRAINT \"orderItemLoss_productId_fkey\"\nFOREIGN KEY (\"productId\")\nREFERENCES \"public\".\"product\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"orderItemLoss_productId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_productId_fkey",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.orderItemLoss.orderItemLoss_declaredById_fkey",
+    "label": "Add foreign key \"orderItemLoss_declaredById_fkey\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "orderItemLoss_declaredById_fkey",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"orderItemLoss_declaredById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_declaredById_fkey",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"orderItemLoss_declaredById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\"\nADD CONSTRAINT \"orderItemLoss_declaredById_fkey\"\nFOREIGN KEY (\"declaredById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"orderItemLoss_declaredById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_declaredById_fkey",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.orderItemLoss.orderItemLoss_replacementPreparedById_fkey",
+    "label": "Add foreign key \"orderItemLoss_replacementPreparedById_fkey\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "orderItemLoss_replacementPreparedById_fkey",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"orderItemLoss_replacementPreparedById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_replacementPreparedById_fkey",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"orderItemLoss_replacementPreparedById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\"\nADD CONSTRAINT \"orderItemLoss_replacementPreparedById_fkey\"\nFOREIGN KEY (\"replacementPreparedById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"orderItemLoss_replacementPreparedById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_replacementPreparedById_fkey",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.orderItemLoss.orderItemLoss_recoveredById_fkey",
+    "label": "Add foreign key \"orderItemLoss_recoveredById_fkey\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "orderItemLoss_recoveredById_fkey",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"orderItemLoss_recoveredById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_recoveredById_fkey",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"orderItemLoss_recoveredById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\"\nADD CONSTRAINT \"orderItemLoss_recoveredById_fkey\"\nFOREIGN KEY (\"recoveredById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"orderItemLoss_recoveredById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_recoveredById_fkey",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.productStockMovement.productStockMovement_productId_fkey",
+    "label": "Add foreign key \"productStockMovement_productId_fkey\" on \"productStockMovement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "productStockMovement_productId_fkey",
+        "table": "productStockMovement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"productStockMovement_productId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productStockMovement_productId_fkey",
+          "public",
+          "\"public\".\"productStockMovement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"productStockMovement_productId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"productStockMovement\"\nADD CONSTRAINT \"productStockMovement_productId_fkey\"\nFOREIGN KEY (\"productId\")\nREFERENCES \"public\".\"product\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"productStockMovement_productId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productStockMovement_productId_fkey",
+          "public",
+          "\"public\".\"productStockMovement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.productStockMovement.productStockMovement_lossId_fkey",
+    "label": "Add foreign key \"productStockMovement_lossId_fkey\" on \"productStockMovement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "productStockMovement_lossId_fkey",
+        "table": "productStockMovement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"productStockMovement_lossId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productStockMovement_lossId_fkey",
+          "public",
+          "\"public\".\"productStockMovement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"productStockMovement_lossId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"productStockMovement\"\nADD CONSTRAINT \"productStockMovement_lossId_fkey\"\nFOREIGN KEY (\"lossId\")\nREFERENCES \"public\".\"orderItemLoss\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"productStockMovement_lossId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productStockMovement_lossId_fkey",
+          "public",
+          "\"public\".\"productStockMovement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.productStockMovement.productStockMovement_createdById_fkey",
+    "label": "Add foreign key \"productStockMovement_createdById_fkey\" on \"productStockMovement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "productStockMovement_createdById_fkey",
+        "table": "productStockMovement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"productStockMovement_createdById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productStockMovement_createdById_fkey",
+          "public",
+          "\"public\".\"productStockMovement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"productStockMovement_createdById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"productStockMovement\"\nADD CONSTRAINT \"productStockMovement_createdById_fkey\"\nFOREIGN KEY (\"createdById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"productStockMovement_createdById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productStockMovement_createdById_fkey",
+          "public",
+          "\"public\".\"productStockMovement\""
+        ]
+      }
+    ]
+  }
+]

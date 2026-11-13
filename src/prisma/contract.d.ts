@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'44b4bf8ae3b74cff9e5e2d8511cfe996e38809941f914594e5b4cf2d17f1e0a2'>;
+  StorageHashBase<'1749c53799fc77a70513636955c4c1b5a1668789c3d6dcb5017d4647b1ab9677'>;
 export type ExecutionHash =
-  ExecutionHashBase<'c6d45c7e494f6d496c74f5913d1dbd508bf7f38e7dac3f1b4b42b6bcd2b2c921'>;
+  ExecutionHashBase<'024d1809858c6bb7373711dbe1d80eb0d04bc76935824a61fd0eb5415dadcc38'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -401,6 +401,25 @@ export type FieldOutputTypes = {
       readonly price: CodecTypes['pg/float8@1']['output'];
       readonly unitPriceCents: CodecTypes['pg/int8@1']['output'] | null;
     };
+    readonly OrderItemLoss: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly orderId: CodecTypes['pg/text@1']['output'];
+      readonly orderItemId: CodecTypes['pg/text@1']['output'];
+      readonly unitNumber: CodecTypes['pg/int4@1']['output'];
+      readonly productId: CodecTypes['pg/text@1']['output'];
+      readonly attemptId: CodecTypes['pg/text@1']['output'] | null;
+      readonly declaredAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly declaredById: CodecTypes['pg/text@1']['output'];
+      readonly declarationRequestId: CodecTypes['pg/text@1']['output'];
+      readonly replacementPreparedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly replacementPreparedById: CodecTypes['pg/text@1']['output'] | null;
+      readonly replacementRequestId: CodecTypes['pg/text@1']['output'] | null;
+      readonly recoveredAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly recoveredById: CodecTypes['pg/text@1']['output'] | null;
+      readonly recoveryCondition: CodecTypes['pg/text@1']['output'] | null;
+      readonly recoveryRequestId: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
     readonly OrderPickup: {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly orderId: CodecTypes['pg/text@1']['output'];
@@ -453,6 +472,16 @@ export type FieldOutputTypes = {
       readonly altText: CodecTypes['pg/text@1']['output'];
       readonly position: CodecTypes['pg/int4@1']['output'];
       readonly isPrimary: CodecTypes['pg/bool@1']['output'];
+    };
+    readonly ProductStockMovement: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly productId: CodecTypes['pg/text@1']['output'];
+      readonly lossId: CodecTypes['pg/text@1']['output'];
+      readonly kind: CodecTypes['pg/text@1']['output'];
+      readonly delta: CodecTypes['pg/int4@1']['output'];
+      readonly stockAfter: CodecTypes['pg/int4@1']['output'];
+      readonly createdById: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
     readonly PurchaseReceipt: {
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -744,6 +773,25 @@ export type FieldInputTypes = {
       readonly price: CodecTypes['pg/float8@1']['input'];
       readonly unitPriceCents: CodecTypes['pg/int8@1']['input'] | null;
     };
+    readonly OrderItemLoss: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly orderId: CodecTypes['pg/text@1']['input'];
+      readonly orderItemId: CodecTypes['pg/text@1']['input'];
+      readonly unitNumber: CodecTypes['pg/int4@1']['input'];
+      readonly productId: CodecTypes['pg/text@1']['input'];
+      readonly attemptId: CodecTypes['pg/text@1']['input'] | null;
+      readonly declaredAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly declaredById: CodecTypes['pg/text@1']['input'];
+      readonly declarationRequestId: CodecTypes['pg/text@1']['input'];
+      readonly replacementPreparedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly replacementPreparedById: CodecTypes['pg/text@1']['input'] | null;
+      readonly replacementRequestId: CodecTypes['pg/text@1']['input'] | null;
+      readonly recoveredAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly recoveredById: CodecTypes['pg/text@1']['input'] | null;
+      readonly recoveryCondition: CodecTypes['pg/text@1']['input'] | null;
+      readonly recoveryRequestId: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+    };
     readonly OrderPickup: {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly orderId: CodecTypes['pg/text@1']['input'];
@@ -796,6 +844,16 @@ export type FieldInputTypes = {
       readonly altText: CodecTypes['pg/text@1']['input'];
       readonly position: CodecTypes['pg/int4@1']['input'];
       readonly isPrimary: CodecTypes['pg/bool@1']['input'];
+    };
+    readonly ProductStockMovement: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly productId: CodecTypes['pg/text@1']['input'];
+      readonly lossId: CodecTypes['pg/text@1']['input'];
+      readonly kind: CodecTypes['pg/text@1']['input'];
+      readonly delta: CodecTypes['pg/int4@1']['input'];
+      readonly stockAfter: CodecTypes['pg/int4@1']['input'];
+      readonly createdById: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
     readonly PurchaseReceipt: {
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -1087,6 +1145,25 @@ export type StorageColumnTypes = {
       readonly quantity: CodecTypes['pg/int4@1']['output'];
       readonly unitPriceCents: CodecTypes['pg/int8@1']['output'] | null;
     };
+    readonly orderItemLoss: {
+      readonly attemptId: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly declarationRequestId: CodecTypes['pg/text@1']['output'];
+      readonly declaredAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly declaredById: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly orderId: CodecTypes['pg/text@1']['output'];
+      readonly orderItemId: CodecTypes['pg/text@1']['output'];
+      readonly productId: CodecTypes['pg/text@1']['output'];
+      readonly recoveredAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly recoveredById: CodecTypes['pg/text@1']['output'] | null;
+      readonly recoveryCondition: CodecTypes['pg/text@1']['output'] | null;
+      readonly recoveryRequestId: CodecTypes['pg/text@1']['output'] | null;
+      readonly replacementPreparedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly replacementPreparedById: CodecTypes['pg/text@1']['output'] | null;
+      readonly replacementRequestId: CodecTypes['pg/text@1']['output'] | null;
+      readonly unitNumber: CodecTypes['pg/int4@1']['output'];
+    };
     readonly orderPickup: {
       readonly agreedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly agreedById: CodecTypes['pg/text@1']['output'];
@@ -1139,6 +1216,16 @@ export type StorageColumnTypes = {
       readonly publicId: CodecTypes['pg/text@1']['output'];
       readonly secureUrl: CodecTypes['pg/text@1']['output'];
       readonly uploadId: CodecTypes['pg/text@1']['output'];
+    };
+    readonly productStockMovement: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly createdById: CodecTypes['pg/text@1']['output'];
+      readonly delta: CodecTypes['pg/int4@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly kind: CodecTypes['pg/text@1']['output'];
+      readonly lossId: CodecTypes['pg/text@1']['output'];
+      readonly productId: CodecTypes['pg/text@1']['output'];
+      readonly stockAfter: CodecTypes['pg/int4@1']['output'];
     };
     readonly purchaseReceipt: {
       readonly buyerId: CodecTypes['pg/text@1']['output'] | null;
@@ -1430,6 +1517,25 @@ export type StorageColumnInputTypes = {
       readonly quantity: CodecTypes['pg/int4@1']['input'];
       readonly unitPriceCents: CodecTypes['pg/int8@1']['input'] | null;
     };
+    readonly orderItemLoss: {
+      readonly attemptId: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly declarationRequestId: CodecTypes['pg/text@1']['input'];
+      readonly declaredAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly declaredById: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly orderId: CodecTypes['pg/text@1']['input'];
+      readonly orderItemId: CodecTypes['pg/text@1']['input'];
+      readonly productId: CodecTypes['pg/text@1']['input'];
+      readonly recoveredAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly recoveredById: CodecTypes['pg/text@1']['input'] | null;
+      readonly recoveryCondition: CodecTypes['pg/text@1']['input'] | null;
+      readonly recoveryRequestId: CodecTypes['pg/text@1']['input'] | null;
+      readonly replacementPreparedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly replacementPreparedById: CodecTypes['pg/text@1']['input'] | null;
+      readonly replacementRequestId: CodecTypes['pg/text@1']['input'] | null;
+      readonly unitNumber: CodecTypes['pg/int4@1']['input'];
+    };
     readonly orderPickup: {
       readonly agreedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly agreedById: CodecTypes['pg/text@1']['input'];
@@ -1482,6 +1588,16 @@ export type StorageColumnInputTypes = {
       readonly publicId: CodecTypes['pg/text@1']['input'];
       readonly secureUrl: CodecTypes['pg/text@1']['input'];
       readonly uploadId: CodecTypes['pg/text@1']['input'];
+    };
+    readonly productStockMovement: {
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly createdById: CodecTypes['pg/text@1']['input'];
+      readonly delta: CodecTypes['pg/int4@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly kind: CodecTypes['pg/text@1']['input'];
+      readonly lossId: CodecTypes['pg/text@1']['input'];
+      readonly productId: CodecTypes['pg/text@1']['input'];
+      readonly stockAfter: CodecTypes['pg/int4@1']['input'];
     };
     readonly purchaseReceipt: {
       readonly buyerId: CodecTypes['pg/text@1']['input'] | null;
@@ -1629,11 +1745,15 @@ export namespace Models {
     driverAbsencesCancelled: public_DriverAbsence[];
     driverAbsencesCreated: public_DriverAbsence[];
     externalDeclarations: public_ExternalPaymentDeclaration[];
+    lossReplacementsPrepared: public_OrderItemLoss[];
+    lossesDeclared: public_OrderItemLoss[];
+    lossesRecovered: public_OrderItemLoss[];
     orders: public_Order[];
     payments: public_PaymentAttempt[];
     pickupsAgreed: public_OrderPickup[];
     pickupsConfirmed: public_OrderPickup[];
     receipts: public_PurchaseReceipt[];
+    stockMovements: public_ProductStockMovement[];
     storeCoverageUpdates: public_StoreCoverage[];
     uploadedAssets: public_UploadedAsset[];
     readonly [RelationKeys]?:
@@ -1645,11 +1765,15 @@ export namespace Models {
       | 'driverAbsencesCancelled'
       | 'driverAbsencesCreated'
       | 'externalDeclarations'
+      | 'lossReplacementsPrepared'
+      | 'lossesDeclared'
+      | 'lossesRecovered'
       | 'orders'
       | 'payments'
       | 'pickupsAgreed'
       | 'pickupsConfirmed'
       | 'receipts'
+      | 'stockMovements'
       | 'storeCoverageUpdates'
       | 'uploadedAssets';
   };
@@ -1730,8 +1854,10 @@ export namespace Models {
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     category: public_Category | null;
     images: public_ProductImage[];
+    losses: public_OrderItemLoss[];
     orderItems: public_OrderItem[];
-    readonly [RelationKeys]?: 'category' | 'images' | 'orderItems';
+    stockMovements: public_ProductStockMovement[];
+    readonly [RelationKeys]?: 'category' | 'images' | 'losses' | 'orderItems' | 'stockMovements';
   };
   export type public_ProductImage = {
     id: CodecTypes['pg/text@1']['output'];
@@ -1818,6 +1944,7 @@ export namespace Models {
     createdBy: public_User | null;
     externalDeclaration: public_ExternalPaymentDeclaration | null;
     items: public_OrderItem[];
+    losses: public_OrderItemLoss[];
     paymentAttempt: public_PaymentAttempt | null;
     pickup: public_OrderPickup | null;
     receipt: public_PurchaseReceipt | null;
@@ -1831,6 +1958,7 @@ export namespace Models {
       | 'createdBy'
       | 'externalDeclaration'
       | 'items'
+      | 'losses'
       | 'paymentAttempt'
       | 'pickup'
       | 'receipt'
@@ -1845,9 +1973,10 @@ export namespace Models {
     quantity: CodecTypes['pg/int4@1']['output'];
     price: CodecTypes['pg/float8@1']['output'];
     unitPriceCents: CodecTypes['pg/int8@1']['output'] | null;
+    losses: public_OrderItemLoss[];
     order: public_Order;
     product: public_Product;
-    readonly [RelationKeys]?: 'order' | 'product';
+    readonly [RelationKeys]?: 'losses' | 'order' | 'product';
   };
   export type public_RouteStop = {
     id: CodecTypes['pg/text@1']['output'];
@@ -1938,6 +2067,54 @@ export namespace Models {
     confirmedBy: public_User | null;
     order: public_Order;
     readonly [RelationKeys]?: 'agreedBy' | 'confirmedBy' | 'order';
+  };
+  export type public_OrderItemLoss = {
+    id: CodecTypes['pg/text@1']['output'];
+    orderId: CodecTypes['pg/text@1']['output'];
+    orderItemId: CodecTypes['pg/text@1']['output'];
+    unitNumber: CodecTypes['pg/int4@1']['output'];
+    productId: CodecTypes['pg/text@1']['output'];
+    attemptId: CodecTypes['pg/text@1']['output'] | null;
+    declaredAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    declaredById: CodecTypes['pg/text@1']['output'];
+    declarationRequestId: CodecTypes['pg/text@1']['output'];
+    replacementPreparedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    replacementPreparedById: CodecTypes['pg/text@1']['output'] | null;
+    replacementRequestId: CodecTypes['pg/text@1']['output'] | null;
+    recoveredAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    recoveredById: CodecTypes['pg/text@1']['output'] | null;
+    recoveryCondition: CodecTypes['pg/text@1']['output'] | null;
+    recoveryRequestId: CodecTypes['pg/text@1']['output'] | null;
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    declaredBy: public_User;
+    movements: public_ProductStockMovement[];
+    order: public_Order;
+    orderItem: public_OrderItem;
+    product: public_Product;
+    recoveredBy: public_User | null;
+    replacementPreparedBy: public_User | null;
+    readonly [RelationKeys]?:
+      | 'declaredBy'
+      | 'movements'
+      | 'order'
+      | 'orderItem'
+      | 'product'
+      | 'recoveredBy'
+      | 'replacementPreparedBy';
+  };
+  export type public_ProductStockMovement = {
+    id: CodecTypes['pg/text@1']['output'];
+    productId: CodecTypes['pg/text@1']['output'];
+    lossId: CodecTypes['pg/text@1']['output'];
+    kind: CodecTypes['pg/text@1']['output'];
+    delta: CodecTypes['pg/int4@1']['output'];
+    stockAfter: CodecTypes['pg/int4@1']['output'];
+    createdById: CodecTypes['pg/text@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    createdBy: public_User;
+    loss: public_OrderItemLoss;
+    product: public_Product;
+    readonly [RelationKeys]?: 'createdBy' | 'loss' | 'product';
   };
   export type public_ShopBusinessSettings = {
     id: CodecTypes['pg/text@1']['output'];
@@ -2126,6 +2303,8 @@ export declare const models: {
     LegacyRouteReconciliation: Models.public_LegacyRouteReconciliation;
     DispatchIntervention: Models.public_DispatchIntervention;
     OrderPickup: Models.public_OrderPickup;
+    OrderItemLoss: Models.public_OrderItemLoss;
+    ProductStockMovement: Models.public_ProductStockMovement;
     ShopBusinessSettings: Models.public_ShopBusinessSettings;
     ShopSettingsAudit: Models.public_ShopSettingsAudit;
     SimulatedCard: Models.public_SimulatedCard;
@@ -3637,6 +3816,215 @@ type ContractBase = Omit<
                 },
               ];
             };
+            readonly orderItemLoss: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly orderId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly orderItemId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly unitNumber: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly productId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly attemptId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly declaredAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                };
+                readonly declaredById: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly declarationRequestId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly replacementPreparedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
+                readonly replacementPreparedById: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly replacementRequestId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly recoveredAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
+                readonly recoveredById: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly recoveryCondition: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly recoveryRequestId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [
+                { readonly columns: readonly ['declarationRequestId'] },
+                { readonly columns: readonly ['replacementRequestId'] },
+                { readonly columns: readonly ['recoveryRequestId'] },
+                { readonly columns: readonly ['orderItemId', 'unitNumber'] },
+              ];
+              indexes: readonly [
+                {
+                  readonly name: 'orderItemLoss_orderId_idx_d284871b';
+                  readonly prefix: 'orderItemLoss_orderId_idx';
+                  readonly columns: readonly ['orderId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'orderItemLoss_productId_idx_5858600a';
+                  readonly prefix: 'orderItemLoss_productId_idx';
+                  readonly columns: readonly ['productId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'orderItemLoss_declaredById_idx_dd0c7dda';
+                  readonly prefix: 'orderItemLoss_declaredById_idx';
+                  readonly columns: readonly ['declaredById'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'orderItemLoss_replacementPreparedById_idx_7117e726';
+                  readonly prefix: 'orderItemLoss_replacementPreparedById_idx';
+                  readonly columns: readonly ['replacementPreparedById'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'orderItemLoss_recoveredById_idx_2e510b5c';
+                  readonly prefix: 'orderItemLoss_recoveredById_idx';
+                  readonly columns: readonly ['recoveredById'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'orderItemLoss_orderItemId_idx_99e2d9f7';
+                  readonly prefix: 'orderItemLoss_orderItemId_idx';
+                  readonly columns: readonly ['orderItemId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'orderItemLoss';
+                    readonly columns: readonly ['orderId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'order';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'orderItemLoss';
+                    readonly columns: readonly ['orderItemId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'orderItem';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'orderItemLoss';
+                    readonly columns: readonly ['productId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'product';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'orderItemLoss';
+                    readonly columns: readonly ['declaredById'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'orderItemLoss';
+                    readonly columns: readonly ['replacementPreparedById'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'orderItemLoss';
+                    readonly columns: readonly ['recoveredById'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
             readonly orderPickup: {
               columns: {
                 readonly id: {
@@ -4096,6 +4484,117 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'uploadedAsset';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly productStockMovement: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly productId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly lossId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly kind: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly delta: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly stockAfter: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly createdById: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [{ readonly columns: readonly ['lossId', 'kind'] }];
+              indexes: readonly [
+                {
+                  readonly name: 'productStockMovement_productId_createdAt_idx_58d1a09b';
+                  readonly prefix: 'productStockMovement_productId_createdAt_idx';
+                  readonly columns: readonly ['productId', 'createdAt'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'productStockMovement_createdById_idx_8bf640ed';
+                  readonly prefix: 'productStockMovement_createdById_idx';
+                  readonly columns: readonly ['createdById'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'productStockMovement_productId_idx_5858600a';
+                  readonly prefix: 'productStockMovement_productId_idx';
+                  readonly columns: readonly ['productId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'productStockMovement_lossId_idx_644dfa54';
+                  readonly prefix: 'productStockMovement_lossId_idx';
+                  readonly columns: readonly ['lossId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'productStockMovement';
+                    readonly columns: readonly ['productId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'product';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'productStockMovement';
+                    readonly columns: readonly ['lossId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'orderItemLoss';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'productStockMovement';
+                    readonly columns: readonly ['createdById'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -5244,6 +5743,14 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'OrderPickup';
     };
+    readonly orderItemLoss: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'OrderItemLoss';
+    };
+    readonly productStockMovement: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'ProductStockMovement';
+    };
     readonly shopBusinessSettings: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'ShopBusinessSettings';
@@ -6372,6 +6879,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['orderId'];
                 };
               };
+              readonly losses: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'OrderItemLoss';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['orderId'];
+                };
+              };
               readonly paymentAttempt: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -6637,6 +7155,17 @@ type ContractBase = Omit<
               };
             };
             readonly relations: {
+              readonly losses: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'OrderItemLoss';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['orderItemId'];
+                };
+              };
               readonly order: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -6672,6 +7201,189 @@ type ContractBase = Omit<
                 readonly quantity: { readonly column: 'quantity' };
                 readonly price: { readonly column: 'price' };
                 readonly unitPriceCents: { readonly column: 'unitPriceCents' };
+              };
+            };
+          };
+          readonly OrderItemLoss: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly orderId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly orderItemId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly unitNumber: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly productId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly attemptId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly declaredAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly declaredById: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly declarationRequestId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly replacementPreparedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly replacementPreparedById: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly replacementRequestId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly recoveredAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly recoveredById: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly recoveryCondition: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly recoveryRequestId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly declaredBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['declaredById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly movements: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ProductStockMovement';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['lossId'];
+                };
+              };
+              readonly order: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Order';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['orderId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly orderItem: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'OrderItem';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['orderItemId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly product: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Product';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['productId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly recoveredBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['recoveredById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly replacementPreparedBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['replacementPreparedById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'orderItemLoss';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly orderId: { readonly column: 'orderId' };
+                readonly orderItemId: { readonly column: 'orderItemId' };
+                readonly unitNumber: { readonly column: 'unitNumber' };
+                readonly productId: { readonly column: 'productId' };
+                readonly attemptId: { readonly column: 'attemptId' };
+                readonly declaredAt: { readonly column: 'declaredAt' };
+                readonly declaredById: { readonly column: 'declaredById' };
+                readonly declarationRequestId: { readonly column: 'declarationRequestId' };
+                readonly replacementPreparedAt: { readonly column: 'replacementPreparedAt' };
+                readonly replacementPreparedById: { readonly column: 'replacementPreparedById' };
+                readonly replacementRequestId: { readonly column: 'replacementRequestId' };
+                readonly recoveredAt: { readonly column: 'recoveredAt' };
+                readonly recoveredById: { readonly column: 'recoveredById' };
+                readonly recoveryCondition: { readonly column: 'recoveryCondition' };
+                readonly recoveryRequestId: { readonly column: 'recoveryRequestId' };
+                readonly createdAt: { readonly column: 'createdAt' };
               };
             };
           };
@@ -6991,10 +7703,32 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['productId'];
                 };
               };
+              readonly losses: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'OrderItemLoss';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['productId'];
+                };
+              };
               readonly orderItems: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
                   readonly model: 'OrderItem';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['productId'];
+                };
+              };
+              readonly stockMovements: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ProductStockMovement';
                 };
                 readonly cardinality: '1:N';
                 readonly on: {
@@ -7095,6 +7829,94 @@ type ContractBase = Omit<
                 readonly altText: { readonly column: 'altText' };
                 readonly position: { readonly column: 'position' };
                 readonly isPrimary: { readonly column: 'isPrimary' };
+              };
+            };
+          };
+          readonly ProductStockMovement: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly productId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly lossId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly kind: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly delta: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly stockAfter: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly createdById: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly createdBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['createdById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly loss: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'OrderItemLoss';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['lossId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly product: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Product';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['productId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'productStockMovement';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly productId: { readonly column: 'productId' };
+                readonly lossId: { readonly column: 'lossId' };
+                readonly kind: { readonly column: 'kind' };
+                readonly delta: { readonly column: 'delta' };
+                readonly stockAfter: { readonly column: 'stockAfter' };
+                readonly createdById: { readonly column: 'createdById' };
+                readonly createdAt: { readonly column: 'createdAt' };
               };
             };
           };
@@ -8058,6 +8880,39 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['declaredById'];
                 };
               };
+              readonly lossReplacementsPrepared: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'OrderItemLoss';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['replacementPreparedById'];
+                };
+              };
+              readonly lossesDeclared: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'OrderItemLoss';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['declaredById'];
+                };
+              };
+              readonly lossesRecovered: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'OrderItemLoss';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['recoveredById'];
+                };
+              };
               readonly orders: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -8111,6 +8966,17 @@ type ContractBase = Omit<
                 readonly on: {
                   readonly localFields: readonly ['id'];
                   readonly targetFields: readonly ['buyerId'];
+                };
+              };
+              readonly stockMovements: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'ProductStockMovement';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['createdById'];
                 };
               };
               readonly storeCoverageUpdates: {
@@ -8423,6 +9289,14 @@ type ContractBase = Omit<
         {
           readonly ref: {
             readonly namespace: 'public';
+            readonly table: 'orderItemLoss';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
             readonly table: 'orderPickup';
             readonly column: 'id';
           };
@@ -8448,6 +9322,14 @@ type ContractBase = Omit<
           readonly ref: {
             readonly namespace: 'public';
             readonly table: 'productImage';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'productStockMovement';
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
