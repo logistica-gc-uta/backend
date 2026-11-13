@@ -3,9 +3,13 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { Worker } from 'node:worker_threads';
 import { planRoutes, type ClarkeWrightOptions, type PlannedRoute, type RoutingOrder } from './algorithms/clarke-wright.js';
+import { matrixDistance, type DistanceMatrix } from './algorithms/matrix-distance.js';
 import type { PlanRequest } from './algorithms/plan-routes.worker.js';
 
-type PlanOptions = Pick<ClarkeWrightOptions, 'depots' | 'capacity'>;
+type PlanOptions = Pick<ClarkeWrightOptions, 'depots' | 'capacity'> & {
+  /** Matriz vial (km, direccional). Sin ella se usa la línea recta de siempre. */
+  matrix?: DistanceMatrix;
+};
 
 const WORKER_RELATIVE = 'modules/routes/algorithms/plan-routes.worker.js';
 const CACHE_LIMIT = 32;
@@ -23,6 +27,11 @@ export function planKey(orders: readonly RoutingOrder[], options: PlanOptions): 
   hash.update(JSON.stringify([options.capacity ?? null, Object.entries(options.depots).sort(([a], [b]) => a.localeCompare(b))]));
   for (const order of [...orders].sort((a, b) => a.id.localeCompare(b.id))) {
     hash.update(`|${order.id},${order.zoneId},${order.deliveryDate},${order.location.lat},${order.location.lng}`);
+  }
+  // La red vial cambia el resultado: dos matrices distintas nunca comparten caché.
+  if (options.matrix) {
+    hash.update('|matrix');
+    for (const row of options.matrix.distanceKm) hash.update(row.join(','));
   }
   return hash.digest('hex');
 }
@@ -89,7 +98,8 @@ export class RoutePlanner {
       }
     }
     this.stats.inlineRuns++;
-    return planRoutes(orders, options);
+    const { matrix, ...base } = options;
+    return matrix ? planRoutes(orders, { ...base, distance: matrixDistance(matrix), directional: true }) : planRoutes(orders, base);
   }
 
   private runInWorker(orders: RoutingOrder[], options: PlanOptions): Promise<PlannedRoute[]> {
