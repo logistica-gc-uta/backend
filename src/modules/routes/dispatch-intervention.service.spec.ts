@@ -131,7 +131,14 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
     });
   };
   const agreement = (extra: Record<string, unknown> = {}) => {
-    const time = nowInstant().add({ minutes: 60 });
+    // cerca de la medianoche de Guayaquil la ventana acordada pasa al mediodía del día siguiente
+    const zone = 'America/Guayaquil';
+    const day = (i: Temporal.Instant) => i.toZonedDateTimeISO(zone).toPlainDate().toString();
+    const soon = nowInstant().add({ minutes: 60 });
+    const time = day(soon.subtract({ minutes: 20 })) === day(soon.add({ minutes: 20 }))
+      ? soon
+      : Temporal.Now.zonedDateTimeISO(zone).toPlainDate().add({ days: 1 })
+        .toZonedDateTime({ timeZone: zone, plainTime: '12:00' }).toInstant().add({ minutes: 60 });
     return {
       action: 'CONTACT',
       orderId: 'urgent',
