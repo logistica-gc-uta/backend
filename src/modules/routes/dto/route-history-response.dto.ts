@@ -70,7 +70,8 @@ export class RouteHistoryZoneDto {
 export class RouteHistoryResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty({ format: 'date-time' }) date!: string;
-  @ApiProperty({ type: RouteHistoryZoneDto }) zone!: RouteHistoryZoneDto;
+  @ApiProperty({ type: RouteHistoryZoneDto, nullable: true })
+  zone!: RouteHistoryZoneDto | null;
   @ApiProperty({
     enum: ['UNVERIFIED', 'DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED'],
     description: 'UNVERIFIED projects NULL; it is not a persisted enum value',
@@ -111,7 +112,7 @@ export class AdminRouteHistoryOrderDto extends RouteHistoryOrderDto {
   deliveryWindowStart!: string | null;
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   deliveryWindowEnd!: string | null;
-  @ApiProperty() zoneId!: string;
+  @ApiProperty({ type: String, nullable: true }) zoneId!: string | null;
   @ApiProperty({ type: String, nullable: true }) routeId!: string | null;
   @ApiProperty() total!: number;
   @ApiProperty({ type: Number, nullable: true }) deliveryLat!: number | null;
@@ -145,8 +146,8 @@ export class AdminRouteHistoryZoneDto extends RouteHistoryZoneDto {
 }
 
 export class AdminRouteHistoryResponseDto extends RouteHistoryResponseDto {
-  @ApiProperty({ type: AdminRouteHistoryZoneDto })
-  declare zone: AdminRouteHistoryZoneDto;
+  @ApiProperty({ type: AdminRouteHistoryZoneDto, nullable: true })
+  declare zone: AdminRouteHistoryZoneDto | null;
   @ApiProperty({
     type: [AdminRouteHistoryOrderDto],
     description:
@@ -154,7 +155,7 @@ export class AdminRouteHistoryResponseDto extends RouteHistoryResponseDto {
   })
   declare orders: AdminRouteHistoryOrderDto[];
   @ApiProperty({ type: String, nullable: true }) driverId!: string | null;
-  @ApiProperty() zoneId!: string;
+  @ApiProperty({ type: String, nullable: true }) zoneId!: string | null;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
   @ApiProperty({ type: AdminRouteHistoryDriverDto, nullable: true })
   driver!: AdminRouteHistoryDriverDto | null;

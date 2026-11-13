@@ -32,6 +32,7 @@ Unit A: 13 proposal/inbox tests passed after an observed missing-implementation 
 | MOVE | orderId, routeId, targetRouteId | Atomically release source claim, resequence nonempty source and reserve compatible destination. |
 | REASSIGN_DRIVER | routeId, driverId | ASSIGNED only; validate effective availability and switch audited reservations. |
 | PRIORITIZE | orderId | Eligible unclaimed PENDING only; prioritize inbox without changing commercial status. |
+| RELEASE_DRAFT | routeId | Unassigned `DRAFT` route only (`driverId === null`); atomically deletes stops and releases active `OrderClaim`s with audit, freeing orders for today's replanning. |
 
 Keys are global. Exact actor/body replay returns the original outcome; altered actor/body returns 409. Stale fingerprints, frozen routes and resource conflicts return 409. Drivers are locked first, then sorted routes and sorted orders. PostgreSQL partial unique claims/reservations and lifecycle guards remain authoritative; exceptions roll back the entire mutation. Stops are recreated only before start with existing identities retained, to avoid transient unique-sequence collisions.
 

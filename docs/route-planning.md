@@ -93,6 +93,8 @@ Los límites del día son la medianoche local de Guayaquil, no la UTC: `2026-10-
 ```json
 {
   "date": "2030-02-14",
+  "isToday": false,
+  "canConfirm": false,
   "timeZone": "America/Guayaquil",
   "capacity": 4,
   "timeWindowMarginMinutes": 30,
@@ -132,7 +134,7 @@ Los límites del día son la medianoche local de Guayaquil, no la UTC: `2026-10-
 
 El ejemplo está abreviado: solo muestra una de las dos propuestas y una de sus paradas. Cada parada trae `deliveryAddress` (sin nombre ni datos del cliente).
 
-Para confirmar una propuesta: `POST /api/v1/routes` con `{ "zoneId", "routeDate", "orderIds" }` tomados de la propuesta (`zoneId` es opcional y puede ser `null` en propuestas sin zona basadas en `StoreCoverage`).
+Para confirmar una propuesta: `POST /api/v1/routes` con `{ "zoneId", "routeDate", "orderIds" }` tomados de la propuesta (`zoneId` es opcional y puede ser `null` en propuestas sin zona basadas en `StoreCoverage`). `GET /route-proposals` permite previsualizar cualquier fecha futura en modo solo lectura (`isToday: false`, `canConfirm: false`); intentar confirmar o asignar una fecha distinta de hoy en `America/Guayaquil` responde `409 Conflict` con `code: "ROUTE_DATE_NOT_TODAY"`.
 
 ## Límite de tamaño
 

@@ -58,6 +58,17 @@ The legacy `POST /routes/assign` keeps the **stricter** rule described above: it
 derives the route date from one exact common non-null scheduled timestamp and
 rejects any mismatch, so its behaviour does not change.
 
+Operational-day rule (#49): `POST /api/v1/routes`, `POST /api/v1/routes/:id/assign`,
+and `POST /api/v1/routes/assign` additionally require the route's calendar day
+to match **today in `America/Guayaquil`**. Non-today confirmation or assignment
+is rejected atomically before persistence with HTTP `409 Conflict`
+(`code: 'ROUTE_DATE_NOT_TODAY'`, `operationalDay`, `routeDay`) and zero partial
+writes, claims, or driver reservations. Stale unassigned `DRAFT` routes from a
+prior day cannot be assigned and can be freed via `RELEASE_DRAFT` on
+`POST /api/v1/dispatch/interventions`, whereas `ASSIGNED`, `IN_PROGRESS`, and
+`COMPLETED` routes crossing midnight remain operable (`start`, `progress`,
+`complete`, `returnToDepot`).
+
 ## Atomic ownership and availability
 
 Confirmation creates its locked DRAFT row then locks orders by sorted identity, rechecks PENDING/no administrative

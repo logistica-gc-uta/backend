@@ -4982,6 +4982,48 @@
           "name": "Confirm with existing lifecycle",
           "item": [
             {
+              "name": "POST Confirm future proposal rejected as 409 (ROUTE_DATE_NOT_TODAY)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                      "pm.test('Exposes ROUTE_DATE_NOT_TODAY conflict code', () => { const b = pm.response.json(); pm.expect(b.code).to.eql('ROUTE_DATE_NOT_TODAY'); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"routeDate\": \"2031-03-14T15:00:00Z\",\n  \"orderIds\": {{planProposalOrderIds}}\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/routes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "routes"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
               "name": "POST Confirm a time-window proposal as DRAFT (existing POST /routes)",
               "event": [
                 {
@@ -4992,7 +5034,8 @@
                       "pm.test('Status 201', () => pm.response.to.have.status(201));",
                       "const body = pm.response.json();",
                       "pm.test('Proposal persisted as DRAFT without driver', () => { pm.expect(body.status).to.eql('DRAFT'); pm.expect(body.driverId).to.eql(null); });",
-                      "pm.test('Route date is the earliest scheduled instant', () => pm.expect(body.date).to.eql(pm.collectionVariables.get('todayPlanSlot1')));"
+                      "pm.test('Route date is the earliest scheduled instant', () => pm.expect(body.date).to.eql(pm.collectionVariables.get('todayPlanSlot1')));",
+                      "pm.collectionVariables.set('planDraftRouteId', body.id);"
                     ]
                   }
                 }
@@ -5086,6 +5129,94 @@
                   ]
                 }
               }
+            },
+            {
+              "name": "POST Dispatch Intervention - RELEASE_DRAFT frees unassigned DRAFT",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const u = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); });",
+                      "pm.collectionVariables.set('releaseRequestId', u);"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('Audited RELEASE_DRAFT intervention persisted', () => { const b = pm.response.json(); pm.expect(b.action).to.eql('RELEASE_DRAFT'); pm.expect(b.outcome).to.eql('APPLIED'); pm.expect(b.routeId).to.eql(pm.collectionVariables.get('planDraftRouteId')); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"requestId\": \"{{releaseRequestId}}\",\n  \"action\": \"RELEASE_DRAFT\",\n  \"routeId\": \"{{planDraftRouteId}}\",\n  \"reason\": \"Postman S3 verification release\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/dispatch/interventions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "dispatch",
+                    "interventions"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "GET Urgent Dispatch Inbox (ADMIN)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('Inbox returns today urgencies and incidents arrays', () => { const b = pm.response.json(); pm.expect(b.urgencies).to.be.an('array'); pm.expect(b.incidents).to.be.an('array'); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/dispatch/inbox",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "dispatch",
+                    "inbox"
+                  ]
+                }
+              },
+              "response": []
             },
             {
               "name": "PATCH Admin Shop Settings - restore original delivery schedule",
