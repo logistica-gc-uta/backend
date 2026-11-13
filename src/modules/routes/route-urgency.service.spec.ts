@@ -28,6 +28,7 @@ describe('Urgency proposals (CP-RUT-003/004/008/009)', () => {
       User: [{ id: 'driver-user', role: 'DRIVER' }],
       DeliveryAttempt: [],
       DispatchIntervention: [],
+      OrderPickup: [],
     };
     writes = jest.fn(() => {
       throw new Error('Read-only proposal wrote data');
@@ -188,6 +189,31 @@ describe('Urgency proposals (CP-RUT-003/004/008/009)', () => {
     expect(inbox.urgencies.map((p) => p.orderId)).toEqual(['urgent']);
     expect(inbox.incidents.map((p) => p.orderId)).toEqual(['review']);
     expect(JSON.stringify(inbox)).not.toContain('private');
+    expect(writes).not.toHaveBeenCalled();
+  });
+  it('shows the agreed store pickup of an incident so the ADMIN knows which orders wait for it (#50)', async () => {
+    rows.Order!.push(
+      order('failed', { status: 'PENDING', requiresAdministrativeReview: true }),
+      order('waiting', { status: 'PENDING', requiresAdministrativeReview: true }),
+      order('collected', { status: 'PENDING', requiresAdministrativeReview: true }),
+    );
+    rows.OrderPickup!.push(
+      { orderId: 'waiting', agreedAt: Temporal.Instant.from('2030-02-14T15:00:00Z'), confirmedAt: null },
+      {
+        orderId: 'collected',
+        agreedAt: Temporal.Instant.from('2030-02-14T15:00:00Z'),
+        confirmedAt: Temporal.Instant.from('2030-02-15T16:00:00Z'),
+      },
+    );
+    const { incidents } = await service.inbox();
+    const byOrder = Object.fromEntries(incidents.map((i) => [i.orderId, i.pickup]));
+    expect(byOrder.failed).toBeNull();
+    expect(byOrder.waiting).toEqual({ state: 'PENDING_PICKUP', agreedAt: '2030-02-14T15:00:00Z', pickedUpAt: null });
+    expect(byOrder.collected).toEqual({
+      state: 'PICKED_UP',
+      agreedAt: '2030-02-14T15:00:00Z',
+      pickedUpAt: '2030-02-15T16:00:00Z',
+    });
     expect(writes).not.toHaveBeenCalled();
   });
 });

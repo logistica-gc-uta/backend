@@ -60,6 +60,10 @@
       "model": "OrderItem",
       "namespace": "public"
     },
+    "orderPickup": {
+      "model": "OrderPickup",
+      "namespace": "public"
+    },
     "paymentAttempt": {
       "model": "PaymentAttempt",
       "namespace": "public"
@@ -2002,6 +2006,22 @@
                   "namespace": "public"
                 }
               },
+              "pickup": {
+                "cardinality": "1:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "orderId"
+                  ]
+                },
+                "to": {
+                  "model": "OrderPickup",
+                  "namespace": "public"
+                }
+              },
               "receipt": {
                 "cardinality": "1:1",
                 "nullable": true,
@@ -2453,6 +2473,156 @@
               },
               "namespaceId": "public",
               "table": "orderItem"
+            }
+          },
+          "OrderPickup": {
+            "fields": {
+              "agreedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "agreedById": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "agreementRequestId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "confirmationRequestId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "confirmedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "confirmedById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "orderId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "agreedBy": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "agreedById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "confirmedBy": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "confirmedById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "order": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "orderId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Order",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "agreedAt": {
+                  "column": "agreedAt"
+                },
+                "agreedById": {
+                  "column": "agreedById"
+                },
+                "agreementRequestId": {
+                  "column": "agreementRequestId"
+                },
+                "confirmationRequestId": {
+                  "column": "confirmationRequestId"
+                },
+                "confirmedAt": {
+                  "column": "confirmedAt"
+                },
+                "confirmedById": {
+                  "column": "confirmedById"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "orderId": {
+                  "column": "orderId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "orderPickup"
             }
           },
           "PaymentAttempt": {
@@ -4568,6 +4738,36 @@
                   "namespace": "public"
                 }
               },
+              "pickupsAgreed": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "agreedById"
+                  ]
+                },
+                "to": {
+                  "model": "OrderPickup",
+                  "namespace": "public"
+                }
+              },
+              "pickupsConfirmed": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "confirmedById"
+                  ]
+                },
+                "to": {
+                  "model": "OrderPickup",
+                  "namespace": "public"
+                }
+              },
               "receipts": {
                 "cardinality": "1:N",
                 "on": {
@@ -5409,8 +5609,8 @@
             "dispatchIntervention": {
               "checks": [
                 {
-                  "expression": "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500",
-                  "name": "dispatch_audit_valid_f083b472",
+                  "expression": "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500",
+                  "name": "dispatch_audit_valid_f0c6b073",
                   "prefix": "dispatch_audit_valid"
                 }
               ],
@@ -6743,6 +6943,156 @@
                 ]
               },
               "uniques": []
+            },
+            "orderPickup": {
+              "checks": [
+                {
+                  "expression": "(\"confirmedAt\" IS NULL AND \"confirmedById\" IS NULL AND \"confirmationRequestId\" IS NULL) OR (\"confirmedAt\" IS NOT NULL AND \"confirmedById\" IS NOT NULL AND \"confirmationRequestId\" IS NOT NULL AND \"confirmedAt\" >= \"agreedAt\")",
+                  "name": "order_pickup_confirmation_consistent_8d7d1769",
+                  "prefix": "order_pickup_confirmation_consistent"
+                }
+              ],
+              "columns": {
+                "agreedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "agreedById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "agreementRequestId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "confirmationRequestId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "confirmedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "confirmedById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "orderId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "orderId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "orderPickup"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "order"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "agreedById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "orderPickup"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "confirmedById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "orderPickup"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "agreedById"
+                  ],
+                  "name": "orderPickup_agreedById_idx_5e5a37b2",
+                  "prefix": "orderPickup_agreedById_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "confirmedById"
+                  ],
+                  "name": "orderPickup_confirmedById_idx_bf02ea5f",
+                  "prefix": "orderPickup_confirmedById_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "orderId"
+                  ]
+                },
+                {
+                  "columns": [
+                    "agreementRequestId"
+                  ]
+                },
+                {
+                  "columns": [
+                    "confirmationRequestId"
+                  ]
+                }
+              ]
             },
             "paymentAttempt": {
               "checks": [
@@ -8650,10 +9000,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "a2fd787bf37564e662b981accae124f9d7bde83c91b8ca1c8b16e338a9384973"
+    "storageHash": "43c5b496e829fac9432660009b97051986b46f1c7907aebc529e25875912b1a6"
   },
   "execution": {
-    "executionHash": "bdfc495f40e6c49d2aa05bee4da443a4402d5de7907ef5ef8106c7eff66a4096",
+    "executionHash": "c6d45c7e494f6d496c74f5913d1dbd508bf7f38e7dac3f1b4b42b6bcd2b2c921",
     "mutations": {
       "defaults": [
         {
@@ -8808,6 +9158,17 @@
             "column": "id",
             "namespace": "public",
             "table": "orderItem"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "orderPickup"
           }
         },
         {

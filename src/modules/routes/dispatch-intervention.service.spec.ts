@@ -131,7 +131,14 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
     });
   };
   const agreement = (extra: Record<string, unknown> = {}) => {
-    const time = nowInstant().add({ minutes: 60 });
+    // cerca de la medianoche de Guayaquil la ventana acordada pasa al mediodía del día siguiente
+    const zone = 'America/Guayaquil';
+    const day = (i: Temporal.Instant) => i.toZonedDateTimeISO(zone).toPlainDate().toString();
+    const soon = nowInstant().add({ minutes: 60 });
+    const time = day(soon.subtract({ minutes: 20 })) === day(soon.add({ minutes: 20 }))
+      ? soon
+      : Temporal.Now.zonedDateTimeISO(zone).toPlainDate().add({ days: 1 })
+        .toZonedDateTime({ timeZone: zone, plainTime: '12:00' }).toInstant().add({ minutes: 60 });
     return {
       action: 'CONTACT',
       orderId: 'urgent',
@@ -166,6 +173,7 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
       DispatchIntervention: [],
       LegacyRouteReconciliation: [],
       DriverAbsence: [],
+      OrderPickup: [],
     };
     const models = Object.fromEntries(
       Object.keys(rows).map((name) => {
@@ -205,6 +213,9 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
                 claimedAt: null,
                 reservedAt: null,
                 releasedAt: null,
+                confirmedAt: null,
+                confirmedById: null,
+                confirmationRequestId: null,
                 ...input,
               };
               rows[name]!.push(value);
@@ -689,5 +700,155 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
     }
     expect(await service.audit()).toEqual([]);
     expect((await availability.effective('driver')).isAvailable).toBe(true);
+  });
+
+  describe('retiro en tienda acordado (#50)', () => {
+    const pickup = (body: Record<string, unknown>, actor = 'admin') => call({ orderId: 'urgent', ...body }, actor);
+    const routesBefore = () => rows.Route!.length;
+
+    it('registrar el acuerdo deja el pedido pendiente de retiro, sin crear otra ruta y sin marcarlo entregado', async () => {
+      const before = routesBefore();
+      const audit = await pickup({ action: 'PICKUP_AGREE' });
+
+      expect(audit).toMatchObject({ action: 'PICKUP_AGREE', outcome: 'APPLIED', actorId: 'admin' });
+      expect(rows.Order![0]).toMatchObject({ status: 'PENDING', requiresAdministrativeReview: true, routeId: null });
+      expect(rows.OrderPickup).toHaveLength(1);
+      expect(rows.OrderPickup![0]).toMatchObject({ orderId: 'urgent', agreedById: 'admin', confirmedAt: null, confirmedById: null });
+      expect(rows.Route).toHaveLength(before);
+      expect((audit.result as Record<string, unknown>).pickupId).toBe(rows.OrderPickup![0].id);
+    });
+
+    it('tras una entrega fallida exige referirse al último intento fallido, y solo entonces registra el acuerdo', async () => {
+      failed('COMPLETED');
+      await expect(pickup({ action: 'PICKUP_AGREE' })).rejects.toThrow('latest failed attempt');
+      await expect(pickup({ action: 'PICKUP_AGREE', attemptId: 'otro' })).rejects.toThrow('latest failed attempt');
+      expect(rows.OrderPickup).toHaveLength(0);
+
+      const audit = await pickup({ action: 'PICKUP_AGREE', attemptId: 'failure' });
+      expect(audit.outcome).toBe('APPLIED');
+      expect(rows.Order![0]).toMatchObject({ status: 'PENDING', requiresAdministrativeReview: true, routeId: null });
+      expect((audit.result as Record<string, unknown>).attemptId).toBe('failure');
+      // El historial de la ruta original y del intento fallido se conserva.
+      expect(rows.DeliveryAttempt).toHaveLength(1);
+      expect(rows.RouteStop![0].outcome).toBe('FAILED');
+    });
+
+    it('sin intento fallido pendiente no acepta un attemptId', async () => {
+      await expect(pickup({ action: 'PICKUP_AGREE', attemptId: 'failure' })).rejects.toThrow('No unresolved failed attempt');
+      expect(rows.OrderPickup).toHaveLength(0);
+    });
+
+    it('si el pedido tiene una reserva en una ruta aún no iniciada, la suelta de forma segura sin dejar la ruta vacía', async () => {
+      baseRoute('DRAFT', 2);
+      const audit = await call({ action: 'PICKUP_AGREE', orderId: 'old' });
+      expect(audit.outcome).toBe('APPLIED');
+      expect(rows.OrderClaim!.find((c) => c.orderId === 'old')!.releasedAt).not.toBeNull();
+      expect(rows.OrderClaim!.find((c) => c.orderId === 'old1')!.releasedAt).toBeNull(); // el otro pedido conserva su reserva
+      expect(rows.RouteStop!.map((stop) => stop.orderId)).toEqual(['old1']);
+      expect(rows.Order!.find((o) => o.id === 'old')).toMatchObject({ status: 'PENDING', requiresAdministrativeReview: true, routeId: null });
+      expect(rows.OrderPickup).toHaveLength(1);
+    });
+
+    it('no vacía una ruta reservada: con una sola parada se rechaza sin cambios', async () => {
+      baseRoute('DRAFT', 1);
+      await expect(call({ action: 'PICKUP_AGREE', orderId: 'old' })).rejects.toThrow('cannot empty a reserved route');
+      expect(rows.OrderPickup).toHaveLength(0);
+      expect(rows.RouteStop).toHaveLength(1);
+      expect(rows.OrderClaim![0].releasedAt).toBeNull();
+    });
+
+    it('una ruta ya iniciada no pierde paradas: se rechaza y nada cambia', async () => {
+      baseRoute('IN_PROGRESS', 2);
+      const stopsBefore = rows.RouteStop!.length;
+      await expect(call({ action: 'PICKUP_AGREE', orderId: 'old' })).rejects.toThrow('frozen');
+      expect(rows.OrderPickup).toHaveLength(0);
+      expect(rows.RouteStop).toHaveLength(stopsBefore);
+      expect(rows.OrderClaim!.every((c) => c.releasedAt === null)).toBe(true);
+      expect(await service.audit()).toEqual([]);
+    });
+
+    it('si el cliente no acepta el retiro solo se audita: no se entrega, no se crea ruta y se admite otra alternativa', async () => {
+      const before = routesBefore();
+      const declined = await pickup({ action: 'PICKUP_DECLINE' });
+      expect(declined).toMatchObject({ action: 'PICKUP_DECLINE', outcome: 'APPLIED' });
+      expect(rows.OrderPickup).toHaveLength(0);
+      expect(rows.Order![0]).toMatchObject({ status: 'PENDING', requiresAdministrativeReview: false });
+      expect(rows.Route).toHaveLength(before);
+
+      // Otra alternativa acordada después: ahora sí acepta el retiro.
+      expect((await pickup({ action: 'PICKUP_AGREE' })).outcome).toBe('APPLIED');
+      expect(rows.OrderPickup).toHaveLength(1);
+      expect((await service.audit()).map((a) => a.action).sort()).toEqual(['PICKUP_AGREE', 'PICKUP_DECLINE']);
+    });
+
+    it('un rechazo tras una entrega fallida mantiene el pedido pendiente de gestión', async () => {
+      failed('COMPLETED');
+      await pickup({ action: 'PICKUP_DECLINE', attemptId: 'failure' });
+      expect(rows.Order![0]).toMatchObject({ status: 'ASSIGNED', requiresAdministrativeReview: true });
+      expect(rows.OrderPickup).toHaveLength(0);
+    });
+
+    it('acordar y retirar son dos eventos: solo la confirmación entrega el pedido, con actor y momento', async () => {
+      await pickup({ action: 'PICKUP_AGREE' });
+      expect(rows.Order![0].status).not.toBe('DELIVERED');
+
+      const confirmed = await pickup({ action: 'PICKUP_CONFIRM' }, 'admin2');
+
+      expect(confirmed).toMatchObject({ action: 'PICKUP_CONFIRM', outcome: 'APPLIED', actorId: 'admin2' });
+      expect(rows.Order![0]).toMatchObject({ status: 'DELIVERED', requiresAdministrativeReview: false });
+      expect(rows.OrderPickup![0]).toMatchObject({ agreedById: 'admin', confirmedById: 'admin2' });
+      expect(rows.OrderPickup![0].confirmedAt).toBeTruthy();
+      expect(rows.OrderPickup![0].confirmationRequestId).toBe(confirmed.requestId);
+      expect((await service.audit()).map((a) => a.action).sort()).toEqual(['PICKUP_AGREE', 'PICKUP_CONFIRM']);
+    });
+
+    it('no se confirma un retiro que no se acordó ni se confirma dos veces; el reintento con la misma clave devuelve lo mismo', async () => {
+      await expect(pickup({ action: 'PICKUP_CONFIRM' })).rejects.toMatchObject({ response: { code: 'PICKUP_NOT_AGREED' } });
+      await pickup({ action: 'PICKUP_AGREE' });
+      const first = await call({ action: 'PICKUP_CONFIRM', orderId: 'urgent', requestId: 'confirm-once' });
+
+      // Misma clave: es el mismo evento (idempotente), no una doble confirmación.
+      expect(await call({ action: 'PICKUP_CONFIRM', orderId: 'urgent', requestId: 'confirm-once' })).toEqual(first);
+      // Clave nueva: el pedido ya está entregado y el retiro confirmado.
+      await expect(pickup({ action: 'PICKUP_CONFIRM' })).rejects.toThrow('Commercially resolved order');
+      expect((await service.audit()).filter((a) => a.action === 'PICKUP_CONFIRM')).toHaveLength(1);
+    });
+
+    it('un retiro confirmado en la base pero no entregado se rechaza como ya confirmado', async () => {
+      await pickup({ action: 'PICKUP_AGREE' });
+      rows.OrderPickup![0].confirmedAt = nowInstant();
+      await expect(pickup({ action: 'PICKUP_CONFIRM' })).rejects.toMatchObject({ response: { code: 'PICKUP_ALREADY_CONFIRMED' } });
+    });
+
+    it('un pedido ya con retiro acordado no admite otro acuerdo ni un rechazo', async () => {
+      await pickup({ action: 'PICKUP_AGREE' });
+      await expect(pickup({ action: 'PICKUP_AGREE' })).rejects.toMatchObject({ response: { code: 'PICKUP_ALREADY_AGREED' } });
+      await expect(pickup({ action: 'PICKUP_DECLINE' })).rejects.toMatchObject({ response: { code: 'PICKUP_ALREADY_AGREED' } });
+      expect(rows.OrderPickup).toHaveLength(1);
+    });
+
+    it.each(['DELIVERED', 'CANCELLED'])('un pedido %s no se gestiona para retiro', async (status) => {
+      rows.Order![0].status = status;
+      for (const action of ['PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM']) {
+        await expect(pickup({ action })).rejects.toThrow('Commercially resolved order');
+      }
+      expect(rows.OrderPickup).toHaveLength(0);
+      expect(await service.audit()).toEqual([]);
+    });
+
+    it('valida los campos exactos de cada acción y que el pedido exista', async () => {
+      await expect(call({ action: 'PICKUP_AGREE' })).rejects.toThrow('exact resource fields');
+      await expect(pickup({ action: 'PICKUP_CONFIRM', attemptId: 'failure' })).rejects.toThrow('exact resource fields');
+      await expect(pickup({ action: 'PICKUP_AGREE', fingerprint: 'fp' })).rejects.toThrow('exact resource fields');
+      await expect(call({ action: 'PICKUP_AGREE', orderId: 'no-existe' })).rejects.toThrow('Order not found');
+      expect(rows.OrderPickup).toHaveLength(0);
+    });
+
+    it('no repone stock ni toca reservas de repartidor: solo cambia el pedido y su retiro', async () => {
+      await pickup({ action: 'PICKUP_AGREE' });
+      await pickup({ action: 'PICKUP_CONFIRM' });
+      expect((await availability.effective('driver')).isAvailable).toBe(true);
+      expect(rows.DriverReservation).toHaveLength(0);
+    });
   });
 });

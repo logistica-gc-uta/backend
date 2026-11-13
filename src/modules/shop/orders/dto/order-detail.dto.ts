@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { OrderStatus } from './orders-query.dto.js';
-import { ORDER_SOURCES, type OrderSource } from './order-summary.dto.js';
+import { ORDER_SOURCES, OrderPickupDto, type OrderSource } from './order-summary.dto.js';
 
 export class BuyerDto {
   @ApiProperty({ format: 'uuid', description: 'ID del comprador' })
@@ -89,6 +89,12 @@ export class OrderDetailDto {
 
   @ApiProperty({ enum: ORDER_SOURCES, description: 'Origen del pedido: `SHOP` (lo hizo el cliente) o `ADMIN` (lo registró un ADMIN a su nombre)' })
   source!: OrderSource;
+
+  @ApiProperty({ type: OrderPickupDto, nullable: true, description: 'Retiro en tienda acordado, o null si el pedido no tiene uno' })
+  pickup!: OrderPickupDto | null;
+
+  @ApiProperty({ description: 'true si la entrega está pendiente de gestión de un ADMIN y todavía no hay un retiro acordado' })
+  pendingManagement!: boolean;
 
   @ApiProperty({
     description:

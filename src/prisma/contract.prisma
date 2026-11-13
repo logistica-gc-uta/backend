@@ -68,6 +68,8 @@ model User {
   adminPurchaseAttempts AdminPurchaseAttempt[] @relation("AdminPurchaseActor")
   driverAbsencesCreated   DriverAbsence[] @relation("DriverAbsenceCreator")
   driverAbsencesCancelled DriverAbsence[] @relation("DriverAbsenceCanceller")
+  pickupsAgreed           OrderPickup[] @relation("PickupAgreedBy")
+  pickupsConfirmed        OrderPickup[] @relation("PickupConfirmedBy")
 }
 
 model Driver {
@@ -289,6 +291,7 @@ model Order {
   externalDeclaration   ExternalPaymentDeclaration?
   contactAudits         OrderContactAudit[]
   adminPurchaseAttempts AdminPurchaseAttempt[]
+  pickup                OrderPickup?
 
   @@index([userId])
   @@index([createdById])
@@ -419,7 +422,29 @@ model DispatchIntervention {
 
   @@index([orderId])
   @@index([routeId])
-  @@check(expression: "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500", name: "dispatch_audit_valid")
+  @@check(expression: "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500", name: "dispatch_audit_valid")
+}
+
+// Agreed store pickup of an order (#50). It is a fulfilment alternative AFTER an explicit customer agreement, not a
+// cancellation or refund: the order keeps its status and its management hold until an ADMIN confirms the physical
+// pickup, which is a distinct event (agreement alone never means delivered). One pickup per order.
+model OrderPickup {
+  id                    String    @id @default(uuid())
+  orderId               String    @unique
+  order                 Order     @relation(fields: [orderId], references: [id])
+  agreedAt              DateTime
+  agreedById            String
+  agreedBy              User      @relation("PickupAgreedBy", fields: [agreedById], references: [id])
+  agreementRequestId    String    @unique
+  confirmedAt           DateTime?
+  confirmedById         String?
+  confirmedBy           User?     @relation("PickupConfirmedBy", fields: [confirmedById], references: [id])
+  confirmationRequestId String?   @unique
+  createdAt             DateTime  @default(now())
+
+  @@index([agreedById])
+  @@index([confirmedById])
+  @@check(expression: "(\"confirmedAt\" IS NULL AND \"confirmedById\" IS NULL AND \"confirmationRequestId\" IS NULL) OR (\"confirmedAt\" IS NOT NULL AND \"confirmedById\" IS NOT NULL AND \"confirmationRequestId\" IS NOT NULL AND \"confirmedAt\" >= \"agreedAt\")", name: "order_pickup_confirmation_consistent")
 }
 
 // Singleton commercial settings with optimistic CAS and full audit trail (#33-A)
