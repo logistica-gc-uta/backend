@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException, UnprocessableEntityException } 
 import { haversineKm } from './algorithms/geo.util.js';
 import { roundKm } from './algorithms/route-metrics.js';
 import {
+  DEFAULT_TIME_WINDOW_MARGIN_MINUTES,
   DISTANCE_METHOD,
   ExclusionReason,
   MAX_ORDERS_PER_ZONE,
@@ -36,6 +37,7 @@ const order = (id: string, z: ReturnType<typeof zone>, overrides: Record<string,
 
 describe('RoutePlanningService', () => {
   let service: RoutePlanningService;
+  let prisma: any;
   let orders: any[];
   let claims: any[];
   let zonesById: Record<string, unknown>;
@@ -81,7 +83,7 @@ describe('RoutePlanningService', () => {
       }),
       all: jest.fn(async () => claims),
     };
-    const prisma: any = {
+    prisma = {
       order: orderChain,
       zone: { where: ({ id }: { id: string }) => ({ first: async () => zonesById[id] ?? null }) },
       client: {
@@ -102,6 +104,7 @@ describe('RoutePlanningService', () => {
     expect(result.timeZone).toBe(PLANNING_TIME_ZONE);
     expect(result.distanceMethod).toBe(DISTANCE_METHOD);
     expect(result.capacity).toBe(4);
+    expect(result.timeWindowMarginMinutes).toBe(DEFAULT_TIME_WINDOW_MARGIN_MINUTES);
     expect(result.proposals.map((p) => p.orderIds.length).sort((x, y) => x - y)).toEqual([1, 4]);
     for (const proposal of result.proposals) {
       expect(proposal.zoneId).toBe('z1');
@@ -176,27 +179,140 @@ describe('RoutePlanningService', () => {
     }
   });
 
-  it('agrupa pedidos del mismo día a distinta hora y propone el instante más temprano como routeDate', async () => {
+  it('separa pedidos del mismo día fuera de la ventana horaria (17:00Z vs 20:00Z) en 2 propuestas', async () => {
     const z = zone('z1', 'CEN-01');
     orders = [order('tarde', z, { scheduledDeliveryDate: AFTERNOON }), order('temprano', z)];
 
     const { proposals } = await service.propose({ date: DAY });
 
-    expect(proposals).toHaveLength(1);
-    expect(proposals[0]!.orderIds).toHaveLength(2);
-    expect(proposals[0]!.scheduledInstants).toEqual(['2030-02-14T17:00:00Z', '2030-02-14T20:00:00Z']);
+    expect(proposals).toHaveLength(2);
+    expect(proposals[0]!.orderIds).toEqual(['temprano']);
+    expect(proposals[0]!.scheduledInstants).toEqual(['2030-02-14T17:00:00Z']);
     expect(proposals[0]!.routeDate).toBe('2030-02-14T17:00:00Z');
+    expect(proposals[1]!.orderIds).toEqual(['tarde']);
+    expect(proposals[1]!.scheduledInstants).toEqual(['2030-02-14T20:00:00Z']);
+    expect(proposals[1]!.routeDate).toBe('2030-02-14T20:00:00Z');
   });
 
-  it('ordena los instantes cronológicamente aunque difieran en formato o longitud', async () => {
+  it('combina instantes cercanos compatibles y ordena las paradas cronológicamente aunque difieran en formato o longitud', async () => {
     const z = zone('z1', 'CEN-01');
     const withSeconds = Temporal.Instant.from('2030-02-14T09:30:15Z');
-    orders = [order('a', z, { scheduledDeliveryDate: NOON }), order('b', z, { scheduledDeliveryDate: withSeconds })];
+    const closeAfter = Temporal.Instant.from('2030-02-14T09:45:00Z');
+    orders = [
+      order('a', z, { scheduledDeliveryDate: closeAfter, deliveryLat: -1.2412 }),
+      order('b', z, { scheduledDeliveryDate: withSeconds, deliveryLat: -1.26 }),
+    ];
 
     const { proposals } = await service.propose({ date: DAY });
 
-    expect(proposals[0]!.scheduledInstants).toEqual(['2030-02-14T09:30:15Z', '2030-02-14T17:00:00Z']);
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0]!.scheduledInstants).toEqual(['2030-02-14T09:30:15Z', '2030-02-14T09:45:00Z']);
     expect(proposals[0]!.routeDate).toBe('2030-02-14T09:30:15Z');
+    expect(proposals[0]!.orderIds).toEqual(['b', 'a']);
+  });
+
+  describe('prioridad horaria, margen configurable y origen común (#48)', () => {
+    it('agrupa por extremos (max - min <= 30 min) sin encadenar vecinos: 10:00, 10:25, 10:50 -> [10:00, 10:25] + [10:50]', async () => {
+      const z = zone('z1', 'CEN-01');
+      orders = [
+        order('o1', z, { scheduledDeliveryDate: Temporal.Instant.from(`${DAY}T10:00:00Z`), deliveryLat: -1.242 }),
+        order('o2', z, { scheduledDeliveryDate: Temporal.Instant.from(`${DAY}T10:25:00Z`), deliveryLat: -1.243 }),
+        order('o3', z, { scheduledDeliveryDate: Temporal.Instant.from(`${DAY}T10:50:00Z`), deliveryLat: -1.2431 }),
+      ];
+
+      const result = await service.propose({ date: DAY });
+
+      expect(result.timeWindowMarginMinutes).toBe(30);
+      expect(result.proposals).toHaveLength(2);
+      expect(result.proposals[0]!.orderIds).toEqual(['o1', 'o2']);
+      expect(result.proposals[1]!.orderIds).toEqual(['o3']);
+    });
+
+    it('no mezcla ventana cercana (10:00 + 10:20) con otro bloque horario (15:00) aunque sean vecinos', async () => {
+      const z = zone('z1', 'CEN-01');
+      orders = [
+        order('o1', z, { scheduledDeliveryDate: Temporal.Instant.from(`${DAY}T10:00:00Z`), deliveryLat: -1.245 }),
+        order('o2', z, { scheduledDeliveryDate: Temporal.Instant.from(`${DAY}T10:20:00Z`), deliveryLat: -1.246 }),
+        order('o3', z, { scheduledDeliveryDate: Temporal.Instant.from(`${DAY}T15:00:00Z`), deliveryLat: -1.2451 }),
+      ];
+
+      const { proposals } = await service.propose({ date: DAY });
+
+      expect(proposals).toHaveLength(2);
+      expect(proposals[0]!.orderIds).toEqual(['o1', 'o2']);
+      expect(proposals[1]!.orderIds).toEqual(['o3']);
+    });
+
+    it('usa el margen dinámico de ShopSettingsService (60 min fusiona 10:00, 10:25 y 10:50 en 1 ruta cronológica)', async () => {
+      const z = zone('z1', 'CEN-01');
+      orders = [
+        order('o3', z, { scheduledDeliveryDate: Temporal.Instant.from(`${DAY}T10:50:00Z`), deliveryLat: -1.2415 }),
+        order('o1', z, { scheduledDeliveryDate: Temporal.Instant.from(`${DAY}T10:00:00Z`), deliveryLat: -1.245 }),
+        order('o2', z, { scheduledDeliveryDate: Temporal.Instant.from(`${DAY}T10:25:00Z`), deliveryLat: -1.243 }),
+      ];
+      const shopSettings: any = {
+        getRouteTimeWindowMarginMinutes: jest.fn(async () => 60),
+      };
+      const configuredService = new RoutePlanningService(prisma, undefined, undefined, shopSettings);
+
+      const result = await configuredService.propose({ date: DAY });
+
+      expect(shopSettings.getRouteTimeWindowMarginMinutes).toHaveBeenCalledTimes(1);
+      expect(result.timeWindowMarginMinutes).toBe(60);
+      expect(result.proposals).toHaveLength(1);
+      expect(result.proposals[0]!.orderIds).toEqual(['o1', 'o2', 'o3']);
+      expect(writes).not.toHaveBeenCalled();
+    });
+
+    it('cuando StoreCoverage está configurado usa su location como origen común en todas las zonas', async () => {
+      const z1 = zone('z1', 'CEN-01', [-1.241, -78.619]);
+      const z2 = zone('z2', 'FIC-02', [-1.249, -78.632]);
+      const storeLocation = { lat: -1.255, lng: -78.611 };
+      const orderPos = { lat: -1.26, lng: -78.615 };
+      orders = [
+        order('a', z1, { deliveryLat: orderPos.lat, deliveryLng: orderPos.lng }),
+        order('b', z2, { deliveryLat: orderPos.lat, deliveryLng: orderPos.lng }),
+      ];
+      const storeCoverage: any = {
+        getCoverage: jest.fn(async () => ({
+          configured: true,
+          location: storeLocation,
+          coverage: { type: 'Polygon', coordinates: [] },
+          updatedAt: '2030-02-14T00:00:00.000Z',
+          updatedById: null,
+        })),
+      };
+      const configuredService = new RoutePlanningService(prisma, undefined, storeCoverage);
+
+      const { proposals } = await configuredService.propose({ date: DAY });
+      const expectedKm = roundKm(2 * haversineKm(storeLocation, orderPos));
+
+      expect(storeCoverage.getCoverage).toHaveBeenCalledTimes(1);
+      expect(proposals).toHaveLength(2);
+      for (const p of proposals) {
+        expect(p.depot).toEqual(storeLocation);
+        expect(p.totalDistanceKm).toBe(expectedKm);
+        expect(p.baselineKm).toBe(expectedKm);
+      }
+      expect(writes).not.toHaveBeenCalled();
+    });
+
+    it('cuando StoreCoverage no está configurado conserva el depósito de cada zona como fallback', async () => {
+      const z1 = zone('z1', 'CEN-01', [-1.241, -78.619]);
+      const z2 = zone('z2', 'FIC-02', [-1.249, -78.632]);
+      orders = [order('a', z1), order('b', z2)];
+      const storeCoverage: any = {
+        getCoverage: jest.fn(async () => ({ configured: false })),
+      };
+      const unconfiguredService = new RoutePlanningService(prisma, undefined, storeCoverage);
+
+      const { proposals } = await unconfiguredService.propose({ date: DAY });
+
+      expect(proposals.map((p) => [p.zoneId, p.depot])).toEqual([
+        ['z1', { lat: -1.241, lng: -78.619 }],
+        ['z2', { lat: -1.249, lng: -78.632 }],
+      ]);
+    });
   });
 
   describe('ahorro frente a la línea base (cada pedido por separado, ida y vuelta al depósito)', () => {

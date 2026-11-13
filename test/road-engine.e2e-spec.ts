@@ -272,4 +272,98 @@ describe('Motor vial OSRM en las propuestas de rutas (#47) en PostgreSQL real', 
       expect((await db.client.orm.public.Order.where({ id }).first()).status).toBe('PENDING');
     });
   });
+
+  describe('prioridad horaria, margen dinámico y origen común (#48)', () => {
+    const snapshot = async () => ({ routes: await count('Route'), claims: await count('OrderClaim'), orders: await count('Order') });
+
+    it('separa 10:00, 10:25 y 10:50 con margen por defecto de 30 min en [10:00, 10:25] + [10:50] en orden cronológico', async () => {
+      const o3 = newOrder({ lat: -1.2371, lng: -78.6109 }, `${DAY}T15:50:00Z`);
+      const o1 = newOrder({ lat: -1.236, lng: -78.612 }, `${DAY}T15:00:00Z`);
+      const o2 = newOrder({ lat: -1.237, lng: -78.611 }, `${DAY}T15:25:00Z`);
+
+      const res = await proposals().expect(200);
+
+      expect(res.body.timeWindowMarginMinutes).toBe(30);
+      expect(res.body.proposals).toHaveLength(2);
+      expect(res.body.proposals[0].orderIds).toEqual([o1, o2]);
+      expect(res.body.proposals[1].orderIds).toEqual([o3]);
+    });
+
+    it('PATCH /api/v1/admin/shop-settings cambia timeWindowMarginMinutes y modifica la agrupación en vivo', async () => {
+      const o1 = newOrder({ lat: -1.236, lng: -78.612 }, `${DAY}T15:00:00Z`);
+      const o2 = newOrder({ lat: -1.237, lng: -78.611 }, `${DAY}T15:25:00Z`);
+      const o3 = newOrder({ lat: -1.2371, lng: -78.6109 }, `${DAY}T15:50:00Z`);
+
+      const settingsBefore = await http().get('/api/v1/admin/shop-settings').set(auth(adminToken)).expect(200);
+      expect(settingsBefore.body.routePlanning.timeWindowMarginMinutes).toBe(30);
+
+      const updated = await http()
+        .patch('/api/v1/admin/shop-settings')
+        .set(auth(adminToken))
+        .send({
+          expectedVersion: settingsBefore.body.version,
+          routePlanning: { timeWindowMarginMinutes: 60 },
+        })
+        .expect(200);
+      expect(updated.body.routePlanning.timeWindowMarginMinutes).toBe(60);
+
+      try {
+        const res = await proposals().expect(200);
+        expect(res.body.timeWindowMarginMinutes).toBe(60);
+        expect(res.body.proposals).toHaveLength(1);
+        expect(res.body.proposals[0].orderIds).toEqual([o1, o2, o3]);
+      } finally {
+        await http()
+          .patch('/api/v1/admin/shop-settings')
+          .set(auth(adminToken))
+          .send({
+            expectedVersion: updated.body.version,
+            routePlanning: { timeWindowMarginMinutes: settingsBefore.body.routePlanning.timeWindowMarginMinutes },
+          })
+          .expect(200);
+      }
+    });
+
+    it('cuando StoreCoverage está configurado usa su ubicación como origen y retorno común de las propuestas', async () => {
+      const STORE = { lat: -1.24908, lng: -78.61675 };
+      await http()
+        .put('/api/v1/admin/store-coverage')
+        .set(auth(adminToken))
+        .send({
+          location: STORE,
+          coverage: {
+            type: 'Polygon',
+            coordinates: [
+              [
+                [-78.7, -1.3],
+                [-78.5, -1.3],
+                [-78.5, -1.1],
+                [-78.7, -1.1],
+                [-78.7, -1.3],
+              ],
+            ],
+          },
+        })
+        .expect(200);
+
+      newOrder(EAST, `${DAY}T15:00:00Z`);
+      const res = await proposals('&includeGeometry=true').expect(200);
+
+      expect(res.body.proposals).toHaveLength(1);
+      expect(res.body.proposals[0].depot).toEqual(STORE);
+      expect(res.body.proposals[0].geometry.coordinates[0]).toEqual([STORE.lng, STORE.lat]);
+      expect(res.body.proposals[0].geometry.coordinates.at(-1)).toEqual([STORE.lng, STORE.lat]);
+    });
+
+    it('con OSRM caído sigue siendo estrictamente de solo lectura (503 sin mutaciones en BD)', async () => {
+      newOrder(EAST, `${DAY}T15:00:00Z`);
+      const before = await snapshot();
+
+      osrm.setOptions({ mode: 'server-error' });
+      const res = await proposals().expect(503);
+
+      expect(res.body.code).toBe('ROAD_ENGINE_UNAVAILABLE');
+      expect(await snapshot()).toEqual(before);
+    });
+  });
 });

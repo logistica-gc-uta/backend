@@ -9,6 +9,8 @@ import { RouteAssignmentService } from './route-assignment.service.js';
 import { RouteProgressService } from './route-progress.service.js';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
+import { ShopSettingsModule } from '../shop/settings/shop-settings.module.js';
+import { StoreCoverageModule } from '../store-coverage/store-coverage.module.js';
 import { RoutesController } from './routes.controller.js';
 import { RouteExecutionService } from './route-execution.service.js';
 import { RoutesService } from './routes.service.js';
@@ -17,7 +19,7 @@ import { RoutePlanningController } from './route-planning.controller.js';
 import { RoadMetricsService } from './road/road-metrics.service.js';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, StoreCoverageModule, ShopSettingsModule],
   controllers: [RoutesController, RoutePlanningController, DispatchController],
   providers: [
     // Motor vial (#47): se construye con la configuración del entorno, no por inyección de parámetros.
