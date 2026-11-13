@@ -16,6 +16,7 @@ describe('RouteReturnService', () => {
   let lostRoute: boolean;
   let releaseCount: number;
   let available: jest.Mock;
+  let publish: jest.Mock;
   beforeEach(() => {
     const time = Temporal.Instant.from('2026-10-10T00:00:00Z');
     route = {
@@ -73,6 +74,7 @@ describe('RouteReturnService', () => {
     available = jest
       .fn()
       .mockResolvedValue({ isAvailable: true, blockingRouteIds: [] });
+    publish = jest.fn().mockResolvedValue(undefined);
     service = new RouteReturnService(
       {
         client: { transaction: async (fn: any) => fn(tx) },
@@ -85,6 +87,7 @@ describe('RouteReturnService', () => {
           return result;
         },
       } as unknown as RouteAvailabilityService,
+      { publish } as any,
     );
   });
   it('persists paired return audit and matching reservation release once', async () => {
@@ -116,6 +119,41 @@ describe('RouteReturnService', () => {
       expect(releaseCount).toBe(0);
     },
   );
+  it('supports INTERRUPTED routes without completedAt and emits EMERGENCY_DRIVER_RETURN realtime event', async () => {
+    route.status = 'INTERRUPTED';
+    route.completedAt = null;
+    route.completedById = null;
+
+    const result = await service.returnToDepot('route', 'actor');
+    expect(result.status).toBe('INTERRUPTED');
+    expect(result.returnedAt).toBe(route.returnedAt.toString());
+    expect(route.returnedById).toBe('actor');
+    expect(reservation.releasedAt.toString()).toBe(result.returnedAt);
+    expect(driver.isAvailable).toBe(true);
+    expect(publish).toHaveBeenCalledWith([
+      { type: 'route.updated', routeId: 'route', status: 'INTERRUPTED' },
+      { type: 'driver.availability.updated', driverId: 'driver', available: true },
+      {
+        type: 'dispatch.incident.updated',
+        routeId: 'route',
+        action: 'EMERGENCY_DRIVER_RETURN',
+      },
+    ]);
+    // Idempotent replay
+    expect(await service.returnToDepot('route', 'actor')).toEqual(result);
+    expect(releaseCount).toBe(1);
+  });
+  it('rejects INTERRUPTED route without startedAt/startedById', async () => {
+    route.status = 'INTERRUPTED';
+    route.completedAt = null;
+    route.completedById = null;
+    route.startedById = null;
+    await expect(
+      service.returnToDepot('route', 'actor'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(route.returnedAt).toBeNull();
+    expect(releaseCount).toBe(0);
+  });
   it('requires complete genuine paired audit', async () => {
     route.completedById = null;
     await expect(

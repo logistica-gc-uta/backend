@@ -20,11 +20,16 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/guards/roles.guard.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 import { DispatchInterventionService } from './dispatch-intervention.service.js';
+import { DispatchEmergencyService } from './dispatch-emergency.service.js';
 import {
   DispatchAuditDto,
   DispatchInterventionDto,
 } from './dto/dispatch-intervention.dto.js';
 import { OrderItemLossDto } from './dto/order-item-loss.dto.js';
+import {
+  RouteEmergencyDetailDto,
+  RouteEmergencySummaryDto,
+} from './dto/route-emergency.dto.js';
 import { RouteUrgencyService } from './route-urgency.service.js';
 import {
   UrgencyInboxDto,
@@ -40,6 +45,7 @@ export class DispatchController {
   constructor(
     private readonly urgency: RouteUrgencyService,
     private readonly interventions: DispatchInterventionService,
+    private readonly emergencies: DispatchEmergencyService,
   ) {}
 
   @Post('interventions')
@@ -91,6 +97,33 @@ export class DispatchController {
   @ApiResponse({ status: 403, description: 'Current ADMIN role required' })
   losses(@Param('id', ParseUUIDPipe) id: string) {
     return this.interventions.listLosses(id);
+  }
+
+  @Get('emergencies')
+  @ApiOperation({
+    summary:
+      'ADMIN: emergencias de rutas declaradas con conteos de custodia y unidades pendientes (#51)',
+  })
+  @ApiResponse({ status: 200, type: [RouteEmergencySummaryDto] })
+  @ApiResponse({ status: 401, description: 'Authentication required' })
+  @ApiResponse({ status: 403, description: 'Current ADMIN role required' })
+  emergenciesList(): Promise<RouteEmergencySummaryDto[]> {
+    return this.emergencies.listEmergencies();
+  }
+
+  @Get('routes/:id/emergency')
+  @ApiOperation({
+    summary:
+      'ADMIN: detalle de emergencia de una ruta y estado de recuperación/pérdida por unidad (#51)',
+  })
+  @ApiResponse({ status: 200, type: RouteEmergencyDetailDto })
+  @ApiResponse({ status: 404, description: 'Route or emergency not found' })
+  @ApiResponse({ status: 401, description: 'Authentication required' })
+  @ApiResponse({ status: 403, description: 'Current ADMIN role required' })
+  emergencyDetail(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<RouteEmergencyDetailDto> {
+    return this.emergencies.emergencyDetail(id);
   }
 
   @Get('inbox')

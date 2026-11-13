@@ -23,6 +23,7 @@ import { RouteAssignmentService } from './route-assignment.service.js';
 import { RouteAvailabilityService } from './route-availability.service.js';
 import { RouteUrgencyService } from './route-urgency.service.js';
 import { DispatchLossService } from './dispatch-loss.service.js';
+import { DispatchEmergencyService } from './dispatch-emergency.service.js';
 import {
   canMutateRouteStructure,
   RouteStatus,
@@ -68,10 +69,15 @@ export class DispatchInterventionService {
     private readonly realtime?: RealtimePublisher,
     @Optional()
     private readonly storeCoverage?: StoreCoverageService,
+    @Optional()
+    emergencyService?: DispatchEmergencyService,
   ) {
     this.losses = new DispatchLossService(prisma);
+    this.emergencies =
+      emergencyService ?? new DispatchEmergencyService(prisma, availability);
   }
   private readonly losses: DispatchLossService;
+  private readonly emergencies: DispatchEmergencyService;
 
   private async publishCommitted(changes: readonly RealtimeChange[]) {
     if (!changes.length || !this.realtime) return;
@@ -137,6 +143,11 @@ export class DispatchInterventionService {
       LOSS_DECLARE: ['orderId', 'orderItemId', 'unitNumber', 'attemptId'],
       REPLACEMENT_PREPARE: ['lossId'],
       ORIGINAL_RECOVER: ['lossId', 'recoveryCondition'],
+      EMERGENCY_DECLARE: ['routeId'],
+      UNIT_RECOVERY_CONFIRM: ['recoveryId'],
+      EMERGENCY_CLOSE: ['routeId'],
+      EMERGENCY_DRIVER_RELEASE: ['routeId'],
+      EMERGENCY_REQUEUE: ['orderId', 'emergencyId'],
     };
     const required: Record<string, string[]> = {
       CONFIRM: ['orderId', 'fingerprint'],
@@ -154,6 +165,11 @@ export class DispatchInterventionService {
       LOSS_DECLARE: ['orderId', 'orderItemId'],
       REPLACEMENT_PREPARE: ['lossId'],
       ORIGINAL_RECOVER: ['lossId', 'recoveryCondition'],
+      EMERGENCY_DECLARE: ['routeId'],
+      UNIT_RECOVERY_CONFIRM: ['recoveryId'],
+      EMERGENCY_CLOSE: ['routeId'],
+      EMERGENCY_DRIVER_RELEASE: ['routeId'],
+      EMERGENCY_REQUEUE: ['orderId', 'emergencyId'],
     };
     const allowed = fields[dto.action];
     if (
@@ -197,7 +213,7 @@ export class DispatchInterventionService {
     dto: DispatchInterventionDto,
     actorId: string,
     routeId: string | null,
-    result: Record<string, string | null>,
+    result: Record<string, unknown>,
     orderId: string | null = dto.orderId ?? null,
   ) {
     return tx.orm.public.DispatchIntervention.create({
@@ -209,7 +225,7 @@ export class DispatchInterventionService {
       reason: dto.reason.trim(),
       outcome: dto.action === 'REJECT' ? 'REJECTED' : 'APPLIED',
       payload: JSON.parse(canonical(dto)),
-      result,
+      result: JSON.parse(canonical(result)),
       recordedAt: nowInstant(),
     });
   }
@@ -688,6 +704,18 @@ export class DispatchInterventionService {
         )
           return this.response(
             await this.losses.handle(tx, dto, actorId, changes, (routeId, result, orderId) =>
+              this.createAudit(tx, dto, actorId, routeId, result, orderId),
+            ),
+          );
+        if (
+          dto.action === 'EMERGENCY_DECLARE' ||
+          dto.action === 'UNIT_RECOVERY_CONFIRM' ||
+          dto.action === 'EMERGENCY_CLOSE' ||
+          dto.action === 'EMERGENCY_DRIVER_RELEASE' ||
+          dto.action === 'EMERGENCY_REQUEUE'
+        )
+          return this.response(
+            await this.emergencies.handle(tx, dto, actorId, changes, (routeId, result, orderId) =>
               this.createAudit(tx, dto, actorId, routeId, result, orderId),
             ),
           );

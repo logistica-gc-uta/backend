@@ -175,6 +175,10 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
       DriverAbsence: [],
       OrderPickup: [],
       StoreCoverage: [],
+      OrderItem: [],
+      OrderItemLoss: [],
+      RouteEmergency: [],
+      RouteUnitRecovery: [],
     };
     const models = Object.fromEntries(
       Object.keys(rows).map((name) => {
@@ -979,6 +983,100 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
           agreementId: agreed.id,
         }),
       ).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
+  describe('gestión de emergencia en ruta (#51)', () => {
+    it('ejecuta EMERGENCY_DECLARE -> UNIT_RECOVERY_CONFIRM -> EMERGENCY_CLOSE -> EMERGENCY_DRIVER_RELEASE -> EMERGENCY_REQUEUE con replay idempotente', async () => {
+      baseRoute('IN_PROGRESS', 2, 'em-route');
+      rows.Route![0]!.startedAt = nowInstant();
+      rows.Route![0]!.startedById = 'driver-user';
+      rows.Route![0]!.completedAt = null;
+      rows.Route![0]!.completedById = null;
+      rows.Route![0]!.returnedAt = null;
+      rows.Route![0]!.returnedById = null;
+      rows.Order!.forEach((o) => {
+        if (o.routeId === 'em-route') o.status = 'IN_TRANSIT';
+      });
+      rows.OrderItem!.push(
+        { id: 'em-item-1', orderId: 'em-route-order0', productId: 'prod-1', quantity: 2 },
+        { id: 'em-item-2', orderId: 'em-route-order1', productId: 'prod-1', quantity: 1 },
+      );
+
+      const declared = await call({
+        action: 'EMERGENCY_DECLARE',
+        routeId: 'em-route',
+        requestId: 'em-declare-1',
+      });
+      expect(declared).toMatchObject({
+        action: 'EMERGENCY_DECLARE',
+        outcome: 'APPLIED',
+        routeId: 'em-route',
+      });
+      expect(await call({
+        action: 'EMERGENCY_DECLARE',
+        routeId: 'em-route',
+        requestId: 'em-declare-1',
+      })).toEqual(declared);
+      expect(rows.Route![0]!.status).toBe('INTERRUPTED');
+      expect(rows.RouteUnitRecovery).toHaveLength(3);
+
+      const emergencyId = rows.RouteEmergency![0]!.id;
+      const order0Units = rows.RouteUnitRecovery!.filter(
+        (u) => u.orderId === 'em-route-order0',
+      );
+      await call({ action: 'UNIT_RECOVERY_CONFIRM', recoveryId: order0Units[0]!.id });
+      await expect(
+        call({
+          action: 'EMERGENCY_REQUEUE',
+          orderId: 'em-route-order0',
+          emergencyId,
+        }),
+      ).rejects.toMatchObject({ response: { code: 'RECOVERY_PENDING' } });
+
+      await call({ action: 'UNIT_RECOVERY_CONFIRM', recoveryId: order0Units[1]!.id });
+      const closed = await call({ action: 'EMERGENCY_CLOSE', routeId: 'em-route' });
+      expect(closed.action).toBe('EMERGENCY_CLOSE');
+
+      const released = await call({
+        action: 'EMERGENCY_DRIVER_RELEASE',
+        routeId: 'em-route',
+      });
+      expect(released.action).toBe('EMERGENCY_DRIVER_RELEASE');
+      expect((await availability.effective('driver')).isAvailable).toBe(true);
+
+      const requeued = await call({
+        action: 'EMERGENCY_REQUEUE',
+        orderId: 'em-route-order0',
+        emergencyId,
+      });
+      expect(requeued).toMatchObject({
+        action: 'EMERGENCY_REQUEUE',
+        outcome: 'APPLIED',
+        orderId: 'em-route-order0',
+      });
+      expect(
+        rows.Order!.find((o) => o.id === 'em-route-order0')!
+          .requiresAdministrativeReview,
+      ).toBe(false);
+    });
+
+    it('valida los campos exactos requeridos para cada acción #51', async () => {
+      await expect(call({ action: 'EMERGENCY_DECLARE' })).rejects.toThrow(
+        'exact resource fields',
+      );
+      await expect(call({ action: 'UNIT_RECOVERY_CONFIRM' })).rejects.toThrow(
+        'exact resource fields',
+      );
+      await expect(call({ action: 'EMERGENCY_CLOSE' })).rejects.toThrow(
+        'exact resource fields',
+      );
+      await expect(
+        call({ action: 'EMERGENCY_DRIVER_RELEASE' }),
+      ).rejects.toThrow('exact resource fields');
+      await expect(
+        call({ action: 'EMERGENCY_REQUEUE', orderId: 'urgent' }),
+      ).rejects.toThrow('exact resource fields');
     });
   });
 });

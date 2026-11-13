@@ -32,6 +32,14 @@ export class RouteAvailabilityService {
         route.returnedById
       )
         continue;
+      if (
+        route.status === 'INTERRUPTED' &&
+        route.startedAt &&
+        route.startedById &&
+        route.returnedAt &&
+        route.returnedById
+      )
+        continue;
       if (route.status === null) {
         const audit = await tx.orm.public.LegacyRouteReconciliation.where({
           routeId: route.id,

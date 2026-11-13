@@ -10,6 +10,7 @@ import { businessDay, nowInstant } from '../../common/temporal.util.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { RouteAvailabilityService } from './route-availability.service.js';
 import { RouteReturnResponseDto } from './dto/route-return-response.dto.js';
+import { canReturnToDepot, RouteStatus } from './route-lifecycle.policy.js';
 import {
   REALTIME_PUBLISHER,
   type RealtimeChange,
@@ -67,18 +68,14 @@ export class RouteReturnService {
         throw new ConflictException(
           'Route ownership changed before lock acquisition',
         );
-      if (
-        route.status !== 'COMPLETED' ||
-        !route.startedAt ||
-        !route.startedById ||
-        !route.completedAt ||
-        !route.completedById
-      )
-        throw new ConflictException('Genuine completed route required');
+      if (!canReturnToDepot(route.status as RouteStatus | null, route))
+        throw new ConflictException('Genuine completed or interrupted route required');
+      const routeStatus = route.status as 'COMPLETED' | 'INTERRUPTED';
       if (route.returnedAt && route.returnedById === actorId)
         return {
           id,
-          status: 'COMPLETED',
+          // RouteReturnResponseDto.status is widened when the DTO is updated outside T2 surfaces.
+          status: routeStatus as RouteReturnResponseDto['status'],
           returnedAt: route.returnedAt.toString(),
           availability: await this.availability.effective(driver.id, tx),
         };
@@ -97,7 +94,7 @@ export class RouteReturnService {
       const returned = await tx.orm.public.Route.where({
         id,
         driverId: driver.id,
-        status: 'COMPLETED',
+        status: routeStatus,
         returnedAt: null,
         returnedById: null,
       }).update({ returnedAt, returnedById: actorId });
@@ -112,7 +109,7 @@ export class RouteReturnService {
         throw new ConflictException('Reservation changed during return');
       const availability = await this.availability.recomputeProjection(
         driver.id,
-        actorId,
+        driver.userId,
         tx,
       );
       if (!returned.returnedAt)
@@ -124,7 +121,7 @@ export class RouteReturnService {
         {
           type: 'route.updated',
           routeId: returned.id,
-          status: returned.status ?? 'COMPLETED',
+          status: returned.status ?? routeStatus,
         },
         {
           type: 'driver.availability.updated',
@@ -132,9 +129,17 @@ export class RouteReturnService {
           available: today.isAvailable,
         },
       );
+      if (routeStatus === 'INTERRUPTED') {
+        // T3 widens RealtimeChange in realtime.contract.ts for route-scoped dispatch.incident.updated.
+        changes.push({
+          type: 'dispatch.incident.updated',
+          routeId: returned.id,
+          action: 'EMERGENCY_DRIVER_RETURN',
+        } as unknown as RealtimeChange);
+      }
       return {
         id,
-        status: 'COMPLETED',
+        status: routeStatus as RouteReturnResponseDto['status'],
         returnedAt: returned.returnedAt.toString(),
         availability,
       };

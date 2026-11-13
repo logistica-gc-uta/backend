@@ -1,4 +1,5 @@
 import { DispatchInterventionService } from './dispatch-intervention.service.js';
+import { DispatchEmergencyService } from './dispatch-emergency.service.js';
 import { DispatchController } from './dispatch.controller.js';
 import { RouteUrgencyService } from './route-urgency.service.js';
 import { RouteHistoryService } from './route-history.service.js';
@@ -24,6 +25,7 @@ import { RoadMetricsService } from './road/road-metrics.service.js';
   providers: [
     // Motor vial (#47): se construye con la configuración del entorno, no por inyección de parámetros.
     { provide: RoadMetricsService, useFactory: () => new RoadMetricsService() },
+    DispatchEmergencyService,
     DispatchInterventionService,
     RouteUrgencyService,
     RouteHistoryService,
