@@ -5,12 +5,42 @@ import { OrderStatus } from './orders-query.dto.js';
 export const ORDER_SOURCES = ['SHOP', 'ADMIN'] as const;
 export type OrderSource = (typeof ORDER_SOURCES)[number];
 
+export const PICKUP_STATES = ['PENDING_PICKUP', 'PICKED_UP'] as const;
+
+/** Retiro en tienda acordado con el cliente (#50): el acuerdo y el retiro físico son dos eventos distintos. */
+export class OrderPickupDto {
+  @ApiProperty({
+    enum: PICKUP_STATES,
+    description: '`PENDING_PICKUP`: el cliente acordó retirar y aún no lo ha hecho. `PICKED_UP`: un ADMIN confirmó el retiro físico (el pedido figura entregado por retiro)',
+  })
+  state!: (typeof PICKUP_STATES)[number];
+
+  @ApiProperty({ format: 'date-time', description: 'Momento en que un ADMIN registró el acuerdo explícito de retiro' })
+  agreedAt!: string;
+
+  @ApiProperty({ type: String, nullable: true, format: 'date-time', description: 'Momento en que un ADMIN confirmó el retiro físico; null mientras esté pendiente' })
+  pickedUpAt!: string | null;
+}
+
 export class OrderSummaryDto {
   @ApiProperty({ format: 'uuid', description: 'ID único del pedido' })
   id!: string;
 
   @ApiProperty({ enum: ORDER_SOURCES, description: 'Origen del pedido: `SHOP` (lo hizo el cliente) o `ADMIN` (lo registró un ADMIN a su nombre)' })
   source!: OrderSource;
+
+  @ApiProperty({
+    type: OrderPickupDto,
+    nullable: true,
+    description: 'Retiro en tienda acordado, o null si el pedido no tiene uno. Sin retiro y con `pendingManagement` el pedido espera una gestión de ADMIN',
+  })
+  pickup!: OrderPickupDto | null;
+
+  @ApiProperty({
+    description:
+      'true si la entrega está pendiente de gestión de un ADMIN (por ejemplo tras una entrega fallida) y todavía no hay un retiro acordado',
+  })
+  pendingManagement!: boolean;
 
   @ApiProperty({
     description:

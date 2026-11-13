@@ -31,9 +31,16 @@ export class UrgencyAttemptDto {
   @ApiProperty({ type: String, nullable: true }) failureReason!: string | null;
   @ApiProperty() recordedAt!: string;
 }
+export class UrgencyPickupDto {
+  @ApiProperty({ enum: ['PENDING_PICKUP', 'PICKED_UP'] }) state!: 'PENDING_PICKUP' | 'PICKED_UP';
+  @ApiProperty({ description: 'Cuándo un ADMIN registró el acuerdo explícito de retiro en tienda' }) agreedAt!: string;
+  @ApiProperty({ type: String, nullable: true, description: 'Cuándo un ADMIN confirmó el retiro físico; null mientras esté pendiente' }) pickedUpAt!: string | null;
+}
 export class UrgencyIncidentDto {
   @ApiProperty() orderId!: string;
   @ApiProperty({ type: String, nullable: true }) routeId!: string | null;
+  @ApiProperty({ type: UrgencyPickupDto, nullable: true, description: 'Retiro en tienda acordado para este pedido (#50), o null' })
+  pickup!: UrgencyPickupDto | null;
   @ApiProperty({ type: [UrgencyAttemptDto] }) attempts!: UrgencyAttemptDto[];
 }
 export class UrgencyInboxDto {

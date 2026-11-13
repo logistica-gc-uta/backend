@@ -227,6 +227,7 @@ export class RouteUrgencyService {
     const incidents: {
       orderId: string;
       routeId: string | null;
+      pickup: { state: 'PENDING_PICKUP' | 'PICKED_UP'; agreedAt: string; pickedUpAt: string | null } | null;
       attempts: {
         id: string;
         stopId: string;
@@ -262,7 +263,20 @@ export class RouteUrgencyService {
             recordedAt: a.recordedAt.toString(),
           });
       }
-      incidents.push({ orderId: order.id, routeId: order.routeId, attempts });
+      // Retiro en tienda (#50): el ADMIN ve qué pedidos esperan el retiro y cuáles ya se retiraron.
+      const pickup = await db.OrderPickup.where({ orderId: order.id }).first();
+      incidents.push({
+        orderId: order.id,
+        routeId: order.routeId,
+        attempts,
+        pickup: pickup
+          ? {
+              state: pickup.confirmedAt ? ('PICKED_UP' as const) : ('PENDING_PICKUP' as const),
+              agreedAt: pickup.agreedAt.toString(),
+              pickedUpAt: pickup.confirmedAt ? pickup.confirmedAt.toString() : null,
+            }
+          : null,
+      });
     }
     const priorities = new Map<string, string>();
     for (const a of await db.DispatchIntervention.where({
