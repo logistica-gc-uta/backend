@@ -156,6 +156,10 @@ export class DispatchLossService {
     if (await db.OrderItemLoss.where({ orderItemId: item.id, unitNumber, cancelledAt: null }).first())
       throw this.conflict('LOSS_ALREADY_DECLARED', 'Esa unidad ya tiene una pérdida declarada');
 
+    // Lock Product FOR UPDATE before inserting OrderItemLoss (whose FK takes FOR KEY SHARE on Product)
+    // so concurrent LOSS_DECLARE requests on distinct orders serialize cleanly instead of deadlocking (40P01).
+    const product = await lockInventoryProduct(tx, this.prisma.client.raw, item.productId);
+
     // Compra, cobro y comprobante no se tocan: la pérdida solo registra la unidad y el reemplazo consume existencia libre.
     const created = await db.OrderItemLoss.create({
       orderId: order.id,
@@ -178,7 +182,6 @@ export class DispatchLossService {
       cancelReason: null,
       cancelRequestId: null,
     });
-    const product = await lockInventoryProduct(tx, this.prisma.client.raw, item.productId);
     let stock = product.stock;
     let replacement = 'PENDING';
     if (product.stock >= 1) {

@@ -902,7 +902,7 @@ BEGIN
           WHERE lst."orderId" = OLD.id AND later.outcome = 'FAILED' AND later."recordedAt" >= e."declaredAt"
         )
     ) THEN
-      RAISE EXCEPTION 'Failed or emergency order requires an explicit persisted resolution after completion or recovery' USING ERRCODE = '23514';
+      RAISE EXCEPTION 'Failed order requires an explicit persisted agreement or emergency resolution after completion or recovery' USING ERRCODE = '23514';
     END IF;
   END IF;
   RETURN NEW;
