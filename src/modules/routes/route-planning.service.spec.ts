@@ -495,4 +495,27 @@ describe('RoutePlanningService', () => {
 
     expect(backward).toEqual(forward);
   });
+
+  it('marca isToday y canConfirm como false en preview futura o pasada, y true para el día operativo actual', async () => {
+    const today = Temporal.Now.zonedDateTimeISO('America/Guayaquil').toPlainDate();
+    const tomorrow = today.add({ days: 1 }).toString();
+    const yesterday = today.subtract({ days: 1 }).toString();
+
+    await expect(service.propose({ date: today.toString() })).resolves.toMatchObject({
+      date: today.toString(),
+      isToday: true,
+      canConfirm: true,
+    });
+    await expect(service.propose({ date: tomorrow })).resolves.toMatchObject({
+      date: tomorrow,
+      isToday: false,
+      canConfirm: false,
+    });
+    await expect(service.propose({ date: yesterday })).resolves.toMatchObject({
+      date: yesterday,
+      isToday: false,
+      canConfirm: false,
+    });
+    expect(writes).not.toHaveBeenCalled();
+  });
 });

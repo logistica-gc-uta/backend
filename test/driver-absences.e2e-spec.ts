@@ -210,13 +210,12 @@ describe('Ausencias de repartidores y disponibilidad por fecha (#44) en PostgreS
       expect(await count('Route')).toBe(routesBefore); // ninguna ruta nueva por la ausencia de mañana
     });
 
-    it('una ruta de mañana se rechaza solo si la ausencia cubre mañana', async () => {
+    it('una ruta de mañana no se confirma ni asigna antes de su día operativo; la disponibilidad refleja la ausencia solo en mañana', async () => {
       const { driverId } = await newDriver();
       await absence(driverId, 1).expect(201);
-      const tomorrowRoute = await draft(newOrder(1), 1).expect(201);
-      expect((await assign(tomorrowRoute.body.id, driverId).expect(409)).body.code).toBe('DRIVER_ABSENT');
-      const dayAfter = await draft(newOrder(2), 2).expect(201);
-      await assign(dayAfter.body.id, driverId).expect(200);
+      expect((await draft(newOrder(1), 1).expect(409)).body.code).toBe('ROUTE_DATE_NOT_TODAY');
+      expect((await availability(driverId, 1).expect(200)).body.isAvailable).toBe(false);
+      expect((await availability(driverId, 2).expect(200)).body.isAvailable).toBe(true);
     });
 
     it('registrar la ausencia de quien ya tiene ruta asignada conserva ruta, pedidos y reserva y expone el conflicto', async () => {

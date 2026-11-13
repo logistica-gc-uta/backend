@@ -22,6 +22,10 @@ import {
 import {
   ASSIGNMENT_FIXTURE,
   PROPOSAL_DATE,
+  PROPOSAL_NEXT_DAY_MIDNIGHT,
+  PROPOSAL_SAME_DAY_NIGHT,
+  PROPOSAL_TOMORROW_NOON,
+  PROPOSAL_YESTERDAY_NOON,
 } from './route-assignment.fixtures.js';
 
 jest.setTimeout(120_000);
@@ -324,7 +328,7 @@ describe('Confirmed draft and assignment: owned PostgreSQL16 and real JWT', () =
       if (kind === 'null-date') change.scheduledDeliveryDate = null;
       if (kind === 'different-date')
         change.scheduledDeliveryDate = Temporal.Instant.from(
-          '2026-10-11T00:00:00Z',
+          PROPOSAL_TOMORROW_NOON,
         );
       await db.orm.public.Order.where({ id: 'one' }).update(change);
       await draft().expect(409);
@@ -333,9 +337,8 @@ describe('Confirmed draft and assignment: owned PostgreSQL16 and real JWT', () =
     },
   );
   it('confirms and assigns orders scheduled at different hours of the same America/Guayaquil day', async () => {
-    // PROPOSAL_DATE is 19:00 local on 2026-10-09; 03:00Z is 22:00 local the same day.
     await db.orm.public.Order.where({ id: 'two' }).update({
-      scheduledDeliveryDate: Temporal.Instant.from('2026-10-10T03:00:00Z'),
+      scheduledDeliveryDate: Temporal.Instant.from(PROPOSAL_SAME_DAY_NIGHT),
     });
     const confirmed = await draft(['one', 'two']).expect(201);
     expect(confirmed.body.status).toBe('DRAFT');
@@ -343,17 +346,72 @@ describe('Confirmed draft and assignment: owned PostgreSQL16 and real JWT', () =
     await assign(confirmed.body.id).expect(200);
     const two = await db.orm.public.Order.where({ id: 'two' }).first();
     expect(two?.status).toBe('ASSIGNED');
-    expect(two?.scheduledDeliveryDate?.toString()).toBe('2026-10-10T03:00:00Z');
+    expect(two?.scheduledDeliveryDate?.toString()).toBe(PROPOSAL_SAME_DAY_NIGHT);
   });
   it('rejects an order scheduled one second into the next local day without partial DRAFT', async () => {
-    // 05:00:00Z is 00:00:00 local on 2026-10-10, a different business day than PROPOSAL_DATE.
     await db.orm.public.Order.where({ id: 'one' }).update({
-      scheduledDeliveryDate: Temporal.Instant.from('2026-10-10T05:00:00Z'),
+      scheduledDeliveryDate: Temporal.Instant.from(PROPOSAL_NEXT_DAY_MIDNIGHT),
     });
     await draft().expect(409);
     expect(await db.orm.public.Route.all()).toHaveLength(0);
     expect(await db.orm.public.OrderClaim.all()).toHaveLength(0);
   });
+  it.each([
+    ['yesterday', PROPOSAL_YESTERDAY_NOON],
+    ['tomorrow', PROPOSAL_TOMORROW_NOON],
+    ['next local midnight', PROPOSAL_NEXT_DAY_MIDNIGHT],
+  ])(
+    'rejects POST /routes, POST /routes/:id/assign and POST /routes/assign for non-today date (%s) without partial state',
+    async (_label, nonToday) => {
+      await db.orm.public.Order.where({ id: 'one' }).update({
+        scheduledDeliveryDate: Temporal.Instant.from(nonToday),
+      });
+      const rejectedConfirm = await post('', {
+        zoneId: 'zone',
+        orderIds: ['one'],
+        routeDate: nonToday,
+      }).expect(409);
+      expect(rejectedConfirm.body.code).toBe('ROUTE_DATE_NOT_TODAY');
+      expect(await db.orm.public.Route.all()).toHaveLength(0);
+      expect(await db.orm.public.OrderClaim.all()).toHaveLength(0);
+
+      const rejectedLegacy = await post('/assign', {
+        driverId: 'driver',
+        zoneId: 'zone',
+        orderIds: ['one'],
+      }).expect(409);
+      expect(rejectedLegacy.body.code).toBe('ROUTE_DATE_NOT_TODAY');
+      expect(await db.orm.public.DriverReservation.all()).toHaveLength(0);
+      expect((await db.orm.public.Driver.where({ id: 'driver' }).first())?.isAvailable).toBe(true);
+
+      const staleDraft = await db.transaction(async (tx) => {
+        const route = await tx.orm.public.Route.create({
+          status: 'DRAFT',
+          driverId: null,
+          zoneId: 'zone',
+          date: Temporal.Instant.from(nonToday),
+        });
+        await tx.orm.public.RouteStop.create({
+          routeId: route.id,
+          orderId: 'one',
+          sequence: 1,
+          outcome: 'PENDING',
+          isLegacy: false,
+          createdAt: Temporal.Instant.from(nonToday),
+        });
+        await tx.orm.public.OrderClaim.create({
+          routeId: route.id,
+          orderId: 'one',
+          claimedAt: Temporal.Instant.from(nonToday),
+        });
+        return route;
+      });
+      const rejectedAssign = await assign(staleDraft.id).expect(409);
+      expect(rejectedAssign.body.code).toBe('ROUTE_DATE_NOT_TODAY');
+      expect(await db.orm.public.DriverReservation.all()).toHaveLength(0);
+      expect((await db.orm.public.Driver.where({ id: 'driver' }).first())?.isAvailable).toBe(true);
+    },
+  );
   it('enforces maximum four, uniqueness, timestamp, JWT ADMIN and body whitelist', async () => {
     await draft(['one', 'two', 'three', 'four']).expect(201);
     await draft(['one', 'two', 'three', 'four', 'five']).expect(400);
@@ -517,7 +575,7 @@ describe('Confirmed draft and assignment: owned PostgreSQL16 and real JWT', () =
         scheduledDeliveryDate:
           kind === 'null'
             ? null
-            : Temporal.Instant.from('2026-10-11T00:00:00Z'),
+            : Temporal.Instant.from(PROPOSAL_TOMORROW_NOON),
       });
       await legacy(['one', 'two']).expect(409);
       expect(await db.orm.public.Route.all()).toHaveLength(0);

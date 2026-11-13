@@ -6,6 +6,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
+import { businessDay, nowInstant } from '../../common/temporal.util.js';
 import { driverRouteDay } from '../drivers/driver-route-date.util.js';
 import { evaluatePlanningEligibility } from '../orders/order-geography.util.js';
 import { ShopSettingsService } from '../shop/settings/shop-settings.service.js';
@@ -250,9 +251,12 @@ export class RoutePlanningService implements OnModuleDestroy {
       proposals.reduce((sum, proposal) => sum + proposal.baselineKm, 0),
       proposals.reduce((sum, proposal) => sum + proposal.totalDistanceKm, 0),
     );
+    const isToday = query.date === businessDay(nowInstant()).toString();
     return {
       date: query.date,
       timeZone: PLANNING_TIME_ZONE,
+      isToday,
+      canConfirm: isToday,
       capacity: DEFAULT_ROUTE_CAPACITY,
       timeWindowMarginMinutes: marginMinutes,
       distanceMethod: road ? ROAD_DISTANCE_METHOD : DISTANCE_METHOD,

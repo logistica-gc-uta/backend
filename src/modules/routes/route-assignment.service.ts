@@ -32,6 +32,24 @@ type Transaction = Parameters<
   Parameters<PrismaService['client']['transaction']>[0]
 >[0];
 
+function assertOperationalDay(
+  date: Temporal.Instant,
+  today: Temporal.Instant = nowInstant(),
+): void {
+  if (!isSameBusinessDay(date, today)) {
+    const operationalDay = businessDay(today).toString();
+    const routeDay = businessDay(date).toString();
+    throw new ConflictException({
+      statusCode: 409,
+      message: `Routes can only be confirmed or assigned for the current America/Guayaquil operational day (${operationalDay})`,
+      error: 'Conflict',
+      code: 'ROUTE_DATE_NOT_TODAY',
+      operationalDay,
+      routeDay,
+    });
+  }
+}
+
 /** Coverage-era orders persist zoneId null; they may join a route whose zone ADMIN selected. */
 function orderBelongsToRouteZone(
   orderZoneId: string | null | undefined,
@@ -349,6 +367,7 @@ export class RouteAssignmentService {
     dto: ConfirmDraftRouteDto,
     date: Temporal.Instant,
   ): Promise<RouteAssignmentResponseDto> {
+    assertOperationalDay(date);
     if (!(await tx.orm.public.Zone.where({ id: dto.zoneId }).first()))
       throw new NotFoundException('Zone not found');
     const route = await tx.orm.public.Route.create({
@@ -421,6 +440,7 @@ export class RouteAssignmentService {
       route.driverId !== null
     )
       throw new ConflictException('Only an unassigned DRAFT may be assigned');
+    assertOperationalDay(route.date);
     const profile = await tx.orm.public.User.where({
       id: driver.userId,
       role: 'DRIVER',

@@ -24,6 +24,7 @@ export const DISPATCH_ACTIONS = [
   'PICKUP_AGREE',
   'PICKUP_DECLINE',
   'PICKUP_CONFIRM',
+  'RELEASE_DRAFT',
 ] as const;
 export class DispatchInterventionDto {
   @ApiProperty({

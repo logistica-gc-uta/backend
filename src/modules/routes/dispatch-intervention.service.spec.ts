@@ -851,4 +851,58 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
       expect(rows.DriverReservation).toHaveLength(0);
     });
   });
+
+  describe('liberación auditada de DRAFT expirado (RELEASE_DRAFT)', () => {
+    it('elimina paradas, libera OrderClaim activos y audita sin perder trazabilidad', async () => {
+      baseRoute('DRAFT', 2, 'stale-draft');
+      rows.Route![0].date = nowInstant().subtract({ hours: 24 });
+
+      const first = await call({
+        action: 'RELEASE_DRAFT',
+        routeId: 'stale-draft',
+        requestId: 'release-stale-1',
+      });
+      expect(first).toMatchObject({
+        action: 'RELEASE_DRAFT',
+        outcome: 'APPLIED',
+        routeId: 'stale-draft',
+        orderId: null,
+      });
+      expect(rows.RouteStop).toHaveLength(0);
+      expect(rows.OrderClaim!.every((c) => c.releasedAt !== null)).toBe(true);
+      expect(rows.Order!.every((o) => o.status === 'PENDING' && o.routeId === null)).toBe(true);
+
+      // Idempotent replay
+      const replay = await call({
+        action: 'RELEASE_DRAFT',
+        routeId: 'stale-draft',
+        requestId: 'release-stale-1',
+      });
+      expect(replay).toEqual(first);
+      expect(rows.DispatchIntervention).toHaveLength(1);
+    });
+
+    it.each(['ASSIGNED', 'IN_PROGRESS', 'COMPLETED'])('rechaza RELEASE_DRAFT en ruta %s', async (status) => {
+      baseRoute(status, 1, 'locked-route');
+      await expect(
+        call({ action: 'RELEASE_DRAFT', routeId: 'locked-route' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(rows.RouteStop).toHaveLength(1);
+      expect(rows.OrderClaim![0].releasedAt).toBeNull();
+    });
+
+    it('rechaza RELEASE_DRAFT sobre un DRAFT ya liberado (sin paradas ni claims)', async () => {
+      rows.Route!.push({
+        id: 'empty-draft',
+        status: 'DRAFT',
+        driverId: null,
+        zoneId: 'zone',
+        date: nowInstant().subtract({ hours: 24 }),
+        createdAt: nowInstant(),
+      });
+      await expect(
+        call({ action: 'RELEASE_DRAFT', routeId: 'empty-draft' }),
+      ).rejects.toMatchObject({ response: { code: 'DRAFT_ALREADY_RELEASED' } });
+    });
+  });
 });

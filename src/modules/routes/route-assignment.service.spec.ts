@@ -10,9 +10,12 @@ import { ConfirmDraftRouteDto } from './dto/confirm-draft-route.dto.js';
 import { AssignDraftRouteDto } from './dto/assign-draft-route.dto.js';
 
 describe('RouteAssignmentService', () => {
+  const todayLocal = Temporal.Now.zonedDateTimeISO('America/Guayaquil').toPlainDate();
+  const localMidnight = todayLocal.toZonedDateTime('America/Guayaquil').toInstant();
+  const routeIso = localMidnight.add({ hours: 9 }).toString();
   const dto = {
     zoneId: 'zone',
-    routeDate: '2026-10-10T00:00:00Z',
+    routeDate: routeIso,
     orderIds: ['order'],
   };
   let service: RouteAssignmentService;
@@ -178,41 +181,66 @@ describe('RouteAssignmentService', () => {
     },
   );
   describe('same business day schedules (America/Guayaquil)', () => {
-    const at = (iso: string) => Temporal.Instant.from(iso);
+    const endOfToday = localMidnight.add({ hours: 24 }).subtract({ seconds: 1 });
 
     it('confirms orders scheduled at different hours of the route business day', async () => {
-      orders[0].scheduledDeliveryDate = at('2026-10-10T05:00:00Z'); // 00:00 local
-      orders.push({ ...orders[0], id: 'second', scheduledDeliveryDate: at('2026-10-11T04:59:59Z') }); // 23:59:59 local
+      orders[0].scheduledDeliveryDate = localMidnight; // 00:00 local
+      orders.push({ ...orders[0], id: 'second', scheduledDeliveryDate: endOfToday }); // 23:59:59 local
       await expect(
         service.confirmDraft(
-          { ...dto, routeDate: '2026-10-10T05:00:00Z', orderIds: ['order', 'second'] },
+          { ...dto, routeDate: localMidnight.toString(), orderIds: ['order', 'second'] },
           'admin',
         ),
       ).resolves.toMatchObject({ status: 'DRAFT' });
     });
 
     it('accepts a route instant that is not the exact schedule of any order', async () => {
-      orders[0].scheduledDeliveryDate = at('2026-10-10T15:00:00Z');
+      orders[0].scheduledDeliveryDate = localMidnight.add({ hours: 10 });
       await expect(
-        service.confirmDraft({ ...dto, routeDate: '2026-10-10T09:00:00Z' }, 'admin'),
+        service.confirmDraft({ ...dto, routeDate: localMidnight.add({ hours: 4 }).toString() }, 'admin'),
       ).resolves.toMatchObject({ status: 'DRAFT' });
     });
 
     it('accepts instants on the same local day that fall on different UTC dates', async () => {
-      orders[0].scheduledDeliveryDate = at('2026-10-10T23:30:00Z'); // 18:30 local
+      orders[0].scheduledDeliveryDate = localMidnight.add({ hours: 18, minutes: 30 }); // 18:30 local
       await expect(
-        service.confirmDraft({ ...dto, routeDate: '2026-10-11T04:00:00Z' }, 'admin'), // 23:00 local
+        service.confirmDraft({ ...dto, routeDate: localMidnight.add({ hours: 23 }).toString() }, 'admin'), // 23:00 local (next UTC day)
       ).resolves.toMatchObject({ status: 'DRAFT' });
     });
 
     it.each([
-      ['one second after local midnight of the next day', '2026-10-11T05:00:00Z'],
-      ['one second before local midnight of the previous day', '2026-10-10T04:59:59Z'],
+      ['one second after local midnight of the next day', localMidnight.add({ hours: 24 })],
+      ['one second before local midnight of the previous day', localMidnight.subtract({ seconds: 1 })],
     ])('rejects an order scheduled %s', async (_label, schedule) => {
-      orders[0].scheduledDeliveryDate = at(schedule);
+      orders[0].scheduledDeliveryDate = schedule;
       await expect(
-        service.confirmDraft({ ...dto, routeDate: '2026-10-10T05:00:00Z' }, 'admin'),
+        service.confirmDraft({ ...dto, routeDate: localMidnight.toString() }, 'admin'),
       ).rejects.toBeInstanceOf(ConflictException);
+      expect(claims).toHaveLength(0);
+    });
+
+    it.each([
+      ['one second before today local midnight (yesterday)', localMidnight.subtract({ seconds: 1 })],
+      ['today + 24h local midnight (tomorrow)', localMidnight.add({ hours: 24 })],
+    ])('rejects confirmDraft, assignDraft and assignLegacy for non-today date (%s)', async (_label, nonToday) => {
+      orders[0].scheduledDeliveryDate = nonToday;
+      await expect(
+        service.confirmDraft({ ...dto, routeDate: nonToday.toString() }, 'admin'),
+      ).rejects.toMatchObject({ response: { code: 'ROUTE_DATE_NOT_TODAY' } });
+      expect(claims).toHaveLength(0);
+
+      route.date = nonToday;
+      claims = [{ id: 'claim', orderId: 'order', routeId: 'route', claimedAt: nonToday }];
+      await expect(
+        service.assignDraft('route', { driverId: 'driver' }, 'admin'),
+      ).rejects.toMatchObject({ response: { code: 'ROUTE_DATE_NOT_TODAY' } });
+      expect(reservation).toBeNull();
+      expect(driver.isAvailable).toBe(true);
+
+      claims = [];
+      await expect(
+        service.assignLegacy({ driverId: 'driver', zoneId: 'zone', orderIds: ['order'] }, 'admin'),
+      ).rejects.toMatchObject({ response: { code: 'ROUTE_DATE_NOT_TODAY' } });
       expect(claims).toHaveLength(0);
     });
   });

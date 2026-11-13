@@ -1,4 +1,19 @@
-export const PROPOSAL_DATE = '2026-10-10T00:00:00Z';
+const todayGuayaquil = Temporal.Now.zonedDateTimeISO('America/Guayaquil').toPlainDate();
+const atLocal = (daysOffset: number, plainTime: string) =>
+  todayGuayaquil
+    .add({ days: daysOffset })
+    .toZonedDateTime({ timeZone: 'America/Guayaquil', plainTime })
+    .toInstant()
+    .toString();
+
+export const PROPOSAL_DAY = todayGuayaquil.toString();
+export const PROPOSAL_YESTERDAY_DAY = todayGuayaquil.subtract({ days: 1 }).toString();
+export const PROPOSAL_TOMORROW_DAY = todayGuayaquil.add({ days: 1 }).toString();
+export const PROPOSAL_DATE = atLocal(0, '19:00:00');
+export const PROPOSAL_SAME_DAY_NIGHT = atLocal(0, '22:00:00');
+export const PROPOSAL_NEXT_DAY_MIDNIGHT = atLocal(1, '00:00:00');
+export const PROPOSAL_TOMORROW_NOON = atLocal(1, '12:00:00');
+export const PROPOSAL_YESTERDAY_NOON = atLocal(-1, '12:00:00');
 export const ASSIGNMENT_FIXTURE = `
   INSERT INTO public."user" (id,name,email,password,role) VALUES
     ('admin','Admin','admin@fixture.invalid','fixture','ADMIN'),
