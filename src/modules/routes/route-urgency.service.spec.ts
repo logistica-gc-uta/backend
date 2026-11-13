@@ -402,4 +402,122 @@ describe('Urgency proposals (CP-RUT-003/004/008/009)', () => {
     expect(p.zoneId).toBeNull();
     expect(p.orderIds).toEqual(expect.arrayContaining(['td-old', 'urgent-store']));
   });
+
+  it('blocks propose() with RECOVERY_PENDING when unresolved RouteUnitRecovery exists and surfaces interruptedRoutes/pendingRecoveries in inbox() without PII', async () => {
+    const declaredAt = instant().subtract({ minutes: 30 });
+    rows.Route!.push({
+      id: 'int-route',
+      status: 'INTERRUPTED',
+      zoneId: 'zone',
+      date: instant(),
+      driverId: 'driver',
+      returnedAt: null,
+      returnedById: null,
+    });
+    rows.Order!.push(
+      order('detached', {
+        status: 'PENDING',
+        routeId: null,
+        requiresAdministrativeReview: true,
+        recipientPhone: 'secret-phone-099',
+      }),
+    );
+    rows.RouteEmergency = [
+      {
+        id: 'em-1',
+        routeId: 'int-route',
+        reason: 'Engine failure',
+        declaredAt,
+        declaredById: 'admin-1',
+        closedAt: null,
+      },
+    ];
+    rows.RouteUnitRecovery = [
+      {
+        id: 'rec-1',
+        emergencyId: 'em-1',
+        routeId: 'int-route',
+        stopId: 'stop-d',
+        orderId: 'detached',
+        orderItemId: 'item-1',
+        unitNumber: 1,
+        productId: 'prod-1',
+        recoveredAt: null,
+      },
+      {
+        id: 'rec-2',
+        emergencyId: 'em-1',
+        routeId: 'int-route',
+        stopId: 'stop-d',
+        orderId: 'detached',
+        orderItemId: 'item-1',
+        unitNumber: 2,
+        productId: 'prod-1',
+        recoveredAt: declaredAt.add({ minutes: 5 }),
+      },
+    ];
+    rows.OrderItemLoss = [];
+
+    const models = Object.fromEntries(
+      Object.entries(rows).map(([name]) => {
+        const query = (filter: any = {}) => ({
+          where: (next: any) => query({ ...filter, ...next }),
+          first: async () =>
+            rows[name]!.find((r) =>
+              Object.entries(filter).every(([k, v]) => r[k] === v),
+            ) ?? null,
+          all: async () =>
+            rows[name]!.filter((r) =>
+              Object.entries(filter).every(([k, v]) => r[k] === v),
+            ),
+          create: writes,
+          update: writes,
+          delete: writes,
+        });
+        return [name, { ...query(), where: query }];
+      }),
+    );
+    const svc = new RouteUrgencyService(
+      { client: { orm: { public: models }, transaction: writes } } as any,
+      { effective: async () => ({ isAvailable: true }) } as any,
+    );
+
+    // Even if administrative review were false, unresolved RouteUnitRecovery keeps propose BLOCKED.
+    rows.Order![1]!.requiresAdministrativeReview = false;
+    const blocked = await svc.propose('detached');
+    expect(blocked.kind).toBe('BLOCKED');
+    expect(blocked.reasons).toContain('RECOVERY_PENDING');
+
+    rows.Order![1]!.requiresAdministrativeReview = true;
+    const inbox: any = await svc.inbox();
+    expect(inbox.urgencies.map((u: any) => u.orderId)).toEqual(['urgent']);
+    expect(inbox.incidents.some((i: any) => i.orderId === 'detached')).toBe(true);
+    expect(inbox.interruptedRoutes).toEqual([
+      {
+        routeId: 'int-route',
+        emergencyId: 'em-1',
+        declaredAt: declaredAt.toString(),
+        closedAt: null,
+        driverId: 'driver',
+        returnedAt: null,
+        pendingUnitsCount: 1,
+        totalUnitsCount: 2,
+      },
+    ]);
+    expect(inbox.pendingRecoveries).toEqual([
+      {
+        recoveryId: 'rec-1',
+        emergencyId: 'em-1',
+        routeId: 'int-route',
+        orderId: 'detached',
+        orderItemId: 'item-1',
+        unitNumber: 1,
+        productId: 'prod-1',
+        lossId: null,
+        replacementState: null,
+      },
+    ]);
+    expect(JSON.stringify(inbox)).not.toContain('secret-phone-099');
+    expect(writes).not.toHaveBeenCalled();
+  });
 });

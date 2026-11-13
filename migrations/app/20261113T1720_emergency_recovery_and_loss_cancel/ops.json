@@ -1,0 +1,1758 @@
+[
+  {
+    "id": "dropCheckConstraint.dispatchIntervention.dispatch_audit_valid_3cf23df8",
+    "label": "Drop check constraint \"dispatch_audit_valid_3cf23df8\" on \"dispatchIntervention\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "dispatch_audit_valid_3cf23df8",
+        "table": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"dispatch_audit_valid_3cf23df8\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatch_audit_valid_3cf23df8",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"dispatch_audit_valid_3cf23df8\"",
+        "sql": "ALTER TABLE \"public\".\"dispatchIntervention\" DROP CONSTRAINT \"dispatch_audit_valid_3cf23df8\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"dispatch_audit_valid_3cf23df8\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatch_audit_valid_3cf23df8",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropConstraint.orderItemLoss.orderItemLoss_orderItemId_unitNumber_key",
+    "label": "Drop constraint \"orderItemLoss_orderItemId_unitNumber_key\" on \"orderItemLoss\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "orderItemLoss_orderItemId_unitNumber_key",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"orderItemLoss_orderItemId_unitNumber_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_orderItemId_unitNumber_key",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"orderItemLoss_orderItemId_unitNumber_key\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\" DROP CONSTRAINT \"orderItemLoss_orderItemId_unitNumber_key\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"orderItemLoss_orderItemId_unitNumber_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_orderItemId_unitNumber_key",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropCheckConstraint.productStockMovement.product_stock_movement_valid_50f99fc3",
+    "label": "Drop check constraint \"product_stock_movement_valid_50f99fc3\" on \"productStockMovement\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "product_stock_movement_valid_50f99fc3",
+        "table": "productStockMovement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"product_stock_movement_valid_50f99fc3\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_stock_movement_valid_50f99fc3",
+          "public",
+          "\"public\".\"productStockMovement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"product_stock_movement_valid_50f99fc3\"",
+        "sql": "ALTER TABLE \"public\".\"productStockMovement\" DROP CONSTRAINT \"product_stock_movement_valid_50f99fc3\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"product_stock_movement_valid_50f99fc3\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_stock_movement_valid_50f99fc3",
+          "public",
+          "\"public\".\"productStockMovement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropCheckConstraint.route.route_status_check_16cb52d8",
+    "label": "Drop check constraint \"route_status_check_16cb52d8\" on \"route\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "route_status_check_16cb52d8",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"route_status_check_16cb52d8\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "route_status_check_16cb52d8",
+          "public",
+          "\"public\".\"route\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"route_status_check_16cb52d8\"",
+        "sql": "ALTER TABLE \"public\".\"route\" DROP CONSTRAINT \"route_status_check_16cb52d8\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"route_status_check_16cb52d8\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "route_status_check_16cb52d8",
+          "public",
+          "\"public\".\"route\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.routeEmergency",
+    "label": "Create table \"routeEmergency\"",
+    "summary": "Creates table \"routeEmergency\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "routeEmergency"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"routeEmergency\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeEmergency\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"routeEmergency\"",
+        "sql": "CREATE TABLE \"public\".\"routeEmergency\" (\n  \"closeReason\" text,\n  \"closeRequestId\" text,\n  \"closedAt\" timestamptz,\n  \"closedById\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"declarationRequestId\" text NOT NULL,\n  \"declaredAt\" timestamptz NOT NULL,\n  \"declaredById\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"reason\" text NOT NULL,\n  \"routeId\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"route_emergency_closure_consistent_faa95e7a\" CHECK ((\"closedAt\" IS NULL AND \"closedById\" IS NULL AND \"closeReason\" IS NULL AND \"closeRequestId\" IS NULL) OR (\"closedAt\" IS NOT NULL AND \"closedById\" IS NOT NULL AND \"closeReason\" IS NOT NULL AND length(trim(\"closeReason\")) BETWEEN 1 AND 500 AND \"closeRequestId\" IS NOT NULL AND \"closedAt\" >= \"declaredAt\")),\n  CONSTRAINT \"route_emergency_reason_valid_1db11f3d\" CHECK (length(trim(reason)) BETWEEN 1 AND 500)\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"routeEmergency\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeEmergency\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.routeUnitRecovery",
+    "label": "Create table \"routeUnitRecovery\"",
+    "summary": "Creates table \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"routeUnitRecovery\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"routeUnitRecovery\"",
+        "sql": "CREATE TABLE \"public\".\"routeUnitRecovery\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"emergencyId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"orderId\" text NOT NULL,\n  \"orderItemId\" text NOT NULL,\n  \"productId\" text NOT NULL,\n  \"recoveredAt\" timestamptz,\n  \"recoveredById\" text,\n  \"recoveryRequestId\" text,\n  \"routeId\" text NOT NULL,\n  \"stopId\" text NOT NULL,\n  \"unitNumber\" int4 NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"route_unit_recovery_consistent_7b99d583\" CHECK ((\"recoveredAt\" IS NULL AND \"recoveredById\" IS NULL AND \"recoveryRequestId\" IS NULL) OR (\"recoveredAt\" IS NOT NULL AND \"recoveredById\" IS NOT NULL AND \"recoveryRequestId\" IS NOT NULL)),\n  CONSTRAINT \"route_unit_recovery_unit_positive_861d7482\" CHECK (\"unitNumber\" >= 1)\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"routeUnitRecovery\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.orderItemLoss.cancelReason",
+    "label": "Add column \"cancelReason\" to \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "cancelReason",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"cancelReason\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "orderItemLoss",
+          "cancelReason"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"cancelReason\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\" ADD COLUMN \"cancelReason\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"cancelReason\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "orderItemLoss",
+          "cancelReason"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.orderItemLoss.cancelRequestId",
+    "label": "Add column \"cancelRequestId\" to \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "cancelRequestId",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"cancelRequestId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "orderItemLoss",
+          "cancelRequestId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"cancelRequestId\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\" ADD COLUMN \"cancelRequestId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"cancelRequestId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "orderItemLoss",
+          "cancelRequestId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.orderItemLoss.cancelledAt",
+    "label": "Add column \"cancelledAt\" to \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "cancelledAt",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"cancelledAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "orderItemLoss",
+          "cancelledAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"cancelledAt\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\" ADD COLUMN \"cancelledAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"cancelledAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "orderItemLoss",
+          "cancelledAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.orderItemLoss.cancelledById",
+    "label": "Add column \"cancelledById\" to \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "cancelledById",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"cancelledById\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "orderItemLoss",
+          "cancelledById"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"cancelledById\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\" ADD COLUMN \"cancelledById\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"cancelledById\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "orderItemLoss",
+          "cancelledById"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.dispatchIntervention.dispatch_audit_valid_11fbfe53",
+    "label": "Add check constraint \"dispatch_audit_valid_11fbfe53\" on \"dispatchIntervention\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "dispatch_audit_valid_11fbfe53",
+        "table": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"dispatch_audit_valid_11fbfe53\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatch_audit_valid_11fbfe53",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"dispatch_audit_valid_11fbfe53\"",
+        "sql": "ALTER TABLE \"public\".\"dispatchIntervention\" ADD CONSTRAINT \"dispatch_audit_valid_11fbfe53\" CHECK (action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'RELEASE_DRAFT', 'LOSS_DECLARE', 'REPLACEMENT_PREPARE', 'ORIGINAL_RECOVER', 'LOSS_CANCEL', 'EMERGENCY_DECLARE', 'UNIT_RECOVERY_CONFIRM', 'EMERGENCY_CLOSE', 'EMERGENCY_DRIVER_RELEASE', 'EMERGENCY_REQUEUE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"dispatch_audit_valid_11fbfe53\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatch_audit_valid_11fbfe53",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.orderItemLoss.order_item_loss_cancellation_consistent_1c788b6a",
+    "label": "Add check constraint \"order_item_loss_cancellation_consistent_1c788b6a\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "order_item_loss_cancellation_consistent_1c788b6a",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"order_item_loss_cancellation_consistent_1c788b6a\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_item_loss_cancellation_consistent_1c788b6a",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"order_item_loss_cancellation_consistent_1c788b6a\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\" ADD CONSTRAINT \"order_item_loss_cancellation_consistent_1c788b6a\" CHECK ((\"cancelledAt\" IS NULL AND \"cancelledById\" IS NULL AND \"cancelReason\" IS NULL AND \"cancelRequestId\" IS NULL) OR (\"cancelledAt\" IS NOT NULL AND \"cancelledById\" IS NOT NULL AND \"cancelReason\" IS NOT NULL AND length(trim(\"cancelReason\")) BETWEEN 1 AND 500 AND \"cancelRequestId\" IS NOT NULL AND \"cancelledAt\" >= \"declaredAt\" AND \"recoveredAt\" IS NULL))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"order_item_loss_cancellation_consistent_1c788b6a\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "order_item_loss_cancellation_consistent_1c788b6a",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.orderItemLoss.orderItemLoss_cancelRequestId_key",
+    "label": "Add unique constraint on \"orderItemLoss\" (cancelRequestId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "orderItemLoss_cancelRequestId_key",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"orderItemLoss_cancelRequestId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_cancelRequestId_key",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"orderItemLoss_cancelRequestId_key\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\" ADD CONSTRAINT \"orderItemLoss_cancelRequestId_key\" UNIQUE (\"cancelRequestId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"orderItemLoss_cancelRequestId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_cancelRequestId_key",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.productStockMovement.product_stock_movement_valid_22f76b30",
+    "label": "Add check constraint \"product_stock_movement_valid_22f76b30\" on \"productStockMovement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "product_stock_movement_valid_22f76b30",
+        "table": "productStockMovement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"product_stock_movement_valid_22f76b30\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_stock_movement_valid_22f76b30",
+          "public",
+          "\"public\".\"productStockMovement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"product_stock_movement_valid_22f76b30\"",
+        "sql": "ALTER TABLE \"public\".\"productStockMovement\" ADD CONSTRAINT \"product_stock_movement_valid_22f76b30\" CHECK ((kind = 'REPLACEMENT_OUT' AND delta = -1) OR (kind = 'RECOVERY_IN' AND delta = 1) OR (kind = 'REPLACEMENT_CANCEL_IN' AND delta = 1))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"product_stock_movement_valid_22f76b30\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "product_stock_movement_valid_22f76b30",
+          "public",
+          "\"public\".\"productStockMovement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.route.route_status_check_736c4cf9",
+    "label": "Add check constraint \"route_status_check_736c4cf9\" on \"route\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "route_status_check_736c4cf9",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"route_status_check_736c4cf9\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "route_status_check_736c4cf9",
+          "public",
+          "\"public\".\"route\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"route_status_check_736c4cf9\"",
+        "sql": "ALTER TABLE \"public\".\"route\" ADD CONSTRAINT \"route_status_check_736c4cf9\" CHECK (\"status\" IN ('DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'INTERRUPTED'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"route_status_check_736c4cf9\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "route_status_check_736c4cf9",
+          "public",
+          "\"public\".\"route\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.routeEmergency.routeEmergency_routeId_key",
+    "label": "Add unique constraint on \"routeEmergency\" (routeId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "routeEmergency_routeId_key",
+        "table": "routeEmergency"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"routeEmergency_routeId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeEmergency_routeId_key",
+          "public",
+          "\"public\".\"routeEmergency\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"routeEmergency_routeId_key\"",
+        "sql": "ALTER TABLE \"public\".\"routeEmergency\" ADD CONSTRAINT \"routeEmergency_routeId_key\" UNIQUE (\"routeId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"routeEmergency_routeId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeEmergency_routeId_key",
+          "public",
+          "\"public\".\"routeEmergency\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.routeEmergency.routeEmergency_declarationRequestId_key",
+    "label": "Add unique constraint on \"routeEmergency\" (declarationRequestId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "routeEmergency_declarationRequestId_key",
+        "table": "routeEmergency"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"routeEmergency_declarationRequestId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeEmergency_declarationRequestId_key",
+          "public",
+          "\"public\".\"routeEmergency\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"routeEmergency_declarationRequestId_key\"",
+        "sql": "ALTER TABLE \"public\".\"routeEmergency\" ADD CONSTRAINT \"routeEmergency_declarationRequestId_key\" UNIQUE (\"declarationRequestId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"routeEmergency_declarationRequestId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeEmergency_declarationRequestId_key",
+          "public",
+          "\"public\".\"routeEmergency\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.routeEmergency.routeEmergency_closeRequestId_key",
+    "label": "Add unique constraint on \"routeEmergency\" (closeRequestId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "routeEmergency_closeRequestId_key",
+        "table": "routeEmergency"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"routeEmergency_closeRequestId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeEmergency_closeRequestId_key",
+          "public",
+          "\"public\".\"routeEmergency\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"routeEmergency_closeRequestId_key\"",
+        "sql": "ALTER TABLE \"public\".\"routeEmergency\" ADD CONSTRAINT \"routeEmergency_closeRequestId_key\" UNIQUE (\"closeRequestId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"routeEmergency_closeRequestId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeEmergency_closeRequestId_key",
+          "public",
+          "\"public\".\"routeEmergency\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.routeUnitRecovery.routeUnitRecovery_recoveryRequestId_key",
+    "label": "Add unique constraint on \"routeUnitRecovery\" (recoveryRequestId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "routeUnitRecovery_recoveryRequestId_key",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"routeUnitRecovery_recoveryRequestId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_recoveryRequestId_key",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"routeUnitRecovery_recoveryRequestId_key\"",
+        "sql": "ALTER TABLE \"public\".\"routeUnitRecovery\" ADD CONSTRAINT \"routeUnitRecovery_recoveryRequestId_key\" UNIQUE (\"recoveryRequestId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"routeUnitRecovery_recoveryRequestId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_recoveryRequestId_key",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.routeUnitRecovery.routeUnitRecovery_emergencyId_orderItemId_unitNumber_key",
+    "label": "Add unique constraint on \"routeUnitRecovery\" (emergencyId, orderItemId, unitNumber)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "routeUnitRecovery_emergencyId_orderItemId_unitNumber_key",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"routeUnitRecovery_emergencyId_orderItemId_unitNumber_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_emergencyId_orderItemId_unitNumber_key",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"routeUnitRecovery_emergencyId_orderItemId_unitNumber_key\"",
+        "sql": "ALTER TABLE \"public\".\"routeUnitRecovery\" ADD CONSTRAINT \"routeUnitRecovery_emergencyId_orderItemId_unitNumber_key\" UNIQUE (\"emergencyId\", \"orderItemId\", \"unitNumber\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"routeUnitRecovery_emergencyId_orderItemId_unitNumber_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_emergencyId_orderItemId_unitNumber_key",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orderItemLoss.active_order_item_loss_unit_2b134a02",
+    "label": "Create index \"active_order_item_loss_unit_2b134a02\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "active_order_item_loss_unit_2b134a02",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"active_order_item_loss_unit_2b134a02\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"active_order_item_loss_unit_2b134a02\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"active_order_item_loss_unit_2b134a02\"",
+        "sql": "CREATE UNIQUE INDEX \"active_order_item_loss_unit_2b134a02\" ON \"public\".\"orderItemLoss\" (\"orderItemId\", \"unitNumber\") WHERE ((\"cancelledAt\" IS NULL))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"active_order_item_loss_unit_2b134a02\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"active_order_item_loss_unit_2b134a02\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.orderItemLoss.orderItemLoss_cancelledById_idx_03ce7bea",
+    "label": "Create index \"orderItemLoss_cancelledById_idx_03ce7bea\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "orderItemLoss_cancelledById_idx_03ce7bea",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"orderItemLoss_cancelledById_idx_03ce7bea\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss_cancelledById_idx_03ce7bea\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"orderItemLoss_cancelledById_idx_03ce7bea\"",
+        "sql": "CREATE INDEX \"orderItemLoss_cancelledById_idx_03ce7bea\" ON \"public\".\"orderItemLoss\" (\"cancelledById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"orderItemLoss_cancelledById_idx_03ce7bea\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"orderItemLoss_cancelledById_idx_03ce7bea\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.routeEmergency.routeEmergency_closedById_idx_3fbe6e44",
+    "label": "Create index \"routeEmergency_closedById_idx_3fbe6e44\" on \"routeEmergency\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "routeEmergency_closedById_idx_3fbe6e44",
+        "table": "routeEmergency"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"routeEmergency_closedById_idx_3fbe6e44\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeEmergency_closedById_idx_3fbe6e44\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"routeEmergency_closedById_idx_3fbe6e44\"",
+        "sql": "CREATE INDEX \"routeEmergency_closedById_idx_3fbe6e44\" ON \"public\".\"routeEmergency\" (\"closedById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"routeEmergency_closedById_idx_3fbe6e44\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeEmergency_closedById_idx_3fbe6e44\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.routeEmergency.routeEmergency_declaredById_idx_dd0c7dda",
+    "label": "Create index \"routeEmergency_declaredById_idx_dd0c7dda\" on \"routeEmergency\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "routeEmergency_declaredById_idx_dd0c7dda",
+        "table": "routeEmergency"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"routeEmergency_declaredById_idx_dd0c7dda\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeEmergency_declaredById_idx_dd0c7dda\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"routeEmergency_declaredById_idx_dd0c7dda\"",
+        "sql": "CREATE INDEX \"routeEmergency_declaredById_idx_dd0c7dda\" ON \"public\".\"routeEmergency\" (\"declaredById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"routeEmergency_declaredById_idx_dd0c7dda\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeEmergency_declaredById_idx_dd0c7dda\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.routeUnitRecovery.routeUnitRecovery_emergencyId_idx_ced4adec",
+    "label": "Create index \"routeUnitRecovery_emergencyId_idx_ced4adec\" on \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "routeUnitRecovery_emergencyId_idx_ced4adec",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"routeUnitRecovery_emergencyId_idx_ced4adec\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery_emergencyId_idx_ced4adec\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"routeUnitRecovery_emergencyId_idx_ced4adec\"",
+        "sql": "CREATE INDEX \"routeUnitRecovery_emergencyId_idx_ced4adec\" ON \"public\".\"routeUnitRecovery\" (\"emergencyId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"routeUnitRecovery_emergencyId_idx_ced4adec\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery_emergencyId_idx_ced4adec\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.routeUnitRecovery.routeUnitRecovery_orderId_idx_d284871b",
+    "label": "Create index \"routeUnitRecovery_orderId_idx_d284871b\" on \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "routeUnitRecovery_orderId_idx_d284871b",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"routeUnitRecovery_orderId_idx_d284871b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery_orderId_idx_d284871b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"routeUnitRecovery_orderId_idx_d284871b\"",
+        "sql": "CREATE INDEX \"routeUnitRecovery_orderId_idx_d284871b\" ON \"public\".\"routeUnitRecovery\" (\"orderId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"routeUnitRecovery_orderId_idx_d284871b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery_orderId_idx_d284871b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.routeUnitRecovery.routeUnitRecovery_orderItemId_idx_99e2d9f7",
+    "label": "Create index \"routeUnitRecovery_orderItemId_idx_99e2d9f7\" on \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "routeUnitRecovery_orderItemId_idx_99e2d9f7",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"routeUnitRecovery_orderItemId_idx_99e2d9f7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery_orderItemId_idx_99e2d9f7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"routeUnitRecovery_orderItemId_idx_99e2d9f7\"",
+        "sql": "CREATE INDEX \"routeUnitRecovery_orderItemId_idx_99e2d9f7\" ON \"public\".\"routeUnitRecovery\" (\"orderItemId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"routeUnitRecovery_orderItemId_idx_99e2d9f7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery_orderItemId_idx_99e2d9f7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.routeUnitRecovery.routeUnitRecovery_productId_idx_5858600a",
+    "label": "Create index \"routeUnitRecovery_productId_idx_5858600a\" on \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "routeUnitRecovery_productId_idx_5858600a",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"routeUnitRecovery_productId_idx_5858600a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery_productId_idx_5858600a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"routeUnitRecovery_productId_idx_5858600a\"",
+        "sql": "CREATE INDEX \"routeUnitRecovery_productId_idx_5858600a\" ON \"public\".\"routeUnitRecovery\" (\"productId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"routeUnitRecovery_productId_idx_5858600a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery_productId_idx_5858600a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.routeUnitRecovery.routeUnitRecovery_recoveredById_idx_2e510b5c",
+    "label": "Create index \"routeUnitRecovery_recoveredById_idx_2e510b5c\" on \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "routeUnitRecovery_recoveredById_idx_2e510b5c",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"routeUnitRecovery_recoveredById_idx_2e510b5c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery_recoveredById_idx_2e510b5c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"routeUnitRecovery_recoveredById_idx_2e510b5c\"",
+        "sql": "CREATE INDEX \"routeUnitRecovery_recoveredById_idx_2e510b5c\" ON \"public\".\"routeUnitRecovery\" (\"recoveredById\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"routeUnitRecovery_recoveredById_idx_2e510b5c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery_recoveredById_idx_2e510b5c\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.routeUnitRecovery.routeUnitRecovery_routeId_idx_91ae2fd6",
+    "label": "Create index \"routeUnitRecovery_routeId_idx_91ae2fd6\" on \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "routeUnitRecovery_routeId_idx_91ae2fd6",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"routeUnitRecovery_routeId_idx_91ae2fd6\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery_routeId_idx_91ae2fd6\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"routeUnitRecovery_routeId_idx_91ae2fd6\"",
+        "sql": "CREATE INDEX \"routeUnitRecovery_routeId_idx_91ae2fd6\" ON \"public\".\"routeUnitRecovery\" (\"routeId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"routeUnitRecovery_routeId_idx_91ae2fd6\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery_routeId_idx_91ae2fd6\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.routeUnitRecovery.routeUnitRecovery_stopId_idx_8804d4e7",
+    "label": "Create index \"routeUnitRecovery_stopId_idx_8804d4e7\" on \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "routeUnitRecovery_stopId_idx_8804d4e7",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"routeUnitRecovery_stopId_idx_8804d4e7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery_stopId_idx_8804d4e7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"routeUnitRecovery_stopId_idx_8804d4e7\"",
+        "sql": "CREATE INDEX \"routeUnitRecovery_stopId_idx_8804d4e7\" ON \"public\".\"routeUnitRecovery\" (\"stopId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"routeUnitRecovery_stopId_idx_8804d4e7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"routeUnitRecovery_stopId_idx_8804d4e7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.orderItemLoss.orderItemLoss_cancelledById_fkey",
+    "label": "Add foreign key \"orderItemLoss_cancelledById_fkey\" on \"orderItemLoss\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "orderItemLoss_cancelledById_fkey",
+        "table": "orderItemLoss"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"orderItemLoss_cancelledById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_cancelledById_fkey",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"orderItemLoss_cancelledById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"orderItemLoss\"\nADD CONSTRAINT \"orderItemLoss_cancelledById_fkey\"\nFOREIGN KEY (\"cancelledById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"orderItemLoss_cancelledById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "orderItemLoss_cancelledById_fkey",
+          "public",
+          "\"public\".\"orderItemLoss\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.routeEmergency.routeEmergency_routeId_fkey",
+    "label": "Add foreign key \"routeEmergency_routeId_fkey\" on \"routeEmergency\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "routeEmergency_routeId_fkey",
+        "table": "routeEmergency"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"routeEmergency_routeId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeEmergency_routeId_fkey",
+          "public",
+          "\"public\".\"routeEmergency\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"routeEmergency_routeId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"routeEmergency\"\nADD CONSTRAINT \"routeEmergency_routeId_fkey\"\nFOREIGN KEY (\"routeId\")\nREFERENCES \"public\".\"route\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"routeEmergency_routeId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeEmergency_routeId_fkey",
+          "public",
+          "\"public\".\"routeEmergency\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.routeEmergency.routeEmergency_declaredById_fkey",
+    "label": "Add foreign key \"routeEmergency_declaredById_fkey\" on \"routeEmergency\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "routeEmergency_declaredById_fkey",
+        "table": "routeEmergency"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"routeEmergency_declaredById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeEmergency_declaredById_fkey",
+          "public",
+          "\"public\".\"routeEmergency\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"routeEmergency_declaredById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"routeEmergency\"\nADD CONSTRAINT \"routeEmergency_declaredById_fkey\"\nFOREIGN KEY (\"declaredById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"routeEmergency_declaredById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeEmergency_declaredById_fkey",
+          "public",
+          "\"public\".\"routeEmergency\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.routeEmergency.routeEmergency_closedById_fkey",
+    "label": "Add foreign key \"routeEmergency_closedById_fkey\" on \"routeEmergency\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "routeEmergency_closedById_fkey",
+        "table": "routeEmergency"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"routeEmergency_closedById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeEmergency_closedById_fkey",
+          "public",
+          "\"public\".\"routeEmergency\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"routeEmergency_closedById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"routeEmergency\"\nADD CONSTRAINT \"routeEmergency_closedById_fkey\"\nFOREIGN KEY (\"closedById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"routeEmergency_closedById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeEmergency_closedById_fkey",
+          "public",
+          "\"public\".\"routeEmergency\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.routeUnitRecovery.routeUnitRecovery_emergencyId_fkey",
+    "label": "Add foreign key \"routeUnitRecovery_emergencyId_fkey\" on \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "routeUnitRecovery_emergencyId_fkey",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"routeUnitRecovery_emergencyId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_emergencyId_fkey",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"routeUnitRecovery_emergencyId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"routeUnitRecovery\"\nADD CONSTRAINT \"routeUnitRecovery_emergencyId_fkey\"\nFOREIGN KEY (\"emergencyId\")\nREFERENCES \"public\".\"routeEmergency\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"routeUnitRecovery_emergencyId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_emergencyId_fkey",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.routeUnitRecovery.routeUnitRecovery_routeId_fkey",
+    "label": "Add foreign key \"routeUnitRecovery_routeId_fkey\" on \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "routeUnitRecovery_routeId_fkey",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"routeUnitRecovery_routeId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_routeId_fkey",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"routeUnitRecovery_routeId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"routeUnitRecovery\"\nADD CONSTRAINT \"routeUnitRecovery_routeId_fkey\"\nFOREIGN KEY (\"routeId\")\nREFERENCES \"public\".\"route\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"routeUnitRecovery_routeId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_routeId_fkey",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.routeUnitRecovery.routeUnitRecovery_stopId_fkey",
+    "label": "Add foreign key \"routeUnitRecovery_stopId_fkey\" on \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "routeUnitRecovery_stopId_fkey",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"routeUnitRecovery_stopId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_stopId_fkey",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"routeUnitRecovery_stopId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"routeUnitRecovery\"\nADD CONSTRAINT \"routeUnitRecovery_stopId_fkey\"\nFOREIGN KEY (\"stopId\")\nREFERENCES \"public\".\"routeStop\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"routeUnitRecovery_stopId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_stopId_fkey",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.routeUnitRecovery.routeUnitRecovery_orderId_fkey",
+    "label": "Add foreign key \"routeUnitRecovery_orderId_fkey\" on \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "routeUnitRecovery_orderId_fkey",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"routeUnitRecovery_orderId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_orderId_fkey",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"routeUnitRecovery_orderId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"routeUnitRecovery\"\nADD CONSTRAINT \"routeUnitRecovery_orderId_fkey\"\nFOREIGN KEY (\"orderId\")\nREFERENCES \"public\".\"order\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"routeUnitRecovery_orderId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_orderId_fkey",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.routeUnitRecovery.routeUnitRecovery_orderItemId_fkey",
+    "label": "Add foreign key \"routeUnitRecovery_orderItemId_fkey\" on \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "routeUnitRecovery_orderItemId_fkey",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"routeUnitRecovery_orderItemId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_orderItemId_fkey",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"routeUnitRecovery_orderItemId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"routeUnitRecovery\"\nADD CONSTRAINT \"routeUnitRecovery_orderItemId_fkey\"\nFOREIGN KEY (\"orderItemId\")\nREFERENCES \"public\".\"orderItem\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"routeUnitRecovery_orderItemId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_orderItemId_fkey",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.routeUnitRecovery.routeUnitRecovery_productId_fkey",
+    "label": "Add foreign key \"routeUnitRecovery_productId_fkey\" on \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "routeUnitRecovery_productId_fkey",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"routeUnitRecovery_productId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_productId_fkey",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"routeUnitRecovery_productId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"routeUnitRecovery\"\nADD CONSTRAINT \"routeUnitRecovery_productId_fkey\"\nFOREIGN KEY (\"productId\")\nREFERENCES \"public\".\"product\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"routeUnitRecovery_productId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_productId_fkey",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.routeUnitRecovery.routeUnitRecovery_recoveredById_fkey",
+    "label": "Add foreign key \"routeUnitRecovery_recoveredById_fkey\" on \"routeUnitRecovery\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "routeUnitRecovery_recoveredById_fkey",
+        "table": "routeUnitRecovery"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"routeUnitRecovery_recoveredById_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_recoveredById_fkey",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"routeUnitRecovery_recoveredById_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"routeUnitRecovery\"\nADD CONSTRAINT \"routeUnitRecovery_recoveredById_fkey\"\nFOREIGN KEY (\"recoveredById\")\nREFERENCES \"public\".\"user\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"routeUnitRecovery_recoveredById_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "routeUnitRecovery_recoveredById_fkey",
+          "public",
+          "\"public\".\"routeUnitRecovery\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "route-emergency-recovery.coherence-and-resolution-guards",
+    "label": "Widen route, stop, claim, reservation, and dispatch review guards for INTERRUPTED routes and unit recovery blocks",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "objectType": "table",
+        "schema": "public",
+        "name": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "require lifecycle coherence and review resolution functions before replacing them",
+        "sql": "SELECT (\n              to_regprocedure('public.route_integrity_guard()') IS NOT NULL\n              AND to_regprocedure('public.route_stop_integrity_guard()') IS NOT NULL\n              AND to_regprocedure('public.t1e_validate_route_coherence(text)') IS NOT NULL\n              AND to_regprocedure('public.t1e_validate_stop_visit(text)') IS NOT NULL\n              AND to_regprocedure('public.t1e_claim_history_guard()') IS NOT NULL\n              AND to_regprocedure('public.t1e_reservation_history_guard()') IS NOT NULL\n              AND to_regprocedure('public.dispatch_review_resolution_guard()') IS NOT NULL\n            ) AS result"
+      }
+    ],
+    "execute": [
+      {
+        "description": "update route, stop, coherence, visit, claim, reservation, and review guards to enforce #51 emergency recovery invariants alongside #49/#50/#52",
+        "sql": "CREATE OR REPLACE FUNCTION public.route_integrity_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    IF OLD.status IS NULL OR OLD.status IN ('IN_PROGRESS', 'COMPLETED', 'INTERRUPTED') THEN\n      RAISE EXCEPTION 'Route structure is frozen or unverified legacy history' USING ERRCODE = '23514';\n    END IF;\n    RETURN OLD;\n  END IF;\n  IF TG_OP = 'UPDATE' THEN\n    IF OLD.status IS NULL AND NEW IS DISTINCT FROM OLD THEN\n      RAISE EXCEPTION 'Unverified legacy route cannot be rewritten' USING ERRCODE = '23514';\n    END IF;\n    IF NEW.id IS DISTINCT FROM OLD.id OR NEW.\"createdAt\" IS DISTINCT FROM OLD.\"createdAt\" THEN\n      RAISE EXCEPTION 'Route history identity is immutable' USING ERRCODE = '23514';\n    END IF;\n    IF OLD.status IN ('IN_PROGRESS', 'COMPLETED', 'INTERRUPTED') AND\n      (NEW.\"driverId\", NEW.\"zoneId\", NEW.date) IS DISTINCT FROM (OLD.\"driverId\", OLD.\"zoneId\", OLD.date) THEN\n      RAISE EXCEPTION 'Route structure is frozen' USING ERRCODE = '23514';\n    END IF;\n    IF OLD.status IN ('COMPLETED', 'INTERRUPTED') AND NEW.status IS DISTINCT FROM OLD.status OR\n      OLD.status = 'IN_PROGRESS' AND NEW.status NOT IN ('IN_PROGRESS', 'COMPLETED', 'INTERRUPTED') THEN\n      RAISE EXCEPTION 'Frozen lifecycle cannot regress to a mutable state' USING ERRCODE = '23514';\n    END IF;\n    IF OLD.status IS NOT NULL AND NEW.status IS NULL THEN\n      RAISE EXCEPTION 'Verified lifecycle cannot become unverified' USING ERRCODE = '23514';\n    END IF;\n    IF (OLD.\"startedAt\" IS NOT NULL OR OLD.\"startedById\" IS NOT NULL) AND\n      (NEW.\"startedAt\", NEW.\"startedById\") IS DISTINCT FROM (OLD.\"startedAt\", OLD.\"startedById\") OR\n      (OLD.\"completedAt\" IS NOT NULL OR OLD.\"completedById\" IS NOT NULL) AND\n      (NEW.\"completedAt\", NEW.\"completedById\") IS DISTINCT FROM (OLD.\"completedAt\", OLD.\"completedById\") OR\n      (OLD.\"returnedAt\" IS NOT NULL OR OLD.\"returnedById\" IS NOT NULL) AND\n      (NEW.\"returnedAt\", NEW.\"returnedById\") IS DISTINCT FROM (OLD.\"returnedAt\", OLD.\"returnedById\") THEN\n      RAISE EXCEPTION 'Recorded lifecycle event evidence is immutable' USING ERRCODE = '23514';\n    END IF;\n  END IF;\n  IF (NEW.\"startedAt\" IS NULL) <> (NEW.\"startedById\" IS NULL) OR\n     (NEW.\"completedAt\" IS NULL) <> (NEW.\"completedById\" IS NULL) OR\n     (NEW.\"returnedAt\" IS NULL) <> (NEW.\"returnedById\" IS NULL) THEN\n    RAISE EXCEPTION 'Lifecycle events require paired timestamps and actors' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.status IS NULL AND (NEW.\"startedAt\" IS NOT NULL OR NEW.\"completedAt\" IS NOT NULL OR NEW.\"returnedAt\" IS NOT NULL) THEN\n    RAISE EXCEPTION 'Unverified legacy route cannot invent events' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.\"startedAt\" IS NOT NULL AND NEW.status NOT IN ('IN_PROGRESS', 'COMPLETED', 'INTERRUPTED') OR\n    NEW.\"completedAt\" IS NOT NULL AND NEW.status <> 'COMPLETED' OR\n    NEW.\"returnedAt\" IS NOT NULL AND NEW.status NOT IN ('COMPLETED', 'INTERRUPTED') THEN\n    RAISE EXCEPTION 'Recorded event is incompatible with lifecycle state' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.status IN ('IN_PROGRESS', 'INTERRUPTED') AND NEW.\"driverId\" IS NULL THEN\n    RAISE EXCEPTION 'IN_PROGRESS or INTERRUPTED requires an assigned driver' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.status IS NOT NULL THEN\n    IF EXISTS (SELECT 1 FROM public.\"routeStop\" s JOIN public.\"order\" o ON o.id = s.\"orderId\"\n      WHERE s.\"routeId\" = NEW.id AND (s.\"isLegacy\" OR s.sequence IS NULL OR s.sequence NOT BETWEEN 1 AND 4\n        OR (NEW.\"zoneId\" IS NOT NULL AND o.\"zoneId\" IS NOT NULL AND o.\"zoneId\" IS DISTINCT FROM NEW.\"zoneId\"))) THEN\n      RAISE EXCEPTION 'Verified route requires valid nonlegacy sequence and same zone' USING ERRCODE = '23514';\n    END IF;\n    IF (SELECT COUNT(*) FROM public.\"routeStop\" WHERE \"routeId\" = NEW.id) > 4 THEN\n      RAISE EXCEPTION 'Route maximum is four stops' USING ERRCODE = '23514';\n    END IF;\n  END IF;\n  RETURN NEW;\nEND $$;\n\nCREATE OR REPLACE FUNCTION public.route_stop_integrity_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  route_ids text[];\n  route_row record;\n  old_stop_id text;\n  structural boolean;\n  order_zone text;\n  destination_zone text;\n  destination_status text;\nBEGIN\n  IF TG_OP = 'INSERT' THEN\n    route_ids := ARRAY[NEW.\"routeId\"];\n    structural := true;\n  ELSIF TG_OP = 'DELETE' THEN\n    route_ids := ARRAY[OLD.\"routeId\"];\n    structural := true;\n  ELSE\n    route_ids := ARRAY[OLD.\"routeId\", NEW.\"routeId\"];\n    old_stop_id := OLD.id;\n    structural := (NEW.id, NEW.\"routeId\", NEW.\"orderId\", NEW.sequence, NEW.\"isLegacy\", NEW.\"createdAt\")\n      IS DISTINCT FROM (OLD.id, OLD.\"routeId\", OLD.\"orderId\", OLD.sequence, OLD.\"isLegacy\", OLD.\"createdAt\");\n  END IF;\n  FOR route_row IN SELECT id, status, \"zoneId\" FROM public.route\n    WHERE id = ANY(route_ids) ORDER BY id FOR UPDATE LOOP\n    IF route_row.status IS NULL THEN\n      RAISE EXCEPTION 'Unverified legacy stop history cannot be rewritten' USING ERRCODE = '23514';\n    END IF;\n    IF structural AND route_row.status IN ('IN_PROGRESS', 'COMPLETED', 'INTERRUPTED') THEN\n      RAISE EXCEPTION 'Route stop structure is frozen' USING ERRCODE = '23514';\n    END IF;\n    IF TG_OP <> 'DELETE' AND route_row.id = NEW.\"routeId\" THEN\n      destination_zone := route_row.\"zoneId\";\n      destination_status := route_row.status;\n    END IF;\n  END LOOP;\n  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;\n  IF TG_OP = 'UPDATE' AND NEW.outcome IS DISTINCT FROM OLD.outcome AND destination_status <> 'IN_PROGRESS' THEN\n    RAISE EXCEPTION 'Visit outcome changes require IN_PROGRESS' USING ERRCODE = '23514';\n  END IF;\n  IF TG_OP = 'INSERT' AND NEW.outcome IS DISTINCT FROM 'PENDING' THEN\n    RAISE EXCEPTION 'New verified visit outcome must be PENDING' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.\"isLegacy\" OR NEW.sequence IS NULL OR NEW.sequence NOT BETWEEN 1 AND 4 THEN\n    RAISE EXCEPTION 'Verified stop requires nonlegacy sequence 1 through 4' USING ERRCODE = '23514';\n  END IF;\n  SELECT \"zoneId\" INTO order_zone FROM public.\"order\" WHERE id = NEW.\"orderId\" FOR SHARE;\n  IF destination_zone IS NOT NULL AND order_zone IS NOT NULL AND order_zone IS DISTINCT FROM destination_zone THEN\n    RAISE EXCEPTION 'Route stop order must belong to the same zone' USING ERRCODE = '23514';\n  END IF;\n  IF (SELECT COUNT(*) FROM public.\"routeStop\" WHERE \"routeId\" = NEW.\"routeId\" AND (old_stop_id IS NULL OR id <> old_stop_id)) >= 4 THEN\n    RAISE EXCEPTION 'Route maximum is four stops' USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND $$;\n\nCREATE OR REPLACE FUNCTION public.t1e_validate_route_coherence(p_route_id text) RETURNS void\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  route_row public.route%ROWTYPE;\n  stop_count bigint;\n  active_claim_count bigint;\n  active_reservation_count bigint;\nBEGIN\n  SELECT * INTO route_row\n  FROM public.route\n  WHERE id = p_route_id\n  FOR UPDATE;\n  IF NOT FOUND OR route_row.status IS NULL THEN\n    RETURN;\n  END IF;\n\n  SELECT COUNT(*) INTO stop_count\n  FROM public.\"routeStop\"\n  WHERE \"routeId\" = p_route_id AND NOT \"isLegacy\" AND sequence IS NOT NULL;\n  SELECT COUNT(*) INTO active_claim_count\n  FROM public.\"orderClaim\"\n  WHERE \"routeId\" = p_route_id AND \"releasedAt\" IS NULL;\n  SELECT COUNT(*) INTO active_reservation_count\n  FROM public.\"driverReservation\"\n  WHERE \"routeId\" = p_route_id AND \"releasedAt\" IS NULL;\n\n  IF route_row.status = 'DRAFT' THEN\n    IF EXISTS (\n      SELECT 1 FROM public.\"driverReservation\"\n      WHERE \"routeId\" = p_route_id AND \"releasedAt\" IS NULL\n    ) THEN\n      RAISE EXCEPTION 'DRAFT route cannot hold an active driver reservation'\n        USING ERRCODE = '23514';\n    END IF;\n    IF EXISTS (\n      SELECT 1 FROM public.\"order\"\n      WHERE \"routeId\" = p_route_id\n    ) THEN\n      RAISE EXCEPTION 'DRAFT route cannot own an order route pointer'\n        USING ERRCODE = '23514';\n    END IF;\n  ELSIF route_row.status IN ('ASSIGNED', 'IN_PROGRESS') THEN\n    IF route_row.\"driverId\" IS NULL OR active_reservation_count <> 1 OR NOT EXISTS (\n      SELECT 1 FROM public.\"driverReservation\" d\n      WHERE d.\"routeId\" = p_route_id\n        AND d.\"driverId\" = route_row.\"driverId\"\n        AND d.\"reservedAt\" IS NOT NULL\n        AND d.\"releasedAt\" IS NULL\n    ) THEN\n      RAISE EXCEPTION 'Assigned or in-progress route requires one matching active driver reservation'\n        USING ERRCODE = '23514';\n    END IF;\n  ELSIF route_row.status IN ('COMPLETED', 'INTERRUPTED') THEN\n    IF active_claim_count <> 0 THEN\n      RAISE EXCEPTION 'COMPLETED or INTERRUPTED route cannot retain active order claims'\n        USING ERRCODE = '23514';\n    END IF;\n    IF route_row.\"returnedAt\" IS NULL THEN\n      IF route_row.\"driverId\" IS NULL OR active_reservation_count <> 1 OR NOT EXISTS (\n        SELECT 1 FROM public.\"driverReservation\" d\n        WHERE d.\"routeId\" = p_route_id\n          AND d.\"driverId\" = route_row.\"driverId\"\n          AND d.\"reservedAt\" IS NOT NULL\n          AND d.\"releasedAt\" IS NULL\n      ) THEN\n        RAISE EXCEPTION 'Completed or interrupted route remains held until one matching physical-return reservation is released'\n          USING ERRCODE = '23514';\n      END IF;\n    ELSIF active_reservation_count <> 0 OR NOT EXISTS (\n      SELECT 1 FROM public.\"driverReservation\" d\n      WHERE d.\"routeId\" = p_route_id\n        AND d.\"driverId\" = route_row.\"driverId\"\n        AND d.\"reservedAt\" IS NOT NULL\n        AND d.\"releasedAt\" = route_row.\"returnedAt\"\n    ) THEN\n      RAISE EXCEPTION 'Returned route requires its matching reservation release at the recorded return time'\n        USING ERRCODE = '23514';\n    END IF;\n  END IF;\n\n  IF route_row.status IN ('DRAFT', 'ASSIGNED', 'IN_PROGRESS') THEN\n    IF active_claim_count <> stop_count OR EXISTS (\n      SELECT 1\n      FROM public.\"orderClaim\" c\n      LEFT JOIN public.\"routeStop\" s\n        ON s.\"routeId\" = c.\"routeId\" AND s.\"orderId\" = c.\"orderId\"\n       AND NOT s.\"isLegacy\" AND s.sequence IS NOT NULL\n      WHERE c.\"routeId\" = p_route_id AND c.\"releasedAt\" IS NULL\n        AND (s.id IS NULL OR c.\"claimedAt\" IS NULL)\n    ) OR EXISTS (\n      SELECT 1\n      FROM public.\"routeStop\" s\n      LEFT JOIN public.\"orderClaim\" c\n        ON c.\"routeId\" = s.\"routeId\" AND c.\"orderId\" = s.\"orderId\"\n       AND c.\"releasedAt\" IS NULL\n      WHERE s.\"routeId\" = p_route_id\n        AND (c.id IS NULL OR c.\"claimedAt\" IS NULL)\n    ) THEN\n      RAISE EXCEPTION 'Verified route stops require exactly matching active order claims'\n        USING ERRCODE = '23514';\n    END IF;\n  END IF;\n\n  IF route_row.status IN ('ASSIGNED', 'IN_PROGRESS') AND EXISTS (\n    SELECT 1\n    FROM public.\"routeStop\" s\n    JOIN public.\"order\" o ON o.id = s.\"orderId\"\n    WHERE s.\"routeId\" = p_route_id\n      AND NOT s.\"isLegacy\" AND s.sequence IS NOT NULL\n      AND o.\"routeId\" IS DISTINCT FROM p_route_id\n  ) THEN\n    RAISE EXCEPTION 'Assigned or in-progress verified stops require their current order route pointer'\n      USING ERRCODE = '23514';\n  END IF;\nEND $$;\n\nCREATE OR REPLACE FUNCTION public.t1e_validate_stop_visit(p_stop_id text) RETURNS void\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  stop_row public.\"routeStop\"%ROWTYPE;\n  route_row public.route%ROWTYPE;\n  order_row public.\"order\"%ROWTYPE;\n  attempt_count bigint;\nBEGIN\n  SELECT * INTO stop_row FROM public.\"routeStop\" WHERE id = p_stop_id;\n  IF NOT FOUND OR stop_row.\"isLegacy\" OR stop_row.sequence IS NULL THEN\n    RETURN;\n  END IF;\n  SELECT * INTO route_row FROM public.route WHERE id = stop_row.\"routeId\";\n  IF NOT FOUND OR route_row.status IS NULL OR route_row.status = 'DRAFT' THEN\n    IF EXISTS (SELECT 1 FROM public.\"deliveryAttempt\" WHERE \"stopId\" = p_stop_id) THEN\n      RAISE EXCEPTION 'DRAFT or legacy stop cannot have a recorded visit attempt'\n        USING ERRCODE = '23514';\n    END IF;\n    RETURN;\n  END IF;\n  SELECT * INTO order_row FROM public.\"order\" WHERE id = stop_row.\"orderId\";\n  SELECT COUNT(*) INTO attempt_count\n  FROM public.\"deliveryAttempt\" WHERE \"stopId\" = p_stop_id;\n\n  IF stop_row.outcome IS NULL OR stop_row.outcome = 'PENDING' THEN\n    IF attempt_count <> 0 THEN\n      RAISE EXCEPTION 'Pending stop cannot retain a completed visit attempt'\n        USING ERRCODE = '23514';\n    END IF;\n    RETURN;\n  END IF;\n  IF route_row.status NOT IN ('IN_PROGRESS', 'COMPLETED', 'INTERRUPTED') OR\n     route_row.\"startedAt\" IS NULL OR route_row.\"driverId\" IS NULL OR\n     attempt_count = 0 THEN\n    RAISE EXCEPTION 'Resolved verified stop requires a visit attempt on its active route'\n      USING ERRCODE = '23514';\n  END IF;\n  IF EXISTS (\n    SELECT 1 FROM public.\"deliveryAttempt\" a\n    WHERE a.\"stopId\" = p_stop_id\n      AND (a.outcome <> stop_row.outcome\n        OR a.\"driverId\" <> route_row.\"driverId\"\n        OR a.\"recordedAt\" < route_row.\"startedAt\"\n        OR (route_row.\"completedAt\" IS NOT NULL\n          AND a.\"recordedAt\" > route_row.\"completedAt\"))\n  ) THEN\n    RAISE EXCEPTION 'Visit attempt must match the immutable stop outcome, route owner, and lifecycle time'\n      USING ERRCODE = '23514';\n  END IF;\n  IF stop_row.outcome = 'FAILED' AND NOT order_row.\"requiresAdministrativeReview\" AND NOT EXISTS (\n    SELECT 1 FROM public.\"dispatchIntervention\" a JOIN public.\"deliveryAttempt\" d\n      ON d.id = a.result::jsonb ->> 'attemptId'\n    WHERE a.action IN ('RESCHEDULE', 'PICKUP_AGREE') AND a.outcome = 'APPLIED' AND a.\"orderId\" = stop_row.\"orderId\"\n      AND d.\"stopId\" = stop_row.id AND d.outcome = 'FAILED' AND route_row.status IN ('COMPLETED', 'INTERRUPTED')\n  ) THEN\n    RAISE EXCEPTION 'Failed visit requires current administrative review flag'\n      USING ERRCODE = '23514';\n  END IF;\nEND $$;\n\nCREATE OR REPLACE FUNCTION public.t1e_claim_history_guard() RETURNS trigger\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  route_status text;\n  completed_at timestamptz;\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    RAISE EXCEPTION 'Order claim history is immutable and cannot be deleted'\n      USING ERRCODE = '23514';\n  END IF;\n  IF NEW.id IS DISTINCT FROM OLD.id OR NEW.\"routeId\" IS DISTINCT FROM OLD.\"routeId\" OR\n     NEW.\"orderId\" IS DISTINCT FROM OLD.\"orderId\" OR\n     NEW.\"claimedAt\" IS DISTINCT FROM OLD.\"claimedAt\" THEN\n    RAISE EXCEPTION 'Order claim identity and claim time are immutable'\n      USING ERRCODE = '23514';\n  END IF;\n  IF OLD.\"releasedAt\" IS NOT NULL AND NEW.\"releasedAt\" IS DISTINCT FROM OLD.\"releasedAt\" THEN\n    RAISE EXCEPTION 'Released order claim history is immutable'\n      USING ERRCODE = '23514';\n  END IF;\n  IF OLD.\"releasedAt\" IS NULL AND NEW.\"releasedAt\" IS NOT NULL THEN\n    SELECT status::text, \"completedAt\" INTO route_status, completed_at\n    FROM public.route WHERE id = OLD.\"routeId\";\n    IF route_status = 'COMPLETED' AND completed_at = NEW.\"releasedAt\" THEN\n      RETURN NEW;\n    END IF;\n    IF route_status = 'INTERRUPTED' AND EXISTS (\n      SELECT 1 FROM public.\"dispatchIntervention\" a\n      JOIN public.\"routeEmergency\" e ON e.\"routeId\" = OLD.\"routeId\" AND e.\"declarationRequestId\" = a.\"requestId\"\n      WHERE a.action = 'EMERGENCY_DECLARE' AND a.outcome = 'APPLIED' AND a.\"routeId\" = OLD.\"routeId\"\n        AND a.xmin = pg_current_xact_id()::text::xid\n        AND NEW.\"releasedAt\" = e.\"declaredAt\"\n    ) THEN\n      RETURN NEW;\n    END IF;\n    IF route_status = 'DRAFT' AND NOT EXISTS (\n      SELECT 1 FROM public.\"routeStop\" s\n      WHERE s.\"routeId\" = OLD.\"routeId\" AND s.\"orderId\" = OLD.\"orderId\"\n    ) THEN\n      RETURN NEW;\n    END IF;\n    IF route_status = 'ASSIGNED' AND NOT EXISTS (\n      SELECT 1 FROM public.\"routeStop\" WHERE \"routeId\" = OLD.\"routeId\" AND \"orderId\" = OLD.\"orderId\"\n    ) AND EXISTS (\n      SELECT 1 FROM public.\"dispatchIntervention\" a\n      WHERE a.action IN ('MOVE', 'RESCHEDULE', 'PICKUP_AGREE') AND a.outcome = 'APPLIED' AND a.\"orderId\" = OLD.\"orderId\"\n        AND (a.payload::jsonb ->> 'routeId' = OLD.\"routeId\" OR (a.action IN ('RESCHEDULE', 'PICKUP_AGREE') AND a.\"routeId\" = OLD.\"routeId\"))\n        AND a.xmin = pg_current_xact_id()::text::xid\n    ) THEN RETURN NEW; END IF;\n    RAISE EXCEPTION 'Order claim may be released only at valid completion, emergency declaration, or pre-start stop removal'\n      USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND $$;\n\nCREATE OR REPLACE FUNCTION public.t1e_reservation_history_guard() RETURNS trigger\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  route_status text;\n  returned_at timestamptz;\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    RAISE EXCEPTION 'Driver reservation history is immutable and cannot be deleted'\n      USING ERRCODE = '23514';\n  END IF;\n  IF NEW.id IS DISTINCT FROM OLD.id OR NEW.\"routeId\" IS DISTINCT FROM OLD.\"routeId\" OR\n     NEW.\"driverId\" IS DISTINCT FROM OLD.\"driverId\" OR\n     NEW.\"reservedAt\" IS DISTINCT FROM OLD.\"reservedAt\" THEN\n    RAISE EXCEPTION 'Driver reservation identity and reserve time are immutable'\n      USING ERRCODE = '23514';\n  END IF;\n  IF OLD.\"releasedAt\" IS NOT NULL AND NEW.\"releasedAt\" IS DISTINCT FROM OLD.\"releasedAt\" THEN\n    RAISE EXCEPTION 'Released driver reservation history is immutable'\n      USING ERRCODE = '23514';\n  END IF;\n  IF OLD.\"releasedAt\" IS NULL AND NEW.\"releasedAt\" IS NOT NULL THEN\n    SELECT status::text, \"returnedAt\" INTO route_status, returned_at\n    FROM public.route WHERE id = OLD.\"routeId\";\n    IF route_status IN ('COMPLETED', 'INTERRUPTED') AND returned_at = NEW.\"releasedAt\" THEN\n      RETURN NEW;\n    END IF;\n    IF route_status IS NULL THEN\n      RETURN NEW;\n    END IF;\n    IF route_status = 'ASSIGNED' AND EXISTS (\n      SELECT 1 FROM public.\"dispatchIntervention\" a JOIN public.route r ON r.id = a.\"routeId\"\n      WHERE a.action = 'REASSIGN_DRIVER' AND a.outcome = 'APPLIED' AND a.\"routeId\" = OLD.\"routeId\"\n        AND a.payload::jsonb ->> 'driverId' = r.\"driverId\" AND r.\"driverId\" <> OLD.\"driverId\"\n        AND a.xmin = pg_current_xact_id()::text::xid\n    ) THEN RETURN NEW; END IF;\n    RAISE EXCEPTION 'Verified driver reservation may be released only at physical return'\n      USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND $$;\n\nCREATE OR REPLACE FUNCTION public.dispatch_review_resolution_guard() RETURNS trigger\nLANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nBEGIN\n  IF OLD.\"requiresAdministrativeReview\" AND (\n    NOT NEW.\"requiresAdministrativeReview\" OR (NEW.status IS DISTINCT FROM OLD.status AND NEW.status IN ('DELIVERED','CANCELLED','PENDING')) OR\n    (NEW.\"scheduledDeliveryDate\", NEW.\"deliveryWindowStart\", NEW.\"deliveryWindowEnd\", NEW.\"routeId\")\n    IS DISTINCT FROM (OLD.\"scheduledDeliveryDate\", OLD.\"deliveryWindowStart\", OLD.\"deliveryWindowEnd\", OLD.\"routeId\")\n  ) THEN\n    IF EXISTS (\n      SELECT 1 FROM public.\"routeUnitRecovery\" u\n      WHERE u.\"orderId\" = OLD.id\n        AND u.\"recoveredAt\" IS NULL\n        AND NOT EXISTS (\n          SELECT 1 FROM public.\"orderItemLoss\" l\n          WHERE l.\"orderItemId\" = u.\"orderItemId\"\n            AND l.\"unitNumber\" = u.\"unitNumber\"\n            AND l.\"cancelledAt\" IS NULL\n            AND l.\"replacementPreparedAt\" IS NOT NULL\n        )\n    ) THEN\n      -- Allow only PICKUP_CONFIRM? No: #51/#50 blocks order recovery/reschedule/pickup while units remain unrecovered/unprepared!\n      RAISE EXCEPTION 'Order with pending emergency unit recovery cannot be released from administrative review' USING ERRCODE = '23514';\n    END IF;\n\n    IF NOT EXISTS (\n      SELECT 1 FROM public.\"dispatchIntervention\" a\n      JOIN public.\"dispatchIntervention\" c ON c.id = a.payload::jsonb ->> 'agreementId'\n      JOIN public.\"deliveryAttempt\" d ON d.id = c.payload::jsonb ->> 'attemptId'\n      JOIN public.\"routeStop\" st ON st.id = d.\"stopId\"\n      JOIN public.route r ON r.id = st.\"routeId\"\n      WHERE a.action = 'RESCHEDULE' AND a.outcome = 'APPLIED' AND a.\"orderId\" = OLD.id\n        AND a.xmin = pg_current_xact_id()::text::xid\n        AND c.action = 'CONTACT' AND c.outcome = 'APPLIED' AND c.\"orderId\" = OLD.id\n        AND c.payload::jsonb -> 'agreementConfirmed' = 'true'::jsonb\n        AND st.\"orderId\" = OLD.id AND d.outcome = 'FAILED' AND r.status IN ('COMPLETED', 'INTERRUPTED')\n        AND NEW.status = 'PENDING' AND NOT NEW.\"requiresAdministrativeReview\" AND NEW.\"routeId\" IS NULL AND NEW.\"stopOrder\" IS NULL\n        AND NEW.\"scheduledDeliveryDate\" = (c.payload::jsonb ->> 'scheduledDeliveryDate')::timestamptz\n        AND NEW.\"deliveryWindowStart\" = (c.payload::jsonb ->> 'deliveryWindowStart')::timestamptz\n        AND NEW.\"deliveryWindowEnd\" = (c.payload::jsonb ->> 'deliveryWindowEnd')::timestamptz\n        AND NEW.\"deliveryWindowStart\" > clock_timestamp()\n        AND NOT EXISTS (SELECT 1 FROM public.\"orderClaim\" WHERE \"orderId\" = OLD.id AND \"releasedAt\" IS NULL)\n        AND NOT EXISTS (\n          SELECT 1 FROM public.\"deliveryAttempt\" later JOIN public.\"routeStop\" lst ON lst.id = later.\"stopId\"\n          WHERE lst.\"orderId\" = OLD.id AND later.outcome = 'FAILED' AND (later.\"recordedAt\", later.id) > (d.\"recordedAt\", d.id)\n        )\n    ) AND NOT EXISTS (\n      SELECT 1 FROM public.\"dispatchIntervention\" a\n      JOIN public.\"dispatchIntervention\" c ON c.id = a.payload::jsonb ->> 'agreementId'\n      JOIN public.\"routeEmergency\" e ON e.id = c.payload::jsonb ->> 'emergencyId'\n      WHERE a.action = 'RESCHEDULE' AND a.outcome = 'APPLIED' AND a.\"orderId\" = OLD.id\n        AND a.xmin = pg_current_xact_id()::text::xid\n        AND c.action = 'CONTACT' AND c.outcome = 'APPLIED' AND c.\"orderId\" = OLD.id\n        AND c.payload::jsonb -> 'agreementConfirmed' = 'true'::jsonb\n        AND EXISTS (SELECT 1 FROM public.\"routeUnitRecovery\" u WHERE u.\"emergencyId\" = e.id AND u.\"orderId\" = OLD.id)\n        AND NEW.status = 'PENDING' AND NOT NEW.\"requiresAdministrativeReview\" AND NEW.\"routeId\" IS NULL AND NEW.\"stopOrder\" IS NULL\n        AND NEW.\"scheduledDeliveryDate\" = (c.payload::jsonb ->> 'scheduledDeliveryDate')::timestamptz\n        AND NEW.\"deliveryWindowStart\" = (c.payload::jsonb ->> 'deliveryWindowStart')::timestamptz\n        AND NEW.\"deliveryWindowEnd\" = (c.payload::jsonb ->> 'deliveryWindowEnd')::timestamptz\n        AND NEW.\"deliveryWindowStart\" > clock_timestamp()\n        AND NOT EXISTS (SELECT 1 FROM public.\"orderClaim\" WHERE \"orderId\" = OLD.id AND \"releasedAt\" IS NULL)\n        AND NOT EXISTS (\n          SELECT 1 FROM public.\"deliveryAttempt\" later JOIN public.\"routeStop\" lst ON lst.id = later.\"stopId\"\n          WHERE lst.\"orderId\" = OLD.id AND later.outcome = 'FAILED' AND later.\"recordedAt\" >= e.\"declaredAt\"\n        )\n    ) AND NOT EXISTS (\n      SELECT 1 FROM public.\"dispatchIntervention\" a\n      JOIN public.\"orderPickup\" p ON p.\"orderId\" = a.\"orderId\" AND p.\"agreementRequestId\" = a.\"requestId\"\n      JOIN public.\"deliveryAttempt\" d ON d.id = a.payload::jsonb ->> 'attemptId'\n      JOIN public.\"routeStop\" st ON st.id = d.\"stopId\"\n      JOIN public.route r ON r.id = st.\"routeId\"\n      WHERE a.action = 'PICKUP_AGREE' AND a.outcome = 'APPLIED' AND a.\"orderId\" = OLD.id\n        AND a.xmin = pg_current_xact_id()::text::xid\n        AND p.\"confirmedAt\" IS NULL\n        AND st.\"orderId\" = OLD.id AND d.outcome = 'FAILED' AND r.status IN ('COMPLETED', 'INTERRUPTED')\n        AND NEW.status = 'PENDING' AND NEW.\"requiresAdministrativeReview\" AND NEW.\"routeId\" IS NULL AND NEW.\"stopOrder\" IS NULL\n        AND (NEW.\"scheduledDeliveryDate\", NEW.\"deliveryWindowStart\", NEW.\"deliveryWindowEnd\")\n          IS NOT DISTINCT FROM (OLD.\"scheduledDeliveryDate\", OLD.\"deliveryWindowStart\", OLD.\"deliveryWindowEnd\")\n        AND NOT EXISTS (SELECT 1 FROM public.\"orderClaim\" WHERE \"orderId\" = OLD.id AND \"releasedAt\" IS NULL)\n        AND NOT EXISTS (\n          SELECT 1 FROM public.\"deliveryAttempt\" later JOIN public.\"routeStop\" lst ON lst.id = later.\"stopId\"\n          WHERE lst.\"orderId\" = OLD.id AND later.outcome = 'FAILED' AND (later.\"recordedAt\", later.id) > (d.\"recordedAt\", d.id)\n        )\n    ) AND NOT EXISTS (\n      SELECT 1 FROM public.\"dispatchIntervention\" a\n      JOIN public.\"orderPickup\" p ON p.\"orderId\" = a.\"orderId\" AND p.\"agreementRequestId\" = a.\"requestId\"\n      JOIN public.\"routeEmergency\" e ON e.id = a.payload::jsonb ->> 'emergencyId'\n      WHERE a.action = 'PICKUP_AGREE' AND a.outcome = 'APPLIED' AND a.\"orderId\" = OLD.id\n        AND a.xmin = pg_current_xact_id()::text::xid\n        AND p.\"confirmedAt\" IS NULL\n        AND EXISTS (SELECT 1 FROM public.\"routeUnitRecovery\" u WHERE u.\"emergencyId\" = e.id AND u.\"orderId\" = OLD.id)\n        AND NEW.status = 'PENDING' AND NEW.\"requiresAdministrativeReview\" AND NEW.\"routeId\" IS NULL AND NEW.\"stopOrder\" IS NULL\n        AND (NEW.\"scheduledDeliveryDate\", NEW.\"deliveryWindowStart\", NEW.\"deliveryWindowEnd\")\n          IS NOT DISTINCT FROM (OLD.\"scheduledDeliveryDate\", OLD.\"deliveryWindowStart\", OLD.\"deliveryWindowEnd\")\n        AND NOT EXISTS (SELECT 1 FROM public.\"orderClaim\" WHERE \"orderId\" = OLD.id AND \"releasedAt\" IS NULL)\n        AND NOT EXISTS (\n          SELECT 1 FROM public.\"deliveryAttempt\" later JOIN public.\"routeStop\" lst ON lst.id = later.\"stopId\"\n          WHERE lst.\"orderId\" = OLD.id AND later.outcome = 'FAILED' AND later.\"recordedAt\" >= e.\"declaredAt\"\n        )\n    ) AND NOT EXISTS (\n      SELECT 1 FROM public.\"dispatchIntervention\" a\n      JOIN public.\"orderPickup\" p ON p.\"orderId\" = a.\"orderId\" AND p.\"confirmationRequestId\" = a.\"requestId\"\n      WHERE a.action = 'PICKUP_CONFIRM' AND a.outcome = 'APPLIED' AND a.\"orderId\" = OLD.id\n        AND a.xmin = pg_current_xact_id()::text::xid\n        AND p.\"confirmedAt\" IS NOT NULL AND p.\"confirmedById\" = a.\"actorId\"\n        AND OLD.status = 'PENDING' AND OLD.\"routeId\" IS NULL AND NEW.\"routeId\" IS NULL\n        AND NEW.status = 'DELIVERED' AND NOT NEW.\"requiresAdministrativeReview\"\n        AND (NEW.\"scheduledDeliveryDate\", NEW.\"deliveryWindowStart\", NEW.\"deliveryWindowEnd\")\n          IS NOT DISTINCT FROM (OLD.\"scheduledDeliveryDate\", OLD.\"deliveryWindowStart\", OLD.\"deliveryWindowEnd\")\n        AND NOT EXISTS (SELECT 1 FROM public.\"orderClaim\" WHERE \"orderId\" = OLD.id AND \"releasedAt\" IS NULL)\n    ) AND NOT EXISTS (\n      SELECT 1 FROM public.\"dispatchIntervention\" a\n      JOIN public.\"routeEmergency\" e ON e.id = a.payload::jsonb ->> 'emergencyId'\n      WHERE a.action = 'EMERGENCY_REQUEUE' AND a.outcome = 'APPLIED' AND a.\"orderId\" = OLD.id\n        AND a.xmin = pg_current_xact_id()::text::xid\n        AND EXISTS (SELECT 1 FROM public.\"routeUnitRecovery\" u WHERE u.\"emergencyId\" = e.id AND u.\"orderId\" = OLD.id)\n        AND NEW.status = 'PENDING' AND NOT NEW.\"requiresAdministrativeReview\" AND NEW.\"routeId\" IS NULL AND NEW.\"stopOrder\" IS NULL\n        AND (NEW.\"scheduledDeliveryDate\", NEW.\"deliveryWindowStart\", NEW.\"deliveryWindowEnd\")\n          IS NOT DISTINCT FROM (OLD.\"scheduledDeliveryDate\", OLD.\"deliveryWindowStart\", OLD.\"deliveryWindowEnd\")\n        AND NOT EXISTS (SELECT 1 FROM public.\"orderClaim\" WHERE \"orderId\" = OLD.id AND \"releasedAt\" IS NULL)\n        AND NOT EXISTS (\n          SELECT 1 FROM public.\"deliveryAttempt\" later JOIN public.\"routeStop\" lst ON lst.id = later.\"stopId\"\n          WHERE lst.\"orderId\" = OLD.id AND later.outcome = 'FAILED' AND later.\"recordedAt\" >= e.\"declaredAt\"\n        )\n    ) THEN\n      RAISE EXCEPTION 'Failed order requires an explicit persisted agreement or emergency resolution after completion or recovery' USING ERRCODE = '23514';\n    END IF;\n  END IF;\n  RETURN NEW;\nEND $$;"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "all 7 updated route, stop, visit, claim, reservation, and dispatch review guard functions reflect INTERRUPTED and EMERGENCY_REQUEUE rules",
+        "sql": "SELECT (\n              (SELECT position('INTERRUPTED' in prosrc) > 0 FROM pg_proc WHERE proname='route_integrity_guard' AND pronamespace='public'::regnamespace)\n              AND (SELECT position('INTERRUPTED' in prosrc) > 0 FROM pg_proc WHERE proname='route_stop_integrity_guard' AND pronamespace='public'::regnamespace)\n              AND (SELECT position('INTERRUPTED' in prosrc) > 0 FROM pg_proc WHERE proname='t1e_validate_route_coherence' AND pronamespace='public'::regnamespace)\n              AND (SELECT position('INTERRUPTED' in prosrc) > 0 FROM pg_proc WHERE proname='t1e_validate_stop_visit' AND pronamespace='public'::regnamespace)\n              AND (SELECT position('EMERGENCY_DECLARE' in prosrc) > 0 FROM pg_proc WHERE proname='t1e_claim_history_guard' AND pronamespace='public'::regnamespace)\n              AND (SELECT position('INTERRUPTED' in prosrc) > 0 FROM pg_proc WHERE proname='t1e_reservation_history_guard' AND pronamespace='public'::regnamespace)\n              AND (SELECT position('EMERGENCY_REQUEUE' in prosrc) > 0 FROM pg_proc WHERE proname='dispatch_review_resolution_guard' AND pronamespace='public'::regnamespace)\n            ) AS result"
+      }
+    ]
+  }
+]

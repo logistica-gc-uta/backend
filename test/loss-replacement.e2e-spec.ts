@@ -32,7 +32,7 @@ describe('Pérdida, reemplazo y recuperación tardía (#52): PostgreSQL + JWT HT
     zone: randomUUID(),
   };
   const token = (sub: string, role: string) => jwt.sign({ sub, role, email: 'fixture@invalid.test' });
-  const api = (method: 'get' | 'post', path: string, body?: object, sub = ids.admin, role = 'ADMIN') =>
+  const api = (method: 'get' | 'post', path: string, body?: object, sub: string = ids.admin, role = 'ADMIN') =>
     request(app.getHttpServer())[method]('/api/v1' + path).auth(token(sub, role), { type: 'bearer' }).send(body);
   const intervene = (body: Record<string, unknown>, sub = ids.admin, role = 'ADMIN') =>
     api('post', '/dispatch/interventions', { requestId: randomUUID(), reason: 'Pérdida de un producto', ...body }, sub, role);
@@ -411,6 +411,213 @@ describe('Pérdida, reemplazo y recuperación tardía (#52): PostgreSQL + JWT HT
         db.orm.public.OrderItemLoss.where({ id: lossId }).update({ recoveredAt: Temporal.Now.instant() }),
       ).rejects.toThrow(); // recuperación incompleta
       expect(await stockOf(product.id)).toBe(4);
+    });
+  });
+
+  describe('anulación de pérdida declarada por error (LOSS_CANCEL)', () => {
+    const cancelLoss = (
+      lossId: string,
+      extra: Record<string, unknown> = {},
+      sub = ids.admin,
+      role = 'ADMIN',
+    ) => intervene({ action: 'LOSS_CANCEL', lossId, ...extra }, sub, role);
+
+    it('anular una pérdida PREPARED devuelve +1 al stock con REPLACEMENT_CANCEL_IN, es idempotente y permite redeclarar la misma unidad', async () => {
+      const product = await seedProduct(2);
+      const { order, item } = await seedOrder(product.id);
+      const lossId = (await declare(order.id, item.id).expect(200)).body.result.lossId as string;
+      expect(await stockOf(product.id)).toBe(1);
+
+      const cancelBody = {
+        requestId: randomUUID(),
+        reason: 'Declaración errónea de pérdida',
+        action: 'LOSS_CANCEL',
+        lossId,
+      };
+      const first = await api('post', '/dispatch/interventions', cancelBody, ids.admin2).expect(200);
+      expect(first.body).toMatchObject({ action: 'LOSS_CANCEL', outcome: 'APPLIED', actorId: ids.admin2, orderId: order.id });
+      expect(first.body.result).toMatchObject({ lossId, stock: '2' });
+
+      // Repetición idempotente con misma clave y actor devuelve exactamente lo mismo sin volver a sumar stock.
+      const replay = await api('post', '/dispatch/interventions', cancelBody, ids.admin2).expect(200);
+      expect(replay.body).toEqual(first.body);
+      expect(await stockOf(product.id)).toBe(2);
+
+      // Misma clave con otro actor u otro cuerpo se rechaza; nueva clave sobre pérdida ya anulada también se rechaza.
+      await api('post', '/dispatch/interventions', cancelBody, ids.admin).expect(409);
+      await api('post', '/dispatch/interventions', { ...cancelBody, reason: 'Otro motivo' }, ids.admin2).expect(409);
+      const again = await cancelLoss(lossId).expect(409);
+      expect(again.body.code).toBe('LOSS_ALREADY_CANCELLED');
+
+      const movements = await movementsOf(product.id);
+      expect(movements.map((m) => m.kind)).toEqual(['REPLACEMENT_OUT', 'REPLACEMENT_CANCEL_IN']);
+      expect(movements[1]).toMatchObject({ kind: 'REPLACEMENT_CANCEL_IN', delta: 1, stockAfter: 2, createdById: ids.admin2 });
+
+      const [view] = await losses(order.id);
+      expect(view.cancelledById).toBe(ids.admin2);
+      expect(view.cancelReason).toBe('Declaración errónea de pérdida');
+      expect(view.cancelledAt).toEqual(expect.any(String));
+
+      // Índice único parcial (cancelledAt IS NULL) permite volver a declarar la pérdida real de la misma unidad.
+      const redeclared = await declare(order.id, item.id).expect(200);
+      expect(redeclared.body.result).toMatchObject({ replacement: 'PREPARED', stock: '1' });
+      expect(await stockOf(product.id)).toBe(1);
+      expect(await lossesIn(order.id)).toHaveLength(2);
+    });
+
+    it('anular una pérdida PENDING (stock = 0) no emite movimientos de inventario y conserva stock = 0', async () => {
+      const product = await seedProduct(0);
+      const { order, item } = await seedOrder(product.id);
+      const lossId = (await declare(order.id, item.id).expect(200)).body.result.lossId as string;
+      expect(await movementsOf(product.id)).toHaveLength(0);
+
+      const cancelled = await cancelLoss(lossId).expect(200);
+      expect(cancelled.body.result).toMatchObject({ lossId, stock: null });
+      expect(await stockOf(product.id)).toBe(0);
+      expect(await movementsOf(product.id)).toHaveLength(0);
+    });
+
+    it('anular una pérdida reactiva requiresAdministrativeReview cuando el pedido tenía un intento fallido ya despejado', async () => {
+      const product = await seedProduct(2);
+      const now = Temporal.Now.instant();
+      const guayaquilToday = Temporal.Now.zonedDateTimeISO('America/Guayaquil').toPlainDate();
+      const tomorrow = guayaquilToday.add({ days: 1 }).toString();
+      const driverUser = await db.orm.public.User.create({
+        id: randomUUID(),
+        role: 'DRIVER',
+        name: 'Driver Loss Cancel',
+        email: randomUUID() + '@fixture.invalid',
+        password: 'fixture',
+      });
+      const driver = await db.orm.public.Driver.create({ userId: driverUser.id, vehicle: 'Moto' });
+      const order = await db.orm.public.Order.create({
+        userId: ids.client,
+        zoneId: ids.zone,
+        deliveryAddress: 'Fixture street',
+        scheduledDeliveryDate: now,
+        deliveryLat: -1.25,
+        deliveryLng: -78.62,
+      });
+      const item = await db.orm.public.OrderItem.create({ orderId: order.id, productId: product.id, quantity: 1, price: 10 });
+
+      const route = (await api('post', '/routes', { zoneId: ids.zone, routeDate: now.toString(), orderIds: [order.id] }).expect(201)).body;
+      await api('post', `/routes/${route.id}/assign`, { driverId: driver.id }).expect(200);
+      await api('post', `/routes/${route.id}/start`, {}, driverUser.id, 'DRIVER').expect(200);
+      const stop = (await api('get', `/routes/${route.id}`).expect(200)).body.stops[0];
+      await api(
+        'post',
+        `/routes/${route.id}/stops/${stop.id}/failure`,
+        { requestId: randomUUID(), reason: 'RECIPIENT_ABSENT', context: 'Nadie en casa' },
+        driverUser.id,
+        'DRIVER',
+      ).expect(200);
+      const attemptId = (await api('get', `/routes/${route.id}`).expect(200)).body.stops[0].attempts[0].id as string;
+      await api('post', `/routes/${route.id}/complete`, {}, driverUser.id, 'DRIVER').expect(200);
+
+      // Reprogramamos primero (limpia requiresAdministrativeReview = false) y luego declaramos la pérdida asociada al intento.
+      const contact = (
+        await intervene({
+          action: 'CONTACT',
+          orderId: order.id,
+          attemptId,
+          agreementConfirmed: true,
+          scheduledDeliveryDate: `${tomorrow}T14:00:00-05:00`,
+          deliveryWindowStart: `${tomorrow}T13:00:00-05:00`,
+          deliveryWindowEnd: `${tomorrow}T16:00:00-05:00`,
+        }).expect(200)
+      ).body;
+      await intervene({ action: 'RESCHEDULE', orderId: order.id, agreementId: contact.id }).expect(200);
+      expect((await db.orm.public.Order.where({ id: order.id }).first())!.requiresAdministrativeReview).toBe(false);
+
+      const lossId = (await declare(order.id, item.id, { attemptId }).expect(200)).body.result.lossId as string;
+      await cancelLoss(lossId).expect(200);
+      expect((await db.orm.public.Order.where({ id: order.id }).first())!.requiresAdministrativeReview).toBe(true);
+    });
+
+    it('rechaza 409 cuando el original ya fue recuperado, por estado del pedido, por claim activo o por retiro acordado, y la BD impide anular con recoveredAt', async () => {
+      const product = await seedProduct(5);
+
+      // 1. Original ya recuperado
+      const rec = await seedOrder(product.id);
+      const recLossId = (await declare(rec.order.id, rec.item.id).expect(200)).body.result.lossId as string;
+      await recover(recLossId, 'DAMAGED').expect(200);
+      expect((await cancelLoss(recLossId).expect(409)).body.code).toBe('LOSS_ALREADY_RECOVERED');
+
+      // La restricción CHECK order_item_loss_cancellation_consistent impide SQL con cancelledAt + recoveredAt juntos.
+      await expect(
+        db.orm.public.OrderItemLoss.where({ id: recLossId }).update({
+          cancelledAt: Temporal.Now.instant(),
+          cancelledById: ids.admin,
+          cancelReason: 'Intento directo',
+          cancelRequestId: randomUUID(),
+        }),
+      ).rejects.toThrow();
+
+      // 2. Pedido en IN_TRANSIT, DELIVERED y CANCELLED
+      const inTransitOrder = await db.orm.public.Order.create({
+        userId: ids.client,
+        zoneId: ids.zone,
+        deliveryAddress: 'Fixture street',
+        status: 'IN_TRANSIT',
+        deliveryLat: -1.25,
+        deliveryLng: -78.62,
+      });
+      const inTransitItem = await db.orm.public.OrderItem.create({ orderId: inTransitOrder.id, productId: product.id, quantity: 1, price: 10 });
+      const inTransitLossId = (await declare(inTransitOrder.id, inTransitItem.id).expect(200)).body.result.lossId as string;
+      expect((await cancelLoss(inTransitLossId).expect(409)).body.code).toBe('LOSS_CANCEL_ORDER_STATE');
+
+      const deliveredCase = await seedOrder(product.id);
+      const deliveredLossId = (await declare(deliveredCase.order.id, deliveredCase.item.id).expect(200)).body.result.lossId as string;
+      await db.orm.public.Order.where({ id: deliveredCase.order.id }).update({ status: 'DELIVERED' });
+      expect((await cancelLoss(deliveredLossId).expect(409)).body.code).toBe('LOSS_CANCEL_ORDER_STATE');
+
+      const cancelledCase = await seedOrder(product.id);
+      const cancelledLossId = (await declare(cancelledCase.order.id, cancelledCase.item.id).expect(200)).body.result.lossId as string;
+      await request(app.getHttpServer())
+        .patch(`/api/v1/orders/${cancelledCase.order.id}/status`)
+        .auth(token(ids.admin, 'ADMIN'), { type: 'bearer' })
+        .send({ status: 'CANCELLED' })
+        .expect(200);
+      expect((await cancelLoss(cancelledLossId).expect(409)).body.code).toBe('LOSS_CANCEL_ORDER_STATE');
+
+      // 3. Pedido con OrderClaim activo (ruta DRAFT)
+      const now = Temporal.Now.instant();
+      const claimedOrder = await db.orm.public.Order.create({
+        userId: ids.client,
+        zoneId: ids.zone,
+        deliveryAddress: 'Fixture street',
+        scheduledDeliveryDate: now,
+        deliveryLat: -1.25,
+        deliveryLng: -78.62,
+      });
+      const claimedItem = await db.orm.public.OrderItem.create({ orderId: claimedOrder.id, productId: product.id, quantity: 1, price: 10 });
+      const claimedLossId = (await declare(claimedOrder.id, claimedItem.id).expect(200)).body.result.lossId as string;
+      await api('post', '/routes', { zoneId: ids.zone, routeDate: now.toString(), orderIds: [claimedOrder.id] }).expect(201);
+      expect((await cancelLoss(claimedLossId).expect(409)).body.code).toBe('LOSS_CANCEL_ACTIVE_CLAIM');
+
+      // 4. Pedido con OrderPickup (#50)
+      const pickupCase = await seedOrder(product.id);
+      const pickupLossId = (await declare(pickupCase.order.id, pickupCase.item.id).expect(200)).body.result.lossId as string;
+      await intervene({ action: 'PICKUP_AGREE', orderId: pickupCase.order.id }).expect(200);
+      expect((await cancelLoss(pickupLossId).expect(409)).body.code).toBe('LOSS_CANCEL_PICKUP_EXISTS');
+    });
+
+    it('anulaciones concurrentes de una pérdida PREPARED: solo una aplica +1 al stock y las demás devuelven 409', async () => {
+      const product = await seedProduct(3);
+      const { order, item } = await seedOrder(product.id);
+      const lossId = (await declare(order.id, item.id).expect(200)).body.result.lossId as string;
+      expect(await stockOf(product.id)).toBe(2);
+
+      const responses = await Promise.all([
+        cancelLoss(lossId, {}, ids.admin),
+        cancelLoss(lossId, {}, ids.admin2),
+        cancelLoss(lossId, {}, ids.admin),
+        cancelLoss(lossId, {}, ids.admin2),
+      ]);
+      expect(responses.filter((r) => r.status === 200)).toHaveLength(1);
+      expect(responses.filter((r) => r.status === 409)).toHaveLength(3);
+      expect(await stockOf(product.id)).toBe(3);
+      expect((await movementsOf(product.id)).filter((m) => m.kind === 'REPLACEMENT_CANCEL_IN')).toHaveLength(1);
     });
   });
 });

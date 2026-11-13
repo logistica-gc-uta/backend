@@ -175,6 +175,10 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
       DriverAbsence: [],
       OrderPickup: [],
       StoreCoverage: [],
+      OrderItem: [],
+      OrderItemLoss: [],
+      RouteEmergency: [],
+      RouteUnitRecovery: [],
     };
     const models = Object.fromEntries(
       Object.keys(rows).map((name) => {
@@ -979,6 +983,274 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
           agreementId: agreed.id,
         }),
       ).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
+  describe('gestión de emergencia en ruta (#51)', () => {
+    it('ejecuta EMERGENCY_DECLARE -> UNIT_RECOVERY_CONFIRM -> EMERGENCY_CLOSE -> EMERGENCY_DRIVER_RELEASE -> EMERGENCY_REQUEUE con replay idempotente', async () => {
+      baseRoute('IN_PROGRESS', 2, 'em-route');
+      rows.Route![0]!.startedAt = nowInstant();
+      rows.Route![0]!.startedById = 'driver-user';
+      rows.Route![0]!.completedAt = null;
+      rows.Route![0]!.completedById = null;
+      rows.Route![0]!.returnedAt = null;
+      rows.Route![0]!.returnedById = null;
+      rows.Order!.forEach((o) => {
+        if (o.routeId === 'em-route') o.status = 'IN_TRANSIT';
+      });
+      rows.OrderItem!.push(
+        { id: 'em-item-1', orderId: 'em-route-order0', productId: 'prod-1', quantity: 2 },
+        { id: 'em-item-2', orderId: 'em-route-order1', productId: 'prod-1', quantity: 1 },
+      );
+
+      const declared = await call({
+        action: 'EMERGENCY_DECLARE',
+        routeId: 'em-route',
+        requestId: 'em-declare-1',
+      });
+      expect(declared).toMatchObject({
+        action: 'EMERGENCY_DECLARE',
+        outcome: 'APPLIED',
+        routeId: 'em-route',
+      });
+      expect(await call({
+        action: 'EMERGENCY_DECLARE',
+        routeId: 'em-route',
+        requestId: 'em-declare-1',
+      })).toEqual(declared);
+      expect(rows.Route![0]!.status).toBe('INTERRUPTED');
+      expect(rows.RouteUnitRecovery).toHaveLength(3);
+
+      const emergencyId = rows.RouteEmergency![0]!.id;
+      const order0Units = rows.RouteUnitRecovery!.filter(
+        (u) => u.orderId === 'em-route-order0',
+      );
+      await call({ action: 'UNIT_RECOVERY_CONFIRM', recoveryId: order0Units[0]!.id });
+      await expect(
+        call({
+          action: 'EMERGENCY_REQUEUE',
+          orderId: 'em-route-order0',
+          emergencyId,
+        }),
+      ).rejects.toMatchObject({ response: { code: 'RECOVERY_PENDING' } });
+
+      await call({ action: 'UNIT_RECOVERY_CONFIRM', recoveryId: order0Units[1]!.id });
+      const closed = await call({ action: 'EMERGENCY_CLOSE', routeId: 'em-route' });
+      expect(closed.action).toBe('EMERGENCY_CLOSE');
+
+      const released = await call({
+        action: 'EMERGENCY_DRIVER_RELEASE',
+        routeId: 'em-route',
+      });
+      expect(released.action).toBe('EMERGENCY_DRIVER_RELEASE');
+      expect((await availability.effective('driver')).isAvailable).toBe(true);
+
+      const requeued = await call({
+        action: 'EMERGENCY_REQUEUE',
+        orderId: 'em-route-order0',
+        emergencyId,
+      });
+      expect(requeued).toMatchObject({
+        action: 'EMERGENCY_REQUEUE',
+        outcome: 'APPLIED',
+        orderId: 'em-route-order0',
+      });
+      expect(
+        rows.Order!.find((o) => o.id === 'em-route-order0')!
+          .requiresAdministrativeReview,
+      ).toBe(false);
+    });
+
+    it('valida los campos exactos requeridos para cada acción #51', async () => {
+      await expect(call({ action: 'EMERGENCY_DECLARE' })).rejects.toThrow(
+        'exact resource fields',
+      );
+      await expect(call({ action: 'UNIT_RECOVERY_CONFIRM' })).rejects.toThrow(
+        'exact resource fields',
+      );
+      await expect(call({ action: 'EMERGENCY_CLOSE' })).rejects.toThrow(
+        'exact resource fields',
+      );
+      await expect(
+        call({ action: 'EMERGENCY_DRIVER_RELEASE' }),
+      ).rejects.toThrow('exact resource fields');
+      await expect(
+        call({ action: 'EMERGENCY_REQUEUE', orderId: 'urgent' }),
+      ).rejects.toThrow('exact resource fields');
+      await expect(call({ action: 'LOSS_CANCEL' })).rejects.toThrow(
+        'exact resource fields',
+      );
+    });
+
+    it('bloquea CONTACT, RESCHEDULE y PICKUP_AGREE con RECOVERY_PENDING mientras queden unidades sin recuperar o con reemplazo PENDING', async () => {
+      baseRoute('IN_PROGRESS', 1, 'em-guard-route');
+      rows.Route![0]!.startedAt = nowInstant();
+      rows.Route![0]!.startedById = 'driver-user';
+      rows.Order!.forEach((o) => {
+        if (o.routeId === 'em-guard-route') o.status = 'IN_TRANSIT';
+      });
+      rows.OrderItem!.push({
+        id: 'em-guard-item',
+        orderId: 'em-guard-route-order0',
+        productId: 'prod-guard',
+        quantity: 2,
+      });
+
+      await call({ action: 'EMERGENCY_DECLARE', routeId: 'em-guard-route' });
+      const emergencyId = rows.RouteEmergency![0]!.id;
+      const units = rows.RouteUnitRecovery!.filter(
+        (u) => u.orderId === 'em-guard-route-order0',
+      );
+
+      // 1 unit recovered, 1 unit still pending (or with PENDING replacement).
+      await call({ action: 'UNIT_RECOVERY_CONFIRM', recoveryId: units[0]!.id });
+      await expect(
+        call(agreement({ orderId: 'em-guard-route-order0', emergencyId })),
+      ).rejects.toMatchObject({ response: { code: 'RECOVERY_PENDING' } });
+      await expect(
+        call({
+          action: 'PICKUP_AGREE',
+          orderId: 'em-guard-route-order0',
+          emergencyId,
+        }),
+      ).rejects.toMatchObject({ response: { code: 'RECOVERY_PENDING' } });
+
+      // PENDING loss (replacementPreparedAt: null) still blocks CONTACT/RESCHEDULE/PICKUP_AGREE.
+      rows.OrderItemLoss!.push({
+        id: 'loss-pending-guard',
+        orderId: 'em-guard-route-order0',
+        orderItemId: units[1]!.orderItemId,
+        unitNumber: units[1]!.unitNumber,
+        replacementPreparedAt: null,
+        recoveredAt: null,
+        cancelledAt: null,
+      });
+      await expect(
+        call(agreement({ orderId: 'em-guard-route-order0', emergencyId })),
+      ).rejects.toMatchObject({ response: { code: 'RECOVERY_PENDING' } });
+
+      // Once replacement is PREPARED, CONTACT + RESCHEDULE with emergencyId succeed.
+      rows.OrderItemLoss![0]!.replacementPreparedAt = nowInstant();
+      const contact = await call(
+        agreement({ orderId: 'em-guard-route-order0', emergencyId }),
+      );
+      expect(contact.action).toBe('CONTACT');
+      const rescheduled = await call({
+        action: 'RESCHEDULE',
+        orderId: 'em-guard-route-order0',
+        agreementId: contact.id,
+      });
+      expect(rescheduled.outcome).toBe('APPLIED');
+      expect(
+        rows.Order!.find((o) => o.id === 'em-guard-route-order0')!
+          .requiresAdministrativeReview,
+      ).toBe(false);
+    });
+
+    it('permite PICKUP_AGREE con emergencyId una vez resueltas todas las unidades y rechaza si hay intento FAILED posterior a la emergencia', async () => {
+      baseRoute('IN_PROGRESS', 1, 'em-pickup-route');
+      rows.Route![0]!.startedAt = nowInstant();
+      rows.Route![0]!.startedById = 'driver-user';
+      rows.Order!.forEach((o) => {
+        if (o.routeId === 'em-pickup-route') o.status = 'IN_TRANSIT';
+      });
+      rows.OrderItem!.push({
+        id: 'em-pickup-item',
+        orderId: 'em-pickup-route-order0',
+        productId: 'prod-pickup',
+        quantity: 1,
+      });
+
+      await call({ action: 'EMERGENCY_DECLARE', routeId: 'em-pickup-route' });
+      const emergencyId = rows.RouteEmergency![0]!.id;
+      const unit = rows.RouteUnitRecovery!.find(
+        (u) => u.orderId === 'em-pickup-route-order0',
+      )!;
+      await call({ action: 'UNIT_RECOVERY_CONFIRM', recoveryId: unit.id });
+
+      // Later failed attempt >= emergency.declaredAt blocks emergencyId resolution.
+      rows.DeliveryAttempt!.push({
+        id: 'later-fail',
+        stopId: 'em-pickup-route-stop0',
+        outcome: 'FAILED',
+        recordedAt: rows.RouteEmergency![0]!.declaredAt,
+      });
+      await expect(
+        call({
+          action: 'PICKUP_AGREE',
+          orderId: 'em-pickup-route-order0',
+          emergencyId,
+        }),
+      ).rejects.toThrow('failed delivery attempt');
+
+      rows.DeliveryAttempt = [];
+      const agreed = await call({
+        action: 'PICKUP_AGREE',
+        orderId: 'em-pickup-route-order0',
+        emergencyId,
+      });
+      expect(agreed.outcome).toBe('APPLIED');
+      expect(rows.OrderPickup).toHaveLength(1);
+    });
+
+    it('permite RESCHEDULE y PICKUP_AGREE con attemptId sobre parada FAILED en ruta INTERRUPTED y enruta LOSS_CANCEL', async () => {
+      failed('INTERRUPTED');
+      // Release claim as EMERGENCY_DECLARE does for all route claims.
+      rows.OrderClaim = [];
+      const contact = await call(agreement({ attemptId: 'failure' }));
+      const rescheduled = await call({
+        action: 'RESCHEDULE',
+        orderId: 'urgent',
+        agreementId: contact.id,
+      });
+      expect(rescheduled.outcome).toBe('APPLIED');
+      expect(rows.Order![0]!.requiresAdministrativeReview).toBe(false);
+
+      // Route LOSS_CANCEL through intervene() with idempotent replay.
+      rows.OrderItem!.push({
+        id: 'loss-item',
+        orderId: 'urgent',
+        productId: 'prod-loss',
+        quantity: 1,
+      });
+      rows.OrderItemLoss!.push({
+        id: 'loss-to-cancel',
+        orderId: 'urgent',
+        orderItemId: 'loss-item',
+        unitNumber: 1,
+        productId: 'prod-loss',
+        attemptId: null,
+        declaredAt: nowInstant(),
+        declaredById: 'admin',
+        replacementPreparedAt: null,
+        replacementPreparedById: null,
+        replacementRequestId: null,
+        recoveredAt: null,
+        recoveredById: null,
+        recoveryCondition: null,
+        recoveryRequestId: null,
+        cancelledAt: null,
+        cancelledById: null,
+        cancelReason: null,
+        cancelRequestId: null,
+      });
+      const cancelled = await call({
+        action: 'LOSS_CANCEL',
+        lossId: 'loss-to-cancel',
+        requestId: 'loss-cancel-key',
+      });
+      expect(cancelled).toMatchObject({
+        action: 'LOSS_CANCEL',
+        outcome: 'APPLIED',
+        orderId: 'urgent',
+      });
+      expect(
+        await call({
+          action: 'LOSS_CANCEL',
+          lossId: 'loss-to-cancel',
+          requestId: 'loss-cancel-key',
+        }),
+      ).toEqual(cancelled);
     });
   });
 });

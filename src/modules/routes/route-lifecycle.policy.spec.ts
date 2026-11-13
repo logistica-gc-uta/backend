@@ -19,14 +19,28 @@ const release = {
 const returnedAt = new Date('2026-10-09T12:00:00Z');
 
 describe('Route lifecycle policy', () => {
-  it('defines exactly four verified states', () => {
-    expect(states).toEqual(['DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED']);
+  it('defines exactly five verified states', () => {
+    expect(states).toEqual([
+      'DRAFT',
+      'ASSIGNED',
+      'IN_PROGRESS',
+      'COMPLETED',
+      'INTERRUPTED',
+    ]);
   });
 
-  it.each(states)('allows only the next forward transition from %s', (from) => {
+  it.each(states)('allows only valid forward transitions from %s', (from) => {
+    const allowed: Partial<Record<RouteStatus, readonly RouteStatus[]>> = {
+      [RouteStatus.DRAFT]: [RouteStatus.ASSIGNED],
+      [RouteStatus.ASSIGNED]: [RouteStatus.IN_PROGRESS],
+      [RouteStatus.IN_PROGRESS]: [
+        RouteStatus.COMPLETED,
+        RouteStatus.INTERRUPTED,
+      ],
+    };
     for (const to of states) {
       expect(canTransitionRoute(from, to)).toBe(
-        states.indexOf(to) === states.indexOf(from) + 1,
+        Boolean(allowed[from]?.includes(to)),
       );
     }
   });
@@ -41,9 +55,32 @@ describe('Route lifecycle policy', () => {
       expect(canMutateRouteStructure(status)).toBe(
         status === RouteStatus.DRAFT || status === RouteStatus.ASSIGNED,
       );
-      expect(canReturnToDepot(status)).toBe(status === RouteStatus.COMPLETED);
+      expect(canReturnToDepot(status)).toBe(
+        status === RouteStatus.COMPLETED || status === RouteStatus.INTERRUPTED,
+      );
     },
   );
+
+  it('requires paired start/completion evidence for COMPLETED return and only start evidence for INTERRUPTED return', () => {
+    const started = { startedAt: returnedAt, startedById: 'driver-1' };
+    const completed = {
+      ...started,
+      completedAt: returnedAt,
+      completedById: 'driver-1',
+    };
+    expect(canReturnToDepot(RouteStatus.COMPLETED, completed)).toBe(true);
+    expect(canReturnToDepot(RouteStatus.COMPLETED, started)).toBe(false);
+    expect(canReturnToDepot(RouteStatus.INTERRUPTED, started)).toBe(true);
+    expect(
+      canReturnToDepot(RouteStatus.INTERRUPTED, {
+        startedAt: returnedAt,
+        startedById: null,
+      }),
+    ).toBe(false);
+    expect(
+      canReturnToDepot(RouteStatus.IN_PROGRESS, completed),
+    ).toBe(false);
+  });
 
   it.each([null, ...states])(
     'requires IN_PROGRESS and one to four resolved visits for %s',
@@ -65,16 +102,31 @@ describe('Route lifecycle policy', () => {
   );
 
   it.each([null, ...states])(
-    'holds the driver until valid completion and return for %s',
+    'holds the driver until valid completion or interruption and return for %s',
     (status) => {
       expect(holdsDriverReservation({ status, returnedAt: null })).toBe(
         status !== RouteStatus.DRAFT,
       );
+      expect(
+        holdsDriverReservation({
+          status,
+          returnedAt,
+          returnedById: 'actor-1',
+        }),
+      ).toBe(
+        status !== RouteStatus.DRAFT &&
+          status !== RouteStatus.COMPLETED &&
+          status !== RouteStatus.INTERRUPTED,
+      );
       expect(holdsDriverReservation({ status, returnedAt })).toBe(
-        status !== RouteStatus.DRAFT && status !== RouteStatus.COMPLETED,
+        status !== RouteStatus.DRAFT,
       );
       expect(
-        holdsDriverReservation({ status, returnedAt: new Date('invalid') }),
+        holdsDriverReservation({
+          status,
+          returnedAt: new Date('invalid'),
+          returnedById: 'actor-1',
+        }),
       ).toBe(status !== RouteStatus.DRAFT);
     },
   );

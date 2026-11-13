@@ -368,6 +368,41 @@ describe('Route progress transactional decisions', () => {
     );
     expect(rows.Order[0].status).toBe('ASSIGNED');
   });
+  it('allows idempotent replay on INTERRUPTED route while rejecting new stop mutations', async () => {
+    const failed = await service.fail('route', 'stop', 'actor', dto);
+    rows.Route[0].status = 'INTERRUPTED';
+
+    // Replay of existing FAILED attempt succeeds on INTERRUPTED.
+    await expect(service.fail('route', 'stop', 'actor', dto)).resolves.toEqual(
+      failed,
+    );
+
+    // New visit writes on INTERRUPTED are rejected.
+    await expect(
+      service.fail('route', 'stop', 'actor', { ...dto, requestId: 'new-req' }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.updateOrder('order', 'actor', OrderStatus.IN_TRANSIT),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.complete('route', 'actor')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
+  it('allows idempotent DELIVERED replay on INTERRUPTED route', async () => {
+    await service.updateOrder('order', 'actor', OrderStatus.IN_TRANSIT);
+    const delivered = await service.updateOrder(
+      'order',
+      'actor',
+      OrderStatus.DELIVERED,
+    );
+    rows.Route[0].status = 'INTERRUPTED';
+
+    await expect(
+      service.updateOrder('order', 'actor', OrderStatus.DELIVERED),
+    ).resolves.toEqual(delivered);
+  });
+
   it('preserves administrative cancellation for an unassociated pending order', async () => {
     rows.Order[0].routeId = null;
     rows.Order[0].status = 'PENDING';

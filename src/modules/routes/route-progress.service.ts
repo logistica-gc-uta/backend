@@ -173,7 +173,7 @@ export class RouteProgressService {
           throw new ConflictException(
             'Idempotency key conflicts with persisted attempt',
           );
-        if (!['IN_PROGRESS', 'COMPLETED'].includes(route.status ?? ''))
+        if (!['IN_PROGRESS', 'COMPLETED', 'INTERRUPTED'].includes(route.status ?? ''))
           throw new ConflictException('Invalid replay lifecycle');
         return this.response(existing);
       }
@@ -253,7 +253,7 @@ export class RouteProgressService {
             throw new ConflictException(
               'Delivery replay conflicts with persisted evidence',
             );
-          if (!['IN_PROGRESS', 'COMPLETED'].includes(route.status ?? ''))
+          if (!['IN_PROGRESS', 'COMPLETED', 'INTERRUPTED'].includes(route.status ?? ''))
             throw new ConflictException('Invalid replay lifecycle');
           return order;
         }

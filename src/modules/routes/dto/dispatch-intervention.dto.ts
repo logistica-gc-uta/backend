@@ -30,6 +30,12 @@ export const DISPATCH_ACTIONS = [
   'LOSS_DECLARE',
   'REPLACEMENT_PREPARE',
   'ORIGINAL_RECOVER',
+  'LOSS_CANCEL',
+  'EMERGENCY_DECLARE',
+  'UNIT_RECOVERY_CONFIRM',
+  'EMERGENCY_CLOSE',
+  'EMERGENCY_DRIVER_RELEASE',
+  'EMERGENCY_REQUEUE',
 ] as const;
 export const RECOVERY_CONDITIONS = ['SELLABLE', 'DAMAGED'] as const;
 export class DispatchInterventionDto {
@@ -138,6 +144,20 @@ export class DispatchInterventionDto {
   @ValidateIf((o) => o.recoveryCondition !== undefined)
   @IsIn(RECOVERY_CONDITIONS)
   recoveryCondition?: (typeof RECOVERY_CONDITIONS)[number];
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Unidad en custodia post-emergencia a confirmar como recuperada (#51)',
+  })
+  @ValidateIf((o) => o.recoveryId !== undefined)
+  @IsUUID()
+  recoveryId?: string;
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'Emergencia de ruta asociada al reencolado administrativo (#51)',
+  })
+  @ValidateIf((o) => o.emergencyId !== undefined)
+  @IsUUID()
+  emergencyId?: string;
 }
 export class DispatchAuditDto {
   @ApiProperty() id!: string;

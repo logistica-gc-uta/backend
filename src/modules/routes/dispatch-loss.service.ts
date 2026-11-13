@@ -48,6 +48,7 @@ export class DispatchLossService {
   ): Promise<AuditRow> {
     if (dto.action === 'LOSS_DECLARE') return this.declare(tx, dto, actorId, changes, audit);
     if (dto.action === 'REPLACEMENT_PREPARE') return this.prepare(tx, dto, actorId, changes, audit);
+    if (dto.action === 'LOSS_CANCEL') return this.cancel(tx, dto, actorId, changes, audit);
     return this.recover(tx, dto, actorId, changes, audit);
   }
 
@@ -67,7 +68,7 @@ export class DispatchLossService {
   private async move(
     tx: Transaction,
     loss: Loss,
-    kind: 'REPLACEMENT_OUT' | 'RECOVERY_IN',
+    kind: 'REPLACEMENT_OUT' | 'RECOVERY_IN' | 'REPLACEMENT_CANCEL_IN',
     actorId: string,
   ) {
     const db = tx.orm.public;
@@ -113,9 +114,51 @@ export class DispatchLossService {
       const stop = attempt ? await db.RouteStop.where({ id: attempt.stopId }).first() : null;
       if (!attempt || !stop || stop.orderId !== order.id)
         throw new BadRequestException('The delivery attempt does not belong to this order');
+      if (attempt.outcome && attempt.outcome !== 'FAILED')
+        throw this.conflict('INVALID_LOSS_ATTEMPT', 'Only a FAILED delivery attempt can authorize a loss');
+      const route = stop.routeId && db.Route ? await db.Route.where({ id: stop.routeId }).first() : null;
+      if (route && !['COMPLETED', 'INTERRUPTED'].includes(route.status ?? ''))
+        throw this.conflict('INVALID_LOSS_ROUTE_STATUS', 'Route must be COMPLETED or INTERRUPTED to declare a loss');
     }
-    if (await db.OrderItemLoss.where({ orderItemId: item.id, unitNumber }).first())
+    if (dto.emergencyId) {
+      const emergency = db.RouteEmergency ? await db.RouteEmergency.where({ id: dto.emergencyId }).first() : null;
+      const recovery =
+        emergency && db.RouteUnitRecovery
+          ? await db.RouteUnitRecovery.where({
+              emergencyId: emergency.id,
+              orderId: order.id,
+              orderItemId: item.id,
+              unitNumber,
+            }).first()
+          : null;
+      if (!emergency || !recovery)
+        throw this.conflict(
+          'EMERGENCY_RECOVERY_NOT_FOUND',
+          'No matching emergency unit recovery authorizes this loss',
+        );
+      if (recovery.recoveredAt != null)
+        throw this.conflict(
+          'UNIT_ALREADY_RECOVERED',
+          'Unit was already confirmed as recovered in the route emergency',
+        );
+    }
+    if (db.RouteUnitRecovery) {
+      const unitRecoveries = await db.RouteUnitRecovery.where({
+        orderItemId: item.id,
+        unitNumber,
+      }).all();
+      if (unitRecoveries.some((unit) => unit.recoveredAt != null))
+        throw this.conflict(
+          'UNIT_ALREADY_RECOVERED',
+          'Unit was already confirmed as recovered in the route emergency',
+        );
+    }
+    if (await db.OrderItemLoss.where({ orderItemId: item.id, unitNumber, cancelledAt: null }).first())
       throw this.conflict('LOSS_ALREADY_DECLARED', 'Esa unidad ya tiene una pérdida declarada');
+
+    // Lock Product FOR UPDATE before inserting OrderItemLoss (whose FK takes FOR KEY SHARE on Product)
+    // so concurrent LOSS_DECLARE requests on distinct orders serialize cleanly instead of deadlocking (40P01).
+    const product = await lockInventoryProduct(tx, this.prisma.client.raw, item.productId);
 
     // Compra, cobro y comprobante no se tocan: la pérdida solo registra la unidad y el reemplazo consume existencia libre.
     const created = await db.OrderItemLoss.create({
@@ -134,8 +177,11 @@ export class DispatchLossService {
       recoveredById: null,
       recoveryCondition: null,
       recoveryRequestId: null,
+      cancelledAt: null,
+      cancelledById: null,
+      cancelReason: null,
+      cancelRequestId: null,
     });
-    const product = await lockInventoryProduct(tx, this.prisma.client.raw, item.productId);
     let stock = product.stock;
     let replacement = 'PENDING';
     if (product.stock >= 1) {
@@ -161,6 +207,8 @@ export class DispatchLossService {
   ) {
     const db = tx.orm.public;
     const loss = await this.lockLoss(tx, dto.lossId!);
+    if (loss.cancelledAt != null)
+      throw this.conflict('LOSS_ALREADY_CANCELLED', 'Cannot prepare replacement for a cancelled loss');
     if (loss.replacementPreparedAt)
       throw this.conflict('REPLACEMENT_ALREADY_PREPARED', 'El reemplazo de esta pérdida ya está preparado');
     // Sin existencia libre se rechaza y no se escribe nada: nunca se simula un reemplazo preparado.
@@ -184,6 +232,8 @@ export class DispatchLossService {
   ) {
     const db = tx.orm.public;
     const loss = await this.lockLoss(tx, dto.lossId!);
+    if (loss.cancelledAt != null)
+      throw this.conflict('LOSS_ALREADY_CANCELLED', 'Cannot recover original for a cancelled loss');
     if (loss.recoveredAt)
       throw this.conflict('ORIGINAL_ALREADY_RECOVERED', 'El original de esta pérdida ya fue registrado como recuperado');
     const condition = dto.recoveryCondition!;
@@ -198,6 +248,117 @@ export class DispatchLossService {
     });
     const row = await audit(null, { lossId: loss.id, recovery: condition, stock }, loss.orderId);
     changes.push({ type: 'dispatch.incident.updated', orderId: loss.orderId, action: 'ORIGINAL_RECOVER' });
+    return row;
+  }
+
+  private async hasFailedAttempt(tx: Transaction, orderId: string): Promise<boolean> {
+    const db = tx.orm.public;
+    const stops = await db.RouteStop.where({ orderId, outcome: 'FAILED' }).all();
+    for (const stop of stops) {
+      if (await db.DeliveryAttempt.where({ stopId: stop.id, outcome: 'FAILED' }).first()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private async cancel(
+    tx: Transaction,
+    dto: DispatchInterventionDto,
+    actorId: string,
+    changes: RealtimeChange[],
+    audit: LossAudit,
+  ) {
+    const db = tx.orm.public;
+    const loss = await this.lockLoss(tx, dto.lossId!);
+    const order = await db.Order.where({ id: loss.orderId }).first();
+    if (!order) throw new NotFoundException('Order not found');
+    if (loss.cancelledAt != null)
+      throw this.conflict('LOSS_ALREADY_CANCELLED', 'Order item loss is already cancelled');
+    if (loss.recoveredAt != null)
+      throw this.conflict(
+        'LOSS_ALREADY_RECOVERED',
+        'Cannot cancel a loss whose original unit has already been recovered',
+      );
+    if (
+      order.status === 'IN_TRANSIT' ||
+      order.status === 'DELIVERED' ||
+      order.status === 'CANCELLED'
+    )
+      throw this.conflict(
+        'LOSS_CANCEL_ORDER_STATE',
+        'Cannot cancel loss in the current order status',
+      );
+    if (
+      db.OrderClaim &&
+      (await db.OrderClaim.where({ orderId: order.id, releasedAt: null }).first())
+    )
+      throw this.conflict(
+        'LOSS_CANCEL_ACTIVE_CLAIM',
+        'Cannot cancel loss while the order has an active route claim',
+      );
+    if (db.OrderPickup && (await db.OrderPickup.where({ orderId: order.id }).first()))
+      throw this.conflict(
+        'LOSS_CANCEL_PICKUP_EXISTS',
+        'Cannot cancel loss because an agreed store pickup exists for this order',
+      );
+
+    let stock: string | null = null;
+    if (loss.replacementPreparedAt != null) {
+      stock = String(await this.move(tx, loss, 'REPLACEMENT_CANCEL_IN', actorId));
+    }
+
+    const cancelledAt = nowInstant();
+    await db.OrderItemLoss.where({ id: loss.id, cancelledAt: null }).update({
+      cancelledAt,
+      cancelledById: actorId,
+      cancelReason: dto.reason.trim(),
+      cancelRequestId: dto.requestId,
+    });
+
+    const unitRecoveries = db.RouteUnitRecovery
+      ? await db.RouteUnitRecovery.where({ orderId: order.id }).all()
+      : [];
+    const activeLosses = await db.OrderItemLoss.where({
+      orderId: order.id,
+      cancelledAt: null,
+    }).all();
+    const hasUnresolvedRecovery = unitRecoveries.some((unit) => {
+      if (unit.recoveredAt != null) return false;
+      return !activeLosses.some(
+        (active) =>
+          active.orderItemId === unit.orderItemId &&
+          active.unitNumber === unit.unitNumber &&
+          active.replacementPreparedAt != null,
+      );
+    });
+    const hadClearedAttempt =
+      !order.requiresAdministrativeReview &&
+      (loss.attemptId != null || (await this.hasFailedAttempt(tx, order.id)));
+    const nextReview =
+      Boolean(order.requiresAdministrativeReview) ||
+      hasUnresolvedRecovery ||
+      hadClearedAttempt;
+    const reviewFlagChanged = nextReview && !order.requiresAdministrativeReview;
+    if (reviewFlagChanged) {
+      await db.Order.where({ id: order.id }).update({
+        requiresAdministrativeReview: true,
+      });
+      changes.push({
+        type: 'order.status.updated',
+        orderId: order.id,
+        status: order.status,
+        requiresAdministrativeReview: true,
+      });
+    }
+
+    const row = await audit(null, { lossId: loss.id, stock }, order.id);
+    changes.push({
+      type: 'dispatch.incident.updated',
+      orderId: order.id,
+      action: 'LOSS_CANCEL',
+      requiresAdministrativeReview: nextReview,
+    });
     return row;
   }
 
@@ -223,6 +384,9 @@ export class DispatchLossService {
         attemptId: loss.attemptId,
         declaredAt: loss.declaredAt.toString(),
         declaredById: loss.declaredById,
+        cancelledAt: loss.cancelledAt?.toString() ?? null,
+        cancelledById: loss.cancelledById ?? null,
+        cancelReason: loss.cancelReason ?? null,
         replacement: {
           state: loss.replacementPreparedAt ? 'PREPARED' : 'PENDING',
           preparedAt: loss.replacementPreparedAt?.toString() ?? null,
@@ -235,7 +399,7 @@ export class DispatchLossService {
           recoveredById: loss.recoveredById,
         },
         movements: movements.map((m) => ({
-          kind: m.kind as 'REPLACEMENT_OUT' | 'RECOVERY_IN',
+          kind: m.kind as 'REPLACEMENT_OUT' | 'RECOVERY_IN' | 'REPLACEMENT_CANCEL_IN',
           delta: m.delta,
           stockAfter: m.stockAfter,
           createdAt: m.createdAt.toString(),

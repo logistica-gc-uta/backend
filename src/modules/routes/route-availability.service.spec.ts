@@ -37,7 +37,7 @@ describe('RouteAvailabilityService', () => {
       client: tx,
     } as unknown as PrismaService).effective('driver');
   };
-  it.each(['ASSIGNED', 'IN_PROGRESS', 'COMPLETED', null])(
+  it.each(['ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'INTERRUPTED', null])(
     'blocks unresolved %s routes',
     async (status) => {
       expect(
@@ -66,7 +66,7 @@ describe('RouteAvailabilityService', () => {
       blockingRouteIds: ['route'],
     });
   });
-  it('does not hold a driver for DRAFT or genuinely returned COMPLETED', async () => {
+  it('does not hold a driver for DRAFT or genuinely returned COMPLETED or INTERRUPTED', async () => {
     expect(
       await evaluate([
         { id: 'draft', status: 'DRAFT' },
@@ -80,12 +80,43 @@ describe('RouteAvailabilityService', () => {
           startedAt: Temporal.Instant.from('2026-10-10T00:00:00Z'),
           startedById: 'actor',
         },
+        {
+          id: 'interrupted-returned',
+          status: 'INTERRUPTED',
+          returnedAt: Temporal.Instant.from('2026-10-10T00:00:00Z'),
+          returnedById: 'actor',
+          completedAt: null,
+          completedById: null,
+          startedAt: Temporal.Instant.from('2026-10-10T00:00:00Z'),
+          startedById: 'actor',
+        },
       ]),
     ).toEqual({
       isAvailable: true,
       hasPersistedHolds: false,
       compatibilityFlagBlocks: false,
       blockingRouteIds: [],
+    });
+  });
+  it('blocks an INTERRUPTED route whose driver return has not been confirmed', async () => {
+    expect(
+      await evaluate([
+        {
+          id: 'interrupted-pending-return',
+          status: 'INTERRUPTED',
+          returnedAt: null,
+          returnedById: null,
+          completedAt: null,
+          completedById: null,
+          startedAt: Temporal.Instant.from('2026-10-10T00:00:00Z'),
+          startedById: 'actor',
+        },
+      ]),
+    ).toEqual({
+      isAvailable: false,
+      hasPersistedHolds: true,
+      compatibilityFlagBlocks: false,
+      blockingRouteIds: ['interrupted-pending-return'],
     });
   });
   it('accepts only persisted validated structured legacy release evidence', async () => {

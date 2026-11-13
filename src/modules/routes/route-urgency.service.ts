@@ -105,6 +105,24 @@ export class RouteUrgencyService {
     if (order.requiresAdministrativeReview)
       reasons.push('ADMINISTRATIVE_REVIEW_REQUIRED');
     if (activeClaim) reasons.push('ACTIVE_ROUTE_CLAIM');
+    if (db.RouteUnitRecovery) {
+      const recoveries = await db.RouteUnitRecovery.where({ orderId }).all();
+      if (recoveries.length > 0) {
+        const activeLosses = db.OrderItemLoss
+          ? await db.OrderItemLoss.where({ orderId, cancelledAt: null }).all()
+          : [];
+        const resolved = recoveries.every((unit) => {
+          if (unit.recoveredAt != null) return true;
+          return activeLosses.some(
+            (loss) =>
+              loss.orderItemId === unit.orderItemId &&
+              loss.unitNumber === unit.unitNumber &&
+              loss.replacementPreparedAt != null,
+          );
+        });
+        if (!resolved) reasons.push('RECOVERY_PENDING');
+      }
+    }
     if (
       !order.scheduledDeliveryDate ||
       businessDay(order.scheduledDeliveryDate).toString() !== date
@@ -367,6 +385,99 @@ export class RouteUrgencyService {
           priorities.get(a.orderId) ?? '',
         ) || a.orderId.localeCompare(b.orderId),
     );
-    return { date, timeZone: 'America/Guayaquil', urgencies, incidents };
+    const allInterruptedRoutes = db.Route
+      ? (await db.Route.where({ status: 'INTERRUPTED' }).all()).sort((a, b) =>
+          a.id.localeCompare(b.id),
+        )
+      : [];
+    const emergencies = db.RouteEmergency ? await db.RouteEmergency.all() : [];
+    const emergencyByRoute = new Map(emergencies.map((e) => [e.routeId, e]));
+    const allRecoveries = db.RouteUnitRecovery
+      ? await db.RouteUnitRecovery.all()
+      : [];
+    const recoveriesByOrder = new Map<string, typeof allRecoveries>();
+    for (const rec of allRecoveries) {
+      const list = recoveriesByOrder.get(rec.orderId) ?? [];
+      list.push(rec);
+      recoveriesByOrder.set(rec.orderId, list);
+    }
+    const activeLossByOrder = new Map<
+      string,
+      Awaited<ReturnType<typeof db.OrderItemLoss.all>>
+    >();
+    if (db.OrderItemLoss) {
+      for (const oid of recoveriesByOrder.keys()) {
+        activeLossByOrder.set(
+          oid,
+          await db.OrderItemLoss.where({ orderId: oid, cancelledAt: null }).all(),
+        );
+      }
+    }
+    const pendingRecoveries = allRecoveries
+      .filter((unit) => {
+        if (unit.recoveredAt != null) return false;
+        const losses = activeLossByOrder.get(unit.orderId) ?? [];
+        const activeLoss = losses.find(
+          (l) =>
+            l.orderItemId === unit.orderItemId &&
+            l.unitNumber === unit.unitNumber,
+        );
+        return !activeLoss || activeLoss.replacementPreparedAt == null;
+      })
+      .sort(
+        (a, b) =>
+          a.routeId.localeCompare(b.routeId) ||
+          a.orderId.localeCompare(b.orderId) ||
+          a.orderItemId.localeCompare(b.orderItemId) ||
+          a.unitNumber - b.unitNumber,
+      )
+      .map((unit) => {
+        const losses = activeLossByOrder.get(unit.orderId) ?? [];
+        const activeLoss = losses.find(
+          (l) =>
+            l.orderItemId === unit.orderItemId &&
+            l.unitNumber === unit.unitNumber,
+        );
+        return {
+          recoveryId: unit.id,
+          emergencyId: unit.emergencyId,
+          routeId: unit.routeId,
+          orderId: unit.orderId,
+          orderItemId: unit.orderItemId,
+          unitNumber: unit.unitNumber,
+          productId: unit.productId,
+          lossId: activeLoss?.id ?? null,
+          replacementState: activeLoss
+            ? activeLoss.replacementPreparedAt != null
+              ? ('PREPARED' as const)
+              : ('PENDING' as const)
+            : null,
+        };
+      });
+    const interruptedRoutes = allInterruptedRoutes.map((route) => {
+      const emergency = emergencyByRoute.get(route.id) ?? null;
+      const routeUnits = allRecoveries.filter((u) => u.routeId === route.id);
+      const pendingCount = pendingRecoveries.filter(
+        (u) => u.routeId === route.id,
+      ).length;
+      return {
+        routeId: route.id,
+        emergencyId: emergency?.id ?? null,
+        declaredAt: emergency?.declaredAt?.toString() ?? null,
+        closedAt: emergency?.closedAt?.toString() ?? null,
+        driverId: route.driverId ?? null,
+        returnedAt: route.returnedAt?.toString() ?? null,
+        pendingUnitsCount: pendingCount,
+        totalUnitsCount: routeUnits.length,
+      };
+    });
+    return {
+      date,
+      timeZone: 'America/Guayaquil',
+      urgencies,
+      incidents,
+      interruptedRoutes,
+      pendingRecoveries,
+    };
   }
 }

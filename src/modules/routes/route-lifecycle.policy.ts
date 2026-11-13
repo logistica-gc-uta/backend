@@ -5,6 +5,7 @@ export enum RouteStatus {
   ASSIGNED = 'ASSIGNED',
   IN_PROGRESS = 'IN_PROGRESS',
   COMPLETED = 'COMPLETED',
+  INTERRUPTED = 'INTERRUPTED',
 }
 
 export enum VisitOutcome {
@@ -23,13 +24,24 @@ export interface LegacyReservationRelease {
 export interface DriverReservationContext {
   readonly status: RouteStatus | null;
   readonly returnedAt: Date | null;
+  readonly returnedById?: string | null;
   readonly legacyRelease?: LegacyReservationRelease | null;
+}
+
+export interface RouteReturnEligibilityContext {
+  readonly startedAt?: Date | Temporal.Instant | null;
+  readonly startedById?: string | null;
+  readonly completedAt?: Date | Temporal.Instant | null;
+  readonly completedById?: string | null;
 }
 
 export function canTransitionRoute(
   from: RouteStatus | null,
   to: RouteStatus,
 ): boolean {
+  if (from === RouteStatus.IN_PROGRESS && to === RouteStatus.INTERRUPTED) {
+    return true;
+  }
   const next: Readonly<Partial<Record<RouteStatus, RouteStatus>>> = {
     [RouteStatus.DRAFT]: RouteStatus.ASSIGNED,
     [RouteStatus.ASSIGNED]: RouteStatus.IN_PROGRESS,
@@ -57,8 +69,30 @@ export function canCompleteRoute(
   );
 }
 
-export function canReturnToDepot(status: RouteStatus | null): boolean {
-  return status === RouteStatus.COMPLETED;
+export function canReturnToDepot(
+  status: RouteStatus | null,
+  evidence?: RouteReturnEligibilityContext,
+): boolean {
+  if (status === RouteStatus.COMPLETED) {
+    if (!evidence) return true;
+    return Boolean(
+      evidence.startedAt &&
+        typeof evidence.startedById === 'string' &&
+        evidence.startedById.trim().length > 0 &&
+        evidence.completedAt &&
+        typeof evidence.completedById === 'string' &&
+        evidence.completedById.trim().length > 0,
+    );
+  }
+  if (status === RouteStatus.INTERRUPTED) {
+    if (!evidence) return true;
+    return Boolean(
+      evidence.startedAt &&
+        typeof evidence.startedById === 'string' &&
+        evidence.startedById.trim().length > 0,
+    );
+  }
+  return false;
 }
 
 // Pure policy only: persistence, ownership and evidence validation belong to callers.
@@ -76,9 +110,12 @@ export function holdsDriverReservation(
     );
   }
   return !(
-    context.status === RouteStatus.COMPLETED &&
+    (context.status === RouteStatus.COMPLETED ||
+      context.status === RouteStatus.INTERRUPTED) &&
     context.returnedAt instanceof Date &&
-    Number.isFinite(context.returnedAt.getTime())
+    Number.isFinite(context.returnedAt.getTime()) &&
+    typeof context.returnedById === 'string' &&
+    context.returnedById.trim().length > 0
   );
 }
 

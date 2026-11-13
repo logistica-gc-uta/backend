@@ -4,7 +4,7 @@
 
 - **Existencias**: `Product.stock` es un único contador. La compra ya descontó la salida original (`orders.service.ts`, `checkout-confirmation.service.ts`, `admin-purchase.service.ts`: `FOR UPDATE` del producto y `stock - cantidad`), así que «existencia libre» = `Product.stock` actual. No existen productos a medida ni unidades individuales: el modelo es producto + cantidad.
 - **Bloqueo y no negativo**: las ventas bloquean el producto con `lockInventoryProduct` y la base de datos exige `stock >= 0` (`product_catalog_amount_inventory`). El reemplazo usa el **mismo bloqueo**, por eso una venta concurrente y un reemplazo no pueden dejar el stock negativo ni descontar dos veces la última unidad.
-- **#51 (emergencia/custodia) no existe todavía** (ni código ni rama): no hay estado de «original en recuperación pendiente» ni contrato de custodia. No se inventó. La pérdida se liga al pedido, al ítem y a la unidad (y, si existe, al intento fallido); queda un punto de integración documentado (ver «Riesgos»).
+- **Integración con #51**: ver [issue-51-emergency-recovery.md](issue-51-emergency-recovery.md). Una pérdida activa bloquea `UNIT_RECOVERY_CONFIRM` sobre esa misma unidad y no puede declararse pérdida si esa unidad ya fue confirmada como recuperada en `RouteUnitRecovery`. Para reanudar o recoger en tienda (`#50` `PICKUP_AGREE`), un pedido bajo emergencia requiere que todas sus unidades estén recuperadas o cubiertas por reemplazo `PREPARED`.
 - La entrega del reemplazo no necesita un flujo nuevo: el pedido ya se gestiona con `CONTACT` / `RESCHEDULE` (mismo día u otra fecha acordada) y `PICKUP_*` (#50). Por eso **la pérdida no modifica el pedido**.
 
 ## Decisión de diseño
@@ -26,11 +26,12 @@ Acciones nuevas de `POST /api/v1/dispatch/interventions` (solo ADMIN, `requestId
 |---|---|---|
 | `LOSS_DECLARE` | `orderId`, `orderItemId`, `unitNumber?`, `attemptId?` | Declara la pérdida de una unidad. **Con existencia libre** descuenta una unidad una sola vez y el reemplazo queda `PREPARED`; **sin ella** queda `PENDING` y no se toca el stock. `unitNumber` es obligatorio si el ítem tiene más de una unidad. |
 | `REPLACEMENT_PREPARE` | `lossId` | Prepara el reemplazo de una pérdida `PENDING` cuando ya hay existencia. Sin existencia: 409 `NO_FREE_STOCK` y no se escribe nada (nunca se simula un reemplazo preparado). |
-| `ORIGINAL_RECOVER` | `lossId`, `recoveryCondition` (`SELLABLE`/`DAMAGED`) | El original reaparece. `SELLABLE` suma **una** unidad, **una sola vez**; `DAMAGED` se registra sin aumentar el stock. Una pérdida ya recuperada no se reclasifica ni se vuelve a sumar. |
+| `ORIGINAL_RECOVER` | `lossId`, `recoveryCondition` (`SELLABLE`/`DAMAGED`) | El original reaparece. `SELLABLE` suma **una** unidad, **una sola vez**; `DAMAGED` se registra sin aumentar el stock. Una pérdida ya recuperada o cancelada no se reclasifica ni se vuelve a sumar. |
+| `LOSS_CANCEL` | `lossId`, `reason` | Anula lógicamente una pérdida declarada por error (`cancelledAt`, `cancelledById`, `cancelReason`, `cancelRequestId`, solo si es reversible). Si el reemplazo estaba `PREPARED`, registra movimiento compensatorio `REPLACEMENT_CANCEL_IN` (`+1` stock) en la misma transacción; si estaba `PENDING`, no toca existencias. El índice único parcial `WHERE "cancelledAt" IS NULL` permite declarar otra pérdida real después. Rechaza (`409`) si `recoveredAt != null`, el pedido está `IN_TRANSIT`/`DELIVERED`/`CANCELLED`, tiene `OrderClaim` activo o tiene `OrderPickup`. Reevalúa `Order.requiresAdministrativeReview` si existen unidades pendientes en `RouteUnitRecovery`. |
 
 `GET /api/v1/dispatch/orders/:id/losses` (ADMIN): pérdidas del pedido con `replacement` y `original` **separados** y los movimientos de existencias de cada una.
 
-Errores tipados (409): `LOSS_ALREADY_DECLARED`, `NO_FREE_STOCK`, `REPLACEMENT_ALREADY_PREPARED`, `ORIGINAL_ALREADY_RECOVERED`; además 400 por campos inválidos, 404 por pedido/ítem/pérdida inexistente y 409 si el pedido ya está entregado o cancelado.
+Errores tipados (409): `LOSS_ALREADY_DECLARED`, `LOSS_ALREADY_CANCELLED`, `LOSS_ALREADY_RECOVERED`, `LOSS_CANCEL_ORDER_STATE`, `LOSS_CANCEL_ACTIVE_CLAIM`, `LOSS_CANCEL_PICKUP_EXISTS`, `NO_FREE_STOCK`, `REPLACEMENT_ALREADY_PREPARED`, `ORIGINAL_ALREADY_RECOVERED`; además 400 por campos inválidos, 404 por pedido/ítem/pérdida inexistente y 409 si el pedido ya está entregado o cancelado.
 
 ## Qué NO hace (alcance)
 
@@ -44,10 +45,10 @@ Migración `20261113T1535_order_item_loss_replacement_recovery`: tablas `orderIt
 
 ## Riesgos y limitaciones
 
-- **Integración con #51**: cuando exista el contrato de emergencia/custodia, `LOSS_DECLARE` debería enlazarse al incidente y `PICKUP_AGREE` (#50) rechazar un pedido con el original en recuperación pendiente. Hoy no hay dónde consultarlo.
-- La pérdida no cambia el estado del pedido; si el pedido no está ya pendiente de gestión (p. ej. emergencia en ruta), esa marca la define #51.
-- No hay una acción para anular una pérdida declarada por error (no se definió; pregunta abierta al líder).
-- La web (`frontend-web-logistica#39`) debe usar las acciones y el GET de arriba; no hay datos ficticios mientras tanto.
+- **Integración con #51 (implementada)**: `LOSS_DECLARE` enlaza opcionalmente `emergencyId` y valida exclusión mutua contra `RouteUnitRecovery` (`UNIT_ALREADY_RECOVERED`); `PICKUP_AGREE` (#50), `RESCHEDULE`, `RoutePlanningService` y `RouteUrgencyService` bloquean pedidos con unidades sin recuperar o con reemplazo `PENDING` (`409 RECOVERY_PENDING`).
+- La pérdida por sí sola no cambia el estado del pedido; cuando proviene de una emergencia en ruta (#51), `EMERGENCY_DECLARE` detiene el pedido con `requiresAdministrativeReview = true`.
+- `LOSS_CANCEL` cubre la anulación de pérdidas declaradas por error antes de recuperar el original o despachar/recoger el pedido (incluye actualización de índice único parcial y movimiento compensatorio `REPLACEMENT_CANCEL_IN` en la migración `20261113T1720_emergency_recovery_and_loss_cancel`).
+- La web (`frontend-web-logistica#39`) debe usar las acciones anteriores (incluido `LOSS_CANCEL`) y los GET de `#52`/`#51`; no hay datos ficticios mientras tanto.
 - El cliente no ve estas pérdidas: son un seguimiento interno del ADMIN.
 
 ## Pruebas

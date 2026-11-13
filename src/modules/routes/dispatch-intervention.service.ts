@@ -23,6 +23,7 @@ import { RouteAssignmentService } from './route-assignment.service.js';
 import { RouteAvailabilityService } from './route-availability.service.js';
 import { RouteUrgencyService } from './route-urgency.service.js';
 import { DispatchLossService } from './dispatch-loss.service.js';
+import { DispatchEmergencyService } from './dispatch-emergency.service.js';
 import {
   canMutateRouteStructure,
   RouteStatus,
@@ -68,10 +69,15 @@ export class DispatchInterventionService {
     private readonly realtime?: RealtimePublisher,
     @Optional()
     private readonly storeCoverage?: StoreCoverageService,
+    @Optional()
+    emergencyService?: DispatchEmergencyService,
   ) {
     this.losses = new DispatchLossService(prisma);
+    this.emergencies =
+      emergencyService ?? new DispatchEmergencyService(prisma, availability);
   }
   private readonly losses: DispatchLossService;
+  private readonly emergencies: DispatchEmergencyService;
 
   private async publishCommitted(changes: readonly RealtimeChange[]) {
     if (!changes.length || !this.realtime) return;
@@ -124,19 +130,26 @@ export class DispatchInterventionService {
       CONTACT: [
         'orderId',
         'attemptId',
+        'emergencyId',
         'agreementConfirmed',
         'scheduledDeliveryDate',
         'deliveryWindowStart',
         'deliveryWindowEnd',
       ],
       RESCHEDULE: ['orderId', 'agreementId'],
-      PICKUP_AGREE: ['orderId', 'attemptId'],
+      PICKUP_AGREE: ['orderId', 'attemptId', 'emergencyId'],
       PICKUP_DECLINE: ['orderId', 'attemptId'],
       PICKUP_CONFIRM: ['orderId'],
       RELEASE_DRAFT: ['routeId'],
-      LOSS_DECLARE: ['orderId', 'orderItemId', 'unitNumber', 'attemptId'],
+      LOSS_DECLARE: ['orderId', 'orderItemId', 'unitNumber', 'attemptId', 'emergencyId'],
       REPLACEMENT_PREPARE: ['lossId'],
       ORIGINAL_RECOVER: ['lossId', 'recoveryCondition'],
+      LOSS_CANCEL: ['lossId'],
+      EMERGENCY_DECLARE: ['routeId'],
+      UNIT_RECOVERY_CONFIRM: ['recoveryId'],
+      EMERGENCY_CLOSE: ['routeId'],
+      EMERGENCY_DRIVER_RELEASE: ['routeId'],
+      EMERGENCY_REQUEUE: ['orderId', 'emergencyId'],
     };
     const required: Record<string, string[]> = {
       CONFIRM: ['orderId', 'fingerprint'],
@@ -154,6 +167,12 @@ export class DispatchInterventionService {
       LOSS_DECLARE: ['orderId', 'orderItemId'],
       REPLACEMENT_PREPARE: ['lossId'],
       ORIGINAL_RECOVER: ['lossId', 'recoveryCondition'],
+      LOSS_CANCEL: ['lossId'],
+      EMERGENCY_DECLARE: ['routeId'],
+      UNIT_RECOVERY_CONFIRM: ['recoveryId'],
+      EMERGENCY_CLOSE: ['routeId'],
+      EMERGENCY_DRIVER_RELEASE: ['routeId'],
+      EMERGENCY_REQUEUE: ['orderId', 'emergencyId'],
     };
     const allowed = fields[dto.action];
     if (
@@ -197,7 +216,7 @@ export class DispatchInterventionService {
     dto: DispatchInterventionDto,
     actorId: string,
     routeId: string | null,
-    result: Record<string, string | null>,
+    result: Record<string, unknown>,
     orderId: string | null = dto.orderId ?? null,
   ) {
     return tx.orm.public.DispatchIntervention.create({
@@ -209,10 +228,43 @@ export class DispatchInterventionService {
       reason: dto.reason.trim(),
       outcome: dto.action === 'REJECT' ? 'REJECTED' : 'APPLIED',
       payload: JSON.parse(canonical(dto)),
-      result,
+      result: JSON.parse(canonical(result)),
       recordedAt: nowInstant(),
     });
   }
+  private async assertEmergencyContext(
+    tx: Transaction,
+    orderId: string,
+    emergencyId: string,
+  ) {
+    const db = tx.orm.public;
+    const emergency = await db.RouteEmergency.where({ id: emergencyId }).first();
+    if (!emergency) throw new NotFoundException('Route emergency not found');
+    const unit = await db.RouteUnitRecovery.where({
+      emergencyId: emergency.id,
+      orderId,
+    }).first();
+    if (!unit)
+      throw new ConflictException(
+        'Order does not belong to the specified route emergency',
+      );
+    for (const stop of await db.RouteStop.where({ orderId }).all()) {
+      for (const attempt of await db.DeliveryAttempt.where({
+        stopId: stop.id,
+        outcome: 'FAILED',
+      }).all()) {
+        if (
+          Temporal.Instant.compare(attempt.recordedAt, emergency.declaredAt) >= 0
+        ) {
+          throw new ConflictException(
+            'Order has a failed delivery attempt at or after the emergency declaration',
+          );
+        }
+      }
+    }
+    return emergency;
+  }
+
   private async schedule(
     tx: Transaction,
     dto: DispatchInterventionDto,
@@ -238,6 +290,12 @@ export class DispatchInterventionService {
       throw new ConflictException(
         'Commercially resolved order cannot be rescheduled',
       );
+    if (!(await this.emergencies.isOrderRecoveryResolved(tx, order.id))) {
+      throw this.pickupConflict(
+        'RECOVERY_PENDING',
+        'Order has unrecovered units from route emergency',
+      );
+    }
     const attempts = [];
     for (const stop of await db.RouteStop.where({
       orderId: order.id,
@@ -260,15 +318,28 @@ export class DispatchInterventionService {
         throw new BadRequestException(
           'Explicit agreementConfirmed boolean required',
         );
-      if (
-        order.requiresAdministrativeReview &&
-        (!latest || dto.attemptId !== latest.id)
-      )
-        throw new ConflictException(
-          'Contact must refer to the latest failed attempt',
+      if (dto.attemptId && dto.emergencyId)
+        throw new BadRequestException(
+          'Provide either attemptId or emergencyId, not both',
         );
-      if (!order.requiresAdministrativeReview && dto.attemptId)
+      let contactEmergency: Awaited<
+        ReturnType<DispatchInterventionService['assertEmergencyContext']>
+      > | null = null;
+      if (order.requiresAdministrativeReview) {
+        if (dto.emergencyId) {
+          contactEmergency = await this.assertEmergencyContext(
+            tx,
+            order.id,
+            dto.emergencyId,
+          );
+        } else if (!latest || dto.attemptId !== latest.id) {
+          throw new ConflictException(
+            'Contact must refer to the latest failed attempt',
+          );
+        }
+      } else if (dto.attemptId || dto.emergencyId) {
         throw new ConflictException('No unresolved failed attempt');
+      }
       if (dto.agreementConfirmed) {
         const timing = parseDeliveryTiming(dto, true);
         if (!timing.deliveryWindowStart || !timing.deliveryWindowEnd)
@@ -285,10 +356,12 @@ export class DispatchInterventionService {
         throw new BadRequestException(
           'Unconfirmed contact cannot record an agreed schedule',
         );
-      const audit = await this.createAudit(tx, dto, actorId, order.routeId, {
+      const auditRouteId = contactEmergency?.routeId ?? order.routeId;
+      const audit = await this.createAudit(tx, dto, actorId, auditRouteId, {
         orderId: order.id,
-        routeId: order.routeId,
-        attemptId: latest?.id ?? null,
+        routeId: auditRouteId,
+        attemptId: dto.emergencyId ? null : (latest?.id ?? null),
+        ...(dto.emergencyId ? { emergencyId: dto.emergencyId } : {}),
       });
       changes.push({
         type: 'dispatch.incident.updated',
@@ -308,6 +381,7 @@ export class DispatchInterventionService {
       | {
           agreementConfirmed?: boolean;
           attemptId?: string;
+          emergencyId?: string;
           scheduledDeliveryDate?: string;
           deliveryWindowStart?: string;
           deliveryWindowEnd?: string;
@@ -317,17 +391,26 @@ export class DispatchInterventionService {
       throw new ConflictException(
         'Persisted explicit date/window agreement required',
       );
-    if (
-      order.requiresAdministrativeReview &&
-      (!latest || payload.attemptId !== latest.id)
-    )
-      throw new ConflictException(
-        'Agreement must resolve the latest failed attempt',
-      );
-    if (!order.requiresAdministrativeReview && payload.attemptId)
+    let rescheduleEmergency: Awaited<
+      ReturnType<DispatchInterventionService['assertEmergencyContext']>
+    > | null = null;
+    if (order.requiresAdministrativeReview) {
+      if (payload.emergencyId) {
+        rescheduleEmergency = await this.assertEmergencyContext(
+          tx,
+          order.id,
+          payload.emergencyId,
+        );
+      } else if (!latest || payload.attemptId !== latest.id) {
+        throw new ConflictException(
+          'Agreement must resolve the latest failed attempt',
+        );
+      }
+    } else if (payload.attemptId || payload.emergencyId) {
       throw new ConflictException(
         'Failed attempt already administratively resolved',
       );
+    }
     const timing = parseDeliveryTiming(payload, true);
     if (!timing.deliveryWindowStart || !timing.deliveryWindowEnd)
       throw new ConflictException('Agreed delivery window required');
@@ -361,16 +444,25 @@ export class DispatchInterventionService {
     if (
       route &&
       !canMutateRouteStructure(route.status as RouteStatus | null) &&
-      route.status !== 'COMPLETED'
+      route.status !== 'COMPLETED' &&
+      route.status !== 'INTERRUPTED'
     )
       throw new ConflictException('Route structure is frozen or unverified');
-    if (
-      order.requiresAdministrativeReview &&
-      (route?.status !== 'COMPLETED' || claim)
-    )
-      throw new ConflictException(
-        'Failed original route must complete and release the order before retry',
-      );
+    if (order.requiresAdministrativeReview) {
+      if (payload.emergencyId) {
+        if (claim || order.routeId !== null)
+          throw new ConflictException(
+            'Emergency order must be detached from route before retry',
+          );
+      } else if (
+        (route?.status !== 'COMPLETED' && route?.status !== 'INTERRUPTED') ||
+        claim
+      ) {
+        throw new ConflictException(
+          'Failed original route must complete and release the order before retry',
+        );
+      }
+    }
     if (claim && (!route || claim.routeId !== route.id || !claim.claimedAt))
       throw new ConflictException('Matching verified source claim required');
     if (
@@ -386,11 +478,13 @@ export class DispatchInterventionService {
       )
     )
       throw new ConflictException('Agreement already consumed');
-    const audit = await this.createAudit(tx, dto, actorId, order.routeId, {
+    const auditRouteId = order.routeId ?? rescheduleEmergency?.routeId ?? null;
+    const audit = await this.createAudit(tx, dto, actorId, auditRouteId, {
       orderId: order.id,
-      routeId: order.routeId,
+      routeId: auditRouteId,
       agreementId: contact.id,
-      attemptId: latest?.id ?? null,
+      attemptId: payload.emergencyId ? null : (latest?.id ?? null),
+      ...(payload.emergencyId ? { emergencyId: payload.emergencyId } : {}),
       scheduledDeliveryDate: timing.scheduledDeliveryDate!.toString(),
     });
     if (claim && route) {
@@ -447,7 +541,7 @@ export class DispatchInterventionService {
    * Pedido, su ruta y su último intento fallido, con el pedido y la ruta bloqueados: base común de las acciones
    * de retiro (#50). Un pedido ya entregado o cancelado no se gestiona.
    */
-  private async loadIncident(tx: Transaction, orderId: string) {
+  private async loadIncident(tx: Transaction, orderId: string, emergencyId?: string) {
     const db = tx.orm.public;
     const initial = await db.Order.where({ id: orderId }).first();
     if (!initial) throw new NotFoundException('Order not found');
@@ -474,7 +568,10 @@ export class DispatchInterventionService {
     attempts.sort(
       (a, b) => Temporal.Instant.compare(b.recordedAt, a.recordedAt) || b.id.localeCompare(a.id),
     );
-    return { order, route, latest: attempts[0] };
+    const emergency = emergencyId
+      ? await this.assertEmergencyContext(tx, order.id, emergencyId)
+      : null;
+    return { order, route, latest: attempts[0], emergency };
   }
 
   /**
@@ -492,7 +589,13 @@ export class DispatchInterventionService {
     changes: RealtimeChange[],
   ) {
     const db = tx.orm.public;
-    const { order, route, latest } = await this.loadIncident(tx, dto.orderId!);
+    if (dto.attemptId && dto.emergencyId)
+      throw new BadRequestException('Provide either attemptId or emergencyId, not both');
+    const { order, route, latest, emergency } = await this.loadIncident(
+      tx,
+      dto.orderId!,
+      dto.emergencyId,
+    );
     const existing = await db.OrderPickup.where({ orderId: order.id }).first();
 
     if (dto.action === 'PICKUP_CONFIRM') {
@@ -531,10 +634,20 @@ export class DispatchInterventionService {
 
     if (existing)
       throw this.pickupConflict('PICKUP_ALREADY_AGREED', 'El pedido ya tiene un retiro en tienda acordado');
-    if (order.requiresAdministrativeReview && (!latest || dto.attemptId !== latest.id))
-      throw new ConflictException('Pickup must refer to the latest failed attempt');
-    if (!order.requiresAdministrativeReview && dto.attemptId)
+    if (
+      dto.action === 'PICKUP_AGREE' &&
+      !(await this.emergencies.isOrderRecoveryResolved(tx, order.id))
+    )
+      throw this.pickupConflict(
+        'RECOVERY_PENDING',
+        'Order has unrecovered units from route emergency',
+      );
+    if (order.requiresAdministrativeReview) {
+      if (!dto.emergencyId && (!latest || dto.attemptId !== latest.id))
+        throw new ConflictException('Pickup must refer to the latest failed attempt');
+    } else if (dto.attemptId || dto.emergencyId) {
       throw new ConflictException('No unresolved failed attempt');
+    }
 
     if (dto.action === 'PICKUP_DECLINE') {
       const audit = await this.createAudit(tx, dto, actorId, order.routeId, {
@@ -553,10 +666,21 @@ export class DispatchInterventionService {
 
     // PICKUP_AGREE: reservas operativas con las mismas protecciones que una reprogramación.
     const claim = await db.OrderClaim.where({ orderId: order.id, releasedAt: null }).first();
-    if (route && !canMutateRouteStructure(route.status as RouteStatus | null) && route.status !== 'COMPLETED')
+    if (
+      route &&
+      !canMutateRouteStructure(route.status as RouteStatus | null) &&
+      route.status !== 'COMPLETED' &&
+      route.status !== 'INTERRUPTED'
+    )
       throw new ConflictException('Route structure is frozen or unverified');
-    if (order.requiresAdministrativeReview && (route?.status !== 'COMPLETED' || claim))
-      throw new ConflictException('Failed original route must complete and release the order before the pickup');
+    if (order.requiresAdministrativeReview) {
+      if (dto.emergencyId) {
+        if (claim || order.routeId !== null)
+          throw new ConflictException('Emergency order must be detached from route before the pickup');
+      } else if ((route?.status !== 'COMPLETED' && route?.status !== 'INTERRUPTED') || claim) {
+        throw new ConflictException('Failed original route must complete and release the order before the pickup');
+      }
+    }
     if (claim && (!route || claim.routeId !== route.id || !claim.claimedAt))
       throw new ConflictException('Matching verified source claim required');
     const agreedAt = nowInstant();
@@ -567,10 +691,12 @@ export class DispatchInterventionService {
       agreementRequestId: dto.requestId,
     });
     // La auditoría va ANTES de tocar el pedido: el guard de la base de datos exige la resolución auditada en la misma transacción.
-    const audit = await this.createAudit(tx, dto, actorId, route?.id ?? order.routeId, {
+    const auditRouteId = emergency?.routeId ?? route?.id ?? order.routeId;
+    const audit = await this.createAudit(tx, dto, actorId, auditRouteId, {
       orderId: order.id,
-      routeId: route?.id ?? order.routeId,
-      attemptId: latest?.id ?? null,
+      routeId: auditRouteId,
+      attemptId: dto.emergencyId ? null : (latest?.id ?? null),
+      ...(dto.emergencyId ? { emergencyId: dto.emergencyId } : {}),
       pickupId: pickup.id,
       agreedAt: agreedAt.toString(),
     });
@@ -684,10 +810,23 @@ export class DispatchInterventionService {
         if (
           dto.action === 'LOSS_DECLARE' ||
           dto.action === 'REPLACEMENT_PREPARE' ||
-          dto.action === 'ORIGINAL_RECOVER'
+          dto.action === 'ORIGINAL_RECOVER' ||
+          dto.action === 'LOSS_CANCEL'
         )
           return this.response(
             await this.losses.handle(tx, dto, actorId, changes, (routeId, result, orderId) =>
+              this.createAudit(tx, dto, actorId, routeId, result, orderId),
+            ),
+          );
+        if (
+          dto.action === 'EMERGENCY_DECLARE' ||
+          dto.action === 'UNIT_RECOVERY_CONFIRM' ||
+          dto.action === 'EMERGENCY_CLOSE' ||
+          dto.action === 'EMERGENCY_DRIVER_RELEASE' ||
+          dto.action === 'EMERGENCY_REQUEUE'
+        )
+          return this.response(
+            await this.emergencies.handle(tx, dto, actorId, changes, (routeId, result, orderId) =>
               this.createAudit(tx, dto, actorId, routeId, result, orderId),
             ),
           );
@@ -978,7 +1117,7 @@ export class DispatchInterventionService {
       if (error instanceof ForbiddenException) throw error;
       // Unique-key contenders reconcile once after rollback, never repeat mutation.
       const prior =
-        await this.prisma.client.orm.public.DispatchIntervention.where({
+        await this.prisma.client.orm?.public.DispatchIntervention.where({
           requestId: dto.requestId,
         }).first();
       if (prior) return this.replay(prior, actorId, dto);
