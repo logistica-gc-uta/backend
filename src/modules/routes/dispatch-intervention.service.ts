@@ -3,7 +3,11 @@ import {
   assertDeliveryFuture,
   deliveryClock,
 } from '../orders/order-delivery.util.js';
-import { evaluatePlanningEligibility } from '../orders/order-geography.util.js';
+import {
+  evaluatePlanningEligibility,
+  type GeoPoint,
+} from '../orders/order-geography.util.js';
+import { StoreCoverageService } from '../store-coverage/store-coverage.service.js';
 import {
   BadRequestException,
   ConflictException,
@@ -61,6 +65,8 @@ export class DispatchInterventionService {
     @Optional()
     @Inject(REALTIME_PUBLISHER)
     private readonly realtime?: RealtimePublisher,
+    @Optional()
+    private readonly storeCoverage?: StoreCoverageService,
   ) {}
 
   private async publishCommitted(changes: readonly RealtimeChange[]) {
@@ -120,6 +126,7 @@ export class DispatchInterventionService {
       PICKUP_AGREE: ['orderId', 'attemptId'],
       PICKUP_DECLINE: ['orderId', 'attemptId'],
       PICKUP_CONFIRM: ['orderId'],
+      RELEASE_DRAFT: ['routeId'],
     };
     const required: Record<string, string[]> = {
       CONFIRM: ['orderId', 'fingerprint'],
@@ -133,6 +140,7 @@ export class DispatchInterventionService {
       PICKUP_AGREE: ['orderId'],
       PICKUP_DECLINE: ['orderId'],
       PICKUP_CONFIRM: ['orderId'],
+      RELEASE_DRAFT: ['routeId'],
     };
     const allowed = fields[dto.action];
     if (
@@ -313,11 +321,21 @@ export class DispatchInterventionService {
       timing,
       await deliveryClock(tx, this.prisma.client.raw),
     );
+    const storeCoverage = this.storeCoverage ? await this.storeCoverage.getCoverage() : null;
+    const storeRow = !storeCoverage
+      ? await db.StoreCoverage?.where({ singletonKey: 'GLOBAL' }).first()
+      : null;
+    const storeOrigin: GeoPoint | null = storeCoverage?.configured
+      ? { lat: storeCoverage.location.lat, lng: storeCoverage.location.lng }
+      : storeRow && typeof storeRow.lat === 'number' && typeof storeRow.lng === 'number'
+        ? { lat: storeRow.lat, lng: storeRow.lng }
+        : null;
+    const orderZone = order.zoneId
+      ? await db.Zone.where({ id: order.zoneId }).first()
+      : null;
     if (
-      !evaluatePlanningEligibility(
-        order,
-        await db.Zone.where({ id: order.zoneId }).first(),
-      ).planningEligibility.eligible
+      !evaluatePlanningEligibility(order, orderZone, storeOrigin)
+        .planningEligibility.eligible
     )
       throw new ConflictException(
         'Confirmed delivery and depot coordinates required',
@@ -568,6 +586,70 @@ export class DispatchInterventionService {
     return this.response(audit);
   }
 
+  private async releaseDraft(
+    tx: Transaction,
+    dto: DispatchInterventionDto,
+    actorId: string,
+    changes: RealtimeChange[],
+  ) {
+    const db = tx.orm.public;
+    const route = await db.Route.where({ id: dto.routeId! }).update({
+      id: dto.routeId!,
+    });
+    if (!route) throw new NotFoundException('Route not found');
+    if (route.status !== 'DRAFT' || route.driverId !== null)
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'Only unassigned DRAFT routes can be released',
+        error: 'Conflict',
+        code: 'DRAFT_NOT_RELEASABLE',
+      });
+    const stops = await db.RouteStop.where({ routeId: route.id }).all();
+    const claims = await db.OrderClaim.where({
+      routeId: route.id,
+      releasedAt: null,
+    }).all();
+    if (stops.length === 0 && claims.length === 0)
+      throw new ConflictException({
+        statusCode: 409,
+        message: 'DRAFT route has no active stops or claims to release',
+        error: 'Conflict',
+        code: 'DRAFT_ALREADY_RELEASED',
+      });
+    const affectedOrderIds = [
+      ...new Set([
+        ...stops.map((s) => s.orderId),
+        ...claims.map((c) => c.orderId),
+      ]),
+    ].sort();
+    for (const orderId of affectedOrderIds) {
+      if (!(await db.Order.where({ id: orderId }).update({ id: orderId })))
+        throw new NotFoundException('Order not found');
+    }
+    // Delete stops before releasing claims so t1e_claim_history_guard allows the DRAFT claim release.
+    for (const stop of stops) {
+      await db.RouteStop.where({ id: stop.id }).delete();
+    }
+    const releasedAt = nowInstant();
+    for (const claim of claims) {
+      await db.OrderClaim.where({ id: claim.id }).update({ releasedAt });
+    }
+    const audit = await this.createAudit(tx, dto, actorId, route.id, {
+      routeId: route.id,
+      releasedCount: String(claims.length),
+      releasedAt: releasedAt.toString(),
+    });
+    changes.push({ type: 'route.updated', routeId: route.id, status: 'DRAFT' });
+    for (const orderId of affectedOrderIds) {
+      changes.push({
+        type: 'order.status.updated',
+        orderId,
+        status: 'PENDING',
+      });
+    }
+    return this.response(audit);
+  }
+
   async intervene(
     dto: DispatchInterventionDto,
     actorId: string,
@@ -581,6 +663,8 @@ export class DispatchInterventionService {
           requestId: dto.requestId,
         }).first();
         if (prior) return this.replay(prior, actorId, dto);
+        if (dto.action === 'RELEASE_DRAFT')
+          return this.releaseDraft(tx, dto, actorId, changes);
         if (dto.action === 'CONTACT' || dto.action === 'RESCHEDULE')
           return this.schedule(tx, dto, actorId, changes);
         if (
@@ -645,15 +729,10 @@ export class DispatchInterventionService {
               throw new ConflictException(
                 'New departure requires an effectively available driver',
               );
-            if (!proposal.zoneId) {
-              throw new ConflictException(
-                'New departure requires a persisted zoneId until dispatch coverage grouping lands',
-              );
-            }
             const draft = await this.assignment.confirmInTransaction(
               tx,
               {
-                zoneId: proposal.zoneId,
+                zoneId: proposal.zoneId ?? null,
                 routeDate: proposal.routeDate!,
                 orderIds: proposal.orderIds,
               },

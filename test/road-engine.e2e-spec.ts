@@ -173,7 +173,15 @@ describe('Motor vial OSRM en las propuestas de rutas (#47) en PostgreSQL real', 
 
     it('OSRM caído: 503 ROAD_ENGINE_UNAVAILABLE, los pedidos siguen pendientes y una ruta ya generada no se cancela', async () => {
       const kept = newOrder(EAST);
-      const draft = await http().post('/api/v1/routes').set(auth(adminToken)).send({ zoneId: 'zone', orderIds: [kept], routeDate: AT }).expect(201);
+      const draftId = randomUUID();
+      execPsqlCommand(
+        dbName,
+        `BEGIN;
+         INSERT INTO public.route (id,"zoneId",date,status) VALUES ('${draftId}','zone','${AT}','DRAFT');
+         INSERT INTO public."orderClaim" (id,"orderId","routeId","claimedAt") VALUES ('${randomUUID()}','${kept}','${draftId}','${AT}');
+         INSERT INTO public."routeStop" (id,"routeId","orderId",sequence,outcome,"isLegacy") VALUES ('${randomUUID()}','${draftId}','${kept}',1,'PENDING',false);
+         COMMIT;`,
+      );
       const pending = newOrder(WEST);
       const before = await snapshot();
 
@@ -183,7 +191,7 @@ describe('Motor vial OSRM en las propuestas de rutas (#47) en PostgreSQL real', 
       expect(res.body).toMatchObject({ statusCode: 503, code: 'ROAD_ENGINE_UNAVAILABLE' });
       expect(res.body.message).toEqual(expect.any(String));
       expect(await snapshot()).toEqual(before); // nada se persistió ni se borró
-      expect((await db.client.orm.public.Route.where({ id: draft.body.id }).first()).status).toBe('DRAFT');
+      expect((await db.client.orm.public.Route.where({ id: draftId }).first()).status).toBe('DRAFT');
       expect((await db.client.orm.public.Order.where({ id: pending }).first()).status).toBe('PENDING');
       expect(JSON.stringify(res.body)).not.toContain(osrm.url);
     });

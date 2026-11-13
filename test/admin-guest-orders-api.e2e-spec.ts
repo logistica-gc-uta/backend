@@ -282,15 +282,30 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
   });
 
   it('confirms a public route for a coverage order with null zoneId and rolls back a missing order', async () => {
+    const todayNoon = Temporal.Now.zonedDateTimeISO('America/Guayaquil')
+      .toPlainDate()
+      .toZonedDateTime({ timeZone: 'America/Guayaquil', plainTime: '12:00:00' })
+      .toInstant()
+      .toString();
     const { zoneId: _omit, ...coverageBody } = guestBody();
     const created = await post(coverageBody).expect(201);
     expect(created.body.zoneId).toBeNull();
     expect(database.sql('unit_b', `SELECT ("zoneId" IS NULL)::text FROM public."order" WHERE id='${created.body.id}'`)).toBe('true');
 
-    const confirmed = await confirmRoute({
+    // Future purchase succeeds without pre-generating/confirming its route before delivery day (#49).
+    const futureRejected = await confirmRoute({
       zoneId: 'b-zone',
       orderIds: [created.body.id],
       routeDate: calendar('2030-02-14T15:00:00Z'),
+    });
+    expect(futureRejected.status).toBe(409);
+    expect(futureRejected.body.code).toBe('ROUTE_DATE_NOT_TODAY');
+
+    database.sql('unit_b', `UPDATE public."order" SET "scheduledDeliveryDate"='${todayNoon}' WHERE id='${created.body.id}'`);
+    const confirmed = await confirmRoute({
+      zoneId: 'b-zone',
+      orderIds: [created.body.id],
+      routeDate: todayNoon,
     });
     expect(confirmed.status).toBe(201);
     expect(database.sql('unit_b', `SELECT ("zoneId" IS NULL)::text FROM public."order" WHERE id='${created.body.id}'`)).toBe('true');
@@ -299,20 +314,22 @@ describe('Unit B administrative orders HTTP (owned PostgreSQL 16)', () => {
     const mismatched = await post({ ...guestBody(), zoneId: 'b-no-depot' }).expect(201);
     expect(mismatched.body.zoneId).toBe('b-no-depot');
     expect(database.sql('unit_b', `SELECT "zoneId" FROM public."order" WHERE id='${mismatched.body.id}'`)).toBe('b-no-depot');
+    database.sql('unit_b', `UPDATE public."order" SET "scheduledDeliveryDate"='${todayNoon}' WHERE id='${mismatched.body.id}'`);
     const rejected = await confirmRoute({
       zoneId: 'b-zone',
       orderIds: [mismatched.body.id],
-      routeDate: calendar('2030-02-14T15:00:00Z'),
+      routeDate: todayNoon,
     });
     expect(rejected.status).toBe(409);
     expect(database.sql('unit_b', `SELECT count(*) FROM public."routeStop" WHERE "orderId"='${mismatched.body.id}'`)).toBe('0');
 
     const pending = await post(coverageBody).expect(201);
+    database.sql('unit_b', `UPDATE public."order" SET "scheduledDeliveryDate"='${todayNoon}' WHERE id='${pending.body.id}'`);
     const routesBefore = database.sql('unit_b', 'SELECT count(*) FROM public.route');
     const missingOrder = await confirmRoute({
       zoneId: 'b-zone',
       orderIds: [pending.body.id, '00000000-0000-4000-8000-000000000099'],
-      routeDate: calendar('2030-02-14T15:00:00Z'),
+      routeDate: todayNoon,
     });
     expect(missingOrder.status).toBe(404);
     expect(database.sql('unit_b', 'SELECT count(*) FROM public.route')).toBe(routesBefore);

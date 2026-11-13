@@ -225,8 +225,8 @@ model Route {
   id        String   @id @default(uuid())
   driverId  String?
   driver    Driver?  @relation(fields: [driverId], references: [id])
-  zoneId    String
-  zone      Zone     @relation(fields: [zoneId], references: [id])
+  zoneId    String?
+  zone      Zone?    @relation(fields: [zoneId], references: [id])
   date      DateTime @default(now())
   createdAt DateTime @default(now())
 
@@ -422,7 +422,7 @@ model DispatchIntervention {
 
   @@index([orderId])
   @@index([routeId])
-  @@check(expression: "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500", name: "dispatch_audit_valid")
+  @@check(expression: "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'RELEASE_DRAFT') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500", name: "dispatch_audit_valid")
 }
 
 // Agreed store pickup of an order (#50). It is a fulfilment alternative AFTER an explicit customer agreement, not a

@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'43c5b496e829fac9432660009b97051986b46f1c7907aebc529e25875912b1a6'>;
+  StorageHashBase<'44b4bf8ae3b74cff9e5e2d8511cfe996e38809941f914594e5b4cf2d17f1e0a2'>;
 export type ExecutionHash =
   ExecutionHashBase<'c6d45c7e494f6d496c74f5913d1dbd508bf7f38e7dac3f1b4b42b6bcd2b2c921'>;
 export type ProfileHash =
@@ -478,7 +478,7 @@ export type FieldOutputTypes = {
     readonly Route: {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly driverId: CodecTypes['pg/text@1']['output'] | null;
-      readonly zoneId: CodecTypes['pg/text@1']['output'];
+      readonly zoneId: CodecTypes['pg/text@1']['output'] | null;
       readonly date: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly status: 'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | null;
@@ -821,7 +821,7 @@ export type FieldInputTypes = {
     readonly Route: {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly driverId: CodecTypes['pg/text@1']['input'] | null;
-      readonly zoneId: CodecTypes['pg/text@1']['input'];
+      readonly zoneId: CodecTypes['pg/text@1']['input'] | null;
       readonly date: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly status: 'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | null;
@@ -1173,7 +1173,7 @@ export type StorageColumnTypes = {
       readonly startedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly startedById: CodecTypes['pg/text@1']['output'] | null;
       readonly status: 'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | null;
-      readonly zoneId: CodecTypes['pg/text@1']['output'];
+      readonly zoneId: CodecTypes['pg/text@1']['output'] | null;
     };
     readonly routeStop: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
@@ -1516,7 +1516,7 @@ export type StorageColumnInputTypes = {
       readonly startedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly startedById: CodecTypes['pg/text@1']['input'] | null;
       readonly status: 'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | null;
-      readonly zoneId: CodecTypes['pg/text@1']['input'];
+      readonly zoneId: CodecTypes['pg/text@1']['input'] | null;
     };
     readonly routeStop: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
@@ -1769,7 +1769,7 @@ export namespace Models {
   export type public_Route = {
     id: CodecTypes['pg/text@1']['output'];
     driverId: CodecTypes['pg/text@1']['output'] | null;
-    zoneId: CodecTypes['pg/text@1']['output'];
+    zoneId: CodecTypes['pg/text@1']['output'] | null;
     date: CodecTypes['pg/timestamptz-temporal@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     status: 'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | null;
@@ -1784,7 +1784,7 @@ export namespace Models {
     orders: public_Order[];
     returnedBy: public_User | null;
     startedBy: public_User | null;
-    zone: public_Zone;
+    zone: public_Zone | null;
     readonly [RelationKeys]?:
       'completedBy' | 'driver' | 'orders' | 'returnedBy' | 'startedBy' | 'zone';
   };
@@ -4290,7 +4290,7 @@ type ContractBase = Omit<
                 readonly zoneId: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
-                  readonly nullable: false;
+                  readonly nullable: true;
                 };
                 readonly date: {
                   readonly nativeType: 'timestamptz';
@@ -7265,7 +7265,7 @@ type ContractBase = Omit<
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
               readonly zoneId: {
-                readonly nullable: false;
+                readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
               readonly date: {
@@ -7374,7 +7374,7 @@ type ContractBase = Omit<
               readonly zone: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'Zone' };
                 readonly cardinality: 'N:1';
-                readonly nullable: false;
+                readonly nullable: true;
                 readonly on: {
                   readonly localFields: readonly ['zoneId'];
                   readonly targetFields: readonly ['id'];

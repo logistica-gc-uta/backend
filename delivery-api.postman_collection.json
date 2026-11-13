@@ -8,12 +8,31 @@
   "event": [
     {
       "listen": "prerequest",
-      "script": { "type": "text/javascript", "exec": [
-        "if (!pm.collectionVariables.get('futureOrderDate')) { const d = new Date(Date.now() + 86400000); d.setUTCHours(15, 0, 0, 0); pm.collectionVariables.set('futureOrderDate', d.toISOString()); } // mañana 10:00 en Guayaquil: dentro del horario comercial 07:00-17:00, sin importar a qué hora corra la prueba",
-        "const planningYear = new Date().getUTCFullYear() + 3; pm.collectionVariables.set('planningYear', planningYear);",
-        "if (pm.request.body && pm.request.body.mode === 'raw') pm.request.body.update(pm.request.body.raw.replace(/2030-02-14T15:00:00.000Z/g, pm.collectionVariables.get('futureOrderDate')).replace(/2031-/g, planningYear + '-'));",
-        "if (pm.request.url.toString().includes('2031-')) pm.request.url.update(pm.request.url.toString().replace(/2031-/g, planningYear + '-'));"
-      ] }
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('futureOrderDate')) { const d = new Date(Date.now() + 86400000); d.setUTCHours(15, 0, 0, 0); pm.collectionVariables.set('futureOrderDate', d.toISOString()); }",
+          "if (!pm.collectionVariables.get('todayGye')) {",
+          "  const gye = new Date(Date.now() - 5 * 3600000);",
+          "  const todayGye = gye.toISOString().slice(0, 10);",
+          "  const mins = gye.getUTCHours() * 60 + gye.getUTCMinutes();",
+          "  const [y, m, d] = todayGye.split('-').map(Number);",
+          "  const s1 = mins < 22 * 60 + 50",
+          "    ? new Date(Date.UTC(y, m - 1, d, 28, 0, 0)).toISOString().replace('.000Z', 'Z')",
+          "    : new Date(Math.ceil((Date.now() + 60000) / 1000) * 1000).toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+          "  const s2 = mins < 22 * 60 + 50",
+          "    ? new Date(Date.UTC(y, m - 1, d, 28, 50, 0)).toISOString().replace('.000Z', 'Z')",
+          "    : new Date(Math.ceil((Date.now() + 2400000) / 1000) * 1000).toISOString().replace(/\\.\\d{3}Z$/, 'Z');",
+          "  pm.collectionVariables.set('todayGye', todayGye);",
+          "  pm.collectionVariables.set('todayOrderDate', s1);",
+          "  pm.collectionVariables.set('todayPlanSlot1', s1);",
+          "  pm.collectionVariables.set('todayPlanSlot2', s2);",
+          "}",
+          "const planningYear = new Date().getUTCFullYear() + 3; pm.collectionVariables.set('planningYear', planningYear);",
+          "if (pm.request.body && pm.request.body.mode === 'raw') pm.request.body.update(pm.request.body.raw.replace(/2030-02-14T15:00:00.000Z/g, pm.collectionVariables.get('futureOrderDate')).replace(/2031-/g, planningYear + '-'));",
+          "if (pm.request.url.toString().includes('2031-')) pm.request.url.update(pm.request.url.toString().replace(/2031-/g, planningYear + '-'));"
+        ]
+      }
     },
     {
       "listen": "test",
@@ -226,8 +245,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             },
             "description": "",
             "body": {
@@ -264,8 +288,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             },
             "description": "",
             "body": {
@@ -304,8 +333,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             },
             "description": "",
             "body": {
@@ -342,8 +376,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             },
             "description": "Autentica al segundo repartidor creado en el seed.",
             "body": {
@@ -380,8 +419,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             },
             "description": "Autentica al segundo cliente creado en el seed.",
             "body": {
@@ -418,8 +462,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             },
             "description": "",
             "body": {
@@ -451,8 +500,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
             },
             "description": "",
             "body": {
@@ -496,8 +550,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/register",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "register"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
             },
             "description": "",
             "body": {
@@ -529,8 +588,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/auth/register",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "register"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
             },
             "description": "",
             "body": {
@@ -576,8 +640,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/zones",
-              "host": ["{{baseUrl}}"],
-              "path": ["zones"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones"
+              ]
             },
             "description": ""
           }
@@ -620,8 +688,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/zones",
-              "host": ["{{baseUrl}}"],
-              "path": ["zones"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones"
+              ]
             },
             "description": "DEMO/TEST depot coordinates; not a production depot.",
             "auth": {
@@ -663,8 +735,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/zones",
-              "host": ["{{baseUrl}}"],
-              "path": ["zones"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones"
+              ]
             },
             "description": "",
             "auth": {
@@ -706,8 +782,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/zones",
-              "host": ["{{baseUrl}}"],
-              "path": ["zones"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones"
+              ]
             },
             "description": "",
             "body": {
@@ -739,8 +819,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/zones",
-              "host": ["{{baseUrl}}"],
-              "path": ["zones"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones"
+              ]
             },
             "description": "",
             "auth": {
@@ -779,8 +863,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/zones/{{zoneId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["zones", "{{zoneId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones",
+                "{{zoneId}}"
+              ]
             },
             "description": ""
           }
@@ -803,8 +892,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/zones/00000000-0000-0000-0000-000000000000",
-              "host": ["{{baseUrl}}"],
-              "path": ["zones", "00000000-0000-0000-0000-000000000000"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "zones",
+                "00000000-0000-0000-0000-000000000000"
+              ]
             },
             "description": ""
           }
@@ -835,8 +929,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/products",
-              "host": ["{{baseUrl}}"],
-              "path": ["products"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
             },
             "description": ""
           }
@@ -867,8 +965,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/products",
-              "host": ["{{baseUrl}}"],
-              "path": ["products"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
             },
             "description": "",
             "auth": {
@@ -910,8 +1012,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/products",
-              "host": ["{{baseUrl}}"],
-              "path": ["products"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
             },
             "description": "",
             "auth": {
@@ -953,8 +1059,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/products",
-              "host": ["{{baseUrl}}"],
-              "path": ["products"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products"
+              ]
             },
             "description": "",
             "auth": {
@@ -997,8 +1107,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/products/{{productId}}/stock",
-              "host": ["{{baseUrl}}"],
-              "path": ["products", "{{productId}}", "stock"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "products",
+                "{{productId}}",
+                "stock"
+              ]
             },
             "description": "",
             "auth": {
@@ -1040,7 +1156,9 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/products/00000000-0000-0000-0000-000000000000/stock",
-              "host": ["{{baseUrl}}"],
+              "host": [
+                "{{baseUrl}}"
+              ],
               "path": [
                 "products",
                 "00000000-0000-0000-0000-000000000000",
@@ -1071,6 +1189,88 @@
       "description": "Pedidos con reserva de stock",
       "item": [
         {
+          "name": "GET Admin Shop Settings (save schedule before today orders)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('shopSettingsVersion', String(b.version));",
+                  "pm.collectionVariables.set('origDeliveryStartTime', b.deliverySchedule.startTime);",
+                  "pm.collectionVariables.set('origDeliveryEndTime', b.deliverySchedule.endTime);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/shop-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "shop-settings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Admin Shop Settings - allow 24h delivery schedule for today operational tests",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('shopSettingsVersion', String(b.version));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{shopSettingsVersion}},\n  \"deliverySchedule\": {\n    \"startTime\": \"00:00\",\n    \"endTime\": \"23:59\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/shop-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "shop-settings"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "POST Create Order #1 (CLIENT)",
           "event": [
             {
@@ -1099,8 +1299,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1115,7 +1319,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #1, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #1, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayOrderDate}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
             }
           }
         },
@@ -1148,8 +1352,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1164,7 +1372,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #2, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #2, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayOrderDate}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
             }
           }
         },
@@ -1197,8 +1405,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1213,7 +1425,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #3, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #3, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayOrderDate}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
             }
           }
         },
@@ -1246,8 +1458,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
             },
             "description": "Crea el pedido 4 de 4 que se agruparán en una ruta.",
             "auth": {
@@ -1262,7 +1478,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #4, Ambato\",\n  \"scheduledDeliveryDate\": \"2030-02-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ]\n}"
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #4, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayOrderDate}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ]\n}"
             }
           }
         },
@@ -1289,8 +1505,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1332,8 +1552,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1375,8 +1599,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1418,8 +1646,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1461,8 +1693,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
             },
             "description": "DEMO/TEST destination coordinates; caller-confirmed fixture only.",
             "auth": {
@@ -1509,8 +1745,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
             },
             "description": "",
             "auth": {
@@ -1552,8 +1792,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
             },
             "description": "",
             "auth": {
@@ -1595,8 +1839,12 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
             },
             "description": "",
             "auth": {
@@ -1640,8 +1888,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/orders/my-orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "my-orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "my-orders"
+              ]
             },
             "description": "",
             "auth": {
@@ -1677,8 +1930,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
             },
             "description": "",
             "auth": {
@@ -1711,8 +1968,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/orders",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders"
+              ]
             },
             "description": "",
             "auth": {
@@ -1747,8 +2008,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId1}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}"
+              ]
             },
             "description": "",
             "auth": {
@@ -1784,8 +2050,13 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId1}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -1829,8 +2100,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId1}}", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}",
+                "status"
+              ]
             },
             "description": "El repartidor no puede mover un pedido que aún no está asignado a una ruta.",
             "auth": {
@@ -1877,8 +2154,13 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId1}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -1922,8 +2204,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/drivers",
-              "host": ["{{baseUrl}}"],
-              "path": ["drivers"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "drivers"
+              ]
             },
             "description": "",
             "auth": {
@@ -1956,8 +2242,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/drivers",
-              "host": ["{{baseUrl}}"],
-              "path": ["drivers"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "drivers"
+              ]
             },
             "description": "",
             "auth": {
@@ -2000,8 +2290,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/routes/assign",
-              "host": ["{{baseUrl}}"],
-              "path": ["routes", "assign"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "routes",
+                "assign"
+              ]
             },
             "description": "Regla core: 5 pedidos deben ser rechazados con 400.",
             "auth": {
@@ -2043,8 +2338,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/routes/assign",
-              "host": ["{{baseUrl}}"],
-              "path": ["routes", "assign"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "routes",
+                "assign"
+              ]
             },
             "description": "",
             "auth": {
@@ -2091,8 +2391,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/routes/assign",
-              "host": ["{{baseUrl}}"],
-              "path": ["routes", "assign"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "routes",
+                "assign"
+              ]
             },
             "description": "Todos los pedidos de una ruta deben pertenecer a la misma zona.",
             "auth": {
@@ -2167,8 +2472,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/routes/assign",
-              "host": ["{{baseUrl}}"],
-              "path": ["routes", "assign"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "routes",
+                "assign"
+              ]
             },
             "description": "",
             "auth": {
@@ -2415,8 +2725,13 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/routes/assign",
-              "host": ["{{baseUrl}}"],
-              "path": ["routes", "assign"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "routes",
+                "assign"
+              ]
             },
             "description": "Tras la asignación el repartidor queda ocupado.",
             "auth": {
@@ -2457,8 +2772,13 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/routes/{{routeId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["routes", "{{routeId}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "routes",
+                "{{routeId}}"
+              ]
             },
             "description": "",
             "auth": {
@@ -2492,8 +2812,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/routes",
-              "host": ["{{baseUrl}}"],
-              "path": ["routes"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "routes"
+              ]
             },
             "description": "",
             "auth": {
@@ -2526,8 +2850,12 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/routes",
-              "host": ["{{baseUrl}}"],
-              "path": ["routes"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "routes"
+              ]
             },
             "description": "",
             "auth": {
@@ -2563,8 +2891,13 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId1}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -2608,8 +2941,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId1}}", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}",
+                "status"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -2656,8 +2995,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId1}}", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}",
+                "status"
+              ]
             },
             "description": "",
             "auth": {
@@ -2705,8 +3050,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId1}}", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}",
+                "status"
+              ]
             },
             "description": "",
             "auth": {
@@ -2749,8 +3100,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId1}}", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}",
+                "status"
+              ]
             },
             "description": "",
             "auth": {
@@ -2792,8 +3149,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId1}}", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}",
+                "status"
+              ]
             },
             "description": "",
             "auth": {
@@ -2839,8 +3202,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId1}}", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}",
+                "status"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -2886,8 +3255,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId1}}", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}",
+                "status"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -2933,8 +3308,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId1}}", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}",
+                "status"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -2981,8 +3362,13 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId1}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId1}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId1}}"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -3025,8 +3411,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId4}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId4}}", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId4}}",
+                "status"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -3073,8 +3465,14 @@
             ],
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId4}}/status",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId4}}", "status"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId4}}",
+                "status"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -3121,8 +3519,13 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/orders/{{orderId4}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["orders", "{{orderId4}}"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "orders",
+                "{{orderId4}}"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -3142,93 +3545,422 @@
     {
       "name": "Issue 11 ADMIN registered and guest orders",
       "event": [
-        { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
-          "const common = { zoneId: pm.collectionVariables.get('zoneId'), deliveryAddress: 'DEMO/TEST ADMIN recipient address', deliveryLat: -1.25, deliveryLng: -78.63, scheduledDeliveryDate: pm.collectionVariables.get('futureOrderDate'), items: [{productId: pm.collectionVariables.get('productId'), quantity: 1}], payment: {method: 'CASH'} };",
-          "const guest = {...common, buyer: {type: 'GUEST', name: 'DEMO Guest', contactPhone: '+593999111222'}};",
-          "const key = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16); });",
-          "pm.variables.set('adminIdempotencyKey', key);",
-          "pm.variables.set('adminGuestBody', JSON.stringify(guest));",
-          "pm.variables.set('adminRegisteredBody', JSON.stringify({...common, buyer: {type: 'REGISTERED_CLIENT', clientId: pm.collectionVariables.get('registeredClientId'), contactPhone: '+593999333444'}}));",
-          "pm.variables.set('adminUnknownBody', JSON.stringify({...guest, buyer: {...guest.buyer, unexpectedRecipientKey: 'reject'}}));"
-        ] } },
-        { "listen": "test", "script": { "type": "text/javascript", "exec": [
-          "pm.test('No authentication secrets in order payload', () => pm.expect(pm.response.text()).not.to.match(/password|access_token/));"
-        ] } }
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const common = { zoneId: pm.collectionVariables.get('zoneId'), deliveryAddress: 'DEMO/TEST ADMIN recipient address', deliveryLat: -1.25, deliveryLng: -78.63, scheduledDeliveryDate: pm.collectionVariables.get('futureOrderDate'), items: [{productId: pm.collectionVariables.get('productId'), quantity: 1}], payment: {method: 'CASH'} };",
+              "const guest = {...common, buyer: {type: 'GUEST', name: 'DEMO Guest', contactPhone: '+593999111222'}};",
+              "const key = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16); });",
+              "pm.variables.set('adminIdempotencyKey', key);",
+              "pm.variables.set('adminGuestBody', JSON.stringify(guest));",
+              "pm.variables.set('adminRegisteredBody', JSON.stringify({...common, buyer: {type: 'REGISTERED_CLIENT', clientId: pm.collectionVariables.get('registeredClientId'), contactPhone: '+593999333444'}}));",
+              "pm.variables.set('adminUnknownBody', JSON.stringify({...guest, buyer: {...guest.buyer, unexpectedRecipientKey: 'reject'}}));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('No authentication secrets in order payload', () => pm.expect(pm.response.text()).not.to.match(/password|access_token/));"
+            ]
+          }
+        }
       ],
       "item": [
         {
           "name": "ADMIN creates REGISTERED_CLIENT order",
-          "request": { "method": "POST", "url": "{{baseUrl}}/orders/admin", "header": [{"key":"Content-Type","value":"application/json"},{"key":"Idempotency-Key","value":"{{adminIdempotencyKey}}"}], "auth": {"type":"bearer","bearer":[{"key":"token","value":"{{adminToken}}","type":"string"}]}, "body":{"mode":"raw","raw":"{{adminRegisteredBody}}"} },
-          "event": [{"listen":"test","script":{"type":"text/javascript","exec":[
-            "pm.test('Registered ADMIN creation 201', () => pm.response.to.have.status(201));",
-            "const b = pm.response.json(); pm.collectionVariables.set('adminRegisteredOrderId', b.id);",
-            "pm.test('Registered owner and immutable recipient snapshot', () => { pm.expect(b.userId).to.eql(pm.collectionVariables.get('registeredClientId')); pm.expect(b.createdById).not.to.eql(b.userId); pm.expect(b.recipientType).to.eql('REGISTERED_CLIENT'); pm.expect(b.recipientName).to.eql(pm.collectionVariables.get('registeredClientName')); pm.expect(b.recipientPhone).to.eql('+593999333444'); });",
-            "pm.test('Registered creation reserves one line and keeps geography', () => { pm.expect(b.items).to.have.lengthOf(1); pm.expect(b.items[0].quantity).to.eql(1); pm.expect(b.deliveryLat).to.eql(-1.25); pm.expect(b.deliveryLng).to.eql(-78.63); pm.expect(b.status).to.eql('PENDING'); });"
-          ]}}]
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders/admin",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{adminIdempotencyKey}}"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{{adminRegisteredBody}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Registered ADMIN creation 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json(); pm.collectionVariables.set('adminRegisteredOrderId', b.id);",
+                  "pm.test('Registered owner and immutable recipient snapshot', () => { pm.expect(b.userId).to.eql(pm.collectionVariables.get('registeredClientId')); pm.expect(b.createdById).not.to.eql(b.userId); pm.expect(b.recipientType).to.eql('REGISTERED_CLIENT'); pm.expect(b.recipientName).to.eql(pm.collectionVariables.get('registeredClientName')); pm.expect(b.recipientPhone).to.eql('+593999333444'); });",
+                  "pm.test('Registered creation reserves one line and keeps geography', () => { pm.expect(b.items).to.have.lengthOf(1); pm.expect(b.items[0].quantity).to.eql(1); pm.expect(b.deliveryLat).to.eql(-1.25); pm.expect(b.deliveryLng).to.eql(-78.63); pm.expect(b.status).to.eql('PENDING'); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "ADMIN creates GUEST order",
-          "request": { "method": "POST", "url": "{{baseUrl}}/orders/admin", "header": [{"key":"Content-Type","value":"application/json"},{"key":"Idempotency-Key","value":"{{adminIdempotencyKey}}"}], "auth": {"type":"bearer","bearer":[{"key":"token","value":"{{adminToken}}","type":"string"}]}, "body":{"mode":"raw","raw":"{{adminGuestBody}}"} },
-          "event": [{"listen":"test","script":{"type":"text/javascript","exec":[
-            "pm.test('Guest ADMIN creation 201', () => pm.response.to.have.status(201));",
-            "const b = pm.response.json(); pm.collectionVariables.set('adminGuestOrderId', b.id);",
-            "pm.test('Guest has no digital owner and has ADMIN creator', () => { pm.expect(b.userId).to.be.null; pm.expect(b.createdById).to.be.a('string'); pm.expect(b.recipientType).to.eql('GUEST'); pm.expect(b.recipientName).to.eql('DEMO Guest'); pm.expect(b.recipientPhone).to.eql('+593999111222'); });",
-            "pm.test('Guest retains geographic readiness', () => { pm.expect(b.deliveryLat).to.eql(-1.25); pm.expect(b.deliveryLng).to.eql(-78.63); pm.expect(b.status).to.eql('PENDING'); });"
-          ]}}]
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders/admin",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{adminIdempotencyKey}}"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{{adminGuestBody}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Guest ADMIN creation 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json(); pm.collectionVariables.set('adminGuestOrderId', b.id);",
+                  "pm.test('Guest has no digital owner and has ADMIN creator', () => { pm.expect(b.userId).to.be.null; pm.expect(b.createdById).to.be.a('string'); pm.expect(b.recipientType).to.eql('GUEST'); pm.expect(b.recipientName).to.eql('DEMO Guest'); pm.expect(b.recipientPhone).to.eql('+593999111222'); });",
+                  "pm.test('Guest retains geographic readiness', () => { pm.expect(b.deliveryLat).to.eql(-1.25); pm.expect(b.deliveryLng).to.eql(-78.63); pm.expect(b.status).to.eql('PENDING'); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "CLIENT reads ADMIN registered order without contact",
-          "request": { "method":"GET", "url":"{{baseUrl}}/orders/{{adminRegisteredOrderId}}", "auth":{"type":"bearer","bearer":[{"key":"token","value":"{{clientToken}}","type":"string"}]} },
-          "event":[{"listen":"test","script":{"type":"text/javascript","exec":[
-            "pm.test('Registered owner readback 200', () => pm.response.to.have.status(200));",
-            "pm.test('CLIENT projection excludes recipient contact', () => { const b = pm.response.json(); pm.expect(b.id).to.eql(pm.collectionVariables.get('adminRegisteredOrderId')); pm.expect(b).not.to.have.property('recipientPhone'); pm.expect(b.userId).to.eql(pm.collectionVariables.get('registeredClientId')); });"
-          ]}}]
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/orders/{{adminRegisteredOrderId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Registered owner readback 200', () => pm.response.to.have.status(200));",
+                  "pm.test('CLIENT projection excludes recipient contact', () => { const b = pm.response.json(); pm.expect(b.id).to.eql(pm.collectionVariables.get('adminRegisteredOrderId')); pm.expect(b).not.to.have.property('recipientPhone'); pm.expect(b.userId).to.eql(pm.collectionVariables.get('registeredClientId')); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name":"CLIENT my-orders includes registered but excludes GUEST",
-          "request":{"method":"GET","url":"{{baseUrl}}/orders/my-orders","auth":{"type":"bearer","bearer":[{"key":"token","value":"{{clientToken}}","type":"string"}]}},
-          "event":[{"listen":"test","script":{"type":"text/javascript","exec":[
-            "pm.test('CLIENT history remains array 200', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
-            "pm.test('Digital ownership controls history and contact', () => { const b = pm.response.json(); pm.expect(b.some(o => o.id === pm.collectionVariables.get('adminRegisteredOrderId'))).to.eql(true); pm.expect(b.some(o => o.id === pm.collectionVariables.get('adminGuestOrderId'))).to.eql(false); b.forEach(o => pm.expect(o).not.to.have.property('recipientPhone')); });"
-          ]}}]
+          "name": "CLIENT my-orders includes registered but excludes GUEST",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/orders/my-orders",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CLIENT history remains array 200', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });",
+                  "pm.test('Digital ownership controls history and contact', () => { const b = pm.response.json(); pm.expect(b.some(o => o.id === pm.collectionVariables.get('adminRegisteredOrderId'))).to.eql(true); pm.expect(b.some(o => o.id === pm.collectionVariables.get('adminGuestOrderId'))).to.eql(false); b.forEach(o => pm.expect(o).not.to.have.property('recipientPhone')); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name":"CLIENT cannot read GUEST order",
-          "request":{"method":"GET","url":"{{baseUrl}}/orders/{{adminGuestOrderId}}","auth":{"type":"bearer","bearer":[{"key":"token","value":"{{clientToken}}","type":"string"}]}},
-          "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('Guest IDOR denied without contact 403', () => { pm.response.to.have.status(403); pm.expect(pm.response.text()).not.to.match(/DEMO Guest|999111222/); });"]}}]
+          "name": "CLIENT cannot read GUEST order",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/orders/{{adminGuestOrderId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Guest IDOR denied without contact 403', () => { pm.response.to.have.status(403); pm.expect(pm.response.text()).not.to.match(/DEMO Guest|999111222/); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name":"Other CLIENT cannot read ADMIN registered order",
-          "request":{"method":"GET","url":"{{baseUrl}}/orders/{{adminRegisteredOrderId}}","auth":{"type":"bearer","bearer":[{"key":"token","value":"{{client2Token}}","type":"string"}]}},
-          "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('Registered IDOR denied without contact 403', () => { pm.response.to.have.status(403); pm.expect(pm.response.text()).not.to.include('999333444'); });"]}}]
+          "name": "Other CLIENT cannot read ADMIN registered order",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/orders/{{adminRegisteredOrderId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{client2Token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Registered IDOR denied without contact 403', () => { pm.response.to.have.status(403); pm.expect(pm.response.text()).not.to.include('999333444'); });"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name":"CLIENT cannot create ADMIN order",
-          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"},{"key":"Idempotency-Key","value":"{{adminIdempotencyKey}}"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{clientToken}}","type":"string"}]},"body":{"mode":"raw","raw":"{{adminGuestBody}}"}},
-          "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('CLIENT ADMIN creation forbidden 403', () => pm.response.to.have.status(403));"]}}]
+          "name": "CLIENT cannot create ADMIN order",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders/admin",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{adminIdempotencyKey}}"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{clientToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{{adminGuestBody}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CLIENT ADMIN creation forbidden 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name":"DRIVER cannot create ADMIN order",
-          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"},{"key":"Idempotency-Key","value":"{{adminIdempotencyKey}}"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{driverToken}}","type":"string"}]},"body":{"mode":"raw","raw":"{{adminGuestBody}}"}},
-          "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('DRIVER ADMIN creation forbidden 403', () => pm.response.to.have.status(403));"]}}]
+          "name": "DRIVER cannot create ADMIN order",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders/admin",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{adminIdempotencyKey}}"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{driverToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{{adminGuestBody}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('DRIVER ADMIN creation forbidden 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name":"ADMIN creation requires JWT",
-          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"},{"key":"Idempotency-Key","value":"{{adminIdempotencyKey}}"}],"body":{"mode":"raw","raw":"{{adminGuestBody}}"}},
-          "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('ADMIN creation unauthenticated 401', () => pm.response.to.have.status(401));"]}}]
+          "name": "ADMIN creation requires JWT",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders/admin",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{adminIdempotencyKey}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{adminGuestBody}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('ADMIN creation unauthenticated 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name":"ADMIN recipient unknown key rejected",
-          "request":{"method":"POST","url":"{{baseUrl}}/orders/admin","header":[{"key":"Content-Type","value":"application/json"},{"key":"Idempotency-Key","value":"{{adminIdempotencyKey}}"}],"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{adminToken}}","type":"string"}]},"body":{"mode":"raw","raw":"{{adminUnknownBody}}"}},
-          "event":[{"listen":"test","script":{"type":"text/javascript","exec":["pm.test('Unknown recipient key rejected 400', () => pm.response.to.have.status(400));"]}}]
+          "name": "ADMIN recipient unknown key rejected",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/orders/admin",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{adminIdempotencyKey}}"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{{adminUnknownBody}}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unknown recipient key rejected 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
         },
         {
-          "name":"ADMIN paginated readback includes both recipient variants",
-          "request":{"method":"GET","url":"{{baseUrl}}/orders?zoneId={{zoneId}}&pageSize=100","auth":{"type":"bearer","bearer":[{"key":"token","value":"{{adminToken}}","type":"string"}]}},
-          "event":[{"listen":"test","script":{"type":"text/javascript","exec":[
-            "pm.test('ADMIN envelope metadata 200', () => { pm.response.to.have.status(200); const b = pm.response.json(); pm.expect(b.page).to.eql(1); pm.expect(b.pageSize).to.eql(100); pm.expect(b.total).to.eql(b.items.length); });",
-            "pm.test('ADMIN readback retains both snapshots', () => { const b = pm.response.json().items; const guest = b.find(o => o.id === pm.collectionVariables.get('adminGuestOrderId')); pm.expect(guest.recipientPhone).to.eql('+593999111222'); pm.expect(guest.deliveryLocation).to.eql({lat:-1.25,lng:-78.63}); pm.expect(guest.planningEligibility.eligible).to.eql(true); pm.expect(b.find(o => o.id === pm.collectionVariables.get('adminRegisteredOrderId')).recipientPhone).to.eql('+593999333444'); });"
-          ]}}]
+          "name": "ADMIN paginated readback includes both recipient variants",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/orders?zoneId={{zoneId}}&pageSize=100",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('ADMIN envelope metadata 200', () => { pm.response.to.have.status(200); const b = pm.response.json(); pm.expect(b.page).to.eql(1); pm.expect(b.pageSize).to.eql(100); pm.expect(b.total).to.eql(b.items.length); });",
+                  "pm.test('ADMIN readback retains both snapshots', () => { const b = pm.response.json().items; const guest = b.find(o => o.id === pm.collectionVariables.get('adminGuestOrderId')); pm.expect(guest.recipientPhone).to.eql('+593999111222'); pm.expect(guest.deliveryLocation).to.eql({lat:-1.25,lng:-78.63}); pm.expect(guest.planningEligibility.eligible).to.eql(true); pm.expect(b.find(o => o.id === pm.collectionVariables.get('adminRegisteredOrderId')).recipientPhone).to.eql('+593999333444'); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -3356,7 +4088,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #1, Ambato\",\n  \"scheduledDeliveryDate\": \"2031-03-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.242,\n  \"deliveryLng\": -78.6205\n}"
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #1, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayPlanSlot1}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.242,\n  \"deliveryLng\": -78.6205\n}"
                 }
               }
             },
@@ -3408,7 +4140,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #2, Ambato\",\n  \"scheduledDeliveryDate\": \"2031-03-14T18:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.243,\n  \"deliveryLng\": -78.622\n}"
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #2, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayPlanSlot2}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.243,\n  \"deliveryLng\": -78.622\n}"
                 }
               }
             },
@@ -3460,7 +4192,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #3, Ambato\",\n  \"scheduledDeliveryDate\": \"2031-03-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.244,\n  \"deliveryLng\": -78.6235\n}"
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #3, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayPlanSlot1}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.244,\n  \"deliveryLng\": -78.6235\n}"
                 }
               }
             },
@@ -3512,7 +4244,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #4, Ambato\",\n  \"scheduledDeliveryDate\": \"2031-03-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.245,\n  \"deliveryLng\": -78.625\n}"
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #4, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayPlanSlot1}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.245,\n  \"deliveryLng\": -78.625\n}"
                 }
               }
             },
@@ -3564,7 +4296,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #5, Ambato\",\n  \"scheduledDeliveryDate\": \"2031-03-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.246,\n  \"deliveryLng\": -78.6265\n}"
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #5, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayPlanSlot1}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.246,\n  \"deliveryLng\": -78.6265\n}"
                 }
               }
             },
@@ -3614,7 +4346,7 @@
                 },
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #6, Ambato\",\n  \"scheduledDeliveryDate\": \"2031-03-14T15:00:00.000Z\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ]\n}"
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"deliveryAddress\": \"DEMO/TEST planning stop #6, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayPlanSlot1}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ]\n}"
                 }
               }
             }
@@ -3635,7 +4367,7 @@
                       "const body = pm.response.json();",
                       "const ids = JSON.parse(pm.collectionVariables.get('planOrderIds'));",
                       "pm.test('Metadata: day, timezone, capacity, margin and distance method', () => {",
-                      "  pm.expect(body.date).to.eql(pm.collectionVariables.get('planningYear') + '-03-14');",
+                      "  pm.expect(body.date).to.eql(pm.collectionVariables.get('todayGye'));",
                       "  pm.expect(body.timeZone).to.eql('America/Guayaquil');",
                       "  pm.expect(body.capacity).to.eql(4);",
                       "  pm.expect(body.timeWindowMarginMinutes).to.eql(30);",
@@ -3664,14 +4396,14 @@
                       "  pm.expect(p).to.not.have.property('confirmable');",
                       "}));",
                       "pm.test('15:00Z and 18:00Z orders stay in separate time-window proposals', () => {",
-                      "  const year = pm.collectionVariables.get('planningYear');",
+                      "  ",
                       "  pm.expect(body.proposals.every(p => p.scheduledInstants.length === 1)).to.eql(true);",
-                      "  const p15 = body.proposals.find(p => p.scheduledInstants[0] === year + '-03-14T15:00:00Z');",
-                      "  const p18 = body.proposals.find(p => p.scheduledInstants[0] === year + '-03-14T18:00:00Z');",
+                      "  const p15 = body.proposals.find(p => p.scheduledInstants[0] === pm.collectionVariables.get('todayPlanSlot1'));",
+                      "  const p18 = body.proposals.find(p => p.scheduledInstants[0] === pm.collectionVariables.get('todayPlanSlot2'));",
                       "  pm.expect(p15.orderIds).to.have.lengthOf(4);",
-                      "  pm.expect(p15.routeDate).to.eql(year + '-03-14T15:00:00Z');",
+                      "  pm.expect(p15.routeDate).to.eql(pm.collectionVariables.get('todayPlanSlot1'));",
                       "  pm.expect(p18.orderIds).to.have.lengthOf(1);",
-                      "  pm.expect(p18.routeDate).to.eql(year + '-03-14T18:00:00Z');",
+                      "  pm.expect(p18.routeDate).to.eql(pm.collectionVariables.get('todayPlanSlot2'));",
                       "});",
                       "pm.test('The order without coordinates is excluded with its reason', () => {",
                       "  pm.expect(body.excluded).to.eql([{ orderId: pm.collectionVariables.get('planNoCoordOrderId'), zoneId: pm.collectionVariables.get('planZoneId'), reasons: ['MISSING_DELIVERY_COORDINATES'] }]);",
@@ -3705,7 +4437,8 @@
                       "pm.collectionVariables.set('planConfirmedCount', String(first.orderIds.length));",
                       "pm.collectionVariables.set('planProposalRouteDate', first.routeDate);",
                       "pm.collectionVariables.set('planProposalOrderIds', JSON.stringify(first.orderIds));",
-                      "pm.collectionVariables.set('planProposalBody', pm.response.text());"
+                      "pm.collectionVariables.set('planProposalBody', pm.response.text());",
+                      "pm.test('Today operational day exposes isToday=true and canConfirm=true', () => { pm.expect(body.isToday).to.eql(true); pm.expect(body.canConfirm).to.eql(true); });"
                     ]
                   }
                 }
@@ -3714,7 +4447,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId={{planZoneId}}",
+                  "raw": "{{baseUrl}}/route-proposals?date={{todayGye}}&zoneId={{planZoneId}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3724,7 +4457,7 @@
                   "query": [
                     {
                       "key": "date",
-                      "value": "2031-03-14"
+                      "value": "{{todayGye}}"
                     },
                     {
                       "key": "zoneId",
@@ -3763,7 +4496,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId={{planZoneId}}",
+                  "raw": "{{baseUrl}}/route-proposals?date={{todayGye}}&zoneId={{planZoneId}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3773,7 +4506,7 @@
                   "query": [
                     {
                       "key": "date",
-                      "value": "2031-03-14"
+                      "value": "{{todayGye}}"
                     },
                     {
                       "key": "zoneId",
@@ -3850,7 +4583,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId={{planZoneId}}",
+                  "raw": "{{baseUrl}}/route-proposals?date={{todayGye}}&zoneId={{planZoneId}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3860,7 +4593,7 @@
                   "query": [
                     {
                       "key": "date",
-                      "value": "2031-03-14"
+                      "value": "{{todayGye}}"
                     },
                     {
                       "key": "zoneId",
@@ -3888,7 +4621,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId={{planZoneId}}",
+                  "raw": "{{baseUrl}}/route-proposals?date={{todayGye}}&zoneId={{planZoneId}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3898,7 +4631,7 @@
                   "query": [
                     {
                       "key": "date",
-                      "value": "2031-03-14"
+                      "value": "{{todayGye}}"
                     },
                     {
                       "key": "zoneId",
@@ -3936,7 +4669,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId={{planZoneId}}",
+                  "raw": "{{baseUrl}}/route-proposals?date={{todayGye}}&zoneId={{planZoneId}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -3946,7 +4679,7 @@
                   "query": [
                     {
                       "key": "date",
-                      "value": "2031-03-14"
+                      "value": "{{todayGye}}"
                     },
                     {
                       "key": "zoneId",
@@ -4066,7 +4799,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&driverId=x",
+                  "raw": "{{baseUrl}}/route-proposals?date={{todayGye}}&driverId=x",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4076,7 +4809,7 @@
                   "query": [
                     {
                       "key": "date",
-                      "value": "2031-03-14"
+                      "value": "{{todayGye}}"
                     },
                     {
                       "key": "driverId",
@@ -4114,7 +4847,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId=centro",
+                  "raw": "{{baseUrl}}/route-proposals?date={{todayGye}}&zoneId=centro",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4124,7 +4857,7 @@
                   "query": [
                     {
                       "key": "date",
-                      "value": "2031-03-14"
+                      "value": "{{todayGye}}"
                     },
                     {
                       "key": "zoneId",
@@ -4162,7 +4895,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId=00000000-0000-0000-0000-000000000000",
+                  "raw": "{{baseUrl}}/route-proposals?date={{todayGye}}&zoneId=00000000-0000-0000-0000-000000000000",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4172,7 +4905,7 @@
                   "query": [
                     {
                       "key": "date",
-                      "value": "2031-03-14"
+                      "value": "{{todayGye}}"
                     },
                     {
                       "key": "zoneId",
@@ -4202,7 +4935,8 @@
                     "type": "text/javascript",
                     "exec": [
                       "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                      "pm.test('Empty proposal', () => { const b = pm.response.json(); pm.expect(b.proposals).to.eql([]); pm.expect(b.excluded).to.eql([]); });"
+                      "pm.test('Empty proposal', () => { const b = pm.response.json(); pm.expect(b.proposals).to.eql([]); pm.expect(b.excluded).to.eql([]); });",
+                      "pm.test('Future preview marks isToday=false and canConfirm=false', () => { const b = pm.response.json(); pm.expect(b.isToday).to.eql(false); pm.expect(b.canConfirm).to.eql(false); });"
                     ]
                   }
                 }
@@ -4248,6 +4982,48 @@
           "name": "Confirm with existing lifecycle",
           "item": [
             {
+              "name": "POST Confirm future proposal rejected as 409 (ROUTE_DATE_NOT_TODAY)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                      "pm.test('Exposes ROUTE_DATE_NOT_TODAY conflict code', () => { const b = pm.response.json(); pm.expect(b.code).to.eql('ROUTE_DATE_NOT_TODAY'); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"zoneId\": \"{{planZoneId}}\",\n  \"routeDate\": \"2031-03-14T15:00:00Z\",\n  \"orderIds\": {{planProposalOrderIds}}\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/routes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "routes"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
               "name": "POST Confirm a time-window proposal as DRAFT (existing POST /routes)",
               "event": [
                 {
@@ -4258,7 +5034,8 @@
                       "pm.test('Status 201', () => pm.response.to.have.status(201));",
                       "const body = pm.response.json();",
                       "pm.test('Proposal persisted as DRAFT without driver', () => { pm.expect(body.status).to.eql('DRAFT'); pm.expect(body.driverId).to.eql(null); });",
-                      "pm.test('Route date is the earliest scheduled instant', () => pm.expect(body.date).to.eql(pm.collectionVariables.get('planningYear') + '-03-14T15:00:00Z'));"
+                      "pm.test('Route date is the earliest scheduled instant', () => pm.expect(body.date).to.eql(pm.collectionVariables.get('todayPlanSlot1')));",
+                      "pm.collectionVariables.set('planDraftRouteId', body.id);"
                     ]
                   }
                 }
@@ -4280,7 +5057,7 @@
                     "routes"
                   ]
                 },
-                "description": "The proposal fields zoneId, routeDate and orderIds feed POST /routes unchanged.",
+                "description": "The proposal fields routeDate, orderIds, and optional nullable zoneId feed POST /routes unchanged.",
                 "auth": {
                   "type": "bearer",
                   "bearer": [
@@ -4322,7 +5099,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/route-proposals?date=2031-03-14&zoneId={{planZoneId}}",
+                  "raw": "{{baseUrl}}/route-proposals?date={{todayGye}}&zoneId={{planZoneId}}",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -4332,7 +5109,7 @@
                   "query": [
                     {
                       "key": "date",
-                      "value": "2031-03-14"
+                      "value": "{{todayGye}}"
                     },
                     {
                       "key": "zoneId",
@@ -4352,6 +5129,136 @@
                   ]
                 }
               }
+            },
+            {
+              "name": "POST Dispatch Intervention - RELEASE_DRAFT frees unassigned DRAFT",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const u = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); });",
+                      "pm.collectionVariables.set('releaseRequestId', u);"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('Audited RELEASE_DRAFT intervention persisted', () => { const b = pm.response.json(); pm.expect(b.action).to.eql('RELEASE_DRAFT'); pm.expect(b.outcome).to.eql('APPLIED'); pm.expect(b.routeId).to.eql(pm.collectionVariables.get('planDraftRouteId')); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"requestId\": \"{{releaseRequestId}}\",\n  \"action\": \"RELEASE_DRAFT\",\n  \"routeId\": \"{{planDraftRouteId}}\",\n  \"reason\": \"Postman S3 verification release\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/dispatch/interventions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "dispatch",
+                    "interventions"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "GET Urgent Dispatch Inbox (ADMIN)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                      "pm.test('Inbox returns today urgencies and incidents arrays', () => { const b = pm.response.json(); pm.expect(b.urgencies).to.be.an('array'); pm.expect(b.incidents).to.be.an('array'); });"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/dispatch/inbox",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "dispatch",
+                    "inbox"
+                  ]
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "PATCH Admin Shop Settings - restore original delivery schedule",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{adminToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"expectedVersion\": {{shopSettingsVersion}},\n  \"deliverySchedule\": {\n    \"startTime\": \"{{origDeliveryStartTime}}\",\n    \"endTime\": \"{{origDeliveryEndTime}}\"\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/admin/shop-settings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "admin",
+                    "shop-settings"
+                  ]
+                }
+              },
+              "response": []
             }
           ]
         }

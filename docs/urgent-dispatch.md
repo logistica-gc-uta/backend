@@ -6,8 +6,8 @@
 
 | Kind | Meaning |
 | --- | --- |
-| INSERT | Compatible verified DRAFT/ASSIGNED route, fewer than four stops, same zone/business day, eligible orders and coordinates. The proposed sequence is recalculated with Clarke & Wright/Haversine. |
-| NEW_ROUTE | No insertion fits; a one-order departure is proposed with effectively available drivers. Availability is advisory until locked confirmation. |
+| INSERT | Compatible verified DRAFT/ASSIGNED route on the same America/Guayaquil business day, 1 to 3 pending stops (`< 4`) with active matching claims, compatible stop/order/route zones via `orderBelongsToRouteZone` (supporting `zoneId: null` orders and routes with `StoreCoverage`), eligible orders and coordinates. Empty 0-stop released DRAFTs, expired non-today DRAFTs, IN_PROGRESS, COMPLETED, and full routes are excluded. The proposed sequence is recalculated with Clarke & Wright/Haversine/OSRM. |
+| NEW_ROUTE | No insertion fits; a one-order departure (`zoneId` preserved from the order, including `null` when using `StoreCoverage`) is proposed with effectively available drivers. Availability is advisory until locked confirmation. |
 | BLOCKED | The order remains unchanged; `reasons` exposes invalid geography, eligibility, date, claim/review holds or `NO_AVAILABLE_DRIVER`. |
 
 No GET creates proposals, routes, claims, reservations or assignments. A proposal fingerprint identifies the relevant snapshot, not an authorization or reservation. Frozen IN_PROGRESS/COMPLETED routes are never insertion targets. Availability retains the depot-return hold.
@@ -26,12 +26,13 @@ Unit A: 13 proposal/inbox tests passed after an observed missing-implementation 
 
 | Action | Required resource fields | Behavior |
 | --- | --- | --- |
-| CONFIRM | orderId, fingerprint; driverId for NEW_ROUTE only | Revalidate under locks, insert/resequence or atomically create and assign a departure. |
+| CONFIRM | orderId, fingerprint; driverId for NEW_ROUTE only | Revalidate under locks, insert/resequence or atomically create and assign a departure (preserving `proposal.zoneId`, including `null` for store-coverage routes). |
 | REJECT | orderId, fingerprint | Persist rejection, leave order/route unchanged. |
 | REORDER | routeId, orderIds | Exact permutation of verified pre-start stops. |
 | MOVE | orderId, routeId, targetRouteId | Atomically release source claim, resequence nonempty source and reserve compatible destination. |
 | REASSIGN_DRIVER | routeId, driverId | ASSIGNED only; validate effective availability and switch audited reservations. |
 | PRIORITIZE | orderId | Eligible unclaimed PENDING only; prioritize inbox without changing commercial status. |
+| RELEASE_DRAFT | routeId | Unassigned `DRAFT` route only (`driverId === null`); atomically deletes stops and releases active `OrderClaim`s with audit, freeing orders for today's replanning. |
 
 Keys are global. Exact actor/body replay returns the original outcome; altered actor/body returns 409. Stale fingerprints, frozen routes and resource conflicts return 409. Drivers are locked first, then sorted routes and sorted orders. PostgreSQL partial unique claims/reservations and lifecycle guards remain authoritative; exceptions roll back the entire mutation. Stops are recreated only before start with existing identities retained, to avoid transient unique-sequence collisions.
 
@@ -43,7 +44,7 @@ B evidence: real isolated PostgreSQL/JWT HTTP tests passed (5 cases); 37 focused
 
 CONTACT uses `orderId`, `agreementConfirmed` and (for an unresolved failure) the latest `attemptId`. A false agreement records management only and must omit scheduling fields. A true agreement requires `scheduledDeliveryDate`, `deliveryWindowStart`, and `deliveryWindowEnd`: explicit ISO offsets, one Guayaquil day, schedule within the window, and strictly future schedule/window start. Use minimal reasons, never conversation/contact snapshots.
 
-RESCHEDULE uses `orderId` and `agreementId` (the CONTACT audit ID). It revalidates geography, agreement freshness/consumption and PostgreSQL wall-clock timing under locks. Failed R1 must be COMPLETED with its order claim released. Reprogramming preserves commercial order identity/items and all R1 stop IDs, sequences, outcomes and attempts; it clears the review hold and expressly sets the same order PENDING, not an automatic failure transition. A reserved pre-start order may be removed only while leaving a nonempty valid route; no started route structure is changed. A later future-date DRAFT/assignment can use existing ADMIN routes endpoints; same-day urgencies also support CONFIRM.
+RESCHEDULE uses `orderId` and `agreementId` (the CONTACT audit ID). It revalidates geography (against optional `Zone` and configured `StoreCoverage`, supporting `zoneId: null` orders), agreement freshness/consumption and PostgreSQL wall-clock timing under locks. Failed R1 must be COMPLETED with its order claim released. Reprogramming preserves commercial order identity/items and all R1 stop IDs, sequences, outcomes and attempts; it clears the review hold and expressly sets the same order PENDING, not an automatic failure transition. A reserved pre-start order may be removed only while leaving a nonempty valid route; no started route structure is changed. A later future-date DRAFT/assignment can use existing ADMIN routes endpoints; same-day urgencies also support CONFIRM.
 
 Driver reservations remain held through completion until DRIVER confirms depot return. R2 gets a new stable stop, while R1 retains all historical visits. The SQL-only `agreed_delivery_rescheduling` migration adds an audited review-resolution guard and a genuine data invariant (failure hold or matching audited reschedule). Its check fails closed on inconsistent legacy data; it never manufactures agreement evidence. No contract artifacts are re-emitted for this SQL-only step.
 

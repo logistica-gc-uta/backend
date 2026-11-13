@@ -2,6 +2,7 @@ import {
   enrichOrderWithGeography,
   enrichZoneWithGeography,
   evaluatePlanningEligibility,
+  orderBelongsToRouteZone,
   PlanningIneligibilityReason,
   toGeoPoint,
   validateCoordinatePair,
@@ -145,6 +146,49 @@ describe('order-geography.util', () => {
         PlanningIneligibilityReason.MISSING_DELIVERY_COORDINATES,
         PlanningIneligibilityReason.MISSING_ZONE_DEPOT_COORDINATES,
       ]);
+    });
+
+    it('accepts null zone or null zone depot when a valid storeOrigin is supplied', () => {
+      const storeOrigin = { lat: -1.2491, lng: -78.6167 };
+      expect(
+        evaluatePlanningEligibility(
+          { deliveryLat: -1.25, deliveryLng: -78.62 },
+          null,
+          storeOrigin,
+        ).planningEligibility,
+      ).toEqual({ eligible: true, reasons: [] });
+
+      expect(
+        evaluatePlanningEligibility(
+          { deliveryLat: -1.25, deliveryLng: -78.62 },
+          { depotLat: null, depotLng: null },
+          storeOrigin,
+        ).planningEligibility,
+      ).toEqual({ eligible: true, reasons: [] });
+    });
+
+    it('still flags INVALID_ZONE_DEPOT_COORDINATES when zone has malformed depot coords even with storeOrigin', () => {
+      const storeOrigin = { lat: -1.2491, lng: -78.6167 };
+      const result = evaluatePlanningEligibility(
+        { deliveryLat: -1.25, deliveryLng: -78.62 },
+        { depotLat: 10, depotLng: null },
+        storeOrigin,
+      );
+      expect(result.planningEligibility).toEqual({
+        eligible: false,
+        reasons: [PlanningIneligibilityReason.INVALID_ZONE_DEPOT_COORDINATES],
+      });
+    });
+  });
+
+  describe('orderBelongsToRouteZone', () => {
+    it('matches when either side is null/undefined or both match, and rejects mismatched zones', () => {
+      expect(orderBelongsToRouteZone(null, null)).toBe(true);
+      expect(orderBelongsToRouteZone(null, 'z1')).toBe(true);
+      expect(orderBelongsToRouteZone('z1', null)).toBe(true);
+      expect(orderBelongsToRouteZone(undefined, 'z1')).toBe(true);
+      expect(orderBelongsToRouteZone('z1', 'z1')).toBe(true);
+      expect(orderBelongsToRouteZone('z1', 'z2')).toBe(false);
     });
   });
 

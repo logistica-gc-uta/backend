@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import type { GeoPoint } from '../routes/algorithms/geo.util.js';
+export type { GeoPoint } from '../routes/algorithms/geo.util.js';
 
 export const PlanningIneligibilityReason = {
   MISSING_DELIVERY_COORDINATES: 'MISSING_DELIVERY_COORDINATES',
@@ -97,9 +98,17 @@ export function evaluateCoordinatePairStatus(
   return 'invalid';
 }
 
+export function orderBelongsToRouteZone(
+  orderZoneId: string | null | undefined,
+  routeZoneId: string | null | undefined,
+): boolean {
+  return routeZoneId == null || orderZoneId == null || orderZoneId === routeZoneId;
+}
+
 export function evaluatePlanningEligibility(
   order: { deliveryLat?: number | null; deliveryLng?: number | null },
   zone?: { depotLat?: number | null; depotLng?: number | null } | null,
+  storeOrigin?: GeoPoint | null,
 ): { deliveryLocation: GeoPoint | null; planningEligibility: PlanningEligibility } {
   const reasons: PlanningIneligibilityReason[] = [];
 
@@ -110,14 +119,17 @@ export function evaluatePlanningEligibility(
     reasons.push(PlanningIneligibilityReason.INVALID_DELIVERY_COORDINATES);
   }
 
-  if (!zone) {
-    reasons.push(PlanningIneligibilityReason.MISSING_ZONE);
-  } else {
-    const depotStatus = evaluateCoordinatePairStatus(zone.depotLat, zone.depotLng);
-    if (depotStatus === 'missing') {
+  const hasValidStoreOrigin =
+    storeOrigin != null && evaluateCoordinatePairStatus(storeOrigin.lat, storeOrigin.lng) === 'valid';
+  const depotStatus = zone ? evaluateCoordinatePairStatus(zone.depotLat, zone.depotLng) : null;
+
+  if (depotStatus === 'invalid') {
+    reasons.push(PlanningIneligibilityReason.INVALID_ZONE_DEPOT_COORDINATES);
+  } else if (!hasValidStoreOrigin) {
+    if (!zone) {
+      reasons.push(PlanningIneligibilityReason.MISSING_ZONE);
+    } else if (depotStatus === 'missing') {
       reasons.push(PlanningIneligibilityReason.MISSING_ZONE_DEPOT_COORDINATES);
-    } else if (depotStatus === 'invalid') {
-      reasons.push(PlanningIneligibilityReason.INVALID_ZONE_DEPOT_COORDINATES);
     }
   }
 

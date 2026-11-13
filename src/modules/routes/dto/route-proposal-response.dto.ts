@@ -55,11 +55,11 @@ export class RoadGeometryDto {
 }
 
 export class RouteProposalDto {
-  @ApiProperty({ format: 'uuid' })
-  zoneId!: string;
+  @ApiProperty({ format: 'uuid', type: String, nullable: true })
+  zoneId!: string | null;
 
-  @ApiProperty({ example: 'CEN-01' })
-  zoneCode!: string;
+  @ApiProperty({ example: 'CEN-01', type: String, nullable: true })
+  zoneCode!: string | null;
 
   @ApiProperty({ type: GeoPointDto, description: 'Depot where the route starts and ends' })
   depot!: GeoPointDto;
@@ -200,6 +200,20 @@ export class RouteProposalResponseDto {
 
   @ApiProperty({ example: 'America/Guayaquil' })
   timeZone!: string;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'True when date matches the current operational day in America/Guayaquil; non-today dates are read-only previews',
+  })
+  isToday!: boolean;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'True only when isToday is true so proposals for date can be confirmed with POST /routes and assigned',
+  })
+  canConfirm!: boolean;
 
   @ApiProperty({ example: 4 })
   capacity!: number;

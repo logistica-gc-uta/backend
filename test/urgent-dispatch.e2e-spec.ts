@@ -809,13 +809,26 @@ describe('Issue12 dispatch: PostgreSQL + actual JWT HTTP', () => {
     await db.orm.public.Order.where({ id: future.id }).update({
       scheduledDeliveryDate: nextDay,
     });
-    const futureRoute = (
-      await api('post', '/routes', {
+    const futureRoute = await db.transaction(async (tx) => {
+      const created = await tx.orm.public.Route.create({
         zoneId: ids.zone,
-        routeDate: nextDay.toString(),
-        orderIds: [future.id],
-      }).expect(201)
-    ).body;
+        date: nextDay,
+        status: 'DRAFT',
+      });
+      await tx.orm.public.OrderClaim.create({
+        orderId: future.id,
+        routeId: created.id,
+        claimedAt: nextDay,
+      });
+      await tx.orm.public.RouteStop.create({
+        routeId: created.id,
+        orderId: future.id,
+        sequence: 1,
+        outcome: 'PENDING',
+        isLegacy: false,
+      });
+      return created;
+    });
     await intervene({
       action: 'MOVE',
       routeId: route.id,

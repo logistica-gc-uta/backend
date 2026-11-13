@@ -8,7 +8,12 @@ import {
   startOwnedContainer,
   cleanupOwnedResources,
 } from './geolocation-migration.fixtures.js';
-import { PROPOSAL_DATE } from './route-assignment.fixtures.js';
+import {
+  PROPOSAL_DATE,
+  PROPOSAL_DAY,
+  PROPOSAL_TOMORROW_DAY,
+  PROPOSAL_YESTERDAY_DAY,
+} from './route-assignment.fixtures.js';
 import { RouteProgressService } from '../src/modules/routes/route-progress.service.js';
 
 const LEGACY = 'fd541a2e-d9cb-4b09-8d9d-5c21e527cb7d';
@@ -188,15 +193,48 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
       userId: user.id,
       vehicle: 'Fixture',
     });
-    const futureRoute = await post('', {
+    // A route for tomorrow cannot be confirmed/assigned in advance (#49); persist the post-reschedule assigned route directly to verify snapshot immutability.
+    await post('', {
       zoneId: 'zone',
       orderIds: [orderId],
       routeDate: scheduled.toString(),
-    }).expect(201);
-    const future = futureRoute.body.id;
-    await post(`/${future}/assign`, { driverId: driver.id }).expect(200);
+    }).expect(409);
+    const future = randomUUID();
+    await host.db.transaction(async (tx) => {
+      const now = Temporal.Now.instant();
+      await tx.orm.public.Route.create({
+        id: future,
+        status: 'ASSIGNED',
+        driverId: driver.id,
+        zoneId: 'zone',
+        date: scheduled,
+      });
+      await tx.orm.public.RouteStop.create({
+        routeId: future,
+        orderId,
+        sequence: 1,
+        outcome: 'PENDING',
+        isLegacy: false,
+        createdAt: now,
+      });
+      await tx.orm.public.OrderClaim.create({
+        routeId: future,
+        orderId,
+        claimedAt: now,
+      });
+      await tx.orm.public.DriverReservation.create({
+        routeId: future,
+        driverId: driver.id,
+        reservedAt: now,
+      });
+      await tx.orm.public.Order.where({ id: orderId }).update({
+        status: 'ASSIGNED',
+        routeId: future,
+        stopOrder: 1,
+      });
+    });
     const historic = (await get(`/routes/${routeId}`).expect(200)).body;
-    expect(historic.date).toBe('2026-10-10T00:00:00Z');
+    expect(historic.date).toBe(PROPOSAL_DATE);
     expect(historic.stops[0]).toMatchObject({
       id: stopId,
       routeId,
@@ -253,7 +291,7 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
     expect(
       (
         await get(
-          '/drivers/me/routes?date=2026-10-11',
+          `/drivers/me/routes?date=${PROPOSAL_TOMORROW_DAY}`,
           'driver-user',
           'DRIVER',
         ).expect(200)
@@ -262,7 +300,7 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
     expect(
       (
         await get(
-          '/drivers/me/routes?date=2026-10-09',
+          `/drivers/me/routes?date=${PROPOSAL_DAY}`,
           'driver-user',
           'DRIVER',
         ).expect(200)
@@ -271,7 +309,7 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
     for (const query of [
       'date=2026-02-30',
       'driverId=driver',
-      'date=2026-10-09&date=2026-10-10',
+      `date=${PROPOSAL_YESTERDAY_DAY}&date=${PROPOSAL_DAY}`,
     ])
       await get(`/drivers/me/routes?${query}`, 'driver-user', 'DRIVER').expect(
         400,

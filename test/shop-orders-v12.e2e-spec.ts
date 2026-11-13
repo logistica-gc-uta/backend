@@ -327,14 +327,23 @@ describe('Shop Orders v1.2 History, Detail & Immutable Receipt E2E (owned Postgr
       expect(initialDetail.body.timeline).toHaveLength(1);
       expect(initialDetail.body.timeline[0].code).toBe('PENDING');
 
-      // 2. ADMIN creates operational route via public API for both orders
+      // 2. Move purchased orders to current operational day and create route via public API
+      const todayNoon = Temporal.Now.zonedDateTimeISO('America/Guayaquil')
+        .toPlainDate()
+        .toZonedDateTime({ timeZone: 'America/Guayaquil', plainTime: '12:00:00' })
+        .toInstant();
+      for (const id of [order1.orderId, order2.orderId]) {
+        await db.client.orm.public.Order.where({ id }).update({
+          scheduledDeliveryDate: todayNoon,
+        });
+      }
       const createRouteRes = await http()
         .post('/api/v1/routes')
         .set(auth(users.adminToken))
         .send({
           zoneId: catalog.zoneId,
           orderIds: [order1.orderId, order2.orderId],
-          routeDate: '2026-11-15T15:00:00Z',
+          routeDate: todayNoon.toString(),
         });
       expect(createRouteRes.status).toBe(201);
       const routeId = createRouteRes.body.id;

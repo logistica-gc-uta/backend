@@ -456,17 +456,21 @@ describe('post-commit realtime producers', () => {
   });
 
   it('publishes assignment route and order state without early availability', async () => {
+    const todayNoon = Temporal.Now.zonedDateTimeISO('America/Guayaquil')
+      .toPlainDate()
+      .toZonedDateTime({ timeZone: 'America/Guayaquil', plainTime: '12:00:00' })
+      .toInstant();
     const rows: Rows = {
       User: [
         { id: 'admin', role: 'ADMIN' },
         { id: 'driver-user', role: 'DRIVER' },
       ],
       Driver: [{ id: 'driver', userId: 'driver-user', isAvailable: true }],
-      Route: [{ id: 'route', status: 'DRAFT', driverId: null, zoneId: 'zone', date: instant, createdAt: instant }],
+      Route: [{ id: 'route', status: 'DRAFT', driverId: null, zoneId: 'zone', date: todayNoon, createdAt: todayNoon }],
       RouteStop: [{ id: 'stop', routeId: 'route', orderId: 'order', sequence: 1, outcome: 'PENDING', isLegacy: false }],
-      OrderClaim: [{ id: 'claim', routeId: 'route', orderId: 'order', claimedAt: instant, releasedAt: null }],
+      OrderClaim: [{ id: 'claim', routeId: 'route', orderId: 'order', claimedAt: todayNoon, releasedAt: null }],
       DriverReservation: [],
-      Order: [{ id: 'order', zoneId: 'zone', routeId: null, status: 'PENDING', requiresAdministrativeReview: false, scheduledDeliveryDate: instant }],
+      Order: [{ id: 'order', zoneId: 'zone', routeId: null, status: 'PENDING', requiresAdministrativeReview: false, scheduledDeliveryDate: todayNoon }],
     };
     const { client } = database(rows);
     const events = publisher();
@@ -494,11 +498,15 @@ describe('post-commit realtime producers', () => {
   });
 
   it('publishes a draft route created through the public assignment method', async () => {
+    const todayNoon = Temporal.Now.zonedDateTimeISO('America/Guayaquil')
+      .toPlainDate()
+      .toZonedDateTime({ timeZone: 'America/Guayaquil', plainTime: '12:00:00' })
+      .toInstant();
     const rows: Rows = {
       User: [{ id: 'admin', role: 'ADMIN' }],
       Zone: [{ id: 'zone' }],
       Route: [],
-      Order: [{ id: 'order', zoneId: 'zone', status: 'PENDING', requiresAdministrativeReview: false, scheduledDeliveryDate: instant }],
+      Order: [{ id: 'order', zoneId: 'zone', status: 'PENDING', requiresAdministrativeReview: false, scheduledDeliveryDate: todayNoon }],
       OrderClaim: [],
       RouteStop: [],
     };
@@ -512,7 +520,7 @@ describe('post-commit realtime producers', () => {
     );
 
     const result = await service.confirmDraft(
-      { zoneId: 'zone', routeDate: instant.toString(), orderIds: ['order'] },
+      { zoneId: 'zone', routeDate: todayNoon.toString(), orderIds: ['order'] },
       'admin',
     );
 

@@ -142,4 +142,16 @@ describe('RouteExecutionService.start', () => {
     );
     expect(route.startedAt).toBeNull();
   });
+  it.each([
+    [null, null],
+    [null, 'zone'],
+    ['zone', null],
+  ])('allows starting when orderZone=%s and routeZone=%s', async (orderZone, routeZone) => {
+    order.zoneId = orderZone;
+    route.zoneId = routeZone;
+    await expect(service.start('route', 'user')).resolves.toMatchObject({
+      id: 'route',
+      status: 'IN_PROGRESS',
+    });
+  });
 });

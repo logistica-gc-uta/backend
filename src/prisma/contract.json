@@ -3512,7 +3512,7 @@
                 }
               },
               "zoneId": {
-                "nullable": false,
+                "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
@@ -3601,7 +3601,7 @@
               },
               "zone": {
                 "cardinality": "N:1",
-                "nullable": false,
+                "nullable": true,
                 "on": {
                   "localFields": [
                     "zoneId"
@@ -5609,8 +5609,8 @@
             "dispatchIntervention": {
               "checks": [
                 {
-                  "expression": "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500",
-                  "name": "dispatch_audit_valid_f0c6b073",
+                  "expression": "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'RELEASE_DRAFT') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500",
+                  "name": "dispatch_audit_valid_4c96a65c",
                   "prefix": "dispatch_audit_valid"
                 }
               ],
@@ -7851,7 +7851,7 @@
                 "zoneId": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
-                  "nullable": false
+                  "nullable": true
                 }
               },
               "foreignKeys": [
@@ -9000,7 +9000,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "43c5b496e829fac9432660009b97051986b46f1c7907aebc529e25875912b1a6"
+    "storageHash": "44b4bf8ae3b74cff9e5e2d8511cfe996e38809941f914594e5b4cf2d17f1e0a2"
   },
   "execution": {
     "executionHash": "c6d45c7e494f6d496c74f5913d1dbd508bf7f38e7dac3f1b4b42b6bcd2b2c921",

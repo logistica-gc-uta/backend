@@ -10,8 +10,8 @@ export class RouteAssignmentResponseDto {
   @ApiProperty({ type: String, nullable: true })
   driverId!: string | null;
 
-  @ApiProperty()
-  zoneId!: string;
+  @ApiProperty({ type: String, nullable: true })
+  zoneId!: string | null;
 
   @ApiProperty({ format: 'date-time' })
   date!: string;

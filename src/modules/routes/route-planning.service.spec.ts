@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { haversineKm } from './algorithms/geo.util.js';
+import { PlanningIneligibilityReason } from '../orders/order-geography.util.js';
 import { roundKm } from './algorithms/route-metrics.js';
 import {
   DEFAULT_TIME_WINDOW_MARGIN_MINUTES,
@@ -494,5 +495,156 @@ describe('RoutePlanningService', () => {
     const backward = await service.propose({ date: DAY });
 
     expect(backward).toEqual(forward);
+  });
+
+  it('marca isToday y canConfirm como false en preview futura o pasada, y true para el día operativo actual', async () => {
+    const today = Temporal.Now.zonedDateTimeISO('America/Guayaquil').toPlainDate();
+    const tomorrow = today.add({ days: 1 }).toString();
+    const yesterday = today.subtract({ days: 1 }).toString();
+
+    await expect(service.propose({ date: today.toString() })).resolves.toMatchObject({
+      date: today.toString(),
+      isToday: true,
+      canConfirm: true,
+    });
+    await expect(service.propose({ date: tomorrow })).resolves.toMatchObject({
+      date: tomorrow,
+      isToday: false,
+      canConfirm: false,
+    });
+    await expect(service.propose({ date: yesterday })).resolves.toMatchObject({
+      date: yesterday,
+      isToday: false,
+      canConfirm: false,
+    });
+    expect(writes).not.toHaveBeenCalled();
+  });
+
+  it('plans zoneId null orders using StoreCoverage origin and returns zoneId null and zoneCode null', async () => {
+    const coverageService = {
+      getCoverage: async () => ({
+        configured: true,
+        location: { lat: -1.241, lng: -78.619 },
+      }),
+    } as any;
+    const coveragePlanner = new RoutePlanningService(prisma, undefined, coverageService);
+    orders = [
+      {
+        id: 'store-order-1',
+        zoneId: null,
+        zone: null,
+        deliveryAddress: 'Av. Cevallos 100, Ambato',
+        status: 'PENDING',
+        requiresAdministrativeReview: false,
+        scheduledDeliveryDate: NOON,
+        deliveryLat: -1.2491,
+        deliveryLng: -78.6167,
+      },
+    ];
+
+    const result = await coveragePlanner.propose({ date: DAY });
+
+    expect(result.excluded).toEqual([]);
+    expect(result.proposals).toHaveLength(1);
+    expect(result.proposals[0]).toMatchObject({
+      zoneId: null,
+      zoneCode: null,
+      depot: { lat: -1.241, lng: -78.619 },
+      orderIds: ['store-order-1'],
+    });
+  });
+
+  it('excludes zoneId null order as MISSING_ZONE when StoreCoverage is unconfigured', async () => {
+    const coverageService = {
+      getCoverage: async () => ({ configured: false }),
+    } as any;
+    const coveragePlanner = new RoutePlanningService(prisma, undefined, coverageService);
+    orders = [
+      {
+        id: 'store-order-1',
+        zoneId: null,
+        zone: null,
+        deliveryAddress: 'Av. Cevallos 100, Ambato',
+        status: 'PENDING',
+        requiresAdministrativeReview: false,
+        scheduledDeliveryDate: NOON,
+        deliveryLat: -1.2491,
+        deliveryLng: -78.6167,
+      },
+    ];
+
+    const result = await coveragePlanner.propose({ date: DAY });
+
+    expect(result.proposals).toEqual([]);
+    expect(result.excluded).toEqual([
+      {
+        orderId: 'store-order-1',
+        zoneId: null,
+        reasons: [PlanningIneligibilityReason.MISSING_ZONE],
+      },
+    ]);
+  });
+
+  it('plans zoned order without zone depot coordinates using StoreCoverage origin and separates zoneId null and zoned proposals', async () => {
+    const coverageService = {
+      getCoverage: async () => ({
+        configured: true,
+        location: { lat: -1.241, lng: -78.619 },
+      }),
+    } as any;
+    const coveragePlanner = new RoutePlanningService(prisma, undefined, coverageService);
+    const zNoDepot = zone('z-nodepot', 'NOR-02', null);
+    orders = [
+      {
+        id: 'store-order',
+        zoneId: null,
+        zone: null,
+        deliveryAddress: 'Av. Cevallos 100, Ambato',
+        status: 'PENDING',
+        requiresAdministrativeReview: false,
+        scheduledDeliveryDate: NOON,
+        deliveryLat: -1.2491,
+        deliveryLng: -78.6167,
+      },
+      order('zoned-order', zNoDepot, { deliveryLat: -1.251, deliveryLng: -78.622 }),
+    ];
+
+    const result = await coveragePlanner.propose({ date: DAY });
+
+    expect(result.excluded).toEqual([]);
+    expect(result.proposals).toHaveLength(2);
+    expect(result.proposals.map((p) => [p.zoneId, p.zoneCode, p.orderIds])).toEqual(
+      expect.arrayContaining([
+        [null, null, ['store-order']],
+        ['z-nodepot', 'NOR-02', ['zoned-order']],
+      ]),
+    );
+  });
+
+  it('uses STORE label in MAX_ORDERS_PER_ZONE error when zoneId is null', async () => {
+    const coverageService = {
+      getCoverage: async () => ({
+        configured: true,
+        location: { lat: -1.241, lng: -78.619 },
+      }),
+    } as any;
+    const coveragePlanner = new RoutePlanningService(prisma, undefined, coverageService);
+    orders = Array.from({ length: MAX_ORDERS_PER_ZONE + 1 }, (_, i) => ({
+      id: 'o-' + i,
+      zoneId: null,
+      zone: null,
+      deliveryAddress: 'Dir ' + i,
+      status: 'PENDING',
+      requiresAdministrativeReview: false,
+      scheduledDeliveryDate: NOON,
+      deliveryLat: -1.2491,
+      deliveryLng: -78.6167,
+    }));
+
+    await expect(coveragePlanner.propose({ date: DAY })).rejects.toThrow(
+      new UnprocessableEntityException(
+        `Zone 'STORE' has more than ${MAX_ORDERS_PER_ZONE} plannable orders for ${DAY}; narrow the request`,
+      ),
+    );
   });
 });

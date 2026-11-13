@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { nowInstant } from '../../common/temporal.util.js';
+import { orderBelongsToRouteZone } from '../orders/order-geography.util.js';
 import { OrderStatus } from '../orders/dto/update-order-status.dto.js';
 import { validateOrderTransition } from '../orders/order-status.policy.js';
 import {
@@ -434,7 +435,7 @@ export class RouteProgressService {
             ? { actorId, status: OrderStatus.DELIVERED }
             : { actorId, reason: attempt.failureReason, context: description };
         if (
-          order.zoneId !== route.zoneId ||
+          !orderBelongsToRouteZone(order.zoneId, route.zoneId) ||
           Temporal.Instant.compare(attempt.recordedAt, route.startedAt!) < 0 ||
           Temporal.Instant.compare(attempt.recordedAt, nowInstant()) > 0 ||
           !isDeepStrictEqual(attempt.requestPayload, expectedPayload) ||

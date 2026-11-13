@@ -1,0 +1,164 @@
+[
+  {
+    "id": "dropCheckConstraint.dispatchIntervention.dispatch_audit_valid_f0c6b073",
+    "label": "Drop check constraint \"dispatch_audit_valid_f0c6b073\" on \"dispatchIntervention\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "dispatch_audit_valid_f0c6b073",
+        "table": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"dispatch_audit_valid_f0c6b073\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatch_audit_valid_f0c6b073",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"dispatch_audit_valid_f0c6b073\"",
+        "sql": "ALTER TABLE \"public\".\"dispatchIntervention\" DROP CONSTRAINT \"dispatch_audit_valid_f0c6b073\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"dispatch_audit_valid_f0c6b073\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatch_audit_valid_f0c6b073",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "alterNullability.dropNotNull.route.zoneId",
+    "label": "Drop NOT NULL on \"route\".\"zoneId\"",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "zoneId",
+        "table": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"zoneId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "zoneId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop NOT NULL on \"zoneId\"",
+        "sql": "ALTER TABLE \"public\".\"route\" ALTER COLUMN \"zoneId\" DROP NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"zoneId\" is nullable",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3 AND \"is_nullable\" = $4)) AS \"result\"",
+        "params": [
+          "public",
+          "route",
+          "zoneId",
+          "YES"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.dispatchIntervention.dispatch_audit_valid_4c96a65c",
+    "label": "Add check constraint \"dispatch_audit_valid_4c96a65c\" on \"dispatchIntervention\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "dispatch_audit_valid_4c96a65c",
+        "table": "dispatchIntervention"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"dispatch_audit_valid_4c96a65c\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatch_audit_valid_4c96a65c",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"dispatch_audit_valid_4c96a65c\"",
+        "sql": "ALTER TABLE \"public\".\"dispatchIntervention\" ADD CONSTRAINT \"dispatch_audit_valid_4c96a65c\" CHECK (action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'RELEASE_DRAFT') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"dispatch_audit_valid_4c96a65c\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "dispatch_audit_valid_4c96a65c",
+          "public",
+          "\"public\".\"dispatchIntervention\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "route.zone-id-optional-guards",
+    "label": "Allow StoreCoverage-era Route.zoneId NULL alongside Order.zoneId NULL in route/stop guards",
+    "operationClass": "widening",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "objectType": "table",
+        "schema": "public",
+        "name": "route"
+      }
+    },
+    "precheck": [
+      {
+        "description": "require route_integrity_guard and route_stop_integrity_guard before updating",
+        "sql": "SELECT (to_regprocedure('public.route_integrity_guard()') IS NOT NULL AND to_regprocedure('public.route_stop_integrity_guard()') IS NOT NULL) AS result"
+      }
+    ],
+    "execute": [
+      {
+        "description": "update route_integrity_guard and route_stop_integrity_guard to require zone parity only when both route.zoneId and order.zoneId are non-null",
+        "sql": "CREATE OR REPLACE FUNCTION public.route_integrity_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nBEGIN\n  IF TG_OP = 'DELETE' THEN\n    IF OLD.status IS NULL OR OLD.status IN ('IN_PROGRESS', 'COMPLETED') THEN\n      RAISE EXCEPTION 'Route structure is frozen or unverified legacy history' USING ERRCODE = '23514';\n    END IF;\n    RETURN OLD;\n  END IF;\n  IF TG_OP = 'UPDATE' THEN\n    IF OLD.status IS NULL AND NEW IS DISTINCT FROM OLD THEN\n      RAISE EXCEPTION 'Unverified legacy route cannot be rewritten' USING ERRCODE = '23514';\n    END IF;\n    IF NEW.id IS DISTINCT FROM OLD.id OR NEW.\"createdAt\" IS DISTINCT FROM OLD.\"createdAt\" THEN\n      RAISE EXCEPTION 'Route history identity is immutable' USING ERRCODE = '23514';\n    END IF;\n    IF OLD.status IN ('IN_PROGRESS', 'COMPLETED') AND\n      (NEW.\"driverId\", NEW.\"zoneId\", NEW.date) IS DISTINCT FROM (OLD.\"driverId\", OLD.\"zoneId\", OLD.date) THEN\n      RAISE EXCEPTION 'Route structure is frozen' USING ERRCODE = '23514';\n    END IF;\n    -- Irreversible freeze boundaries, not the complete service transition graph.\n    IF OLD.status = 'COMPLETED' AND NEW.status IS DISTINCT FROM OLD.status OR\n      OLD.status = 'IN_PROGRESS' AND NEW.status NOT IN ('IN_PROGRESS', 'COMPLETED') THEN\n      RAISE EXCEPTION 'Frozen lifecycle cannot regress to a mutable state' USING ERRCODE = '23514';\n    END IF;\n    IF OLD.status IS NOT NULL AND NEW.status IS NULL THEN\n      RAISE EXCEPTION 'Verified lifecycle cannot become unverified' USING ERRCODE = '23514';\n    END IF;\n    IF (OLD.\"startedAt\" IS NOT NULL OR OLD.\"startedById\" IS NOT NULL) AND\n      (NEW.\"startedAt\", NEW.\"startedById\") IS DISTINCT FROM (OLD.\"startedAt\", OLD.\"startedById\") OR\n      (OLD.\"completedAt\" IS NOT NULL OR OLD.\"completedById\" IS NOT NULL) AND\n      (NEW.\"completedAt\", NEW.\"completedById\") IS DISTINCT FROM (OLD.\"completedAt\", OLD.\"completedById\") OR\n      (OLD.\"returnedAt\" IS NOT NULL OR OLD.\"returnedById\" IS NOT NULL) AND\n      (NEW.\"returnedAt\", NEW.\"returnedById\") IS DISTINCT FROM (OLD.\"returnedAt\", OLD.\"returnedById\") THEN\n      RAISE EXCEPTION 'Recorded lifecycle event evidence is immutable' USING ERRCODE = '23514';\n    END IF;\n  END IF;\n  IF (NEW.\"startedAt\" IS NULL) <> (NEW.\"startedById\" IS NULL) OR\n     (NEW.\"completedAt\" IS NULL) <> (NEW.\"completedById\" IS NULL) OR\n     (NEW.\"returnedAt\" IS NULL) <> (NEW.\"returnedById\" IS NULL) THEN\n    RAISE EXCEPTION 'Lifecycle events require paired timestamps and actors' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.status IS NULL AND (NEW.\"startedAt\" IS NOT NULL OR NEW.\"completedAt\" IS NOT NULL OR NEW.\"returnedAt\" IS NOT NULL) THEN\n    RAISE EXCEPTION 'Unverified legacy route cannot invent events' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.\"startedAt\" IS NOT NULL AND NEW.status NOT IN ('IN_PROGRESS', 'COMPLETED') OR\n    (NEW.\"completedAt\" IS NOT NULL OR NEW.\"returnedAt\" IS NOT NULL) AND NEW.status <> 'COMPLETED' THEN\n    RAISE EXCEPTION 'Recorded event is incompatible with lifecycle state' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.status = 'IN_PROGRESS' AND NEW.\"driverId\" IS NULL THEN\n    RAISE EXCEPTION 'IN_PROGRESS requires an assigned driver' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.status IS NOT NULL THEN\n    IF EXISTS (SELECT 1 FROM public.\"routeStop\" s JOIN public.\"order\" o ON o.id = s.\"orderId\"\n      WHERE s.\"routeId\" = NEW.id AND (s.\"isLegacy\" OR s.sequence IS NULL OR s.sequence NOT BETWEEN 1 AND 4\n        OR (NEW.\"zoneId\" IS NOT NULL AND o.\"zoneId\" IS NOT NULL AND o.\"zoneId\" IS DISTINCT FROM NEW.\"zoneId\"))) THEN\n      RAISE EXCEPTION 'Verified route requires valid nonlegacy sequence and same zone' USING ERRCODE = '23514';\n    END IF;\n    IF (SELECT COUNT(*) FROM public.\"routeStop\" WHERE \"routeId\" = NEW.id) > 4 THEN\n      RAISE EXCEPTION 'Route maximum is four stops' USING ERRCODE = '23514';\n    END IF;\n  END IF;\n  RETURN NEW;\nEND $$;\n\nCREATE OR REPLACE FUNCTION public.route_stop_integrity_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$\nDECLARE\n  route_ids text[];\n  route_row record;\n  old_stop_id text;\n  structural boolean;\n  order_zone text;\n  destination_zone text;\n  destination_status text;\nBEGIN\n  IF TG_OP = 'INSERT' THEN\n    route_ids := ARRAY[NEW.\"routeId\"];\n    structural := true;\n  ELSIF TG_OP = 'DELETE' THEN\n    route_ids := ARRAY[OLD.\"routeId\"];\n    structural := true;\n  ELSE\n    route_ids := ARRAY[OLD.\"routeId\", NEW.\"routeId\"];\n    old_stop_id := OLD.id;\n    structural := (NEW.id, NEW.\"routeId\", NEW.\"orderId\", NEW.sequence, NEW.\"isLegacy\", NEW.\"createdAt\")\n      IS DISTINCT FROM (OLD.id, OLD.\"routeId\", OLD.\"orderId\", OLD.sequence, OLD.\"isLegacy\", OLD.\"createdAt\");\n  END IF;\n  FOR route_row IN SELECT id, status, \"zoneId\" FROM public.route\n    WHERE id = ANY(route_ids) ORDER BY id FOR UPDATE LOOP\n    IF route_row.status IS NULL THEN\n      RAISE EXCEPTION 'Unverified legacy stop history cannot be rewritten' USING ERRCODE = '23514';\n    END IF;\n    IF structural AND route_row.status IN ('IN_PROGRESS', 'COMPLETED') THEN\n      RAISE EXCEPTION 'Route stop structure is frozen' USING ERRCODE = '23514';\n    END IF;\n    IF TG_OP <> 'DELETE' AND route_row.id = NEW.\"routeId\" THEN\n      destination_zone := route_row.\"zoneId\";\n      destination_status := route_row.status;\n    END IF;\n  END LOOP;\n  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;\n  IF TG_OP = 'UPDATE' AND NEW.outcome IS DISTINCT FROM OLD.outcome AND destination_status <> 'IN_PROGRESS' THEN\n    RAISE EXCEPTION 'Visit outcome changes require IN_PROGRESS' USING ERRCODE = '23514';\n  END IF;\n  IF TG_OP = 'INSERT' AND NEW.outcome IS DISTINCT FROM 'PENDING' THEN\n    RAISE EXCEPTION 'New verified visit outcome must be PENDING' USING ERRCODE = '23514';\n  END IF;\n  IF NEW.\"isLegacy\" OR NEW.sequence IS NULL OR NEW.sequence NOT BETWEEN 1 AND 4 THEN\n    RAISE EXCEPTION 'Verified stop requires nonlegacy sequence 1 through 4' USING ERRCODE = '23514';\n  END IF;\n  SELECT \"zoneId\" INTO order_zone FROM public.\"order\" WHERE id = NEW.\"orderId\" FOR SHARE;\n  IF destination_zone IS NOT NULL AND order_zone IS NOT NULL AND order_zone IS DISTINCT FROM destination_zone THEN\n    RAISE EXCEPTION 'Route stop order must belong to the same zone' USING ERRCODE = '23514';\n  END IF;\n  IF (SELECT COUNT(*) FROM public.\"routeStop\" WHERE \"routeId\" = NEW.\"routeId\" AND (old_stop_id IS NULL OR id <> old_stop_id)) >= 4 THEN\n    RAISE EXCEPTION 'Route maximum is four stops' USING ERRCODE = '23514';\n  END IF;\n  RETURN NEW;\nEND $$;"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "route_stop_integrity_guard checks destination_zone IS NOT NULL before rejecting mixed zones",
+        "sql": "SELECT position('destination_zone IS NOT NULL AND order_zone IS NOT NULL AND order_zone IS DISTINCT FROM destination_zone' in replace(pg_get_functiondef('public.route_stop_integrity_guard()'::regprocedure), chr(10), ' ')) > 0 AS result"
+      },
+      {
+        "description": "route_integrity_guard checks NEW.\"zoneId\" IS NOT NULL before rejecting mixed zones",
+        "sql": "SELECT position('NEW.\"zoneId\" IS NOT NULL AND o.\"zoneId\" IS NOT NULL AND o.\"zoneId\" IS DISTINCT FROM NEW.\"zoneId\"' in replace(pg_get_functiondef('public.route_integrity_guard()'::regprocedure), chr(10), ' ')) > 0 AS result"
+      }
+    ]
+  }
+]

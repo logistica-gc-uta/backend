@@ -70,7 +70,7 @@ describe('CI Workflow Configuration & Security Contract', () => {
     const runner = fs.readFileSync(path.resolve(process.cwd(), 'test/run-e2e-isolated.mjs'), 'utf8');
     expect(fs.readdirSync(path.resolve(process.cwd(), 'test')).filter(
       (file) => file.endsWith('.e2e-spec.ts'),
-    )).toHaveLength(41);
+    )).toHaveLength(42);
     expect(runner).toContain("const jest = ['run', 'test:e2e', '--runInBand'];");
     expect(runner).toContain("[...jest, '--listTests', '--json']");
     expect(runner).toContain("[...jest, '--runTestsByPath', ...managed], { env: clean }");
