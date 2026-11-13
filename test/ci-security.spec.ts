@@ -56,7 +56,7 @@ describe('CI Workflow Configuration & Security Contract', () => {
     );
   });
 
-  it('delegates all 42 suites to owned runners without a shared CI database or JWT', () => {
+  it('delegates all 43 suites to owned runners without a shared CI database or JWT', () => {
     expect(workflowContent).not.toMatch(/^\s*(services|DATABASE_URL|JWT_SECRET|POSTGRES_DB):/m);
     expect(workflowContent).not.toContain('secrets.');
     expect(workflowContent).toContain('run: docker pull postgres:16-alpine');
