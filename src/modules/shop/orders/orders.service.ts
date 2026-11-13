@@ -3,7 +3,7 @@ import { PrismaService } from '../../../database/prisma.service.js';
 import { shopError } from '../shop-http.filter.js';
 import { toIsoTimestamp } from '../settings/shop-settings.service.js';
 import { OrderStatus, ShopOrdersQueryDto } from './dto/orders-query.dto.js';
-import { OrderListDto, OrderSource, OrderSummaryDto } from './dto/order-summary.dto.js';
+import { OrderListDto, OrderPickupDto, OrderSource, OrderSummaryDto } from './dto/order-summary.dto.js';
 import { OrderDetailDto, SoldItemDto, TimelineEntryDto } from './dto/order-detail.dto.js';
 import { ReceiptDto } from './dto/receipt.dto.js';
 
@@ -27,6 +27,10 @@ interface RawOrderSummaryRow {
   receiptId: string | null;
   taxEnabled: boolean | null;
   snapshot: unknown;
+  /** Retiro en tienda acordado (#50) y marca de gestión pendiente del pedido. */
+  pickupAgreedAt?: unknown;
+  pickupConfirmedAt?: unknown;
+  pendingReview?: boolean | null;
 }
 
 interface RawOrderDetailRow extends RawOrderSummaryRow {
@@ -190,6 +194,16 @@ function resolveFrozenScheduledDate(snapScheduledDate: unknown, rowScheduledDate
   throw shopError(HttpStatus.INTERNAL_SERVER_ERROR, 'INTERNAL_ERROR', 'Missing scheduled delivery date in frozen record');
 }
 
+/** Seguimiento del retiro en tienda (#50): `pickup` y si la entrega espera una gestión de ADMIN. */
+function pickupProjection(row: RawOrderSummaryRow): { pickup: OrderPickupDto | null; pendingManagement: boolean } {
+  if (!row.pickupAgreedAt) return { pickup: null, pendingManagement: row.pendingReview === true };
+  const confirmed = row.pickupConfirmedAt ? toIsoTimestamp(row.pickupConfirmedAt) : null;
+  return {
+    pickup: { state: confirmed ? 'PICKED_UP' : 'PENDING_PICKUP', agreedAt: toIsoTimestamp(row.pickupAgreedAt), pickedUpAt: confirmed },
+    pendingManagement: false,
+  };
+}
+
 /**
  * Pedido propio conservado SIN comprobante fiable: se muestra con sus datos operativos (fecha, estado, origen)
  * y todo lo que sale del comprobante en null. Nunca se reconstruyen importes, pago ni ítems con el catálogo actual.
@@ -199,6 +213,7 @@ function unavailableReceiptSummary(row: RawOrderSummaryRow): OrderSummaryDto {
     id: row.id,
     number: null,
     source: toSource(row.source),
+    ...pickupProjection(row),
     receiptAvailable: false,
     createdAt: toIsoTimestamp(row.createdAt),
     scheduledDeliveryDate: row.scheduledDeliveryDate ? toIsoTimestamp(row.scheduledDeliveryDate) : null,
@@ -274,9 +289,13 @@ export class ShopOrdersService {
           r."currency",
           r."id" AS "receiptId",
           r."taxEnabled",
-          r."snapshot"
+          r."snapshot",
+          p."agreedAt" AS "pickupAgreedAt",
+          p."confirmedAt" AS "pickupConfirmedAt",
+          o."requiresAdministrativeReview" AS "pendingReview"
         FROM public."order" o
         LEFT JOIN public."purchaseReceipt" r ON r."orderId" = o."id"
+        LEFT JOIN public."orderPickup" p ON p."orderId" = o."id"
         WHERE o."userId" = ${buyerUserId} AND (r."id" IS NULL OR r."buyerId" = ${buyerUserId})
           AND (${statusFilter} = '' OR o."status"::text = ${statusFilter})
         ORDER BY o."createdAt" DESC, o."id" DESC
@@ -298,6 +317,9 @@ export class ShopOrdersService {
           receiptId: 'pg/text@1',
           taxEnabled: 'pg/bool@1',
           snapshot: 'pg/jsonb@1',
+          pickupAgreedAt: 'pg/timestamptz-temporal@1',
+          pickupConfirmedAt: 'pg/timestamptz-temporal@1',
+          pendingReview: 'pg/bool@1',
         })
         .build();
 
@@ -335,6 +357,7 @@ export class ShopOrdersService {
           id: row.id,
           number: row.number,
           source: toSource(row.source),
+          ...pickupProjection(row),
           receiptAvailable: true,
           createdAt: toIsoTimestamp(row.createdAt),
           scheduledDeliveryDate: scheduledDate,
@@ -389,6 +412,9 @@ export class ShopOrdersService {
           o."deliveryLng",
           o."zoneId",
           z."name" AS "zoneName",
+          p."agreedAt" AS "pickupAgreedAt",
+          p."confirmedAt" AS "pickupConfirmedAt",
+          o."requiresAdministrativeReview" AS "pendingReview",
           r."subtotalCents",
           r."taxAmountCents",
           r."taxRateBps",
@@ -402,6 +428,7 @@ export class ShopOrdersService {
         JOIN public."user" u ON u."id" = o."userId"
         LEFT JOIN public."zone" z ON z."id" = o."zoneId"
         LEFT JOIN public."purchaseReceipt" r ON r."orderId" = o."id"
+        LEFT JOIN public."orderPickup" p ON p."orderId" = o."id"
         WHERE o."id" = ${orderId} AND o."userId" = ${buyerUserId} AND (r."id" IS NULL OR r."buyerId" = ${buyerUserId})
       `
         .returnsRow({
@@ -417,6 +444,9 @@ export class ShopOrdersService {
           deliveryLng: 'pg/float8@1',
           zoneId: 'pg/text@1',
           zoneName: 'pg/text@1',
+          pickupAgreedAt: 'pg/timestamptz-temporal@1',
+          pickupConfirmedAt: 'pg/timestamptz-temporal@1',
+          pendingReview: 'pg/bool@1',
           createdAt: 'pg/timestamptz-temporal@1',
           scheduledDeliveryDate: 'pg/timestamptz-temporal@1',
           status: 'pg/text@1',
@@ -546,6 +576,24 @@ export class ShopOrdersService {
         }
       }
 
+      // Retiro en tienda (#50): el acuerdo y el retiro físico son eventos distintos y ambos quedan en el seguimiento.
+      if (row.pickupAgreedAt) {
+        timelineEntries.push({
+          entityId: `pickup-agreed:${row.id}`,
+          code: 'PICKUP_AGREED',
+          label: 'Pendiente de retiro en tienda',
+          at: toIsoTimestamp(row.pickupAgreedAt),
+        });
+      }
+      if (row.pickupConfirmedAt) {
+        timelineEntries.push({
+          entityId: `pickup-confirmed:${row.id}`,
+          code: 'PICKED_UP',
+          label: 'Entregado: retirado en tienda',
+          at: toIsoTimestamp(row.pickupConfirmedAt),
+        });
+      }
+
       // Sort timeline deterministically by persisted timestamp and entity ID
       timelineEntries.sort((a, b) => {
         const timeDiff = new Date(a.at).getTime() - new Date(b.at).getTime();
@@ -568,6 +616,7 @@ export class ShopOrdersService {
           id: row.id,
           number: null,
           source: toSource(row.source),
+          ...pickupProjection(row),
           receiptAvailable: false,
           createdAt: toIsoTimestamp(row.createdAt),
           scheduledDeliveryDate: scheduled,
@@ -685,6 +734,7 @@ export class ShopOrdersService {
         id: row.id,
         number: row.number,
         source: toSource(row.source),
+        ...pickupProjection(row),
         receiptAvailable: true,
         createdAt: toIsoTimestamp(row.createdAt),
         scheduledDeliveryDate: scheduledDate,

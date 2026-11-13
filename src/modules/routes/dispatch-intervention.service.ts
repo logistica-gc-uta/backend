@@ -117,6 +117,9 @@ export class DispatchInterventionService {
         'deliveryWindowEnd',
       ],
       RESCHEDULE: ['orderId', 'agreementId'],
+      PICKUP_AGREE: ['orderId', 'attemptId'],
+      PICKUP_DECLINE: ['orderId', 'attemptId'],
+      PICKUP_CONFIRM: ['orderId'],
     };
     const required: Record<string, string[]> = {
       CONFIRM: ['orderId', 'fingerprint'],
@@ -127,6 +130,9 @@ export class DispatchInterventionService {
       PRIORITIZE: ['orderId'],
       CONTACT: ['orderId'],
       RESCHEDULE: ['orderId', 'agreementId'],
+      PICKUP_AGREE: ['orderId'],
+      PICKUP_DECLINE: ['orderId'],
+      PICKUP_CONFIRM: ['orderId'],
     };
     const allowed = fields[dto.action];
     if (
@@ -401,6 +407,167 @@ export class DispatchInterventionService {
     return this.response(audit);
   }
 
+  private pickupConflict(code: string, message: string): ConflictException {
+    return new ConflictException({ statusCode: 409, message, error: 'Conflict', code });
+  }
+
+  /**
+   * Pedido, su ruta y su último intento fallido, con el pedido y la ruta bloqueados: base común de las acciones
+   * de retiro (#50). Un pedido ya entregado o cancelado no se gestiona.
+   */
+  private async loadIncident(tx: Transaction, orderId: string) {
+    const db = tx.orm.public;
+    const initial = await db.Order.where({ id: orderId }).first();
+    if (!initial) throw new NotFoundException('Order not found');
+    // Una ruta DRAFT reserva el pedido con un OrderClaim pero todavía no le pone `routeId`: la ruta se busca por la reserva.
+    const reserved = initial.routeId
+      ? null
+      : await db.OrderClaim.where({ orderId: initial.id, releasedAt: null }).first();
+    const routeId = initial.routeId ?? reserved?.routeId ?? null;
+    let route = routeId ? await db.Route.where({ id: routeId }).first() : null;
+    if (route) {
+      if (route.driverId) await this.assignment.lockDriver(tx, route.driverId);
+      route = await db.Route.where({ id: route.id }).update({ id: route.id });
+    }
+    const order = await db.Order.where({ id: initial.id }).update({ id: initial.id });
+    if (!order || order.routeId !== initial.routeId)
+      throw new ConflictException('Order route changed; refresh decision');
+    if (order.status === 'DELIVERED' || order.status === 'CANCELLED')
+      throw new ConflictException('Commercially resolved order cannot be managed for pickup');
+    const attempts = [];
+    for (const stop of await db.RouteStop.where({ orderId: order.id, outcome: 'FAILED' }).all()) {
+      for (const attempt of await db.DeliveryAttempt.where({ stopId: stop.id, outcome: 'FAILED' }).all())
+        attempts.push(attempt);
+    }
+    attempts.sort(
+      (a, b) => Temporal.Instant.compare(b.recordedAt, a.recordedAt) || b.id.localeCompare(a.id),
+    );
+    return { order, route, latest: attempts[0] };
+  }
+
+  /**
+   * Retiro en tienda acordado (#50). Tres eventos distintos y auditados:
+   * - PICKUP_AGREE: el ADMIN registra el acuerdo EXPLÍCITO del cliente. El pedido queda pendiente de retiro: conserva su
+   *   estado y su marca de gestión pendiente (los planificadores lo siguen ignorando: no se crea otra ruta) y suelta
+   *   sus reservas operativas de forma segura. No es una entrega ni un reembolso, y no repone stock.
+   * - PICKUP_DECLINE: el cliente no acepta. Solo se audita; el pedido sigue pendiente de gestión y admite otra alternativa.
+   * - PICKUP_CONFIRM: el ADMIN confirma el retiro físico (actor y momento). Solo esto marca el pedido como entregado.
+   */
+  private async pickup(
+    tx: Transaction,
+    dto: DispatchInterventionDto,
+    actorId: string,
+    changes: RealtimeChange[],
+  ) {
+    const db = tx.orm.public;
+    const { order, route, latest } = await this.loadIncident(tx, dto.orderId!);
+    const existing = await db.OrderPickup.where({ orderId: order.id }).first();
+
+    if (dto.action === 'PICKUP_CONFIRM') {
+      if (!existing)
+        throw this.pickupConflict('PICKUP_NOT_AGREED', 'No hay un retiro acordado que confirmar');
+      if (existing.confirmedAt)
+        throw this.pickupConflict('PICKUP_ALREADY_CONFIRMED', 'El retiro ya fue confirmado');
+      const confirmedAt = nowInstant();
+      if (
+        !(await db.OrderPickup.where({ id: existing.id, confirmedAt: null }).update({
+          confirmedAt,
+          confirmedById: actorId,
+          confirmationRequestId: dto.requestId,
+        }))
+      )
+        throw this.pickupConflict('PICKUP_ALREADY_CONFIRMED', 'El retiro ya fue confirmado');
+      // La auditoría va ANTES de tocar el pedido: el guard de la base de datos exige la resolución auditada en la misma transacción.
+      const audit = await this.createAudit(tx, dto, actorId, order.routeId, {
+        orderId: order.id,
+        routeId: order.routeId,
+        pickupId: existing.id,
+        confirmedAt: confirmedAt.toString(),
+      });
+      // La marca de gestión pendiente se limpia en el mismo UPDATE: un pedido entregado no puede conservarla.
+      const delivered = await db.Order.where({ id: order.id }).update({
+        status: 'DELIVERED',
+        requiresAdministrativeReview: false,
+      });
+      if (!delivered) throw new ConflictException('Order changed during the pickup confirmation');
+      changes.push(
+        { type: 'order.status.updated', orderId: order.id, status: 'DELIVERED', requiresAdministrativeReview: false },
+        { type: 'dispatch.incident.updated', orderId: order.id, action: 'PICKUP_CONFIRM', requiresAdministrativeReview: false },
+      );
+      return this.response(audit);
+    }
+
+    if (existing)
+      throw this.pickupConflict('PICKUP_ALREADY_AGREED', 'El pedido ya tiene un retiro en tienda acordado');
+    if (order.requiresAdministrativeReview && (!latest || dto.attemptId !== latest.id))
+      throw new ConflictException('Pickup must refer to the latest failed attempt');
+    if (!order.requiresAdministrativeReview && dto.attemptId)
+      throw new ConflictException('No unresolved failed attempt');
+
+    if (dto.action === 'PICKUP_DECLINE') {
+      const audit = await this.createAudit(tx, dto, actorId, order.routeId, {
+        orderId: order.id,
+        routeId: order.routeId,
+        attemptId: latest?.id ?? null,
+      });
+      changes.push({
+        type: 'dispatch.incident.updated',
+        orderId: order.id,
+        action: 'PICKUP_DECLINE',
+        requiresAdministrativeReview: order.requiresAdministrativeReview,
+      });
+      return this.response(audit);
+    }
+
+    // PICKUP_AGREE: reservas operativas con las mismas protecciones que una reprogramación.
+    const claim = await db.OrderClaim.where({ orderId: order.id, releasedAt: null }).first();
+    if (route && !canMutateRouteStructure(route.status as RouteStatus | null) && route.status !== 'COMPLETED')
+      throw new ConflictException('Route structure is frozen or unverified');
+    if (order.requiresAdministrativeReview && (route?.status !== 'COMPLETED' || claim))
+      throw new ConflictException('Failed original route must complete and release the order before the pickup');
+    if (claim && (!route || claim.routeId !== route.id || !claim.claimedAt))
+      throw new ConflictException('Matching verified source claim required');
+    const agreedAt = nowInstant();
+    const pickup = await db.OrderPickup.create({
+      orderId: order.id,
+      agreedAt,
+      agreedById: actorId,
+      agreementRequestId: dto.requestId,
+    });
+    // La auditoría va ANTES de tocar el pedido: el guard de la base de datos exige la resolución auditada en la misma transacción.
+    const audit = await this.createAudit(tx, dto, actorId, route?.id ?? order.routeId, {
+      orderId: order.id,
+      routeId: route?.id ?? order.routeId,
+      attemptId: latest?.id ?? null,
+      pickupId: pickup.id,
+      agreedAt: agreedAt.toString(),
+    });
+    if (claim && route) {
+      const stops = await db.RouteStop.where({ routeId: route.id }).all();
+      if (stops.length <= 1)
+        throw new ConflictException('A store pickup cannot empty a reserved route');
+      // Una ruta aún no iniciada pierde la parada con la operación estructural central; la iniciada nunca llega aquí.
+      const ids = stops
+        .filter((s) => s.orderId !== order.id)
+        .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
+        .map((s) => s.orderId);
+      await this.assignment.replaceStops(tx, route.id, ids, changes);
+      await db.OrderClaim.where({ id: claim.id }).update({ releasedAt: nowInstant() });
+    }
+    const held = await db.Order.where({ id: order.id }).update({
+      status: 'PENDING',
+      requiresAdministrativeReview: true,
+      routeId: null,
+      stopOrder: null,
+    });
+    if (!held) throw new ConflictException('Order changed during the pickup agreement');
+    changes.push(
+      { type: 'order.status.updated', orderId: order.id, status: 'PENDING', requiresAdministrativeReview: true },
+      { type: 'dispatch.incident.updated', orderId: order.id, action: 'PICKUP_AGREE', requiresAdministrativeReview: true },
+    );
+    return this.response(audit);
+  }
+
   async intervene(
     dto: DispatchInterventionDto,
     actorId: string,
@@ -416,6 +583,12 @@ export class DispatchInterventionService {
         if (prior) return this.replay(prior, actorId, dto);
         if (dto.action === 'CONTACT' || dto.action === 'RESCHEDULE')
           return this.schedule(tx, dto, actorId, changes);
+        if (
+          dto.action === 'PICKUP_AGREE' ||
+          dto.action === 'PICKUP_DECLINE' ||
+          dto.action === 'PICKUP_CONFIRM'
+        )
+          return this.pickup(tx, dto, actorId, changes);
         if (dto.action === 'CONFIRM' || dto.action === 'REJECT') {
           const initial = await this.urgency.propose(dto.orderId!, tx);
           const route = initial.routeId

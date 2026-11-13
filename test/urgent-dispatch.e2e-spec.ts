@@ -45,6 +45,16 @@ describe('Issue12 dispatch: PostgreSQL + actual JWT HTTP', () => {
       .auth(token(sub, role), { type: 'bearer' })
       .send(body);
   const today = () => Temporal.Now.instant();
+  // Una ventana acordada debe caer entero en un mismo día de negocio: cerca de la medianoche
+  // de Guayaquil se usa el mediodía del día siguiente para no cruzar la medianoche.
+  const slotAfter = (minutes: number): Temporal.Instant => {
+    const t = Temporal.Now.instant().add({ minutes });
+    const zone = 'America/Guayaquil';
+    const day = (i: Temporal.Instant) => i.toZonedDateTimeISO(zone).toPlainDate().toString();
+    if (day(t.subtract({ minutes: 20 })) === day(t.add({ minutes: 20 }))) return t;
+    const tomorrow = Temporal.Now.zonedDateTimeISO(zone).toPlainDate().add({ days: 1 });
+    return tomorrow.toZonedDateTime({ timeZone: zone, plainTime: '12:00' }).toInstant().add({ minutes });
+  };
   const seedOrder = async () =>
     db.orm.public.Order.create({
       userId: ids.client,
@@ -422,9 +432,7 @@ describe('Issue12 dispatch: PostgreSQL + actual JWT HTTP', () => {
         agreementConfirmed: true,
       }).expect(400);
       expect((await history(route.id)).stops).toEqual(failed.stops);
-      const time = today()
-        .add({ minutes: 15 })
-        .round({ smallestUnit: 'microsecond' });
+      const time = slotAfter(15).round({ smallestUnit: 'microsecond' });
       const contact = (
         await intervene({
           action: 'CONTACT',
@@ -901,8 +909,8 @@ describe('Issue12 dispatch: PostgreSQL + actual JWT HTTP', () => {
   it('simultaneous rescheduling with different agreed slots resolves one failure only once', async () => {
     const { route, orderId, attemptId, stops } = await failedOrder();
     const times = [
-      today().add({ minutes: 20 }),
-      today().add({ minutes: 30 }),
+      slotAfter(20),
+      slotAfter(30),
     ].map((t) => t.round({ smallestUnit: 'microsecond' }));
     const agreements = [];
     for (const time of times)

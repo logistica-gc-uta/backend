@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'e44d61fd753bd3404c42e85b9570cb95731fcf8b6f1659b4e254e2a4774adc70'>;
+  StorageHashBase<'b5cbec5e55f8808d4442a200be9ff3b6d62e770ea9021d18110262f36e544233'>;
 export type ExecutionHash =
-  ExecutionHashBase<'bdfc495f40e6c49d2aa05bee4da443a4402d5de7907ef5ef8106c7eff66a4096'>;
+  ExecutionHashBase<'c6d45c7e494f6d496c74f5913d1dbd508bf7f38e7dac3f1b4b42b6bcd2b2c921'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -401,6 +401,17 @@ export type FieldOutputTypes = {
       readonly price: CodecTypes['pg/float8@1']['output'];
       readonly unitPriceCents: CodecTypes['pg/int8@1']['output'] | null;
     };
+    readonly OrderPickup: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly orderId: CodecTypes['pg/text@1']['output'];
+      readonly agreedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly agreedById: CodecTypes['pg/text@1']['output'];
+      readonly agreementRequestId: CodecTypes['pg/text@1']['output'];
+      readonly confirmedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly confirmedById: CodecTypes['pg/text@1']['output'] | null;
+      readonly confirmationRequestId: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    };
     readonly PaymentAttempt: {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly orderId: CodecTypes['pg/text@1']['output'];
@@ -731,6 +742,17 @@ export type FieldInputTypes = {
       readonly quantity: CodecTypes['pg/int4@1']['input'];
       readonly price: CodecTypes['pg/float8@1']['input'];
       readonly unitPriceCents: CodecTypes['pg/int8@1']['input'] | null;
+    };
+    readonly OrderPickup: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly orderId: CodecTypes['pg/text@1']['input'];
+      readonly agreedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly agreedById: CodecTypes['pg/text@1']['input'];
+      readonly agreementRequestId: CodecTypes['pg/text@1']['input'];
+      readonly confirmedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly confirmedById: CodecTypes['pg/text@1']['input'] | null;
+      readonly confirmationRequestId: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
     readonly PaymentAttempt: {
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -1063,6 +1085,17 @@ export type StorageColumnTypes = {
       readonly quantity: CodecTypes['pg/int4@1']['output'];
       readonly unitPriceCents: CodecTypes['pg/int8@1']['output'] | null;
     };
+    readonly orderPickup: {
+      readonly agreedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly agreedById: CodecTypes['pg/text@1']['output'];
+      readonly agreementRequestId: CodecTypes['pg/text@1']['output'];
+      readonly confirmationRequestId: CodecTypes['pg/text@1']['output'] | null;
+      readonly confirmedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly confirmedById: CodecTypes['pg/text@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly orderId: CodecTypes['pg/text@1']['output'];
+    };
     readonly paymentAttempt: {
       readonly amountCents: CodecTypes['pg/int8@1']['output'];
       readonly buyerId: CodecTypes['pg/text@1']['output'];
@@ -1394,6 +1427,17 @@ export type StorageColumnInputTypes = {
       readonly quantity: CodecTypes['pg/int4@1']['input'];
       readonly unitPriceCents: CodecTypes['pg/int8@1']['input'] | null;
     };
+    readonly orderPickup: {
+      readonly agreedAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly agreedById: CodecTypes['pg/text@1']['input'];
+      readonly agreementRequestId: CodecTypes['pg/text@1']['input'];
+      readonly confirmationRequestId: CodecTypes['pg/text@1']['input'] | null;
+      readonly confirmedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly confirmedById: CodecTypes['pg/text@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly orderId: CodecTypes['pg/text@1']['input'];
+    };
     readonly paymentAttempt: {
       readonly amountCents: CodecTypes['pg/int8@1']['input'];
       readonly buyerId: CodecTypes['pg/text@1']['input'];
@@ -1583,6 +1627,8 @@ export namespace Models {
     externalDeclarations: public_ExternalPaymentDeclaration[];
     orders: public_Order[];
     payments: public_PaymentAttempt[];
+    pickupsAgreed: public_OrderPickup[];
+    pickupsConfirmed: public_OrderPickup[];
     receipts: public_PurchaseReceipt[];
     storeCoverageUpdates: public_StoreCoverage[];
     uploadedAssets: public_UploadedAsset[];
@@ -1597,6 +1643,8 @@ export namespace Models {
       | 'externalDeclarations'
       | 'orders'
       | 'payments'
+      | 'pickupsAgreed'
+      | 'pickupsConfirmed'
       | 'receipts'
       | 'storeCoverageUpdates'
       | 'uploadedAssets';
@@ -1767,6 +1815,7 @@ export namespace Models {
     externalDeclaration: public_ExternalPaymentDeclaration | null;
     items: public_OrderItem[];
     paymentAttempt: public_PaymentAttempt | null;
+    pickup: public_OrderPickup | null;
     receipt: public_PurchaseReceipt | null;
     route: public_Route | null;
     user: public_User | null;
@@ -1779,6 +1828,7 @@ export namespace Models {
       | 'externalDeclaration'
       | 'items'
       | 'paymentAttempt'
+      | 'pickup'
       | 'receipt'
       | 'route'
       | 'user'
@@ -1869,6 +1919,21 @@ export namespace Models {
     order: public_Order | null;
     route: public_Route | null;
     readonly [RelationKeys]?: 'actor' | 'order' | 'route';
+  };
+  export type public_OrderPickup = {
+    id: CodecTypes['pg/text@1']['output'];
+    orderId: CodecTypes['pg/text@1']['output'];
+    agreedAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    agreedById: CodecTypes['pg/text@1']['output'];
+    agreementRequestId: CodecTypes['pg/text@1']['output'];
+    confirmedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    confirmedById: CodecTypes['pg/text@1']['output'] | null;
+    confirmationRequestId: CodecTypes['pg/text@1']['output'] | null;
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    agreedBy: public_User;
+    confirmedBy: public_User | null;
+    order: public_Order;
+    readonly [RelationKeys]?: 'agreedBy' | 'confirmedBy' | 'order';
   };
   export type public_ShopBusinessSettings = {
     id: CodecTypes['pg/text@1']['output'];
@@ -2055,6 +2120,7 @@ export declare const models: {
     DriverReservation: Models.public_DriverReservation;
     LegacyRouteReconciliation: Models.public_LegacyRouteReconciliation;
     DispatchIntervention: Models.public_DispatchIntervention;
+    OrderPickup: Models.public_OrderPickup;
     ShopBusinessSettings: Models.public_ShopBusinessSettings;
     ShopSettingsAudit: Models.public_ShopSettingsAudit;
     SimulatedCard: Models.public_SimulatedCard;
@@ -3566,6 +3632,114 @@ type ContractBase = Omit<
                 },
               ];
             };
+            readonly orderPickup: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly orderId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly agreedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                };
+                readonly agreedById: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly agreementRequestId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly confirmedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
+                readonly confirmedById: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly confirmationRequestId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [
+                { readonly columns: readonly ['orderId'] },
+                { readonly columns: readonly ['agreementRequestId'] },
+                { readonly columns: readonly ['confirmationRequestId'] },
+              ];
+              indexes: readonly [
+                {
+                  readonly name: 'orderPickup_agreedById_idx_5e5a37b2';
+                  readonly prefix: 'orderPickup_agreedById_idx';
+                  readonly columns: readonly ['agreedById'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'orderPickup_confirmedById_idx_bf02ea5f';
+                  readonly prefix: 'orderPickup_confirmedById_idx';
+                  readonly columns: readonly ['confirmedById'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'orderPickup';
+                    readonly columns: readonly ['orderId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'order';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'orderPickup';
+                    readonly columns: readonly ['agreedById'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'orderPickup';
+                    readonly columns: readonly ['confirmedById'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
             readonly paymentAttempt: {
               columns: {
                 readonly id: {
@@ -5052,6 +5226,10 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'DispatchIntervention';
     };
+    readonly orderPickup: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'OrderPickup';
+    };
     readonly shopBusinessSettings: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'ShopBusinessSettings';
@@ -6192,6 +6370,18 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['orderId'];
                 };
               };
+              readonly pickup: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'OrderPickup';
+                };
+                readonly cardinality: '1:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['orderId'];
+                };
+              };
               readonly receipt: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -6468,6 +6658,102 @@ type ContractBase = Omit<
                 readonly quantity: { readonly column: 'quantity' };
                 readonly price: { readonly column: 'price' };
                 readonly unitPriceCents: { readonly column: 'unitPriceCents' };
+              };
+            };
+          };
+          readonly OrderPickup: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly orderId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly agreedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly agreedById: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly agreementRequestId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly confirmedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly confirmedById: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly confirmationRequestId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly agreedBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['agreedById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly confirmedBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['confirmedById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly order: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Order';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['orderId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'orderPickup';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly orderId: { readonly column: 'orderId' };
+                readonly agreedAt: { readonly column: 'agreedAt' };
+                readonly agreedById: { readonly column: 'agreedById' };
+                readonly agreementRequestId: { readonly column: 'agreementRequestId' };
+                readonly confirmedAt: { readonly column: 'confirmedAt' };
+                readonly confirmedById: { readonly column: 'confirmedById' };
+                readonly confirmationRequestId: { readonly column: 'confirmationRequestId' };
+                readonly createdAt: { readonly column: 'createdAt' };
               };
             };
           };
@@ -7773,6 +8059,28 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['buyerId'];
                 };
               };
+              readonly pickupsAgreed: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'OrderPickup';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['agreedById'];
+                };
+              };
+              readonly pickupsConfirmed: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'OrderPickup';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['confirmedById'];
+                };
+              };
               readonly receipts: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -8087,6 +8395,14 @@ type ContractBase = Omit<
           readonly ref: {
             readonly namespace: 'public';
             readonly table: 'orderItem';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'orderPickup';
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };

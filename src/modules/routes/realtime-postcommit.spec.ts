@@ -369,7 +369,12 @@ describe('post-commit realtime producers', () => {
       { propose: jest.fn() } as never,
       events,
     );
-    const scheduledAt = Temporal.Now.instant().add({ hours: 48 });
+    // Mediodía de Guayaquil en dos días: la ventana acordada nunca cruza la medianoche.
+    const scheduledAt = Temporal.Now.zonedDateTimeISO('America/Guayaquil')
+      .toPlainDate()
+      .add({ days: 2 })
+      .toZonedDateTime({ timeZone: 'America/Guayaquil', plainTime: '12:00' })
+      .toInstant();
     const contact = await service.intervene(
       {
         requestId: 'contact',
