@@ -22,6 +22,7 @@ import { businessDay, nowInstant } from '../../common/temporal.util.js';
 import { RouteAssignmentService } from './route-assignment.service.js';
 import { RouteAvailabilityService } from './route-availability.service.js';
 import { RouteUrgencyService } from './route-urgency.service.js';
+import { DispatchLossService } from './dispatch-loss.service.js';
 import {
   canMutateRouteStructure,
   RouteStatus,
@@ -67,7 +68,10 @@ export class DispatchInterventionService {
     private readonly realtime?: RealtimePublisher,
     @Optional()
     private readonly storeCoverage?: StoreCoverageService,
-  ) {}
+  ) {
+    this.losses = new DispatchLossService(prisma);
+  }
+  private readonly losses: DispatchLossService;
 
   private async publishCommitted(changes: readonly RealtimeChange[]) {
     if (!changes.length || !this.realtime) return;
@@ -91,6 +95,9 @@ export class DispatchInterventionService {
       recordedAt: a.recordedAt.toString(),
       result: a.result,
     };
+  }
+  listLosses(orderId: string) {
+    return this.losses.list(orderId);
   }
   async audit() {
     return (
@@ -127,6 +134,9 @@ export class DispatchInterventionService {
       PICKUP_DECLINE: ['orderId', 'attemptId'],
       PICKUP_CONFIRM: ['orderId'],
       RELEASE_DRAFT: ['routeId'],
+      LOSS_DECLARE: ['orderId', 'orderItemId', 'unitNumber', 'attemptId'],
+      REPLACEMENT_PREPARE: ['lossId'],
+      ORIGINAL_RECOVER: ['lossId', 'recoveryCondition'],
     };
     const required: Record<string, string[]> = {
       CONFIRM: ['orderId', 'fingerprint'],
@@ -141,6 +151,9 @@ export class DispatchInterventionService {
       PICKUP_DECLINE: ['orderId'],
       PICKUP_CONFIRM: ['orderId'],
       RELEASE_DRAFT: ['routeId'],
+      LOSS_DECLARE: ['orderId', 'orderItemId'],
+      REPLACEMENT_PREPARE: ['lossId'],
+      ORIGINAL_RECOVER: ['lossId', 'recoveryCondition'],
     };
     const allowed = fields[dto.action];
     if (
@@ -185,11 +198,12 @@ export class DispatchInterventionService {
     actorId: string,
     routeId: string | null,
     result: Record<string, string | null>,
+    orderId: string | null = dto.orderId ?? null,
   ) {
     return tx.orm.public.DispatchIntervention.create({
       requestId: dto.requestId,
       actorId,
-      orderId: dto.orderId ?? null,
+      orderId,
       routeId,
       action: dto.action,
       reason: dto.reason.trim(),
@@ -667,6 +681,16 @@ export class DispatchInterventionService {
           return this.releaseDraft(tx, dto, actorId, changes);
         if (dto.action === 'CONTACT' || dto.action === 'RESCHEDULE')
           return this.schedule(tx, dto, actorId, changes);
+        if (
+          dto.action === 'LOSS_DECLARE' ||
+          dto.action === 'REPLACEMENT_PREPARE' ||
+          dto.action === 'ORIGINAL_RECOVER'
+        )
+          return this.response(
+            await this.losses.handle(tx, dto, actorId, changes, (routeId, result, orderId) =>
+              this.createAudit(tx, dto, actorId, routeId, result, orderId),
+            ),
+          );
         if (
           dto.action === 'PICKUP_AGREE' ||
           dto.action === 'PICKUP_DECLINE' ||
