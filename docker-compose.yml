@@ -17,5 +17,23 @@ services:
       timeout: 5s
       retries: 10
 
+
+  # Motor vial OSRM (#47). Opt-in: solo arranca con `docker compose --profile road up -d osrm`.
+  # Requiere los datos procesados en OSRM_DATA_DIR (ver docs/osrm/README.md); no se versionan.
+  # Solo escucha en loopback: el backend lo consulta con OSRM_BASE_URL (http://127.0.0.1:5001, o
+  # http://osrm:5000 si el backend corre dentro de esta misma red de Docker).
+  osrm:
+    profiles: ["road"]
+    image: osrm/osrm-backend@sha256:af5d4a83fb90086a43b1ae2ca22872e6768766ad5fcbb07a29ff90ec644ee409
+    container_name: logistica_osrm
+    restart: unless-stopped
+    command: osrm-routed --algorithm mld --max-table-size 100 /data/${OSRM_REGION_FILE:-ecuador-latest}.osrm
+    ports:
+      - "127.0.0.1:${OSRM_PORT:-5001}:5000"
+    volumes:
+      - ${OSRM_DATA_DIR:-./osrm-data}:/data:ro
+    # Medido: ~0,9 GB en marcha con el mapa de Ecuador completo; el tope evita que desplace al backend o a PostgreSQL.
+    mem_limit: ${OSRM_MEM_LIMIT:-2g}
+
 volumes:
   postgres_data:

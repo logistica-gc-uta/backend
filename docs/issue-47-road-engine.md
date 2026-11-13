@@ -32,7 +32,7 @@ Calidad de los datos en la zona de Ambato (cuadrícula de 100 puntos sobre la ci
 
 **Ejemplo del río/puente (evidencia con OSRM real, de punta a punta):** dos pedidos separados por un obstáculo a 1,0 km en línea recta (`-1.245,-78.606` y `-1.245,-78.597`). OSRM los une por **11,2 km** pasando por el Paso Lateral de Ambato. La propuesta real devolvió `totalDistanceKm = 20,915` frente a `straightLineKm = 4,521`, `totalDurationSeconds = 2170` (estimado, sin tráfico) y un trazado de 739 puntos con `distanceMethod = OSRM_ROAD_NETWORK`. No se verificó en el mapa si el obstáculo es el río, una quebrada o un sentido único; el trazado (`includeGeometry=true`) permite revisarlo. Resultado completo: `docs/osrm/validation-results.json`.
 
-**Conclusión de viabilidad:** OSRM es viable en esta máquina con la región de Ecuador completa (< 1 GB de RAM en marcha y respuestas de ~0,1 s por 100 puntos). **No se midió** un servidor de producción, ni con carga concurrente de varios ADMIN, ni con un recorte menor (p. ej. solo Tungurahua) que reduciría la memoria. Gratuito en licencia no significa sin costo: hace falta alojarlo (memoria, disco, actualización de mapas).
+**Conclusión de viabilidad:** OSRM es viable en esta máquina con la región de Ecuador completa (< 1 GB de RAM en marcha y respuestas de ~0,1 s por 100 puntos). **No se midió** un servidor de producción, ni con carga concurrente de varios ADMIN, ni con un recorte menor (p. ej. solo Tungurahua) que reduciría la memoria. Gratuito en licencia no significa sin costo: hace falta alojarlo (memoria, disco, actualización de mapas). El líder decidió alojarlo como contenedor Docker en la VPS del backend; queda por **comprobar que esa VPS tenga ~1,5 GB de RAM libres y ~1,5 GB de disco** (cifras medidas aquí, no en la VPS).
 
 ### Diferencia entre la matriz y el trazado
 
@@ -108,7 +108,7 @@ Una respuesta incompleta **nunca** se convierte en ceros. Las propuestas son de 
 |---|---|
 | Perfil | `car` (vehículo motorizado). Una moto o bicicleta pediría otro perfil y otros datos |
 | Región de mapas | Ecuador completo (126 MB). Un recorte de Tungurahua con `osmium` reduciría memoria; no medido |
-| Modalidad | contenedor `osrm-routed` junto al backend. **Decisión de alojamiento abierta** (misma máquina, otra VM o servicio): pendiente del líder |
+| Modalidad | **Decidido por el líder:** contenedor Docker de `osrm-routed` en la **VPS** donde se despliega el backend. Servicio `osrm` en `docker-compose.yml` con el perfil opt-in `road` (`docker compose --profile road up -d osrm`), solo en loopback y con tope de memoria (`OSRM_MEM_LIMIT`, 2 GB por defecto) |
 | Asimetría | la matriz es direccional; la agrupación usa el promedio de ambos sentidos y la visita se mide y se orienta con el sentido real |
 | Respuestas parciales | no se aceptan: ante una celda sin recorrido o una respuesta incompleta se falla la propuesta entera |
 | Límite por propuesta | 300 puntos (la matriz de 300 puntos son 36 solicitudes por bloques). Una zona con 2000 pedidos **no** se puede planificar por calles todavía: hay que acotar o decidir otra estrategia |
@@ -122,7 +122,8 @@ Una respuesta incompleta **nunca** se convierte en ceros. Las propuestas son de 
 - Las propuestas de más de 300 puntos se rechazan con `ROAD_MATRIX_TOO_LARGE`; el reporte de rendimiento del #15 (2000 pedidos) corresponde al modo línea recta.
 - Con el motor activo cada `GET /route-proposals` consulta a OSRM; el worker de planificación sigue fuera del hilo principal, pero la matriz se pide en el hilo principal (E/S asíncrona).
 - La calidad depende de OpenStreetMap: 17 de 100 puntos de la cuadrícula quedaron a más de 100 m de una calle.
-- Las actualizaciones de mapas exigen repetir extract/partition/customize (~73 s para Ecuador).
+- Las actualizaciones de mapas exigen repetir extract/partition/customize (~73 s para Ecuador). Aún no hay un responsable ni una frecuencia acordados.
+- El contenedor comparte la VPS con el backend y PostgreSQL: se le puso un tope de memoria, pero no se midió la convivencia bajo carga.
 - Falta el trazado con `includeGeometry` en la propuesta confirmada (DRAFT): hoy solo está en la propuesta.
 
 ## 6. Pruebas
