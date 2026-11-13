@@ -156,9 +156,12 @@ export class StoreCoverageService {
     });
   }
 
-  async evaluatePoint(dto: EvaluateCoverageDto): Promise<EvaluateCoverageResponseDto> {
+  async evaluatePoint(
+    dto: EvaluateCoverageDto,
+    tx?: Transaction,
+  ): Promise<EvaluateCoverageResponseDto> {
     const location = this.requireLocation(dto.lat, dto.lng);
-    const row = await this.loadSingleton();
+    const row = await this.loadSingleton(tx);
     if (!row) {
       throw shopError(
         HttpStatus.CONFLICT,
@@ -174,8 +177,9 @@ export class StoreCoverageService {
     };
   }
 
-  private async loadSingleton(): Promise<StoreCoverageRow | null> {
-    const row = (await this.prisma.client.orm.public.StoreCoverage.where({
+  private async loadSingleton(tx?: Transaction): Promise<StoreCoverageRow | null> {
+    const client = tx ?? this.prisma.client;
+    const row = (await client.orm.public.StoreCoverage.where({
       singletonKey: SINGLETON_KEY,
     }).first()) as StoreCoverageRow | undefined;
     return row ?? null;

@@ -917,6 +917,7 @@ export class CheckoutConfirmationService {
           this.storeCoverage,
           dto.delivery.deliveryLocation.lat,
           dto.delivery.deliveryLocation.lng,
+          tx,
         );
 
         // Exact money calculations
