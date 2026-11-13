@@ -83,6 +83,10 @@ export class DispatchEmergencyService {
     }
     const route = await db.Route.where({ id: initialRoute.id }).update({ id: initialRoute.id });
     if (!route) throw new NotFoundException('Route not found');
+    const existingEmergency = await db.RouteEmergency.where({ routeId: route.id }).first();
+    if (existingEmergency) {
+      throw this.conflict('EMERGENCY_ALREADY_DECLARED', 'Route already has a declared emergency');
+    }
     if (
       route.status !== 'IN_PROGRESS' ||
       !route.startedAt ||
@@ -101,10 +105,6 @@ export class DispatchEmergencyService {
     }).first();
     if (!reservation?.reservedAt) {
       throw new ConflictException('Matching active driver reservation required');
-    }
-    const existingEmergency = await db.RouteEmergency.where({ routeId: route.id }).first();
-    if (existingEmergency) {
-      throw this.conflict('EMERGENCY_ALREADY_DECLARED', 'Route already has a declared emergency');
     }
 
     const stops = (await db.RouteStop.where({ routeId: route.id }).all()).sort(
