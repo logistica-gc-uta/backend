@@ -11,6 +11,8 @@ interface ComposeService {
   volumes?: string[];
   profiles?: string[];
   mem_limit?: string;
+  depends_on?: Record<string, { condition?: string }>;
+  command?: string | string[];
   healthcheck?: { test?: string[] };
   environment?: Record<string, string>;
 }
@@ -36,6 +38,9 @@ describe('Server Deployment Artifacts Contract (Coolify / stephserver)', () => {
     expect(dockerfile).toContain('pnpm install --frozen-lockfile');
     expect(dockerfile).toContain('COPY types ./types');
     expect(dockerfile).toContain('AS migrations');
+    expect(dockerfile).toContain('email-identity.util.ts');
+    expect(dockerfile).toContain('password-hash.util.ts');
+    expect(dockerfile).toContain('chown -R node:node /app');
     expect(dockerfile).toContain('AS production');
     expect(dockerfile).toContain('USER node');
     expect(dockerfile).toContain('/api/v1/health');
@@ -80,7 +85,9 @@ describe('Server Deployment Artifacts Contract (Coolify / stephserver)', () => {
 
     const parsed = parse(rawCompose) as ComposeDocument;
     const services = parsed.services ?? {};
-    expect(Object.keys(services)).toEqual(expect.arrayContaining(['postgres', 'backend', 'osrm']));
+    expect(Object.keys(services)).toEqual(
+      expect.arrayContaining(['postgres', 'migrate', 'backend', 'osrm']),
+    );
 
     const postgres = services.postgres;
     expect(postgres.image).toBe('postgres:16-alpine');
@@ -88,11 +95,29 @@ describe('Server Deployment Artifacts Contract (Coolify / stephserver)', () => {
     expect(postgres.ports).toBeUndefined();
     expect(postgres.healthcheck?.test?.join(' ')).toContain('pg_isready');
 
+    const migrate = services.migrate;
+    expect(migrate.build?.target).toBe('migrations');
+    expect(migrate.restart).toBe('no');
+    expect(migrate.ports).toBeUndefined();
+    expect(migrate.depends_on?.postgres?.condition).toBe('service_healthy');
+    expect(migrate.environment?.DATABASE_URL).toContain('DATABASE_URL');
+    expect(migrate.environment?.SEED_ADMIN_EMAIL).toBe('${SEED_ADMIN_EMAIL:-}');
+    expect(migrate.environment?.SEED_ADMIN_PASSWORD).toBe('${SEED_ADMIN_PASSWORD:-}');
+    expect(migrate.environment?.SEED_ADMIN_NAME).toBe('${SEED_ADMIN_NAME:-}');
+    const migrateCommand = Array.isArray(migrate.command)
+      ? migrate.command.join(' ')
+      : (migrate.command ?? '');
+    expect(migrateCommand).toContain('prisma db migrate');
+    expect(migrateCommand).toContain('prisma db verify');
+    expect(migrateCommand).toContain('seed:prod');
+
     const backend = services.backend;
     expect(backend.build?.target).toBe('production');
     expect(backend.restart).toBe('unless-stopped');
     expect(backend.ports).toBeUndefined();
     expect(backend.expose).toContain('3000');
+    expect(backend.depends_on?.postgres?.condition).toBe('service_healthy');
+    expect(backend.depends_on?.migrate?.condition).toBe('service_completed_successfully');
     expect(backend.healthcheck?.test?.join(' ')).toContain('/api/v1/health');
     expect(backend.environment?.NODE_ENV).toContain('production');
 

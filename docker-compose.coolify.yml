@@ -20,6 +20,27 @@ services:
       retries: 6
       start_period: 10s
 
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrations
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-}
+    command:
+      [
+        "sh",
+        "-ec",
+        'pnpm prisma db migrate --db "$$DATABASE_URL" && pnpm prisma db verify --db "$$DATABASE_URL" && if [ -n "$${SEED_ADMIN_EMAIL:-}" ] || [ -n "$${SEED_ADMIN_PASSWORD:-}" ]; then pnpm run seed:prod; fi',
+      ]
+
   backend:
     build:
       context: .
@@ -29,6 +50,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     expose:
       - "3000"
     environment:

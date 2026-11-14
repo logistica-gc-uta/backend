@@ -18,9 +18,11 @@ COPY src ./src
 RUN pnpm run build
 
 FROM deps AS migrations
-COPY tsconfig.json prisma.config.ts ./
-COPY migrations ./migrations
-COPY src/prisma ./src/prisma
+COPY --chown=node:node tsconfig.json prisma.config.ts ./
+COPY --chown=node:node migrations ./migrations
+COPY --chown=node:node src/prisma ./src/prisma
+COPY --chown=node:node src/modules/auth/email-identity.util.ts src/modules/auth/password-hash.util.ts ./src/modules/auth/
+RUN chown -R node:node /app
 USER node
 CMD ["pnpm", "prisma", "db", "verify"]
 
