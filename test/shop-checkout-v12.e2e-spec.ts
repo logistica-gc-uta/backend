@@ -260,7 +260,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
         zoneId: validZoneId,
         deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
         deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-        scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+        scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
       },
       ...overrides,
     };
@@ -286,7 +286,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
         lat: -1.2425,
         lng: -78.6188,
       },
-      scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+      scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
     },
     quoteToken,
     paymentCard: {
@@ -471,7 +471,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
             zoneId: validZoneId,
             deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+            scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
           },
         });
       expect(quoteRes.status).toBe(200);
@@ -509,7 +509,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
             zoneId: validZoneId,
             deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+            scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
           },
         });
       expect(quoteRes.status).toBe(200);
@@ -540,14 +540,14 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
             zoneId: validZoneId,
             deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+            scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
           },
         });
       expect(quoteRes.status).toBe(200);
       const quoteToken = quoteRes.body.quoteToken;
 
       const payload = buildCheckoutPayload(quoteToken);
-      payload.delivery.scheduledDeliveryDate = '2026-11-16T15:00:00.000Z'; // tampered date
+      payload.delivery.scheduledDeliveryDate = '2030-06-15T15:00:00.000Z'; // tampered date
 
       const res = await http()
         .post('/api/v1/shop/checkout')
@@ -572,7 +572,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
             zoneId: validZoneId,
             deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+            scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
           },
         });
       expect(quoteRes.status).toBe(200);
@@ -622,7 +622,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
             zoneId: validZoneId,
             deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+            scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
           },
         });
 
@@ -652,7 +652,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
             zoneId: validZoneId,
             deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+            scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
           },
           quoteToken: 'dummy-token',
           paymentCard: {
@@ -688,7 +688,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
             zoneId: validZoneId,
             deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+            scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
           },
         });
 
@@ -887,7 +887,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
             zoneId: validZoneId,
             deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+            scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
           },
         });
       expect(quoteRes.status).toBe(200);
@@ -955,7 +955,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
             zoneId: validZoneId,
             deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+            scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
           },
         });
       expect(quoteResA.status).toBe(200);
@@ -971,7 +971,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
             zoneId: validZoneId,
             deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+            scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
           },
         });
       expect(quoteResB.status).toBe(200);
@@ -985,7 +985,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
           zoneId: validZoneId,
           deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
           deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-          scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+          scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
         },
         paymentCard: {
           number: '9000 0000 0000 0001',
@@ -1005,7 +1005,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
           zoneId: validZoneId,
           deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
           deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-          scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+          scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
         },
         paymentCard: {
           number: '9000 0000 0000 0002',
@@ -1161,7 +1161,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
             zoneId: validZoneId,
             deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+            scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
           },
         });
       expect(quoteRes.status).toBe(200);
@@ -1174,7 +1174,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
           zoneId: validZoneId,
           deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
           deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-          scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+          scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
         },
       };
 
@@ -1289,7 +1289,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
               zoneId: validZoneId,
               deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
               deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-              scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+              scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
               deliveryNotes: normalDeliveryNotes,
             },
           });
@@ -1303,7 +1303,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
             zoneId: validZoneId,
             deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+            scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
             deliveryNotes: normalDeliveryNotes,
           },
         };
@@ -1367,7 +1367,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
             zoneId: validZoneId,
             deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
             deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-            scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+            scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
             deliveryNotes: normalDeliveryNotes,
           },
         });
@@ -1381,7 +1381,7 @@ describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL
           zoneId: validZoneId,
           deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
           deliveryLocation: { lat: -1.2425, lng: -78.6188 },
-          scheduledDeliveryDate: '2026-11-15T15:00:00.000Z',
+          scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
           deliveryNotes: normalDeliveryNotes,
         },
       };

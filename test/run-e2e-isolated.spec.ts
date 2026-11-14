@@ -1,12 +1,12 @@
 import { spawnSync } from 'node:child_process';
 
 // Exercise the real orchestration with an in-memory command adapter, never Docker.
-function scenario(mode: string) {
+function scenario(mode: string, extraEnv: Record<string, string> = {}) {
   const result = spawnSync(process.execPath, ['--input-type=module', '-e', `
     import { runIsolated } from './test/run-e2e-isolated.mjs';
     const calls = [];
     let owner;
-    const env = ${JSON.stringify(mode === 'ambient' ? { DATABASE_URL: 'forbidden' } : { JWT_SECRET: 'inherited' })};
+    const env = { ...(${JSON.stringify(mode === 'ambient' ? { DATABASE_URL: 'forbidden' } : { JWT_SECRET: 'inherited' })}), ...${JSON.stringify(extraEnv)} };
     const legacy = ['app', 'orders-security', 'drivers-routes-security'].map(n => process.cwd()+'/test/'+n+'.e2e-spec.ts');
     const tests = [...legacy, process.cwd()+'/test/admin-guest-orders-api.e2e-spec.ts'];
     if (${JSON.stringify(mode)} === 'duplicate') tests.push(tests[0]);
@@ -103,5 +103,29 @@ describe('complete isolated E2E routing and ownership', () => {
     const result = scenario('foreign');
     expect(result.error).toMatch(/ownership/);
     expect(result.calls.some(c => c.cmd === 'docker' && c.args[0] === 'stop')).toBe(false);
+  });
+  it('rejects malformed or out-of-range E2E_SHARD before listing tests or starting Docker', () => {
+    for (const invalid of ['0/4', '5/4', '1/0', 'abc']) {
+      const result = scenario('ok', { E2E_SHARD: invalid });
+      expect(result.error).toMatch(/E2E_SHARD/);
+      expect(result.calls).toHaveLength(0);
+    }
+  });
+  it('partitions all suites exactly once across E2E_SHARD=1/4..4/4 and skips Docker when shard has no legacy suite', () => {
+    const ranSuites: string[] = [];
+    let dockerRuns = 0;
+    for (const shard of ['1/4', '2/4', '3/4', '4/4']) {
+      const result = scenario('ok', { E2E_SHARD: shard });
+      expect(result.error).toBeUndefined();
+      const children = result.calls.filter(c => c.args.includes('--runTestsByPath'));
+      for (const child of children) {
+        const index = child.args.indexOf('--runTestsByPath');
+        ranSuites.push(...child.args.slice(index + 1));
+      }
+      if (result.calls.some(c => c.cmd === 'docker' && c.args[0] === 'run')) dockerRuns += 1;
+    }
+    expect(new Set(ranSuites).size).toBe(4);
+    expect(ranSuites).toHaveLength(4);
+    expect(dockerRuns).toBe(3);
   });
 });

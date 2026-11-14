@@ -7,6 +7,16 @@ describe('assertDeliveryCovered', () => {
       evaluatePoint: jest.fn().mockResolvedValue({ accepted: true, position: 'BOUNDARY' }),
     };
     await expect(assertDeliveryCovered(storeCoverage as any, -1.24, -78.61)).resolves.toBeUndefined();
+    expect(storeCoverage.evaluatePoint).toHaveBeenCalledWith({ lat: -1.24, lng: -78.61 });
+  });
+
+  it('forwards an active transaction executor when provided', async () => {
+    const storeCoverage = {
+      evaluatePoint: jest.fn().mockResolvedValue({ accepted: true, position: 'INTERIOR' }),
+    };
+    const tx = { orm: {} } as any;
+    await expect(assertDeliveryCovered(storeCoverage as any, -1.24, -78.61, tx)).resolves.toBeUndefined();
+    expect(storeCoverage.evaluatePoint).toHaveBeenCalledWith({ lat: -1.24, lng: -78.61 }, tx);
   });
 
   it('rejects exterior points as DELIVERY_OUTSIDE_COVERAGE', async () => {

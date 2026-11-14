@@ -216,6 +216,26 @@ describe('StoreCoverageService', () => {
     expect(mockPrisma.client.transaction).toHaveBeenCalledTimes(1);
   });
 
+  it('evaluates using the provided transaction without hitting the root pool', async () => {
+    const txFirst = jest.fn().mockResolvedValue(row);
+    const tx = {
+      orm: {
+        public: {
+          StoreCoverage: {
+            where: jest.fn().mockReturnValue({ first: txFirst }),
+          },
+        },
+      },
+    } as any;
+
+    await expect(service.evaluatePoint({ lat: 5, lng: 5 }, tx)).resolves.toEqual({
+      accepted: true,
+      position: 'INTERIOR',
+    });
+    expect(tx.orm.public.StoreCoverage.where).toHaveBeenCalledWith({ singletonKey: 'GLOBAL' });
+    expect(mockPrisma.client.orm.public.StoreCoverage.where).not.toHaveBeenCalled();
+  });
+
   it('fails closed when a locked update returns no row', async () => {
     mockPrisma.client.transaction.mockImplementation(async (cb: (tx: any) => Promise<unknown>) => {
       const tx = {

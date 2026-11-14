@@ -181,7 +181,7 @@ export async function performCheckout(
           lat: -1.2425,
           lng: -78.6188,
         },
-        scheduledDeliveryDate: '2026-11-15T10:00:00-05:00',
+        scheduledDeliveryDate: '2030-06-14T10:00:00-05:00',
         deliveryNotes: 'Entregar en recepcion',
       },
     });
@@ -211,7 +211,7 @@ export async function performCheckout(
         lat: -1.2425,
         lng: -78.6188,
       },
-      scheduledDeliveryDate: '2026-11-15T10:00:00-05:00',
+      scheduledDeliveryDate: '2030-06-14T10:00:00-05:00',
       deliveryNotes: 'Entregar en recepcion',
     },
     quoteToken,

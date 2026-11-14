@@ -1,0 +1,21 @@
+# Server Deployment Configuration (`stephserver` / Coolify)
+Branch: `feat/35-recovery-and-server-deploy` | Base: `main` (`e7b312d`) + `#35` recovery (`106885f`)
+Status: COMPLETE
+
+## Specs
+- S1: Add a database-backed HTTP health check endpoint `GET /api/v1/health` that executes a lightweight PostgreSQL check via `PrismaService` with a bounded timeout, returns HTTP `200` `{ status: 'ok', database: 'up' }` when PostgreSQL responds, and returns HTTP `503` `{ status: 'error', database: 'down' }` without exposing credentials, stack traces, or connection details when PostgreSQL is unavailable or times out.
+- S2: Add a multi-stage Debian slim `Dockerfile` (`node:26-bookworm-slim`, `pnpm@12.4.1`, `.npmrc` `node-linker=hoisted`) with dedicated targets (`migrations` for Prisma 8 `db migrate` / `db verify` / `tsx` seeds, and `production` running `node dist/main` as non-root `node` user with `HEALTHCHECK` against `GET http://127.0.0.1:${PORT}/api/v1/health`) and `.dockerignore` excluding secrets, tests, caches, `.git`, and local/agent folders.
+- S3: Add a Coolify-ready Compose template (`docker-compose.coolify.yml`) wired for internal Docker networking without host port publications on PostgreSQL or OSRM (external exposure strictly via Cloudflare Tunnel on `stephserver`), `restart: unless-stopped`, optional OSRM profile/service mounting `${OSRM_DATA_DIR}:/data:ro` with `mem_limit: 2g`, and HTTP healthchecks aligned with PR #73 (`src/config/runtime-config.ts`).
+- S4: Add contract/unit tests verifying `/api/v1/health` behavior (unit + Swagger DTO + coverage >= 80%) and deployment artifact invariants (`Dockerfile`, `.dockerignore`, `docker-compose.coolify.yml`, zero hardcoded secrets, zero host Postgres/OSRM ports), without breaking `test/ci-security.spec.ts` (49 `.e2e-spec.ts` suites).
+- S5: Document Coolify, Cloudflare Tunnel, PR #73 environment variables, OSRM map setup, Prisma 8 migration/verify commands, and `/usr/local/bin/stephserver-backup.sh` `pg_dump` backup integration in `docs/deploy-coolify-stephserver.md` and link it from `README.md`.
+
+## Tasks
+- [x] T1 (S1, S4) | route: inline | Implement `HealthModule`/`HealthController`/`HealthService` (`GET /api/v1/health`) with RED->GREEN unit specs | commit: eb3cea9
+- [x] T2 (S2, S3, S4) | route: inline | Add `Dockerfile`, `.dockerignore`, `docker-compose.coolify.yml`, and deploy contract tests (`test/deploy-config.spec.ts`), plus local `docker build` & `docker compose config` verification | commit: 228b532
+- [x] T3 (S5) | route: inline | Author `docs/deploy-coolify-stephserver.md` and link from `README.md` | commit: b9acd1d
+- [x] T4 (S1-S5) | route: inline | Run lint, build, tsc, coverage (`>= 80%`), focused E2E (`production-config.e2e-spec.ts`), `docker build` (`migrations` & `production`), and `docker compose config` verification | commit: see L3
+
+## Log
+- L1 (user verbatim): "ya le hize merge, nuestra rama se queda desactualizada, nosostros estabamos revisando como desplegar en nuestro servidor eso tambien seria de recuperar , seria de crear una rama nueva desde main conservando lo necesario de nuestra rama" / "en esta rama has la confiuracion para el deploy"
+- L2 (context): Base branch created cleanly from `main` (`e7b312d`, PR #73 merged) with `#35` cherry-picks + `106885f`. No `.env`/`.env.example` modifications; no hardcoded secrets or host DB/OSRM ports (`stephserver` uses Coolify + CGNAT + Cloudflare Tunnel + restic backup script `/usr/local/bin/stephserver-backup.sh`).
+- L3 (verification): Verified `test:cov` (111/111 suites, 1415/1415 tests, >=80% thresholds), `test/production-config.e2e-spec.ts` (14/14 tests on isolated PostgreSQL 16; user chose focused E2E only instead of full 49-suite isolated E2E/Newman run), `docker build --target migrations` + `--target production` with `sharp` and `dist/prisma/contract.json` (`IMAGE_SMOKE_OK`), `docker compose config -q` on both compose files, `lint`, `build`, `tsc --noEmit`, and `3/3` targeted unit/contract suites (`15/15` tests). Independent verifier admission rejected `subagent_run` due to missing `Risk: item N` line in launch prompt; per runtime rule, focused tests and suite ran inline without retrying launch. Risk: item 5 (delivery/environment: `Dockerfile`, `.dockerignore`, `docker-compose.coolify.yml`).

@@ -1,0 +1,2007 @@
+{
+  "version": 1,
+  "cloudName": "dwwvecqnu",
+  "generatedAt": "2026-11-04T20:11:11.075Z",
+  "entries": [
+    {
+      "sku": "RG-NAV-001",
+      "publicId": "regalia/demo/rg-nav-001",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822916/regalia/demo/rg-nav-001.png",
+      "format": "png",
+      "bytes": 3560,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Canasta navideña gourmet"
+    },
+    {
+      "sku": "RG-NAV-002",
+      "publicId": "regalia/demo/rg-nav-002",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822917/regalia/demo/rg-nav-002.png",
+      "format": "png",
+      "bytes": 3564,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Panetón artesanal 900 g"
+    },
+    {
+      "sku": "RG-NAV-003",
+      "publicId": "regalia/demo/rg-nav-003",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822918/regalia/demo/rg-nav-003.png",
+      "format": "png",
+      "bytes": 3388,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de luces cálidas para árbol"
+    },
+    {
+      "sku": "RG-NAV-004",
+      "publicId": "regalia/demo/rg-nav-004",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822919/regalia/demo/rg-nav-004.png",
+      "format": "png",
+      "bytes": 3387,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Corona navideña de pino"
+    },
+    {
+      "sku": "RG-NAV-005",
+      "publicId": "regalia/demo/rg-nav-005",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822920/regalia/demo/rg-nav-005.png",
+      "format": "png",
+      "bytes": 3235,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Calcetín de Navidad bordado"
+    },
+    {
+      "sku": "RG-NAV-006",
+      "publicId": "regalia/demo/rg-nav-006",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822921/regalia/demo/rg-nav-006.png",
+      "format": "png",
+      "bytes": 3224,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Árbol de Navidad de mesa 60 cm"
+    },
+    {
+      "sku": "RG-NAV-007",
+      "publicId": "regalia/demo/rg-nav-007",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822921/regalia/demo/rg-nav-007.png",
+      "format": "png",
+      "bytes": 3566,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de galletas de jengibre"
+    },
+    {
+      "sku": "RG-NAV-008",
+      "publicId": "regalia/demo/rg-nav-008",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822922/regalia/demo/rg-nav-008.png",
+      "format": "png",
+      "bytes": 3391,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Taza navideña con chocolate"
+    },
+    {
+      "sku": "RG-NAV-009",
+      "publicId": "regalia/demo/rg-nav-009",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822923/regalia/demo/rg-nav-009.png",
+      "format": "png",
+      "bytes": 3228,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Vela aromática de canela y manzana"
+    },
+    {
+      "sku": "RG-NAV-010",
+      "publicId": "regalia/demo/rg-nav-010",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822924/regalia/demo/rg-nav-010.png",
+      "format": "png",
+      "bytes": 3212,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de adornos de vidrio x12"
+    },
+    {
+      "sku": "RG-NAV-011",
+      "publicId": "regalia/demo/rg-nav-011",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822925/regalia/demo/rg-nav-011.png",
+      "format": "png",
+      "bytes": 3404,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Pijama navideña de franela"
+    },
+    {
+      "sku": "RG-NAV-012",
+      "publicId": "regalia/demo/rg-nav-012",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822925/regalia/demo/rg-nav-012.png",
+      "format": "png",
+      "bytes": 3391,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Manta tejida roja y blanca"
+    },
+    {
+      "sku": "RG-NAV-013",
+      "publicId": "regalia/demo/rg-nav-013",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822926/regalia/demo/rg-nav-013.png",
+      "format": "png",
+      "bytes": 3555,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de turrones y dulces"
+    },
+    {
+      "sku": "RG-NAV-014",
+      "publicId": "regalia/demo/rg-nav-014",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822928/regalia/demo/rg-nav-014.png",
+      "format": "png",
+      "bytes": 3576,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Reno decorativo de peluche 35 cm"
+    },
+    {
+      "sku": "RG-NAV-015",
+      "publicId": "regalia/demo/rg-nav-015",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822928/regalia/demo/rg-nav-015.png",
+      "format": "png",
+      "bytes": 3223,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Calendario de adviento con chocolates"
+    },
+    {
+      "sku": "RG-NAV-016",
+      "publicId": "regalia/demo/rg-nav-016",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822929/regalia/demo/rg-nav-016.png",
+      "format": "png",
+      "bytes": 3211,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Nacimiento artesanal de cerámica"
+    },
+    {
+      "sku": "RG-NAV-017",
+      "publicId": "regalia/demo/rg-nav-017",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822930/regalia/demo/rg-nav-017.png",
+      "format": "png",
+      "bytes": 3392,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Kit de especias para ponche navideño"
+    },
+    {
+      "sku": "RG-NAV-018",
+      "publicId": "regalia/demo/rg-nav-018",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822931/regalia/demo/rg-nav-018.png",
+      "format": "png",
+      "bytes": 3584,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Bolsas de regalo navideñas x5"
+    },
+    {
+      "sku": "RG-NAV-019",
+      "publicId": "regalia/demo/rg-nav-019",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822932/regalia/demo/rg-nav-019.png",
+      "format": "png",
+      "bytes": 3214,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Guirnalda de luces de estrellas"
+    },
+    {
+      "sku": "RG-NAV-020",
+      "publicId": "regalia/demo/rg-nav-020",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822933/regalia/demo/rg-nav-020.png",
+      "format": "png",
+      "bytes": 3234,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Muñeco de nieve de felpa 45 cm"
+    },
+    {
+      "sku": "RG-CUM-001",
+      "publicId": "regalia/demo/rg-cum-001",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822935/regalia/demo/rg-cum-001.png",
+      "format": "png",
+      "bytes": 3413,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja sorpresa de cumpleaños"
+    },
+    {
+      "sku": "RG-CUM-002",
+      "publicId": "regalia/demo/rg-cum-002",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822935/regalia/demo/rg-cum-002.png",
+      "format": "png",
+      "bytes": 3203,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Pastel de chocolate 8 porciones"
+    },
+    {
+      "sku": "RG-CUM-003",
+      "publicId": "regalia/demo/rg-cum-003",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822936/regalia/demo/rg-cum-003.png",
+      "format": "png",
+      "bytes": 3595,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de globos metálicos feliz cumpleaños"
+    },
+    {
+      "sku": "RG-CUM-004",
+      "publicId": "regalia/demo/rg-cum-004",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822937/regalia/demo/rg-cum-004.png",
+      "format": "png",
+      "bytes": 3193,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Cupcakes gourmet x6"
+    },
+    {
+      "sku": "RG-CUM-005",
+      "publicId": "regalia/demo/rg-cum-005",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822938/regalia/demo/rg-cum-005.png",
+      "format": "png",
+      "bytes": 3613,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Peluche oso con globo"
+    },
+    {
+      "sku": "RG-CUM-006",
+      "publicId": "regalia/demo/rg-cum-006",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822938/regalia/demo/rg-cum-006.png",
+      "format": "png",
+      "bytes": 3419,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Taza personalizable de cumpleaños"
+    },
+    {
+      "sku": "RG-CUM-007",
+      "publicId": "regalia/demo/rg-cum-007",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822939/regalia/demo/rg-cum-007.png",
+      "format": "png",
+      "bytes": 3197,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Ramo de globos de colores"
+    },
+    {
+      "sku": "RG-CUM-008",
+      "publicId": "regalia/demo/rg-cum-008",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822940/regalia/demo/rg-cum-008.png",
+      "format": "png",
+      "bytes": 3197,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Kit de fiesta infantil para 12 invitados"
+    },
+    {
+      "sku": "RG-CUM-009",
+      "publicId": "regalia/demo/rg-cum-009",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822940/regalia/demo/rg-cum-009.png",
+      "format": "png",
+      "bytes": 3584,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de chocolates surtidos 24 unidades"
+    },
+    {
+      "sku": "RG-CUM-010",
+      "publicId": "regalia/demo/rg-cum-010",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822941/regalia/demo/rg-cum-010.png",
+      "format": "png",
+      "bytes": 3584,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Libro de memorias para cumpleaños"
+    },
+    {
+      "sku": "RG-CUM-011",
+      "publicId": "regalia/demo/rg-cum-011",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822943/regalia/demo/rg-cum-011.png",
+      "format": "png",
+      "bytes": 3199,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Reloj de pulsera deportivo juvenil"
+    },
+    {
+      "sku": "RG-CUM-012",
+      "publicId": "regalia/demo/rg-cum-012",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822943/regalia/demo/rg-cum-012.png",
+      "format": "png",
+      "bytes": 3415,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Auriculares inalámbricos básicos"
+    },
+    {
+      "sku": "RG-CUM-013",
+      "publicId": "regalia/demo/rg-cum-013",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822944/regalia/demo/rg-cum-013.png",
+      "format": "png",
+      "bytes": 3568,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Juego de mesa familiar clásico"
+    },
+    {
+      "sku": "RG-CUM-014",
+      "publicId": "regalia/demo/rg-cum-014",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822945/regalia/demo/rg-cum-014.png",
+      "format": "png",
+      "bytes": 3205,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Canasta de snacks y bebidas"
+    },
+    {
+      "sku": "RG-CUM-015",
+      "publicId": "regalia/demo/rg-cum-015",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822945/regalia/demo/rg-cum-015.png",
+      "format": "png",
+      "bytes": 3403,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Vela numérica dorada"
+    },
+    {
+      "sku": "RG-CUM-016",
+      "publicId": "regalia/demo/rg-cum-016",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822946/regalia/demo/rg-cum-016.png",
+      "format": "png",
+      "bytes": 3596,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Tarjeta musical de cumpleaños"
+    },
+    {
+      "sku": "RG-CUM-017",
+      "publicId": "regalia/demo/rg-cum-017",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822947/regalia/demo/rg-cum-017.png",
+      "format": "png",
+      "bytes": 3209,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de maquillaje juvenil"
+    },
+    {
+      "sku": "RG-CUM-018",
+      "publicId": "regalia/demo/rg-cum-018",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822948/regalia/demo/rg-cum-018.png",
+      "format": "png",
+      "bytes": 3204,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Mochila escolar estampada"
+    },
+    {
+      "sku": "RG-CUM-019",
+      "publicId": "regalia/demo/rg-cum-019",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822948/regalia/demo/rg-cum-019.png",
+      "format": "png",
+      "bytes": 3418,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Rompecabezas de 1000 piezas"
+    },
+    {
+      "sku": "RG-CUM-020",
+      "publicId": "regalia/demo/rg-cum-020",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822950/regalia/demo/rg-cum-020.png",
+      "format": "png",
+      "bytes": 3599,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de donas surtidas x12"
+    },
+    {
+      "sku": "RG-VAL-001",
+      "publicId": "regalia/demo/rg-val-001",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822950/regalia/demo/rg-val-001.png",
+      "format": "png",
+      "bytes": 3901,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Ramo de 12 rosas rojas"
+    },
+    {
+      "sku": "RG-VAL-002",
+      "publicId": "regalia/demo/rg-val-002",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822951/regalia/demo/rg-val-002.png",
+      "format": "png",
+      "bytes": 3717,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de bombones en forma de corazón"
+    },
+    {
+      "sku": "RG-VAL-003",
+      "publicId": "regalia/demo/rg-val-003",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822952/regalia/demo/rg-val-003.png",
+      "format": "png",
+      "bytes": 3518,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Oso de peluche gigante 80 cm"
+    },
+    {
+      "sku": "RG-VAL-004",
+      "publicId": "regalia/demo/rg-val-004",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822952/regalia/demo/rg-val-004.png",
+      "format": "png",
+      "bytes": 3895,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Collar de corazón en plata"
+    },
+    {
+      "sku": "RG-VAL-005",
+      "publicId": "regalia/demo/rg-val-005",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822955/regalia/demo/rg-val-005.png",
+      "format": "png",
+      "bytes": 3697,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de velas aromáticas para dos"
+    },
+    {
+      "sku": "RG-VAL-006",
+      "publicId": "regalia/demo/rg-val-006",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822955/regalia/demo/rg-val-006.png",
+      "format": "png",
+      "bytes": 3516,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de rosas preservadas"
+    },
+    {
+      "sku": "RG-VAL-007",
+      "publicId": "regalia/demo/rg-val-007",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822956/regalia/demo/rg-val-007.png",
+      "format": "png",
+      "bytes": 3908,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Kit de cena romántica en casa"
+    },
+    {
+      "sku": "RG-VAL-008",
+      "publicId": "regalia/demo/rg-val-008",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822957/regalia/demo/rg-val-008.png",
+      "format": "png",
+      "bytes": 3683,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Par de tazas para parejas"
+    },
+    {
+      "sku": "RG-VAL-009",
+      "publicId": "regalia/demo/rg-val-009",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822958/regalia/demo/rg-val-009.png",
+      "format": "png",
+      "bytes": 3529,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Marco de fotos con luces"
+    },
+    {
+      "sku": "RG-VAL-010",
+      "publicId": "regalia/demo/rg-val-010",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822959/regalia/demo/rg-val-010.png",
+      "format": "png",
+      "bytes": 3513,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Perfume floral 50 ml"
+    },
+    {
+      "sku": "RG-VAL-011",
+      "publicId": "regalia/demo/rg-val-011",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822960/regalia/demo/rg-val-011.png",
+      "format": "png",
+      "bytes": 3701,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Carta de amor en pergamino"
+    },
+    {
+      "sku": "RG-VAL-012",
+      "publicId": "regalia/demo/rg-val-012",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822961/regalia/demo/rg-val-012.png",
+      "format": "png",
+      "bytes": 3905,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Peluche de pareja de osos"
+    },
+    {
+      "sku": "RG-VAL-013",
+      "publicId": "regalia/demo/rg-val-013",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822961/regalia/demo/rg-val-013.png",
+      "format": "png",
+      "bytes": 3526,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Rosa eterna en cúpula de vidrio"
+    },
+    {
+      "sku": "RG-VAL-014",
+      "publicId": "regalia/demo/rg-val-014",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822962/regalia/demo/rg-val-014.png",
+      "format": "png",
+      "bytes": 3893,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Cesta de fresas con chocolate"
+    },
+    {
+      "sku": "RG-VAL-015",
+      "publicId": "regalia/demo/rg-val-015",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822963/regalia/demo/rg-val-015.png",
+      "format": "png",
+      "bytes": 3522,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Pulsera de pareja ajustable"
+    },
+    {
+      "sku": "RG-VAL-016",
+      "publicId": "regalia/demo/rg-val-016",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822963/regalia/demo/rg-val-016.png",
+      "format": "png",
+      "bytes": 3693,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Pijama de pareja"
+    },
+    {
+      "sku": "RG-VAL-017",
+      "publicId": "regalia/demo/rg-val-017",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822964/regalia/demo/rg-val-017.png",
+      "format": "png",
+      "bytes": 3902,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Álbum de recuerdos Nuestra historia"
+    },
+    {
+      "sku": "RG-VAL-018",
+      "publicId": "regalia/demo/rg-val-018",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822966/regalia/demo/rg-val-018.png",
+      "format": "png",
+      "bytes": 3721,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de macarons x12"
+    },
+    {
+      "sku": "RG-VAL-019",
+      "publicId": "regalia/demo/rg-val-019",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822967/regalia/demo/rg-val-019.png",
+      "format": "png",
+      "bytes": 3898,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Anillo de promesa de plata"
+    },
+    {
+      "sku": "RG-VAL-020",
+      "publicId": "regalia/demo/rg-val-020",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822967/regalia/demo/rg-val-020.png",
+      "format": "png",
+      "bytes": 3562,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Ramo de tulipanes de colores"
+    },
+    {
+      "sku": "RG-ANI-001",
+      "publicId": "regalia/demo/rg-ani-001",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822968/regalia/demo/rg-ani-001.png",
+      "format": "png",
+      "bytes": 3855,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Ramo de girasoles"
+    },
+    {
+      "sku": "RG-ANI-002",
+      "publicId": "regalia/demo/rg-ani-002",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822969/regalia/demo/rg-ani-002.png",
+      "format": "png",
+      "bytes": 3454,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Álbum de aniversario con fotos"
+    },
+    {
+      "sku": "RG-ANI-003",
+      "publicId": "regalia/demo/rg-ani-003",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822969/regalia/demo/rg-ani-003.png",
+      "format": "png",
+      "bytes": 3686,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de copas de cristal x2"
+    },
+    {
+      "sku": "RG-ANI-004",
+      "publicId": "regalia/demo/rg-ani-004",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822970/regalia/demo/rg-ani-004.png",
+      "format": "png",
+      "bytes": 3472,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Reloj de pared personalizado"
+    },
+    {
+      "sku": "RG-ANI-005",
+      "publicId": "regalia/demo/rg-ani-005",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822971/regalia/demo/rg-ani-005.png",
+      "format": "png",
+      "bytes": 3673,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de chocolates premium y té gourmet"
+    },
+    {
+      "sku": "RG-ANI-006",
+      "publicId": "regalia/demo/rg-ani-006",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822972/regalia/demo/rg-ani-006.png",
+      "format": "png",
+      "bytes": 3879,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Collar grabado con fecha"
+    },
+    {
+      "sku": "RG-ANI-007",
+      "publicId": "regalia/demo/rg-ani-007",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822972/regalia/demo/rg-ani-007.png",
+      "format": "png",
+      "bytes": 3463,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Cuadro personalizado de pareja"
+    },
+    {
+      "sku": "RG-ANI-008",
+      "publicId": "regalia/demo/rg-ani-008",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822973/regalia/demo/rg-ani-008.png",
+      "format": "png",
+      "bytes": 3866,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Vela de soja Nuestro día"
+    },
+    {
+      "sku": "RG-ANI-009",
+      "publicId": "regalia/demo/rg-ani-009",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822974/regalia/demo/rg-ani-009.png",
+      "format": "png",
+      "bytes": 3456,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Kit de spa en pareja"
+    },
+    {
+      "sku": "RG-ANI-010",
+      "publicId": "regalia/demo/rg-ani-010",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822975/regalia/demo/rg-ani-010.png",
+      "format": "png",
+      "bytes": 3856,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Portarretrato de madera doble"
+    },
+    {
+      "sku": "RG-ANI-011",
+      "publicId": "regalia/demo/rg-ani-011",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822975/regalia/demo/rg-ani-011.png",
+      "format": "png",
+      "bytes": 3688,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Cojín bordado con iniciales"
+    },
+    {
+      "sku": "RG-ANI-012",
+      "publicId": "regalia/demo/rg-ani-012",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822976/regalia/demo/rg-ani-012.png",
+      "format": "png",
+      "bytes": 3694,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Gemelos de acero para camisa"
+    },
+    {
+      "sku": "RG-ANI-013",
+      "publicId": "regalia/demo/rg-ani-013",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822976/regalia/demo/rg-ani-013.png",
+      "format": "png",
+      "bytes": 3469,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Ramo de lirios blancos"
+    },
+    {
+      "sku": "RG-ANI-014",
+      "publicId": "regalia/demo/rg-ani-014",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822977/regalia/demo/rg-ani-014.png",
+      "format": "png",
+      "bytes": 3888,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Libro de cupones Un día especial"
+    },
+    {
+      "sku": "RG-ANI-015",
+      "publicId": "regalia/demo/rg-ani-015",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822977/regalia/demo/rg-ani-015.png",
+      "format": "png",
+      "bytes": 3689,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de fotos instantáneas x30"
+    },
+    {
+      "sku": "RG-ANI-016",
+      "publicId": "regalia/demo/rg-ani-016",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822978/regalia/demo/rg-ani-016.png",
+      "format": "png",
+      "bytes": 3470,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Bandeja de quesos y miel"
+    },
+    {
+      "sku": "RG-ANI-017",
+      "publicId": "regalia/demo/rg-ani-017",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822979/regalia/demo/rg-ani-017.png",
+      "format": "png",
+      "bytes": 3868,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Par de tazas térmicas"
+    },
+    {
+      "sku": "RG-ANI-018",
+      "publicId": "regalia/demo/rg-ani-018",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822979/regalia/demo/rg-ani-018.png",
+      "format": "png",
+      "bytes": 3677,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Bolso de cuero pequeño"
+    },
+    {
+      "sku": "RG-ANI-019",
+      "publicId": "regalia/demo/rg-ani-019",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822980/regalia/demo/rg-ani-019.png",
+      "format": "png",
+      "bytes": 3462,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Mapa estelar de la fecha"
+    },
+    {
+      "sku": "RG-ANI-020",
+      "publicId": "regalia/demo/rg-ani-020",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822980/regalia/demo/rg-ani-020.png",
+      "format": "png",
+      "bytes": 3690,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de café de especialidad para dos"
+    },
+    {
+      "sku": "RG-GRA-001",
+      "publicId": "regalia/demo/rg-gra-001",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822981/regalia/demo/rg-gra-001.png",
+      "format": "png",
+      "bytes": 3737,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Ramo de flores de graduación"
+    },
+    {
+      "sku": "RG-GRA-002",
+      "publicId": "regalia/demo/rg-gra-002",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822982/regalia/demo/rg-gra-002.png",
+      "format": "png",
+      "bytes": 3706,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Peluche búho graduado"
+    },
+    {
+      "sku": "RG-GRA-003",
+      "publicId": "regalia/demo/rg-gra-003",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822983/regalia/demo/rg-gra-003.png",
+      "format": "png",
+      "bytes": 3910,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Birrete y toga de recuerdo en miniatura"
+    },
+    {
+      "sku": "RG-GRA-004",
+      "publicId": "regalia/demo/rg-gra-004",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822984/regalia/demo/rg-gra-004.png",
+      "format": "png",
+      "bytes": 3734,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Agenda ejecutiva 2027"
+    },
+    {
+      "sku": "RG-GRA-005",
+      "publicId": "regalia/demo/rg-gra-005",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822985/regalia/demo/rg-gra-005.png",
+      "format": "png",
+      "bytes": 3911,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Pluma elegante con estuche"
+    },
+    {
+      "sku": "RG-GRA-006",
+      "publicId": "regalia/demo/rg-gra-006",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822986/regalia/demo/rg-gra-006.png",
+      "format": "png",
+      "bytes": 3906,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Cuadro de diploma enmarcado"
+    },
+    {
+      "sku": "RG-GRA-007",
+      "publicId": "regalia/demo/rg-gra-007",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822987/regalia/demo/rg-gra-007.png",
+      "format": "png",
+      "bytes": 4128,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Mochila para laptop de 15 pulgadas"
+    },
+    {
+      "sku": "RG-GRA-008",
+      "publicId": "regalia/demo/rg-gra-008",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822987/regalia/demo/rg-gra-008.png",
+      "format": "png",
+      "bytes": 3749,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Portafolio de cuero ejecutivo"
+    },
+    {
+      "sku": "RG-GRA-009",
+      "publicId": "regalia/demo/rg-gra-009",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822988/regalia/demo/rg-gra-009.png",
+      "format": "png",
+      "bytes": 3899,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Reloj clásico de pulsera"
+    },
+    {
+      "sku": "RG-GRA-010",
+      "publicId": "regalia/demo/rg-gra-010",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822988/regalia/demo/rg-gra-010.png",
+      "format": "png",
+      "bytes": 3546,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Termo de acero 750 ml"
+    },
+    {
+      "sku": "RG-GRA-011",
+      "publicId": "regalia/demo/rg-gra-011",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822989/regalia/demo/rg-gra-011.png",
+      "format": "png",
+      "bytes": 3970,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de chocolates Felicitaciones"
+    },
+    {
+      "sku": "RG-GRA-012",
+      "publicId": "regalia/demo/rg-gra-012",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822990/regalia/demo/rg-gra-012.png",
+      "format": "png",
+      "bytes": 3970,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Libro Guía para el primer empleo"
+    },
+    {
+      "sku": "RG-GRA-013",
+      "publicId": "regalia/demo/rg-gra-013",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822991/regalia/demo/rg-gra-013.png",
+      "format": "png",
+      "bytes": 3783,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Globo gigante de graduación"
+    },
+    {
+      "sku": "RG-GRA-014",
+      "publicId": "regalia/demo/rg-gra-014",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822991/regalia/demo/rg-gra-014.png",
+      "format": "png",
+      "bytes": 3965,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Kit de oficina en casa"
+    },
+    {
+      "sku": "RG-GRA-015",
+      "publicId": "regalia/demo/rg-gra-015",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822992/regalia/demo/rg-gra-015.png",
+      "format": "png",
+      "bytes": 3785,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Lámpara de escritorio LED"
+    },
+    {
+      "sku": "RG-GRA-016",
+      "publicId": "regalia/demo/rg-gra-016",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822993/regalia/demo/rg-gra-016.png",
+      "format": "png",
+      "bytes": 3794,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Cojín lumbar ergonómico"
+    },
+    {
+      "sku": "RG-GRA-017",
+      "publicId": "regalia/demo/rg-gra-017",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822993/regalia/demo/rg-gra-017.png",
+      "format": "png",
+      "bytes": 3556,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Tarjeta de graduación con sobre"
+    },
+    {
+      "sku": "RG-GRA-018",
+      "publicId": "regalia/demo/rg-gra-018",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822995/regalia/demo/rg-gra-018.png",
+      "format": "png",
+      "bytes": 3765,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Medalla conmemorativa personalizada"
+    },
+    {
+      "sku": "RG-GRA-019",
+      "publicId": "regalia/demo/rg-gra-019",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822995/regalia/demo/rg-gra-019.png",
+      "format": "png",
+      "bytes": 3563,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de bolígrafos x4"
+    },
+    {
+      "sku": "RG-GRA-020",
+      "publicId": "regalia/demo/rg-gra-020",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822996/regalia/demo/rg-gra-020.png",
+      "format": "png",
+      "bytes": 3748,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Tableta de dibujo básica"
+    },
+    {
+      "sku": "RG-NAC-001",
+      "publicId": "regalia/demo/rg-nac-001",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822997/regalia/demo/rg-nac-001.png",
+      "format": "png",
+      "bytes": 3819,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Canasta para recién nacido"
+    },
+    {
+      "sku": "RG-NAC-002",
+      "publicId": "regalia/demo/rg-nac-002",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822998/regalia/demo/rg-nac-002.png",
+      "format": "png",
+      "bytes": 3987,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Manta de bebé suave"
+    },
+    {
+      "sku": "RG-NAC-003",
+      "publicId": "regalia/demo/rg-nac-003",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793822999/regalia/demo/rg-nac-003.png",
+      "format": "png",
+      "bytes": 4012,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de bodies de algodón x5"
+    },
+    {
+      "sku": "RG-NAC-004",
+      "publicId": "regalia/demo/rg-nac-004",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823000/regalia/demo/rg-nac-004.png",
+      "format": "png",
+      "bytes": 3614,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Móvil musical para cuna"
+    },
+    {
+      "sku": "RG-NAC-005",
+      "publicId": "regalia/demo/rg-nac-005",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823001/regalia/demo/rg-nac-005.png",
+      "format": "png",
+      "bytes": 3825,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Peluche conejito de apego"
+    },
+    {
+      "sku": "RG-NAC-006",
+      "publicId": "regalia/demo/rg-nac-006",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823002/regalia/demo/rg-nac-006.png",
+      "format": "png",
+      "bytes": 3993,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de biberones anticólicos x3"
+    },
+    {
+      "sku": "RG-NAC-007",
+      "publicId": "regalia/demo/rg-nac-007",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823002/regalia/demo/rg-nac-007.png",
+      "format": "png",
+      "bytes": 3652,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Álbum del primer año"
+    },
+    {
+      "sku": "RG-NAC-008",
+      "publicId": "regalia/demo/rg-nac-008",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823003/regalia/demo/rg-nac-008.png",
+      "format": "png",
+      "bytes": 3801,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Ramo de flores Bienvenido bebé"
+    },
+    {
+      "sku": "RG-NAC-009",
+      "publicId": "regalia/demo/rg-nac-009",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823004/regalia/demo/rg-nac-009.png",
+      "format": "png",
+      "bytes": 4006,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Zapatitos tejidos a mano"
+    },
+    {
+      "sku": "RG-NAC-010",
+      "publicId": "regalia/demo/rg-nac-010",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823006/regalia/demo/rg-nac-010.png",
+      "format": "png",
+      "bytes": 3973,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de recuerdos del bebé"
+    },
+    {
+      "sku": "RG-NAC-011",
+      "publicId": "regalia/demo/rg-nac-011",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823007/regalia/demo/rg-nac-011.png",
+      "format": "png",
+      "bytes": 3856,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Pañalera funcional con cambiador"
+    },
+    {
+      "sku": "RG-NAC-012",
+      "publicId": "regalia/demo/rg-nac-012",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823007/regalia/demo/rg-nac-012.png",
+      "format": "png",
+      "bytes": 3664,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Sonajero de madera"
+    },
+    {
+      "sku": "RG-NAC-013",
+      "publicId": "regalia/demo/rg-nac-013",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823008/regalia/demo/rg-nac-013.png",
+      "format": "png",
+      "bytes": 4057,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Gorro y mitones de lana"
+    },
+    {
+      "sku": "RG-NAC-014",
+      "publicId": "regalia/demo/rg-nac-014",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823008/regalia/demo/rg-nac-014.png",
+      "format": "png",
+      "bytes": 3702,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Termómetro digital infantil"
+    },
+    {
+      "sku": "RG-NAC-015",
+      "publicId": "regalia/demo/rg-nac-015",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823009/regalia/demo/rg-nac-015.png",
+      "format": "png",
+      "bytes": 4053,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Toalla con capucha"
+    },
+    {
+      "sku": "RG-NAC-016",
+      "publicId": "regalia/demo/rg-nac-016",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823009/regalia/demo/rg-nac-016.png",
+      "format": "png",
+      "bytes": 3846,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Cojín de lactancia"
+    },
+    {
+      "sku": "RG-NAC-017",
+      "publicId": "regalia/demo/rg-nac-017",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823010/regalia/demo/rg-nac-017.png",
+      "format": "png",
+      "bytes": 3675,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Globo y tarjeta de bienvenida"
+    },
+    {
+      "sku": "RG-NAC-018",
+      "publicId": "regalia/demo/rg-nac-018",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823011/regalia/demo/rg-nac-018.png",
+      "format": "png",
+      "bytes": 3889,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Libro de cuentos para dormir"
+    },
+    {
+      "sku": "RG-NAC-019",
+      "publicId": "regalia/demo/rg-nac-019",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823012/regalia/demo/rg-nac-019.png",
+      "format": "png",
+      "bytes": 3680,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de baño para bebé"
+    },
+    {
+      "sku": "RG-NAC-020",
+      "publicId": "regalia/demo/rg-nac-020",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823013/regalia/demo/rg-nac-020.png",
+      "format": "png",
+      "bytes": 4053,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Lámpara de noche con proyección"
+    },
+    {
+      "sku": "RG-MAD-001",
+      "publicId": "regalia/demo/rg-mad-001",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823013/regalia/demo/rg-mad-001.png",
+      "format": "png",
+      "bytes": 3914,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Ramo de rosas y lirios"
+    },
+    {
+      "sku": "RG-MAD-002",
+      "publicId": "regalia/demo/rg-mad-002",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823014/regalia/demo/rg-mad-002.png",
+      "format": "png",
+      "bytes": 4119,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de bombones artesanales"
+    },
+    {
+      "sku": "RG-MAD-003",
+      "publicId": "regalia/demo/rg-mad-003",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823014/regalia/demo/rg-mad-003.png",
+      "format": "png",
+      "bytes": 3733,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de spa en casa"
+    },
+    {
+      "sku": "RG-MAD-004",
+      "publicId": "regalia/demo/rg-mad-004",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823015/regalia/demo/rg-mad-004.png",
+      "format": "png",
+      "bytes": 4123,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Collar con dije de corazón"
+    },
+    {
+      "sku": "RG-MAD-005",
+      "publicId": "regalia/demo/rg-mad-005",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823015/regalia/demo/rg-mad-005.png",
+      "format": "png",
+      "bytes": 3725,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Taza Mamá con chocolates"
+    },
+    {
+      "sku": "RG-MAD-006",
+      "publicId": "regalia/demo/rg-mad-006",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823016/regalia/demo/rg-mad-006.png",
+      "format": "png",
+      "bytes": 3919,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Perfume floral 100 ml"
+    },
+    {
+      "sku": "RG-MAD-007",
+      "publicId": "regalia/demo/rg-mad-007",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823017/regalia/demo/rg-mad-007.png",
+      "format": "png",
+      "bytes": 4106,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Bata de baño suave"
+    },
+    {
+      "sku": "RG-MAD-008",
+      "publicId": "regalia/demo/rg-mad-008",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823018/regalia/demo/rg-mad-008.png",
+      "format": "png",
+      "bytes": 4126,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Cesta de té e infusiones"
+    },
+    {
+      "sku": "RG-MAD-009",
+      "publicId": "regalia/demo/rg-mad-009",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823018/regalia/demo/rg-mad-009.png",
+      "format": "png",
+      "bytes": 3716,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Marco de fotos familiar"
+    },
+    {
+      "sku": "RG-MAD-010",
+      "publicId": "regalia/demo/rg-mad-010",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823019/regalia/demo/rg-mad-010.png",
+      "format": "png",
+      "bytes": 3729,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Vela aromática de lavanda"
+    },
+    {
+      "sku": "RG-MAD-011",
+      "publicId": "regalia/demo/rg-mad-011",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823020/regalia/demo/rg-mad-011.png",
+      "format": "png",
+      "bytes": 4106,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Pañuelo de seda estampado"
+    },
+    {
+      "sku": "RG-MAD-012",
+      "publicId": "regalia/demo/rg-mad-012",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823022/regalia/demo/rg-mad-012.png",
+      "format": "png",
+      "bytes": 3902,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Bolso tote de tela"
+    },
+    {
+      "sku": "RG-MAD-013",
+      "publicId": "regalia/demo/rg-mad-013",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823022/regalia/demo/rg-mad-013.png",
+      "format": "png",
+      "bytes": 3740,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Pulsera de perlas cultivadas"
+    },
+    {
+      "sku": "RG-MAD-014",
+      "publicId": "regalia/demo/rg-mad-014",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823023/regalia/demo/rg-mad-014.png",
+      "format": "png",
+      "bytes": 4133,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de cremas hidratantes"
+    },
+    {
+      "sku": "RG-MAD-015",
+      "publicId": "regalia/demo/rg-mad-015",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823024/regalia/demo/rg-mad-015.png",
+      "format": "png",
+      "bytes": 3900,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Orquídea en maceta decorativa"
+    },
+    {
+      "sku": "RG-MAD-016",
+      "publicId": "regalia/demo/rg-mad-016",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823025/regalia/demo/rg-mad-016.png",
+      "format": "png",
+      "bytes": 3734,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Libro de recetas de familia"
+    },
+    {
+      "sku": "RG-MAD-017",
+      "publicId": "regalia/demo/rg-mad-017",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823025/regalia/demo/rg-mad-017.png",
+      "format": "png",
+      "bytes": 4134,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de dulces tradicionales"
+    },
+    {
+      "sku": "RG-MAD-018",
+      "publicId": "regalia/demo/rg-mad-018",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823027/regalia/demo/rg-mad-018.png",
+      "format": "png",
+      "bytes": 4135,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Lámpara de sal del Himalaya"
+    },
+    {
+      "sku": "RG-MAD-019",
+      "publicId": "regalia/demo/rg-mad-019",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823028/regalia/demo/rg-mad-019.png",
+      "format": "png",
+      "bytes": 3922,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de jabones artesanales x6"
+    },
+    {
+      "sku": "RG-MAD-020",
+      "publicId": "regalia/demo/rg-mad-020",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823029/regalia/demo/rg-mad-020.png",
+      "format": "png",
+      "bytes": 4129,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Kit de jardinería para el hogar"
+    },
+    {
+      "sku": "RG-PAD-001",
+      "publicId": "regalia/demo/rg-pad-001",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823029/regalia/demo/rg-pad-001.png",
+      "format": "png",
+      "bytes": 4013,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Cartera de cuero genuino"
+    },
+    {
+      "sku": "RG-PAD-002",
+      "publicId": "regalia/demo/rg-pad-002",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823030/regalia/demo/rg-pad-002.png",
+      "format": "png",
+      "bytes": 4023,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Corbata de seda"
+    },
+    {
+      "sku": "RG-PAD-003",
+      "publicId": "regalia/demo/rg-pad-003",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823031/regalia/demo/rg-pad-003.png",
+      "format": "png",
+      "bytes": 3822,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de afeitado clásico"
+    },
+    {
+      "sku": "RG-PAD-004",
+      "publicId": "regalia/demo/rg-pad-004",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823032/regalia/demo/rg-pad-004.png",
+      "format": "png",
+      "bytes": 3809,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Reloj de pulsera elegante"
+    },
+    {
+      "sku": "RG-PAD-005",
+      "publicId": "regalia/demo/rg-pad-005",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823032/regalia/demo/rg-pad-005.png",
+      "format": "png",
+      "bytes": 3628,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Taza El mejor papá"
+    },
+    {
+      "sku": "RG-PAD-006",
+      "publicId": "regalia/demo/rg-pad-006",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823033/regalia/demo/rg-pad-006.png",
+      "format": "png",
+      "bytes": 3626,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Kit de herramientas básico"
+    },
+    {
+      "sku": "RG-PAD-007",
+      "publicId": "regalia/demo/rg-pad-007",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823034/regalia/demo/rg-pad-007.png",
+      "format": "png",
+      "bytes": 4023,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Cinturón de cuero"
+    },
+    {
+      "sku": "RG-PAD-008",
+      "publicId": "regalia/demo/rg-pad-008",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823035/regalia/demo/rg-pad-008.png",
+      "format": "png",
+      "bytes": 3805,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de café de especialidad"
+    },
+    {
+      "sku": "RG-PAD-009",
+      "publicId": "regalia/demo/rg-pad-009",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823036/regalia/demo/rg-pad-009.png",
+      "format": "png",
+      "bytes": 3617,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Perfume amaderado 100 ml"
+    },
+    {
+      "sku": "RG-PAD-010",
+      "publicId": "regalia/demo/rg-pad-010",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823037/regalia/demo/rg-pad-010.png",
+      "format": "png",
+      "bytes": 3612,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Termo de acero para viaje"
+    },
+    {
+      "sku": "RG-PAD-011",
+      "publicId": "regalia/demo/rg-pad-011",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823037/regalia/demo/rg-pad-011.png",
+      "format": "png",
+      "bytes": 3832,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Tarjetero de aluminio"
+    },
+    {
+      "sku": "RG-PAD-012",
+      "publicId": "regalia/demo/rg-pad-012",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823038/regalia/demo/rg-pad-012.png",
+      "format": "png",
+      "bytes": 3814,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Mochila de viaje"
+    },
+    {
+      "sku": "RG-PAD-013",
+      "publicId": "regalia/demo/rg-pad-013",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823038/regalia/demo/rg-pad-013.png",
+      "format": "png",
+      "bytes": 4016,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Camiseta estampada Papá"
+    },
+    {
+      "sku": "RG-PAD-014",
+      "publicId": "regalia/demo/rg-pad-014",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823039/regalia/demo/rg-pad-014.png",
+      "format": "png",
+      "bytes": 4028,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Juego de dominó de madera"
+    },
+    {
+      "sku": "RG-PAD-015",
+      "publicId": "regalia/demo/rg-pad-015",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823041/regalia/demo/rg-pad-015.png",
+      "format": "png",
+      "bytes": 3627,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Gorra deportiva"
+    },
+    {
+      "sku": "RG-PAD-016",
+      "publicId": "regalia/demo/rg-pad-016",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823042/regalia/demo/rg-pad-016.png",
+      "format": "png",
+      "bytes": 3609,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de asado con tabla y cuchillos"
+    },
+    {
+      "sku": "RG-PAD-017",
+      "publicId": "regalia/demo/rg-pad-017",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823042/regalia/demo/rg-pad-017.png",
+      "format": "png",
+      "bytes": 3801,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Audífonos con cancelación de ruido"
+    },
+    {
+      "sku": "RG-PAD-018",
+      "publicId": "regalia/demo/rg-pad-018",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823043/regalia/demo/rg-pad-018.png",
+      "format": "png",
+      "bytes": 4016,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Libro de historia ilustrado"
+    },
+    {
+      "sku": "RG-PAD-019",
+      "publicId": "regalia/demo/rg-pad-019",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823044/regalia/demo/rg-pad-019.png",
+      "format": "png",
+      "bytes": 3618,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Llavero grabado de acero"
+    },
+    {
+      "sku": "RG-PAD-020",
+      "publicId": "regalia/demo/rg-pad-020",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823044/regalia/demo/rg-pad-020.png",
+      "format": "png",
+      "bytes": 3968,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Pantuflas de lana"
+    },
+    {
+      "sku": "RG-AMI-001",
+      "publicId": "regalia/demo/rg-ami-001",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823045/regalia/demo/rg-ami-001.png",
+      "format": "png",
+      "bytes": 3961,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Pulseras de la amistad x2"
+    },
+    {
+      "sku": "RG-AMI-002",
+      "publicId": "regalia/demo/rg-ami-002",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823046/regalia/demo/rg-ami-002.png",
+      "format": "png",
+      "bytes": 3957,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de snacks para compartir"
+    },
+    {
+      "sku": "RG-AMI-003",
+      "publicId": "regalia/demo/rg-ami-003",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823046/regalia/demo/rg-ami-003.png",
+      "format": "png",
+      "bytes": 3761,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Cuadro Mejores amigos"
+    },
+    {
+      "sku": "RG-AMI-004",
+      "publicId": "regalia/demo/rg-ami-004",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823047/regalia/demo/rg-ami-004.png",
+      "format": "png",
+      "bytes": 3956,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Taza doble de cerámica"
+    },
+    {
+      "sku": "RG-AMI-005",
+      "publicId": "regalia/demo/rg-ami-005",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823047/regalia/demo/rg-ami-005.png",
+      "format": "png",
+      "bytes": 3768,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Planta suculenta en maceta"
+    },
+    {
+      "sku": "RG-AMI-006",
+      "publicId": "regalia/demo/rg-ami-006",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823048/regalia/demo/rg-ami-006.png",
+      "format": "png",
+      "bytes": 3774,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Cuaderno de bolsillo ilustrado"
+    },
+    {
+      "sku": "RG-AMI-007",
+      "publicId": "regalia/demo/rg-ami-007",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823049/regalia/demo/rg-ami-007.png",
+      "format": "png",
+      "bytes": 3530,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Collares mitad corazón x2"
+    },
+    {
+      "sku": "RG-AMI-008",
+      "publicId": "regalia/demo/rg-ami-008",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823049/regalia/demo/rg-ami-008.png",
+      "format": "png",
+      "bytes": 3743,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Juego de cartas divertido"
+    },
+    {
+      "sku": "RG-AMI-009",
+      "publicId": "regalia/demo/rg-ami-009",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823050/regalia/demo/rg-ami-009.png",
+      "format": "png",
+      "bytes": 3543,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Vela decorativa de soja"
+    },
+    {
+      "sku": "RG-AMI-010",
+      "publicId": "regalia/demo/rg-ami-010",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823051/regalia/demo/rg-ami-010.png",
+      "format": "png",
+      "bytes": 3539,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de stickers y washi tape"
+    },
+    {
+      "sku": "RG-AMI-011",
+      "publicId": "regalia/demo/rg-ami-011",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823052/regalia/demo/rg-ami-011.png",
+      "format": "png",
+      "bytes": 3772,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de chocolates surtidos 12 unidades"
+    },
+    {
+      "sku": "RG-AMI-012",
+      "publicId": "regalia/demo/rg-ami-012",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823052/regalia/demo/rg-ami-012.png",
+      "format": "png",
+      "bytes": 3751,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Peluche pequeño"
+    },
+    {
+      "sku": "RG-AMI-013",
+      "publicId": "regalia/demo/rg-ami-013",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823053/regalia/demo/rg-ami-013.png",
+      "format": "png",
+      "bytes": 3951,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Manta ligera de sofá"
+    },
+    {
+      "sku": "RG-AMI-014",
+      "publicId": "regalia/demo/rg-ami-014",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823053/regalia/demo/rg-ami-014.png",
+      "format": "png",
+      "bytes": 3761,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Llavero de metal personalizado"
+    },
+    {
+      "sku": "RG-AMI-015",
+      "publicId": "regalia/demo/rg-ami-015",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823054/regalia/demo/rg-ami-015.png",
+      "format": "png",
+      "bytes": 3962,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Libro Frases para amigos"
+    },
+    {
+      "sku": "RG-AMI-016",
+      "publicId": "regalia/demo/rg-ami-016",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823055/regalia/demo/rg-ami-016.png",
+      "format": "png",
+      "bytes": 3953,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de té y galletas"
+    },
+    {
+      "sku": "RG-AMI-017",
+      "publicId": "regalia/demo/rg-ami-017",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823055/regalia/demo/rg-ami-017.png",
+      "format": "png",
+      "bytes": 3527,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Bolsa de tela estampada"
+    },
+    {
+      "sku": "RG-AMI-018",
+      "publicId": "regalia/demo/rg-ami-018",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823056/regalia/demo/rg-ami-018.png",
+      "format": "png",
+      "bytes": 3774,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Portavasos de madera x4"
+    },
+    {
+      "sku": "RG-AMI-019",
+      "publicId": "regalia/demo/rg-ami-019",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823057/regalia/demo/rg-ami-019.png",
+      "format": "png",
+      "bytes": 3964,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de bolígrafos de colores"
+    },
+    {
+      "sku": "RG-AMI-020",
+      "publicId": "regalia/demo/rg-ami-020",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823057/regalia/demo/rg-ami-020.png",
+      "format": "png",
+      "bytes": 3705,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Lámpara LED de ambiente"
+    },
+    {
+      "sku": "RG-AGR-001",
+      "publicId": "regalia/demo/rg-agr-001",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823058/regalia/demo/rg-agr-001.png",
+      "format": "png",
+      "bytes": 3779,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Ramo de flores Gracias"
+    },
+    {
+      "sku": "RG-AGR-002",
+      "publicId": "regalia/demo/rg-agr-002",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823058/regalia/demo/rg-agr-002.png",
+      "format": "png",
+      "bytes": 3959,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de galletas artesanales"
+    },
+    {
+      "sku": "RG-AGR-003",
+      "publicId": "regalia/demo/rg-agr-003",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823059/regalia/demo/rg-agr-003.png",
+      "format": "png",
+      "bytes": 3545,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Tarjeta de agradecimiento con sobre"
+    },
+    {
+      "sku": "RG-AGR-004",
+      "publicId": "regalia/demo/rg-agr-004",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823061/regalia/demo/rg-agr-004.png",
+      "format": "png",
+      "bytes": 3769,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Canasta de frutas de temporada"
+    },
+    {
+      "sku": "RG-AGR-005",
+      "publicId": "regalia/demo/rg-agr-005",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823062/regalia/demo/rg-agr-005.png",
+      "format": "png",
+      "bytes": 3952,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de té gourmet"
+    },
+    {
+      "sku": "RG-AGR-006",
+      "publicId": "regalia/demo/rg-agr-006",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823062/regalia/demo/rg-agr-006.png",
+      "format": "png",
+      "bytes": 3562,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Planta de interior pequeña"
+    },
+    {
+      "sku": "RG-AGR-007",
+      "publicId": "regalia/demo/rg-agr-007",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823063/regalia/demo/rg-agr-007.png",
+      "format": "png",
+      "bytes": 3745,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Vela aromática Gracias"
+    },
+    {
+      "sku": "RG-AGR-008",
+      "publicId": "regalia/demo/rg-agr-008",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823063/regalia/demo/rg-agr-008.png",
+      "format": "png",
+      "bytes": 3753,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de chocolates finos"
+    },
+    {
+      "sku": "RG-AGR-009",
+      "publicId": "regalia/demo/rg-agr-009",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823064/regalia/demo/rg-agr-009.png",
+      "format": "png",
+      "bytes": 3956,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Taza con mensaje de gratitud"
+    },
+    {
+      "sku": "RG-AGR-010",
+      "publicId": "regalia/demo/rg-agr-010",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823065/regalia/demo/rg-agr-010.png",
+      "format": "png",
+      "bytes": 3572,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Set de miel y mermeladas"
+    },
+    {
+      "sku": "RG-AGR-011",
+      "publicId": "regalia/demo/rg-agr-011",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823066/regalia/demo/rg-agr-011.png",
+      "format": "png",
+      "bytes": 3963,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Cuaderno de notas con tapa dura"
+    },
+    {
+      "sku": "RG-AGR-012",
+      "publicId": "regalia/demo/rg-agr-012",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823066/regalia/demo/rg-agr-012.png",
+      "format": "png",
+      "bytes": 3761,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Bolígrafo ejecutivo con estuche"
+    },
+    {
+      "sku": "RG-AGR-013",
+      "publicId": "regalia/demo/rg-agr-013",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823067/regalia/demo/rg-agr-013.png",
+      "format": "png",
+      "bytes": 3557,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Marco de fotos de madera"
+    },
+    {
+      "sku": "RG-AGR-014",
+      "publicId": "regalia/demo/rg-agr-014",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823067/regalia/demo/rg-agr-014.png",
+      "format": "png",
+      "bytes": 3764,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Café molido de altura 500 g"
+    },
+    {
+      "sku": "RG-AGR-015",
+      "publicId": "regalia/demo/rg-agr-015",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823068/regalia/demo/rg-agr-015.png",
+      "format": "png",
+      "bytes": 3569,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Tabla de cortar de bambú"
+    },
+    {
+      "sku": "RG-AGR-016",
+      "publicId": "regalia/demo/rg-agr-016",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823068/regalia/demo/rg-agr-016.png",
+      "format": "png",
+      "bytes": 3952,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Mini jardín de hierbas aromáticas"
+    },
+    {
+      "sku": "RG-AGR-017",
+      "publicId": "regalia/demo/rg-agr-017",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823069/regalia/demo/rg-agr-017.png",
+      "format": "png",
+      "bytes": 3743,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Pañuelo estampado"
+    },
+    {
+      "sku": "RG-AGR-018",
+      "publicId": "regalia/demo/rg-agr-018",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823070/regalia/demo/rg-agr-018.png",
+      "format": "png",
+      "bytes": 3766,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Caja de postres surtidos"
+    },
+    {
+      "sku": "RG-AGR-019",
+      "publicId": "regalia/demo/rg-agr-019",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823070/regalia/demo/rg-agr-019.png",
+      "format": "png",
+      "bytes": 3592,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Imán de cerámica decorativo"
+    },
+    {
+      "sku": "RG-AGR-020",
+      "publicId": "regalia/demo/rg-agr-020",
+      "secureUrl": "https://res.cloudinary.com/dwwvecqnu/image/upload/v1793823071/regalia/demo/rg-agr-020.png",
+      "format": "png",
+      "bytes": 3616,
+      "width": 600,
+      "height": 600,
+      "altText": "Regalo: Termo infusor de té"
+    }
+  ]
+}

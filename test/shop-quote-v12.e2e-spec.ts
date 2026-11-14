@@ -70,7 +70,7 @@ describe('Shop Quote v1.2 HTTP Contract & DB Verification (owned PostgreSQL fixt
         lat: -1.2425,
         lng: -78.6188,
       },
-      scheduledDeliveryDate: '2026-11-15T10:00:00-05:00',
+      scheduledDeliveryDate: '2030-06-14T10:00:00-05:00',
       deliveryNotes: 'Entregar en recepcion',
     },
     ...overrides,
@@ -535,7 +535,7 @@ describe('Shop Quote v1.2 HTTP Contract & DB Verification (owned PostgreSQL fixt
           getValidQuoteBody({
             delivery: {
               ...getValidQuoteBody().delivery,
-              scheduledDeliveryDate: '2026-11-15T10:00:00', // Missing timezone offset
+              scheduledDeliveryDate: '2030-06-14T10:00:00', // Missing timezone offset
             },
           }),
         )
@@ -673,7 +673,7 @@ describe('Shop Quote v1.2 HTTP Contract & DB Verification (owned PostgreSQL fixt
           getValidQuoteBody({
             delivery: {
               ...getValidQuoteBody().delivery,
-              scheduledDeliveryDate: '2026-11-15T10:00:00-05:00',
+              scheduledDeliveryDate: '2030-06-14T10:00:00-05:00',
             },
           }),
         )
@@ -681,7 +681,7 @@ describe('Shop Quote v1.2 HTTP Contract & DB Verification (owned PostgreSQL fixt
 
       const payloadBase64 = res.body.quoteToken.split('.')[1];
       const payload = JSON.parse(Buffer.from(payloadBase64, 'base64url').toString('utf-8'));
-      expect(payload.delivery.scheduledDeliveryDate).toBe('2026-11-15T15:00:00Z');
+      expect(payload.delivery.scheduledDeliveryDate).toBe('2030-06-14T15:00:00Z');
     });
   });
 
@@ -711,7 +711,7 @@ describe('Shop Quote v1.2 HTTP Contract & DB Verification (owned PostgreSQL fixt
           getValidQuoteBody({
             delivery: {
               ...getValidQuoteBody().delivery,
-              scheduledDeliveryDate: '2026-11-15T06:59:00-05:00',
+              scheduledDeliveryDate: '2030-06-14T06:59:00-05:00',
             },
           }),
         )
@@ -734,7 +734,7 @@ describe('Shop Quote v1.2 HTTP Contract & DB Verification (owned PostgreSQL fixt
           getValidQuoteBody({
             delivery: {
               ...getValidQuoteBody().delivery,
-              scheduledDeliveryDate: '2026-11-15T17:01:00-05:00',
+              scheduledDeliveryDate: '2030-06-14T17:01:00-05:00',
             },
           }),
         )
@@ -751,7 +751,7 @@ describe('Shop Quote v1.2 HTTP Contract & DB Verification (owned PostgreSQL fixt
           getValidQuoteBody({
             delivery: {
               ...getValidQuoteBody().delivery,
-              scheduledDeliveryDate: '2026-11-15T07:00:00-05:00',
+              scheduledDeliveryDate: '2030-06-14T07:00:00-05:00',
             },
           }),
         )
@@ -764,7 +764,7 @@ describe('Shop Quote v1.2 HTTP Contract & DB Verification (owned PostgreSQL fixt
           getValidQuoteBody({
             delivery: {
               ...getValidQuoteBody().delivery,
-              scheduledDeliveryDate: '2026-11-15T17:00:00-05:00',
+              scheduledDeliveryDate: '2030-06-14T17:00:00-05:00',
             },
           }),
         )
