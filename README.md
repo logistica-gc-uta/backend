@@ -99,15 +99,17 @@ Copia el archivo de ejemplo `.env.example` a `.env`:
 ```bash
 cp .env.example .env
 ```
-Asegúrate de que el contenido del archivo sea exactamente este:
+Para desarrollo local el archivo debe contener, como mínimo:
 ```env
+NODE_ENV=development
 DATABASE_URL="postgresql://logistica_user:logistica_password123@localhost:5432/logistica_db?schema=public"
-JWT_SECRET="uta_logistica_jwt_secret_key_2026_super_secure"
+JWT_SECRET="super_secret_dev_key"
 JWT_EXPIRES_IN="24h"
 PORT=3000
 ```
+> Son valores **solo de desarrollo**. Un backend con `NODE_ENV=production` o `demo` se niega a arrancar con ellos (secreto corto o conocido, credencial de la base de desarrollo, sin `CORS_ALLOWED_ORIGINS`). Si dejas `JWT_SECRET` vacío en desarrollo, el backend usa un secreto aleatorio por proceso (los tokens dejan de valer al reiniciar). Para desplegar, consulta [`docs/issue-53-production-config.md`](docs/issue-53-production-config.md).
 
-Estos valores coinciden con la configuración definida en `docker-compose.yml`:
+Estos valores coinciden con la configuración definida en `docker-compose.yml` (solo desarrollo; PostgreSQL queda publicado únicamente en `127.0.0.1`):
 - Usuario: `logistica_user`
 - Contraseña: `logistica_password123`
 - Base de datos: `logistica_db`
@@ -266,8 +268,9 @@ Genera los archivos compilados en `dist/`; build con emisión PASS en la verific
 
 ### Iniciar en Producción
 ```bash
-pnpm run start:prod
+NODE_ENV=production pnpm run start:prod
 ```
+El arranque valida la configuración antes de cargar la aplicación y falla con un error que nombra las variables afectadas (nunca sus valores). En producción son obligatorios `JWT_SECRET` (≥ 32 caracteres, no un valor de desarrollo), `DATABASE_URL` (no la credencial de desarrollo) y `CORS_ALLOWED_ORIGINS`; Swagger queda apagado salvo `SWAGGER_ENABLED=true`. Checklist, respaldo y recuperación: [`docs/issue-53-production-config.md`](docs/issue-53-production-config.md).
 
 ---
 
