@@ -276,22 +276,19 @@ El arranque valida la configuración antes de cargar la aplicación y falla con 
 
 ## 9. Pipeline de Integración Continua (CI)
 
-El flujo en [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) conecta dos etapas de calidad. Su build no reemplaza el chequeo TypeScript raíz ni la revisión requerida:
+El flujo en [`.github/workflows/ci.yml`](./.github/workflows/ci.yml) conecta verificación estática y pruebas aisladas en paralelo, cacheando el store de `pnpm` y reutilizando el artefacto compilado `dist/`:
 
 1. **Job `quality` (Lint, build y pruebas unitarias):**
-   - Checkout y configuración de Node.js 26.
-   - Validación sintáctica de scripts con `bash -n` y análisis estático de shell con `shellcheck` (con instalación automática vía apt si no está preinstalado en el runner).
-   - Análisis estático estricto con `oxlint`.
-   - Compilación con `nest build`.
-   - Pruebas unitarias con verificación estricta de cobertura $\ge 80\,\%$ en todas las métricas.
-   - Publicación del artefacto de cobertura (`cobertura`).
+   - Checkout, Node.js 26, `pnpm@12` con cache de store (`actions/cache@v4`) e instalación congelada.
+   - Validación sintáctica (`bash -n`) y análisis estático (`shellcheck`), `oxlint` y compilación (`nest build`, compartida como artefacto `backend-dist`).
+   - Pruebas unitarias con cobertura $\ge 80\,\%$ en todas las métricas y publicación de `cobertura`.
 
-2. **Job `api-tests` (Pruebas de integración E2E y API con PostgreSQL y Newman):**
-   - Preparación de `postgres:16-alpine`, sin servicio compartido ni `db init` global.
-   - Manifiesto E2E completo mediante `env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm run test:e2e:isolated`; cada runner gestiona sus recursos y migraciones.
-   - Build y Newman mediante `env -u DATABASE_URL DOTENV_CONFIG_PATH=/dev/null pnpm run test:api:report`; genera su propio JWT y entorno efímero, con reporte HTML.
-   - Publicación del reporte HTML de Newman (`informe-newman`).
-   - Propagación estricta de fallos: no se utiliza `continue-on-error`, por lo que cualquier fallo en pruebas o verificación detiene el pipeline.
+2. **Job `e2e-tests` (Matrix de 4 shards en paralelo sobre PostgreSQL aislado, tras `quality`):**
+   - Cada shard ejecuta `env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null E2E_SHARD="${{ matrix.shard }}/4" pnpm run test:e2e:isolated` contra `postgres:16-alpine` propio, repartiendo determinísticamente las 49 suites sin saltar ninguna.
+
+3. **Job `api-newman` (En paralelo con `e2e-tests`, tras `quality`):**
+   - Descarga el artefacto `backend-dist` generado en `quality`, prepara `postgres:16-alpine` y ejecuta `env -u DATABASE_URL DOTENV_CONFIG_PATH=/dev/null pnpm run test:api:report`, publicando `informe-newman`.
+   - Propagación estricta de fallos: no se utiliza `continue-on-error`, por lo que cualquier fallo detiene el pipeline.
 
 > A–E completas funcionalmente y verificadas de forma independiente, no CI remota ni aprobación nativa. Rama `feat/11-admin-guest-orders`, HEAD `57208e9` y Draft PR #26 intactos; sin staging, commits, push, merge ni cierre de Issue #11. RDD sigue diferida por el usuario. Próximo paso: coordinar nueva autorización de commits/RDD; publicación, CI, revisión, merge y cierre son decisiones separadas.
 >

@@ -26,27 +26,52 @@ async function execute(cmd, args, { env, capture = false, interruptible = false 
   });
 }
 
+function parseShard(raw) {
+  if (raw === undefined || raw === '') return null;
+  const match = /^(\d+)\/(\d+)$/.exec(String(raw).trim());
+  if (!match) throw new Error(`Invalid E2E_SHARD '${raw}': expected '<index>/<total>'`);
+  const index = Number(match[1]);
+  const total = Number(match[2]);
+  if (!Number.isInteger(index) || !Number.isInteger(total) || total < 1 || index < 1 || index > total) {
+    throw new Error(`Invalid E2E_SHARD '${raw}': index must be between 1 and total`);
+  }
+  return { index, total };
+}
+
 export async function runIsolated({ env = process.env, command = execute, log = console.log, isInterrupted = () => interrupted } = {}) {
   const guard = () => { if (isInterrupted()) throw new Error('Interrupted'); };
   guard();
   if (Object.hasOwn(env, 'DATABASE_URL')) throw new Error('Refusing ambient DATABASE_URL');
+  const shard = parseShard(env.E2E_SHARD);
   const clean = { ...env, DOTENV_CONFIG_PATH: '/dev/null' };
   delete clean.DATABASE_URL;
   delete clean.JWT_SECRET;
   const jest = ['run', 'test:e2e', '--runInBand'];
   const manifest = JSON.parse(await command('pnpm', [...jest, '--listTests', '--json'], { env: clean, capture: true }));
   if (!Array.isArray(manifest) || new Set(manifest).size !== manifest.length || manifest.length < 3) throw new Error('Invalid or duplicate Jest manifest');
+  const sortedManifest = [...manifest].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
   const legacy = legacyNames.map(name => {
-    const matches = manifest.filter(file => basename(file) === name);
+    const matches = sortedManifest.filter(file => basename(file) === name);
     if (matches.length !== 1) throw new Error(`Missing or duplicate legacy suite: ${name}`);
     return matches[0];
   });
-  const managed = manifest.filter(file => !legacy.includes(file));
-  log(`E2E manifest: ${manifest.length} suites (${managed.length} self-managed, ${legacy.length} legacy)`);
-  for (const file of manifest) log(`  ${basename(file)}`);
-  await command('pnpm', [...jest, '--runTestsByPath', ...managed], { env: clean });
+  const selected = shard
+    ? sortedManifest.filter((_, index) => index % shard.total === shard.index - 1)
+    : sortedManifest;
+  const managed = selected.filter(file => !legacy.includes(file));
+  const legacyToRun = legacy.filter(file => selected.includes(file));
+  const scopeLabel = shard ? `shard ${shard.index}/${shard.total}: ${selected.length}/${manifest.length}` : `${manifest.length}`;
+  log(`E2E manifest: ${scopeLabel} suites (${managed.length} self-managed, ${legacyToRun.length} legacy)`);
+  for (const file of selected) log(`  ${basename(file)}`);
+  if (managed.length > 0) {
+    await command('pnpm', [...jest, '--runTestsByPath', ...managed], { env: clean });
+  }
   // Self-managed suites finish their own finally hooks before honoring cancellation.
   guard();
+  if (legacyToRun.length === 0) {
+    log(`Complete E2E manifest executed: ${selected.length} suites`);
+    return;
+  }
   const nonce = randomUUID();
   let container;
   const owned = new Map();
@@ -63,7 +88,7 @@ export async function runIsolated({ env = process.env, command = execute, log = 
       catch { guard(); await new Promise(res => setTimeout(res, 500)); }
     }
     if (!ready) throw new Error('PostgreSQL readiness timeout');
-    for (const [index, file] of legacy.entries()) {
+    for (const [index, file] of legacyToRun.entries()) {
       guard();
       const db = `issue6_${nonce.replaceAll('-', '')}_${index}`;
       await command('docker', ['exec', container, 'createdb', '-U', 'isolated_test', db], { env: clean, capture: true });
@@ -103,7 +128,7 @@ export async function runIsolated({ env = process.env, command = execute, log = 
   }
   if (failure) throw failure;
   guard();
-  log(`Complete E2E manifest executed: ${manifest.length} suites`);
+  log(`Complete E2E manifest executed: ${selected.length} suites`);
 }
 
 if (import.meta.url === pathToFileURL(resolve(process.argv[1] || '')).href) {

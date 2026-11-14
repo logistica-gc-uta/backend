@@ -15,7 +15,8 @@ describe('CI Workflow Configuration & Security Contract', () => {
     expect(workflowContent).toMatch(/NODE_VERSION:\s*['"]?26['"]?/);
   });
 
-  it('quality job retains oxlint, build, coverage threshold >= 80% and coverage artifact upload', () => {
+  it('quality job retains oxlint, build, coverage threshold >= 80%, pnpm cache, and artifact uploads', () => {
+    expect(workflowContent).toContain('actions/cache@v4');
     expect(workflowContent).toContain('pnpm run lint');
     expect(workflowContent).toContain('pnpm run build');
     expect(workflowContent).toContain('pnpm run test:cov');
@@ -24,6 +25,7 @@ describe('CI Workflow Configuration & Security Contract', () => {
     );
     expect(workflowContent).toContain('actions/upload-artifact@v4');
     expect(workflowContent).toContain('path: coverage/');
+    expect(workflowContent).toContain('path: dist/');
   });
 
   it('includes shell syntax (bash -n) and shellcheck validation in CI', () => {
@@ -35,25 +37,15 @@ describe('CI Workflow Configuration & Security Contract', () => {
     );
   });
 
-  it('executes the complete isolated E2E manifest before build and Newman', () => {
+  it('executes sharded isolated E2E matrix and parallel Newman job after quality build', () => {
+    expect(workflowContent).toContain('shard: [1, 2, 3, 4]');
     expect(workflowContent).toContain(
-      'run: env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null pnpm run test:e2e:isolated',
+      'run: env -u DATABASE_URL -u JWT_SECRET DOTENV_CONFIG_PATH=/dev/null E2E_SHARD="${{ matrix.shard }}/4" pnpm run test:e2e:isolated',
     );
     expect(workflowContent).not.toMatch(/pnpm run test:e2e(?:\s|$)/m);
-
-    const e2eIndex = workflowContent.indexOf('test:e2e:isolated');
-    const buildIndex = workflowContent.indexOf(
-      'Compilar backend para pruebas de API',
-    );
-    const newmanIndex = workflowContent.indexOf('test:api:report');
-    expect(e2eIndex).toBeGreaterThan(0);
-    expect(newmanIndex).toBeGreaterThan(0);
-    expect(e2eIndex).toBeLessThan(newmanIndex);
-    expect(buildIndex).toBeGreaterThan(e2eIndex);
-    expect(buildIndex).toBeLessThan(newmanIndex);
-    expect(workflowContent.slice(buildIndex, newmanIndex)).toContain(
-      'pnpm run build',
-    );
+    expect(workflowContent).toContain('actions/download-artifact@v4');
+    expect(workflowContent).toContain('name: backend-dist');
+    expect(workflowContent).toContain('test:api:report');
   });
 
   it('delegates all 49 suites to owned runners without a shared CI database or JWT', () => {
