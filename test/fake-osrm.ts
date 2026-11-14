@@ -13,7 +13,7 @@ import { AddressInfo } from 'node:net';
  * - la velocidad media es de 30 km/h (sin tráfico).
  */
 export interface FakeOsrmOptions {
-  mode?: 'ok' | 'server-error' | 'incomplete' | 'not-json' | 'no-route-pair' | 'far-point' | 'bad-values' | 'slow';
+  mode?: 'ok' | 'server-error' | 'incomplete' | 'not-json' | 'no-route-pair' | 'far-point' | 'bad-values' | 'negative-noise' | 'bad-distance' | 'slow';
   riverLng?: number;
   bridgeLat?: number;
   /** En `no-route-pair`: el punto (índice de coordenada) que queda aislado de la red. */
@@ -92,6 +92,12 @@ export function fakeOsrmResponse(rawUrl: string, opts: FakeOsrmOptions = {}): { 
       }));
     }
     if (mode === 'bad-values') durations[0]![destinations.length - 1] = -5;
+    // Ruido numérico de OSRM (valores levemente negativos) y un negativo grande que sí es inválido.
+    if (mode === 'negative-noise') {
+      distances[0]![destinations.length - 1] = -0.5;
+      durations[0]![destinations.length - 1] = -0.2;
+    }
+    if (mode === 'bad-distance') distances[0]![destinations.length - 1] = -500;
     const waypoint = (index: number) => ({ location: coords[index], distance: mode === 'far-point' && index === (opts.isolatedIndex ?? 1) ? 2500 : 6, name: 'Calle simulada' });
     const body: Record<string, unknown> = { code: 'Ok', distances, durations, sources: sources.map(waypoint), destinations: destinations.map(waypoint) };
     if (mode === 'incomplete') delete body.durations;

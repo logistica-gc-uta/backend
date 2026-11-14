@@ -13,6 +13,12 @@ type Fetch = typeof fetch;
 const coordinate = (point: GeoPoint) => `${point.lng.toFixed(6)},${point.lat.toFixed(6)}`;
 
 const isNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+// El motor puede devolver valores levemente negativos (p. ej. -0,5 m) por el ajuste de cada punto a la calle: es ruido
+// numérico, no una respuesta corrupta. Dentro de esta tolerancia (m o s) se trata como 0; un negativo mayor sigue siendo inválido.
+const MAX_NETWORK_ATTEMPTS = 3;
+const NETWORK_RETRY_DELAY_MS = 25;
+const NEGATIVE_NOISE_TOLERANCE = 1;
+const clampNoise = (value: number): number => (value < 0 && value > -NEGATIVE_NOISE_TOLERANCE ? 0 : value);
 
 /**
  * Cliente HTTP del motor vial OSRM (servicios `table`, `route` y `nearest`).
@@ -38,7 +44,18 @@ export class OsrmClient {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
     try {
-      const response = await this.fetchImpl(url, { signal: controller.signal, headers: { accept: 'application/json' } });
+      // El motor puede cerrar una conexión inactiva entre bloques de una matriz grande; una GET es idempotente, así que un
+      // fallo de conexión se reintenta (no los tiempos agotados ni las respuestas HTTP con error).
+      let response!: Awaited<ReturnType<Fetch>>;
+      for (let attempt = 1; ; attempt++) {
+        try {
+          response = await this.fetchImpl(url, { signal: controller.signal, headers: { accept: 'application/json' } });
+          break;
+        } catch (error) {
+          if ((error as { name?: string })?.name === 'AbortError' || attempt >= MAX_NETWORK_ATTEMPTS) throw error;
+          await new Promise((resolve) => setTimeout(resolve, NETWORK_RETRY_DELAY_MS * attempt));
+        }
+      }
       let body: Record<string, any> | undefined;
       try {
         body = (await response.json()) as Record<string, any>;
@@ -133,9 +150,9 @@ export class OsrmClient {
             durationsS[i]![j] = 0;
           } else if (d === null || t === null) {
             unreachable.push([i, j]);
-          } else if (isNumber(d) && isNumber(t) && d >= 0 && t >= 0) {
-            distancesM[i]![j] = d;
-            durationsS[i]![j] = t;
+          } else if (isNumber(d) && isNumber(t) && clampNoise(d) >= 0 && clampNoise(t) >= 0) {
+            distancesM[i]![j] = clampNoise(d);
+            durationsS[i]![j] = clampNoise(t);
           } else {
             throw new RoadMetricsError(ROAD_ERROR_CODES.BAD_RESPONSE, 'El motor vial devolvió un valor que no es un número válido');
           }
