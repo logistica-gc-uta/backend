@@ -1,0 +1,23 @@
+# Feature: Recover PR #56 and PR #57 useful deliverables on main (#35)
+Branch: `test/35-recover-seed-and-shop-tests` | Base: `main` (`e868f60`) | Refs: #35, PR #56, PR #57
+
+## Specs
+- S1: "vuelve al main has pull para tener los ultimos cambios y desde hay crea una nueva rama para la implementacion, cuando termines ceramos los PR 56 57 sin hacer merge"
+- S2: Recover the reproducible 200-gift demo catalog seeder (`src/prisma/shop-demo/*`, `src/prisma/seed-shop-demo.ts`, `src/prisma/seed-shop-images.ts`, `test/shop-demo-seed.e2e-spec.ts`, `docs/issue-35-shop-demo-catalog.md`, `package.json` scripts `seed:shop-demo` and `seed:shop-images`) from PR #56 (`origin/test/35-a-shop-demo-catalog`) onto `main`.
+- S3: Recover from PR #57 (`origin/test/35-bcd-contracts-concurrency`) the future-date fixes (`2026-11-15` -> `2030-06-14`) in existing `test/shop-*.e2e-spec.ts` / `fixtures.ts`, the `CT-042` migration audit test in `test/catalog-v12-migration.e2e-spec.ts`, and the new Shop matrix/OpenAPI suites (`test/shop-contract-matrix-v12.e2e-spec.ts`, `test/shop-concurrency-matrix-v12.e2e-spec.ts`, `test/shop-openapi-document.spec.ts`, `test/shop-openapi-contract.ts`, `test/shop-openapi-contract.e2e-spec.ts`) adapted to `main` (`seedAmbatoStoreCoverage` and current `docs/REGALIA-SHOP-OPENAPI-v1.2.yaml`), plus `ajv` & `yaml` devDependencies and `test/ci-security.spec.ts` E2E count (`48`).
+- S4: Verify lint (`oxlint`), build (`nest build`), unit tests (`test:cov`), isolated PostgreSQL E2E suites, and run independent `gentle-ai-verify` for High Risk item 5 (`ajv`, `yaml` devDependencies).
+- S5: Commit reviewable work units on `test/35-recover-seed-and-shop-tests`, then close PR #56 and PR #57 without merging.
+
+## Tasks
+- T1 [S1, S2] HECHO — route: inline | recover PR #56 200-gift demo catalog seeder, tests, docs, and package scripts; commit: `b378ba2`.
+- T2 [S1, S3] HECHO — route: inline | recover PR #57 future-date fixes, CT-042, adapted matrix/OpenAPI suites, tx-aware StoreCoverage concurrency fix, devDependencies (`ajv`, `yaml`), and `ci-security.spec.ts` (`48`); commits: `1a56abe`, `9dc602d`, `5c79e68`.
+- T3 [S4] HECHO — route: inline | `bash -n`, `pnpm install --frozen-lockfile --prefer-offline` (1254 entries), `pnpm run lint` (0 errors), `pnpm run build`, `pnpm run test:cov` (107/107 suites, 1384/1384 tests), and `pnpm run test:e2e:isolated` (48-suite manifest: 44 self-managed passed + 1 pre-existing `road-engine-real.e2e-spec.ts` skipped = 698/700, plus 3 legacy suites passed = 59/59). Note: `gentle-ai-verify` subagent launch was rejected at runtime admission due to prompt formatting and not retried per guard instructions; item 4 & item 5 were verified inline.
+- T4 [S5] HECHO — route: inline | closed PR #56 and PR #57 without merging via `gh pr close`; close tracking commit: this commit.
+
+## Log
+- L1: "vuelve al main has pull para tener los ultimos cambios y desde hay crea una nueva rama para la implementacion, cuando termines ceramos los PR 56 57 sin hacer merge"
+- L2: Checked out `main` and fast-forwarded `cb76ae6..e868f60` (PR #72). Created branch `test/35-recover-seed-and-shop-tests`.
+- L3: T1 committed at `b378ba2` after lint (0 errors), `nest build`, 43 unit tests (4 suites), and `test/shop-demo-seed.e2e-spec.ts` (7/7 on owned PostgreSQL) passed.
+- L4: During T2 verification, `test/shop-concurrency-matrix-v12.e2e-spec.ts` uncovered a pg pool starvation bug on `main` (10+ concurrent checkouts calling `assertDeliveryCovered` inside `tx` without passing `tx`). Propagated `tx` through `assertDeliveryCovered` and `StoreCoverageService.evaluatePoint` with RED->GREEN unit tests (`37/37` passed) and `shop-concurrency-matrix-v12.e2e-spec.ts` (`7/7` passed in 26.7s). Also aligned `RoutePlanningSettings` in `docs/REGALIA-SHOP-OPENAPI-v1.2.yaml` (`ShopSettingsAdmin`/`ShopSettingsPatch`). T2 committed in `1a56abe`, `9dc602d` (Risk: item 4), and `5c79e68` (Risk: item 5).
+- L5: T3 verified full branch `test/35-recover-seed-and-shop-tests` (`HEAD` `5c79e68`): `bash -n test/run-e2e-isolated.sh test/run-newman-isolated.sh` exit 0; `pnpm install --frozen-lockfile --prefer-offline` passed (1254 entries); `pnpm run lint` 0 errors; `pnpm run build` exit 0; `pnpm run test:cov` 107/107 suites (1384/1384 tests); `pnpm run test:e2e:isolated` exit 0 (48-suite manifest: 44 self-managed + 3 legacy passed [757 tests], 1 pre-existing gated `road-engine-real.e2e-spec.ts` [2 tests] skipped when local OSRM URL unset).
+- L6: T4 closed PR #56 and PR #57 on `logistica-gc-uta/backend` without merging, referencing #35 and branch `test/35-recover-seed-and-shop-tests`.
