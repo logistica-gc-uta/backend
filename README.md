@@ -270,7 +270,7 @@ Genera los archivos compilados en `dist/`; build con emisión PASS en la verific
 ```bash
 NODE_ENV=production pnpm run start:prod
 ```
-El arranque valida la configuración antes de cargar la aplicación y falla con un error que nombra las variables afectadas (nunca sus valores). En producción son obligatorios `JWT_SECRET` (≥ 32 caracteres, no un valor de desarrollo), `DATABASE_URL` (no la credencial de desarrollo) y `CORS_ALLOWED_ORIGINS`; Swagger queda apagado salvo `SWAGGER_ENABLED=true`. Checklist, respaldo y recuperación: [`docs/issue-53-production-config.md`](docs/issue-53-production-config.md).
+El arranque valida la configuración antes de cargar la aplicación y falla con un error que nombra las variables afectadas (nunca sus valores). En producción son obligatorios `JWT_SECRET` (≥ 32 caracteres, no un valor de desarrollo), `DATABASE_URL` (no la credencial de desarrollo) y `CORS_ALLOWED_ORIGINS`; Swagger queda apagado salvo `SWAGGER_ENABLED=true`. Checklist, respaldo y recuperación: [`docs/issue-53-production-config.md`](docs/issue-53-production-config.md). Para el despliegue en servidor con Docker, Coolify y OSRM: [`docs/deploy-coolify-stephserver.md`](docs/deploy-coolify-stephserver.md).
 
 ---
 
