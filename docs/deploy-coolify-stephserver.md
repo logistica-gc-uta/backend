@@ -14,7 +14,7 @@ Guía operativa para desplegar el backend con Docker Compose en Coolify sobre `s
 |---|---|
 | [`Dockerfile`](../Dockerfile) | Construcción multi-stage (`base`, `deps`, `builder`, `migrations`, `prod-deps`, `production`) con `pnpm@12.4.1`, usuario no-root `node` y `HEALTHCHECK` sobre `/api/v1/health`. |
 | [`.dockerignore`](../.dockerignore) | Excluye `.env*`, `.git`, `node_modules`, `dist`, pruebas, reportes, `osrm-data`, `odd/`, `design/` y directorios de agentes del contexto de build. |
-| [`docker-compose.coolify.yml`](../docker-compose.coolify.yml) | Stack de despliegue (`postgres`, `backend` y servicio opt-in `osrm` bajo el perfil `road`). Falla cerrado si faltan variables obligatorias. |
+| [`docker-compose.coolify.yml`](../docker-compose.coolify.yml) | Stack de despliegue (`postgres`, job one-shot `migrate`, `backend` y servicio opt-in `osrm` bajo el perfil `road`). Falla cerrado si faltan variables obligatorias o si falla la migración. |
 
 ## 3. Variables de entorno en Coolify (sin valores de ejemplo reales)
 
@@ -45,6 +45,7 @@ Configurar todas las variables como secretos/entorno protegidos dentro del recur
 | `COMPOSE_PROFILES` | Definir `road` únicamente después de preparar los datos OSRM en el host. |
 | `ROAD_ENGINE`, `OSRM_BASE_URL` | `OSRM` y `http://osrm:5000` cuando el perfil `road` está activo. |
 | `OSRM_DATA_DIR`, `OSRM_REGION_FILE`, `OSRM_MEM_LIMIT` | Ruta en host con `.osrm*` (p. ej. `/opt/regalia/osrm-data`), prefijo `ecuador-latest` y límite `2g`. |
+| `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_ADMIN_NAME` | Bootstrap opcional e idempotente del `ADMIN` inicial en producción (si `SEED_ADMIN_EMAIL` o `SEED_ADMIN_PASSWORD` están definidas, `migrate` ejecuta `pnpm run seed:prod` tras verificar las migraciones; `SEED_ADMIN_NAME` es opcional). |
 
 ## 4. Preparación previa de OSRM en el host (opcional)
 
@@ -55,26 +56,29 @@ Seguir [`docs/osrm/README.md`](./osrm/README.md) en `stephserver` antes de activ
 
 ## 5. Migraciones Prisma 8 y carga inicial
 
-La imagen de runtime (`production`) excluye `devDependencies` (`prisma`, `tsx`) y archivos de migración. Para inicializar, migrar o verificar el esquema contra la red del stack en Coolify, usar el target `migrations`:
+La imagen de runtime (`production`) excluye `devDependencies` (`prisma`, `tsx`) y archivos de migración. Para automatizar cada despliegue sin incluir Prisma CLI en producción, `docker-compose.coolify.yml` ejecuta el servicio one-shot **`migrate`** (target `migrations`, `restart: "no"`) **antes** de arrancar `backend`:
+
+1. Espera a que `postgres` esté saludable (`condition: service_healthy`).
+2. Ejecuta `pnpm prisma db migrate --db "$DATABASE_URL"` (idempotente: si la base está vacía aplica toda la cadena hasta el contrato emitido en `src/prisma/contract.json`; si ya está al día no realiza cambios) y `pnpm prisma db verify --db "$DATABASE_URL"`.
+3. Si `SEED_ADMIN_EMAIL` o `SEED_ADMIN_PASSWORD` están definidas, ejecuta `pnpm run seed:prod` para crear **únicamente el `ADMIN` inicial** (el rol `CLIENT` se registra desde la app y `DRIVER` lo crea el `ADMIN` desde `POST /api/v1/drivers`). Es idempotente: si ya existe un `ADMIN`, no modifica usuarios ni contraseñas; si falta alguna de las dos variables o hay conflicto de rol, falla cerrado antes de arrancar `backend`. Tras el primer despliegue podés retirar `SEED_ADMIN_PASSWORD` de Coolify si lo preferís.
+4. `backend` solo arranca si `migrate` termina con código `0` (`condition: service_completed_successfully`). Si la migración o el bootstrap fallan, el despliegue se detiene antes de levantar el backend nuevo.
+
+> Hacer un respaldo lógico (`pg_dump`) antes de desplegar cambios de esquema sobre datos existentes. Para ejecutar el bootstrap de producción manualmente desde la terminal de `backend` en Coolify (sin datos falsos de demo):
+>
+> ```bash
+> SEED_ADMIN_EMAIL="admin@tudominio.com" SEED_ADMIN_PASSWORD="<clave-segura>" node dist/prisma/seed-prod.js
+> ```
+>
+> Si querés cargar datos de demostración completos en un entorno de pruebas/demo (zonas, productos y usuarios de prueba), usá el target `migrations`:
 
 ```bash
-# Construir imagen de migraciones
 docker build --target migrations -t regalia-backend-migrations .
 
-# Solo en una base completamente vacía (revisar el snapshot objetivo en migrations/snapshots/):
 docker run --rm --network <red_compose_coolify> \
   -e DATABASE_URL="$DATABASE_URL" \
   regalia-backend-migrations \
-  pnpm prisma db migrate --db "$DATABASE_URL" --to defd240814f2524f7af9bf379253487edc9887ac231ea845a81baa9c7f768009
-
-# Verificar consistencia del contrato contra la base desplegada:
-docker run --rm --network <red_compose_coolify> \
-  -e DATABASE_URL="$DATABASE_URL" \
-  regalia-backend-migrations \
-  pnpm prisma db verify --db "$DATABASE_URL"
+  pnpm run seed
 ```
-
-> Hacer un respaldo lógico (`pg_dump`) antes de aplicar cualquier migración nueva. Si se requiere seed inicial en un entorno limpio de demo, ejecutar `pnpm run seed` usando el mismo target `migrations`.
 
 ## 6. Verificación posterior al arranque y respaldos
 
