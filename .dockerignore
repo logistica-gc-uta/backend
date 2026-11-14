@@ -1,0 +1,49 @@
+# VCS and CI
+.git
+.github
+.gitignore
+.gitattributes
+
+# Secrets and local environment files
+.env
+.env.*
+
+# Dependencies and build outputs
+node_modules
+.pnpm-store
+dist
+*.tsbuildinfo
+
+# Tests, coverage, and generated reports
+test
+coverage
+.nyc_output
+.jscpd
+reports
+test-results
+benchmarks
+
+# Local workspace, design, and agent artifacts
+odd
+design
+docs
+skills
+skills-lock.json
+osrm-data
+.agents
+.claude
+.cursor
+.devin
+.pi
+.atl
+.codegraph
+.yura-ci
+
+# Editors and OS artifacts
+.idea
+.vscode
+*.log
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

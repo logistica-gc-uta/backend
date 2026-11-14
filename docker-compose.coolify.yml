@@ -1,0 +1,75 @@
+# Coolify / server deployment stack (see docs/deploy-coolify-stephserver.md).
+# All credentials and origins must be injected by the platform environment; no dev defaults exist here.
+# PostgreSQL and OSRM stay on the internal Docker network without host port bindings; external HTTP/WS traffic enters
+# via Coolify proxy / Cloudflare Tunnel targeting backend:3000.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-3000}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+      REALTIME_ALLOWED_ORIGINS: ${REALTIME_ALLOWED_ORIGINS:?REALTIME_ALLOWED_ORIGINS is required}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      ROAD_ENGINE: ${ROAD_ENGINE:-}
+      OSRM_BASE_URL: ${OSRM_BASE_URL:-http://osrm:5000}
+      OSRM_TIMEOUT_MS: ${OSRM_TIMEOUT_MS:-3000}
+      OSRM_TILE_SIZE: ${OSRM_TILE_SIZE:-50}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      SIMULATED_PAYMENTS_ENABLED: ${SIMULATED_PAYMENTS_ENABLED:-false}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/api/v1/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+  # Opt-in routing engine (#47): enable with COMPOSE_PROFILES=road once OSRM_DATA_DIR has processed .osrm* files.
+  osrm:
+    profiles: ["road"]
+    image: osrm/osrm-backend@sha256:af5d4a83fb90086a43b1ae2ca22872e6768766ad5fcbb07a29ff90ec644ee409
+    restart: unless-stopped
+    command: osrm-routed --algorithm mld --max-table-size 100 /data/${OSRM_REGION_FILE:-ecuador-latest}.osrm
+    volumes:
+      - ${OSRM_DATA_DIR:-/opt/regalia/osrm-data}:/data:ro
+    mem_limit: ${OSRM_MEM_LIMIT:-2g}
+
+volumes:
+  postgres_data:
