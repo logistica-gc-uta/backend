@@ -96,6 +96,40 @@ describe('OsrmClient: matriz vial (#47)', () => {
     expect((await rejection(new OsrmClient(config(), createFakeOsrmFetch({ mode: 'bad-values' })).matrix([WEST, EAST]))).code).toBe('ROAD_ENGINE_BAD_RESPONSE');
   });
 
+  it('el ruido numérico de OSRM (valores levemente negativos) se trata como 0 y no descarta la matriz', async () => {
+    const matrix = await new OsrmClient(config(), createFakeOsrmFetch({ mode: 'negative-noise' })).matrix([WEST, EAST]);
+    expect(matrix.distancesM[0]![1]).toBe(0);
+    expect(matrix.durationsS[0]![1]).toBe(0);
+    expect(matrix.distancesM[1]![0]).toBeGreaterThan(0);
+  });
+
+  it('un negativo grande sigue siendo una respuesta inválida (ROAD_ENGINE_BAD_RESPONSE)', async () => {
+    const error = await rejection(new OsrmClient(config(), createFakeOsrmFetch({ mode: 'bad-distance' })).matrix([WEST, EAST]));
+    expect(error).toMatchObject({ code: 'ROAD_ENGINE_BAD_RESPONSE' });
+  });
+
+  it('un cierre de conexión aislado se reintenta y la matriz se completa', async () => {
+    const real = createFakeOsrmFetch();
+    let failures = 2;
+    const flaky = (async (...args: Parameters<typeof fetch>) => {
+      if (failures-- > 0) throw new TypeError('fetch failed');
+      return real(...args);
+    }) as typeof fetch;
+    const matrix = await new OsrmClient(config(), flaky).matrix([WEST, EAST]);
+    expect(matrix.distancesM[0]![1]).toBeGreaterThan(0);
+  });
+
+  it('si la conexión sigue fallando tras los reintentos es ROAD_ENGINE_UNAVAILABLE, sin reintentar sin límite', async () => {
+    let calls = 0;
+    const dead = (async () => {
+      calls++;
+      throw new TypeError('fetch failed');
+    }) as typeof fetch;
+    const error = await rejection(new OsrmClient(config(), dead).matrix([WEST, EAST]));
+    expect(error).toMatchObject({ code: 'ROAD_ENGINE_UNAVAILABLE' });
+    expect(calls).toBe(3);
+  });
+
   it('un par sin recorrido es ROAD_ROUTE_NOT_FOUND con los puntos afectados, no una distancia en cero', async () => {
     const error = await rejection(new OsrmClient(config(), createFakeOsrmFetch({ mode: 'no-route-pair', isolatedIndex: 1 })).matrix([WEST, EAST, NORTH]));
     expect(error).toMatchObject({ code: 'ROAD_ROUTE_NOT_FOUND', details: { pointIndexes: [0, 1, 2] } });
