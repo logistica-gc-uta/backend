@@ -55,6 +55,15 @@ describe('Issue12 dispatch: PostgreSQL + actual JWT HTTP', () => {
     const tomorrow = Temporal.Now.zonedDateTimeISO(zone).toPlainDate().add({ days: 1 });
     return tomorrow.toZonedDateTime({ timeZone: zone, plainTime: '12:00' }).toInstant().add({ minutes });
   };
+  // CP-SEG-004/008 crea un borrador de ruta para la fecha acordada, algo que solo se puede el mismo día de negocio. Cerca de
+  // la medianoche de Guayaquil (ventana de 15 + 10 min más un margen de 10) no cabe una cita futura del mismo día: en esa
+  // franja las dos pruebas se omiten de forma visible en lugar de fallar por la hora de ejecución (DEF-01 de APE4).
+  const sameDaySlotFits = (() => {
+    const zone = 'America/Guayaquil';
+    const now = Temporal.Now.instant();
+    return now.toZonedDateTimeISO(zone).toPlainDate().equals(now.add({ minutes: 35 }).toZonedDateTimeISO(zone).toPlainDate());
+  })();
+  const eachSameDay = sameDaySlotFits ? it.each : it.skip.each;
   const seedOrder = async () =>
     db.orm.public.Order.create({
       userId: ids.client,
@@ -373,7 +382,7 @@ describe('Issue12 dispatch: PostgreSQL + actual JWT HTTP', () => {
       snapshot,
     );
   });
-  it.each(['RECIPIENT_ABSENT', 'RECIPIENT_REFUSED'])(
+  eachSameDay(['RECIPIENT_ABSENT', 'RECIPIENT_REFUSED'])(
     'CP-SEG-004/008: %s, explicit agreement, same commercial order in R2 and immutable R1 history',
     async (reason) => {
       const { route, orders } = await makeRoute(1);
@@ -432,7 +441,7 @@ describe('Issue12 dispatch: PostgreSQL + actual JWT HTTP', () => {
         agreementConfirmed: true,
       }).expect(400);
       expect((await history(route.id)).stops).toEqual(failed.stops);
-      const time = slotAfter(15).round({ smallestUnit: 'microsecond' });
+      const time = Temporal.Now.instant().add({ minutes: 15 }).round({ smallestUnit: 'microsecond' });
       const contact = (
         await intervene({
           action: 'CONTACT',

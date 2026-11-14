@@ -126,7 +126,8 @@ async function main() {
 
     api = spawn(process.execPath, ['dist/main.js'], {
       cwd: ROOT, stdio: ['ignore', 'ignore', 'ignore'],
-      env: { ...process.env, PORT: String(PORT), DATABASE_URL: dbUrl, JWT_SECRET: secret, NODE_ENV: 'production' },
+      // production exige CORS explícito (#53): el banco solo habla con 127.0.0.1, así que su único origen es el propio.
+      env: { ...process.env, PORT: String(PORT), DATABASE_URL: dbUrl, JWT_SECRET: secret, NODE_ENV: 'production', CORS_ALLOWED_ORIGINS: BASE },
     });
     await waitForApi();
     log(`API arriba (pid ${api.pid}) en ${BASE}; base ${dbName}`);
