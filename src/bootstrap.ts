@@ -7,6 +7,7 @@ import {
   loadRuntimeConfig,
   type RuntimeConfig,
 } from './config/runtime-config.js';
+import { bootstrapSimulatedCards, isPaymentSimulationEnabled } from './modules/shop/checkout/simulated-card.js';
 
 /**
  * Prefijo, CORS, validación y Swagger según la configuración validada (#53). Lo usan el arranque real y las pruebas
@@ -68,10 +69,29 @@ export async function startApplication(env: NodeJS.ProcessEnv = process.env, log
     return { started: false as const, exitCode: 1 };
   }
   for (const warning of config.warnings) logger.warn(warning);
-  // Importación tardía: ningún módulo se carga con una configuración inválida.
+  const simulationEnv = {
+    NODE_ENV: config.environment,
+    SIMULATED_PAYMENTS_ENABLED: env.SIMULATED_PAYMENTS_ENABLED,
+  };
+  // Importación tardía: no se carga AppModule con una configuración inválida.
   const { AppModule } = await import('./app.module.js');
   const app = await NestFactory.create(AppModule);
   configureApp(app, config);
+  if (config.environment === 'production' && isPaymentSimulationEnabled(simulationEnv)) {
+    try {
+      // El cliente de PrismaService existe al construir el proveedor; onModuleInit solo registra un log.
+      const { PrismaService } = await import('./database/prisma.service.js');
+      await bootstrapSimulatedCards(app.get(PrismaService), simulationEnv);
+    } catch {
+      logger.error('No se pudieron inicializar las tarjetas de pago simuladas.');
+      try {
+        await app.close();
+      } catch {
+        logger.error('No se pudo cerrar la aplicación tras el fallo de inicialización.');
+      }
+      return { started: false as const, exitCode: 1 };
+    }
+  }
   await app.listen(config.port);
   logger.log(`Servidor iniciado y escuchando en el puerto ${config.port} (${config.environment})`);
   if (config.swaggerEnabled) logger.log('Documentación Swagger habilitada en /api/docs');

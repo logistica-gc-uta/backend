@@ -35,7 +35,7 @@ Configurar todas las variables como secretos/entorno protegidos dentro del recur
 | `CORS_ALLOWED_ORIGINS` | Lista separada por comas de orígenes HTTPS exactos del frontend web (sin comodines ni rutas). |
 | `REALTIME_ALLOWED_ORIGINS` | Lista separada por comas para Socket.IO; mantener exactamente alineada con `CORS_ALLOWED_ORIGINS`. |
 | `SWAGGER_ENABLED` | `false` en producción (`true` solo si se autoriza explícitamente publicar `/api/docs`). |
-| `SIMULATED_PAYMENTS_ENABLED` | `false` en producción (el simulador de pagos solo se habilita si `NODE_ENV=demo|test` y `SIMULATED_PAYMENTS_ENABLED=true`). |
+| `SIMULATED_PAYMENTS_ENABLED` | `false` por defecto. En `production`, usar `true` solo durante la presentación; mantener `NODE_ENV=production`. |
 
 ### Integraciones opcionales
 
@@ -46,6 +46,12 @@ Configurar todas las variables como secretos/entorno protegidos dentro del recur
 | `ROAD_ENGINE`, `OSRM_BASE_URL` | `OSRM` y `http://osrm:5000` cuando el perfil `road` está activo. |
 | `OSRM_DATA_DIR`, `OSRM_REGION_FILE`, `OSRM_MEM_LIMIT` | Ruta en host con `.osrm*` (p. ej. `/opt/regalia/osrm-data`), prefijo `ecuador-latest` y límite `2g`. |
 | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_ADMIN_NAME` | Bootstrap opcional e idempotente del `ADMIN` inicial en producción (si `SEED_ADMIN_EMAIL` o `SEED_ADMIN_PASSWORD` están definidas, `migrate` ejecuta `pnpm run seed:prod` tras verificar las migraciones; `SEED_ADMIN_NAME` es opcional). |
+
+### Pagos simulados durante la presentación
+
+1. **Activar:** en el mismo recurso de Coolify, mantener `NODE_ENV=production`, configurar `SIMULATED_PAYMENTS_ENABLED=true` y redesplegar/recrear el backend para aplicar el entorno nuevo. Un reinicio que conserva el entorno anterior no basta. Antes de aceptar tráfico, el backend inserta solo las tarjetas sintéticas que falten; no repone saldos, no reactiva tarjetas ni carga el catálogo o el administrador demo. Si falla esa inicialización, el backend no empieza a escuchar.
+2. **Verificar:** en ese mismo despliegue, comprobar `/api/v1/health` y completar una cotización y una compra con una cuenta autorizada, un artículo de prueba y una tarjeta sintética conocida. No usar tarjetas reales: no hay cobro real ni pasarela. La bandera es global para todos los clientes autorizados mientras esté activa; una compra exitosa sí crea pedido y comprobante y descuenta inventario y saldo simulado.
+3. **Desactivar:** volver a `SIMULATED_PAYMENTS_ENABLED=false` y redesplegar/recrear el backend. Las compras nuevas devuelven `503 PAYMENT_SIMULATION_DISABLED`; se mantienen las respuestas idempotentes de intentos anteriores. Desactivar no revierte pedidos, comprobantes, saldos ni inventario.
 
 ## 4. Preparación previa de OSRM en el host (opcional)
 
