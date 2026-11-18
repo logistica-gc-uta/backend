@@ -1,6 +1,9 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { once } from 'node:events';
+import { createServer } from 'node:net';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import type { PrismaService } from '../src/database/prisma.service.js';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import {
@@ -15,6 +18,128 @@ import { signQuoteToken, QuoteTokenPayload } from '../src/modules/shop/checkout/
 import { seedAmbatoStoreCoverage } from './ambato-store-coverage.fixture.js';
 
 jest.setTimeout(240_000);
+
+async function availablePort(): Promise<string> {
+  const probe = createServer();
+  await once(probe.listen(0, '127.0.0.1'), 'listening');
+  const address = probe.address();
+  await new Promise<void>((resolve, reject) => probe.close((error) => error ? reject(error) : resolve()));
+  if (!address || typeof address === 'string') throw new Error('Expected an ephemeral TCP port');
+  return String(address.port);
+}
+
+describe('Production payment simulation (owned PostgreSQL fixture)', () => {
+  it('applies opt-in across production boots without resetting cards or losing checkout replays', async () => {
+    const originalEnv = process.env;
+    try {
+      startOwnedContainer();
+      const databaseUrl = createOwnedDatabase(`shop_production_${randomUUID().replaceAll('-', '')}`);
+      runPrismaMigrate(databaseUrl);
+      process.env = {
+        ...originalEnv,
+        NODE_ENV: 'production',
+        DATABASE_URL: databaseUrl,
+        JWT_SECRET: randomUUID() + randomUUID(),
+        CORS_ALLOWED_ORIGINS: 'https://tienda.example.test',
+        REALTIME_ALLOWED_ORIGINS: 'https://tienda.example.test',
+        SWAGGER_ENABLED: 'false',
+        PORT: await availablePort(),
+      };
+
+      // Isolated modules give each boot a fresh Prisma singleton (closing an app closes its client).
+      const boot = async <T>(flag: 'true' | 'false', check: (app: INestApplication, db: PrismaService) => Promise<T>) => {
+        process.env.SIMULATED_PAYMENTS_ENABLED = flag;
+        let completed: { value: T } | undefined;
+        await jest.isolateModulesAsync(async () => {
+          const { startApplication } = await import('../src/bootstrap.js');
+          const { PrismaService: Service } = await import('../src/database/prisma.service.js');
+          const result = await startApplication();
+          if (!result.started) throw new Error('Production fixture startup failed');
+          try {
+            completed = { value: await check(result.app, result.app.get(Service)) };
+          } finally {
+            await result.app.close();
+          }
+        });
+        if (!completed) throw new Error('Production fixture check did not run');
+        return completed.value;
+      };
+
+      await boot('false', async (_app, db) => {
+        expect(await db.client.orm.public.SimulatedCard.all()).toHaveLength(0);
+      });
+      const purchase = await boot('true', async (app, db) => {
+        const { JwtService } = await import('@nestjs/jwt');
+        const orm = db.client.orm.public;
+        expect((await orm.SimulatedCard.all()).map((card) => card.fixtureId).sort())
+          .toEqual(['DEMO_APPROVED', 'DEMO_EMPTY', 'DEMO_LIMITED']);
+        expect(await orm.Category.all()).toHaveLength(0);
+        expect(await orm.User.where({ role: 'ADMIN' }).all()).toHaveLength(0);
+        const buyer = await orm.User.create({
+          name: 'Fixture Buyer', email: 'fixture-buyer@example.test', password: 'fixture-password', role: 'CLIENT',
+        });
+        const category = await orm.Category.create({ name: 'Fixture', slug: 'fixture', isActive: true });
+        const product = await orm.Product.create({
+          name: 'Fixture', description: 'Production checkout fixture', sku: 'FIXTURE-1', price: 10,
+          priceCents: 1000n, stock: 2, isPublished: true, isFeatured: false, categoryId: category.id,
+        });
+        const zone = await orm.Zone.create({ name: 'Ambato', code: 'AMB', depotLat: -1.2425, depotLng: -78.6188 });
+        await seedAmbatoStoreCoverage(db);
+        const token = app.get(JwtService).sign({ sub: buyer.id, email: buyer.email, role: buyer.role });
+        const http = request(app.getHttpServer());
+        const basket = {
+          items: [{ productId: product.id, quantity: 1 }],
+          delivery: {
+            recipient: { name: 'Ana Regalo', phone: '0991234567' },
+            zoneId: zone.id,
+            deliveryAddress: 'Av. Cevallos y Montalvo, Ambato',
+            deliveryLocation: { lat: -1.2425, lng: -78.6188 },
+            scheduledDeliveryDate: '2030-06-14T15:00:00.000Z',
+          },
+        };
+        const quote = await http.post('/api/v1/shop/checkout/quote').auth(token, { type: 'bearer' }).send(basket).expect(200);
+        const payload = {
+          ...basket,
+          quoteToken: quote.body.quoteToken,
+          paymentCard: { number: '9000 0000 0000 0001', holderName: 'PRUEBA APROBADA', expiresMonth: 12, expiresYear: 2030, cvv: '111' },
+        };
+        const checkout = (key: string, body = payload) => http.post('/api/v1/shop/checkout')
+          .auth(token, { type: 'bearer' }).set('Idempotency-Key', key).send(body);
+        const invalid = await checkout(randomUUID(), {
+          ...payload, paymentCard: { ...payload.paymentCard, number: '9000 0000 0000 9999' },
+        }).expect(422);
+        expect(invalid.body.error.code).toBe('CARD_INVALID');
+        const key = randomUUID();
+        const approved = await checkout(key).expect(201);
+        expect(approved.body.payment).toMatchObject({ status: 'APPROVED', amountCents: 1150, cardLast4: '0001' });
+        await orm.SimulatedCard.where({ fixtureId: 'DEMO_EMPTY' }).update({ active: false });
+        return { token, payload, key, approved: approved.body, productId: product.id };
+      });
+
+      await boot('false', async (app, db) => {
+        const checkout = (key: string) => request(app.getHttpServer()).post('/api/v1/shop/checkout')
+          .auth(purchase.token, { type: 'bearer' }).set('Idempotency-Key', key).send(purchase.payload);
+        const disabled = await checkout(randomUUID()).expect(503);
+        expect(disabled.body.error.code).toBe('PAYMENT_SIMULATION_DISABLED');
+        const replay = await checkout(purchase.key).expect(201);
+        expect(replay.body).toEqual(purchase.approved);
+        const orm = db.client.orm.public;
+        expect((await orm.Product.where({ id: purchase.productId }).first())?.stock).toBe(1);
+        expect(await orm.Order.all()).toHaveLength(1);
+      });
+
+      await boot('true', async (_app, db) => {
+        const cards = await db.client.orm.public.SimulatedCard.all();
+        expect(cards).toHaveLength(3);
+        expect(cards.find((card) => card.fixtureId === 'DEMO_APPROVED')?.balanceCents).toBe(48850n);
+        expect(cards.find((card) => card.fixtureId === 'DEMO_EMPTY')?.active).toBe(false);
+      });
+    } finally {
+      process.env = originalEnv;
+      cleanupOwnedResources();
+    }
+  });
+});
 
 describe('Shop Checkout v1.2 Atomic Purchase & Idempotency E2E (owned PostgreSQL fixture)', () => {
   let app: INestApplication;

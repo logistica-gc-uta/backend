@@ -69,7 +69,7 @@ Genérico, sin elegir proveedor; el responsable fija frecuencia y retención:
 - [ ] `REALTIME_ALLOWED_ORIGINS` con ese mismo dominio (lista aparte).
 - [ ] `SWAGGER_ENABLED` decidido por el responsable (por defecto apagado).
 - [ ] Respaldo configurado y **restauración probada**.
-- [ ] `SIMULATED_PAYMENTS_ENABLED` sin definir (el simulador solo funciona en `test`/`demo`).
+- [ ] `SIMULATED_PAYMENTS_ENABLED=false` fuera de la presentación. Con `NODE_ENV=production`, seguir la [guía de activación, verificación y desactivación en el mismo despliegue](./deploy-coolify-stephserver.md#pagos-simulados-durante-la-presentación).
 - [ ] Base URL del backend acordada con el equipo móvil.
 
 ## Decisiones a confirmar con el responsable (no se adivinaron)
