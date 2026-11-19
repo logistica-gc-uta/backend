@@ -683,5 +683,42 @@ describe('DispatchEmergencyService (#51)', () => {
         NotFoundException,
       );
     });
+
+    it('preserves an earlier failed-stop released claim, never creates custody items for it, and never touches a newer claim on another route', async () => {
+      const h = createHarness();
+      seedInProgressRoute(h);
+      const earlierRelease = baseInstant.subtract({ minutes: 15 });
+      const failedClaim = h.rows.OrderClaim!.find(
+        (c) => c.orderId === 'order-failed',
+      )!;
+      failedClaim.releasedAt = earlierRelease;
+      h.rows.OrderClaim!.push({
+        id: 'claim-newer-route',
+        routeId: 'route-2',
+        orderId: 'order-failed',
+        claimedAt: baseInstant.subtract({ minutes: 5 }),
+        releasedAt: null,
+      });
+
+      const { audit } = await h.run({
+        action: 'EMERGENCY_DECLARE',
+        routeId: 'route-1',
+      });
+
+      expect((audit.result as Record<string, unknown>).detachedOrderIds).toEqual([
+        'order-pending-1',
+        'order-pending-2',
+      ]);
+      expect(
+        h.rows.RouteUnitRecovery!.some((u) => u.orderId === 'order-failed'),
+      ).toBe(false);
+      expect(
+        await h.service.isOrderRecoveryResolved(h.tx, 'order-failed'),
+      ).toBe(true);
+      expect(failedClaim.releasedAt?.toString()).toBe(earlierRelease.toString());
+      expect(
+        h.rows.OrderClaim!.find((c) => c.id === 'claim-newer-route')!.releasedAt,
+      ).toBeNull();
+    });
   });
 });

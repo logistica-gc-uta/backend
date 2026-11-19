@@ -6878,8 +6878,8 @@
             "dispatchIntervention": {
               "checks": [
                 {
-                  "expression": "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'RELEASE_DRAFT', 'CANCEL_ROUTE', 'LOSS_DECLARE', 'REPLACEMENT_PREPARE', 'ORIGINAL_RECOVER', 'LOSS_CANCEL', 'EMERGENCY_DECLARE', 'UNIT_RECOVERY_CONFIRM', 'EMERGENCY_CLOSE', 'EMERGENCY_DRIVER_RELEASE', 'EMERGENCY_REQUEUE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500",
-                  "name": "dispatch_audit_valid_70314cc0",
+                  "expression": "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'CONFIRM_INCIDENT_READY', 'RELEASE_DRAFT', 'CANCEL_ROUTE', 'LOSS_DECLARE', 'REPLACEMENT_PREPARE', 'ORIGINAL_RECOVER', 'LOSS_CANCEL', 'EMERGENCY_DECLARE', 'UNIT_RECOVERY_CONFIRM', 'EMERGENCY_CLOSE', 'EMERGENCY_DRIVER_RELEASE', 'EMERGENCY_REQUEUE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500",
+                  "name": "dispatch_audit_valid_9d94133a",
                   "prefix": "dispatch_audit_valid"
                 }
               ],
@@ -11265,7 +11265,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "1b4e7632062d3ea2fdbb235d224cf37ae0a5daaddd961bcce901eb985e47d9a6"
+    "storageHash": "973c66fbba6fd6fb7bc1926da46af1dd3efe74ca17073eb430209d58d890e95c"
   },
   "execution": {
     "executionHash": "197f1c374ba6fd8fc85f656c8567a0200cbdc7b2a6e63079ef2b9e5b94a20e6e",

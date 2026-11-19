@@ -52,7 +52,7 @@ export class DispatchController {
   @HttpCode(200)
   @ApiOperation({
     summary:
-      'Atomically confirm/reject, reorder, move, reassign, cancel before start, release draft, prioritize, contact or reschedule with ADMIN audit',
+      'Atomically confirm/reject, reorder, move, reassign, cancel before start, release draft, prioritize, confirm incident store readiness, contact or reschedule with ADMIN audit',
   })
   @ApiResponse({ status: 200, type: DispatchAuditDto })
   @ApiResponse({
@@ -128,7 +128,10 @@ export class DispatchController {
 
   @Get('inbox')
   @ApiOperation({
-    summary: 'ADMIN same-day urgencies and failed-visit review inbox',
+    summary:
+      'ADMIN same-day urgencies, failed-delivery incident readiness/action snapshots, and interrupted-route emergency custody inbox',
+    description:
+      'Read-only snapshot; incident readiness and allowedActions reflect current persisted evidence without exposing PII or full audit payloads, while write endpoints continue to enforce atomic preconditions under locks.',
   })
   @ApiResponse({ status: 200, type: UrgencyInboxDto })
   @ApiResponse({ status: 401, description: 'Authentication required' })

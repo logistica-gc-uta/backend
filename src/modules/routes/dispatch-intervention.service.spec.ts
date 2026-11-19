@@ -104,32 +104,52 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
     }
   };
   const failed = (status = 'COMPLETED') => {
+    const startedAt = nowInstant().subtract({ minutes: 10 });
+    const failedAt = nowInstant().subtract({ minutes: 2 });
     baseRoute(status);
+    rows.Route![0].startedAt = startedAt;
+    rows.Route![0].startedById = 'driver-user';
     rows.Order![0].requiresAdministrativeReview = true;
     rows.Order![0].status = 'ASSIGNED';
     rows.Order![0].routeId = 'route';
     rows.RouteStop![0].orderId = 'urgent';
     rows.RouteStop![0].outcome = 'FAILED';
     rows.OrderClaim =
-      status === 'COMPLETED'
-        ? []
+      status === 'COMPLETED' || status === 'INTERRUPTED'
+        ? [
+            {
+              id: 'claim',
+              orderId: 'urgent',
+              routeId: 'route',
+              claimedAt: startedAt.subtract({ minutes: 5 }),
+              releasedAt: failedAt,
+            },
+          ]
         : [
             {
               id: 'claim',
               orderId: 'urgent',
               routeId: 'route',
-              claimedAt: nowInstant(),
+              claimedAt: startedAt.subtract({ minutes: 5 }),
               releasedAt: null,
             },
           ];
     rows.DeliveryAttempt!.push({
       id: 'failure',
       stopId: 'route-stop0',
+      driverId: 'driver',
       outcome: 'FAILED',
-      recordedAt: nowInstant(),
+      recordedAt: failedAt,
       failureReason: 'RECIPIENT_ABSENT',
     });
   };
+  const confirmReady = (attemptId = 'failure', orderId = 'urgent') =>
+    call({
+      action: 'CONFIRM_INCIDENT_READY',
+      orderId,
+      attemptId,
+      reason: 'Returned parcel verified at store',
+    });
   const agreement = (extra: Record<string, unknown> = {}) => {
     // cerca de la medianoche de Guayaquil la ventana acordada pasa al mediodía del día siguiente
     const zone = 'America/Guayaquil';
@@ -581,6 +601,7 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
   });
   it('resolves latest failed attempt once using a persisted agreement, preserving return hold and exact replay', async () => {
     failed();
+    const ready = await confirmReady();
     const contact = await call(agreement({ attemptId: 'failure' }));
     const body = {
       action: 'RESCHEDULE',
@@ -601,7 +622,7 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
       'Failed attempt already administratively resolved',
     );
     expect((await availability.effective('driver')).isAvailable).toBe(false);
-    expect(await service.audit()).toEqual([contact, result]);
+    expect(await service.audit()).toEqual([ready, contact, result]);
   });
   it('supports explicit date/window reprogramming of unclaimed PENDING and pre-start reserved orders', async () => {
     const contact = await call(agreement());
@@ -628,9 +649,12 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
     );
     expect(await service.audit()).toEqual([contact, result]);
   });
-  it.each(['IN_PROGRESS', null])(
-    'contact may record management but cannot reschedule frozen/unverified execution %s',
-    async (status) => {
+  it.each([
+    ['IN_PROGRESS', 'Failed order claim must be released before rescheduling'],
+    [null, 'Route structure is frozen or unverified'],
+  ] as const)(
+    'contact may record management but cannot reschedule unreleased or unverified execution %s',
+    async (status, expectedMessage) => {
       failed(status as string);
       rows.Route![0].status = status;
       const contact = await call(agreement({ attemptId: 'failure' }));
@@ -640,7 +664,7 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
           orderId: 'urgent',
           agreementId: contact.id,
         }),
-      ).rejects.toThrow('Route structure is frozen or unverified');
+      ).rejects.toThrow(expectedMessage);
       expect(await service.audit()).toEqual([contact]);
     },
   );
@@ -723,12 +747,16 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
       expect((audit.result as Record<string, unknown>).pickupId).toBe(rows.OrderPickup![0].id);
     });
 
-    it('tras una entrega fallida exige referirse al último intento fallido, y solo entonces registra el acuerdo', async () => {
+    it('tras una entrega fallida exige referirse al último intento fallido y confirmar disponibilidad, y solo entonces registra el acuerdo', async () => {
       failed('COMPLETED');
       await expect(pickup({ action: 'PICKUP_AGREE' })).rejects.toThrow('latest failed attempt');
       await expect(pickup({ action: 'PICKUP_AGREE', attemptId: 'otro' })).rejects.toThrow('latest failed attempt');
+      await expect(pickup({ action: 'PICKUP_AGREE', attemptId: 'failure' })).rejects.toMatchObject({
+        response: { code: 'INCIDENT_NOT_READY_AT_STORE' },
+      });
       expect(rows.OrderPickup).toHaveLength(0);
 
+      await confirmReady();
       const audit = await pickup({ action: 'PICKUP_AGREE', attemptId: 'failure' });
       expect(audit.outcome).toBe('APPLIED');
       expect(rows.Order![0]).toMatchObject({ status: 'PENDING', requiresAdministrativeReview: true, routeId: null });
@@ -953,6 +981,7 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
       rows.Order![0].zoneId = null;
       rows.StoreCoverage!.push({ singletonKey: 'GLOBAL', lat: -1.24, lng: -78.61 });
 
+      await confirmReady();
       const agreed = await call(agreement({ attemptId: 'failure' }));
       const outcome = await call({
         action: 'RESCHEDULE',
@@ -1196,8 +1225,7 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
 
     it('permite RESCHEDULE y PICKUP_AGREE con attemptId sobre parada FAILED en ruta INTERRUPTED y enruta LOSS_CANCEL', async () => {
       failed('INTERRUPTED');
-      // Release claim as EMERGENCY_DECLARE does for all route claims.
-      rows.OrderClaim = [];
+      await confirmReady();
       const contact = await call(agreement({ attemptId: 'failure' }));
       const rescheduled = await call({
         action: 'RESCHEDULE',
@@ -1330,6 +1358,271 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
           reason: 'Another reason',
         }),
       ).rejects.toThrow('another actor or payload');
+    });
+  });
+
+  describe('Failed-delivery store readiness (CONFIRM_INCIDENT_READY / T4 / S3)', () => {
+    const failedInProgressWithReleasedClaim = () => {
+      const startedAt = nowInstant().subtract({ minutes: 20 });
+      const failedAt = nowInstant().subtract({ minutes: 5 });
+      baseRoute('IN_PROGRESS');
+      rows.Route![0]!.startedAt = startedAt;
+      rows.Route![0]!.startedById = 'driver-user';
+      rows.Order![0]!.requiresAdministrativeReview = true;
+      rows.Order![0]!.status = 'ASSIGNED';
+      rows.Order![0]!.routeId = 'route';
+      rows.RouteStop![0]!.orderId = 'urgent';
+      rows.RouteStop![0]!.outcome = 'FAILED';
+      rows.OrderClaim = [
+        {
+          id: 'claim-failed',
+          orderId: 'urgent',
+          routeId: 'route',
+          claimedAt: startedAt.subtract({ minutes: 5 }),
+          releasedAt: failedAt,
+        },
+      ];
+      rows.DeliveryAttempt!.push({
+        id: 'failure',
+        stopId: 'route-stop0',
+        driverId: 'driver',
+        outcome: 'FAILED',
+        recordedAt: failedAt,
+        failureReason: 'RECIPIENT_ABSENT',
+      });
+      return { startedAt, failedAt };
+    };
+
+    it('allows immediate CONTACT, blocks RESCHEDULE/PICKUP_AGREE until CONFIRM_INCIDENT_READY, and unlocks both without route completion', async () => {
+      failedInProgressWithReleasedClaim();
+
+      const contact = await call(agreement({ attemptId: 'failure' }));
+      expect(contact.action).toBe('CONTACT');
+
+      await expect(
+        call({ action: 'RESCHEDULE', orderId: 'urgent', agreementId: contact.id }),
+      ).rejects.toMatchObject({ response: { code: 'INCIDENT_NOT_READY_AT_STORE' } });
+      await expect(
+        call({ action: 'PICKUP_AGREE', orderId: 'urgent', attemptId: 'failure' }),
+      ).rejects.toMatchObject({ response: { code: 'INCIDENT_NOT_READY_AT_STORE' } });
+
+      const readyBody = {
+        action: 'CONFIRM_INCIDENT_READY',
+        orderId: 'urgent',
+        attemptId: 'failure',
+        requestId: 'ready-req-1',
+        reason: 'Returned parcel verified at store',
+      };
+      const ready = await call(readyBody);
+      expect(ready).toMatchObject({
+        action: 'CONFIRM_INCIDENT_READY',
+        outcome: 'APPLIED',
+        orderId: 'urgent',
+        routeId: 'route',
+        result: expect.objectContaining({
+          orderId: 'urgent',
+          routeId: 'route',
+          attemptId: 'failure',
+        }),
+      });
+      // Readiness attestation never auto-replans or mutates order/claims.
+      expect(rows.Order![0]).toMatchObject({
+        status: 'ASSIGNED',
+        routeId: 'route',
+        requiresAdministrativeReview: true,
+      });
+      expect(rows.Route![0]!.status).toBe('IN_PROGRESS');
+      expect(await call(readyBody)).toEqual(ready);
+      await expect(
+        call({ ...readyBody, requestId: 'ready-req-dup' }),
+      ).rejects.toMatchObject({ response: { code: 'INCIDENT_ALREADY_READY' } });
+
+      const rescheduled = await call({
+        action: 'RESCHEDULE',
+        orderId: 'urgent',
+        agreementId: contact.id,
+      });
+      expect(rescheduled.outcome).toBe('APPLIED');
+      expect(rows.Order![0]).toMatchObject({
+        status: 'PENDING',
+        routeId: null,
+        requiresAdministrativeReview: false,
+      });
+    });
+
+    it('unlocks PICKUP_AGREE on an IN_PROGRESS route after CONFIRM_INCIDENT_READY without waiting for completion', async () => {
+      failedInProgressWithReleasedClaim();
+      await call({
+        action: 'CONFIRM_INCIDENT_READY',
+        orderId: 'urgent',
+        attemptId: 'failure',
+      });
+      const agreed = await call({
+        action: 'PICKUP_AGREE',
+        orderId: 'urgent',
+        attemptId: 'failure',
+      });
+      expect(agreed.outcome).toBe('APPLIED');
+      expect(rows.OrderPickup).toHaveLength(1);
+      expect(rows.Order![0]).toMatchObject({
+        status: 'PENDING',
+        routeId: null,
+        requiresAdministrativeReview: true,
+      });
+    });
+
+    it('rejects CONFIRM_INCIDENT_READY for superseded attempts, unreleased claims, and emergency-only custody without side effects', async () => {
+      const { failedAt } = failedInProgressWithReleasedClaim();
+      // Unreleased active claim blocks readiness.
+      rows.OrderClaim![0]!.releasedAt = null;
+      await expect(
+        call({
+          action: 'CONFIRM_INCIDENT_READY',
+          orderId: 'urgent',
+          attemptId: 'failure',
+        }),
+      ).rejects.toMatchObject({ response: { code: 'CLAIM_NOT_RELEASED' } });
+
+      // Restore release, then add a newer failed attempt -> older attempt is superseded.
+      rows.OrderClaim![0]!.releasedAt = failedAt;
+      rows.DeliveryAttempt!.push({
+        id: 'failure-2',
+        stopId: 'route-stop0',
+        driverId: 'driver',
+        outcome: 'FAILED',
+        recordedAt: failedAt.add({ seconds: 10 }),
+        failureReason: 'RECIPIENT_REFUSED',
+      });
+      await expect(
+        call({
+          action: 'CONFIRM_INCIDENT_READY',
+          orderId: 'urgent',
+          attemptId: 'failure',
+        }),
+      ).rejects.toMatchObject({ response: { code: 'STALE_FAILED_ATTEMPT' } });
+
+      // Emergency-only custody (no failed attempt or emergency supersedes failure) is rejected.
+      rows.DeliveryAttempt = [];
+      rows.RouteStop = [];
+      rows.Order![0]!.status = 'PENDING';
+      rows.Order![0]!.routeId = null;
+      rows.RouteEmergency!.push({
+        id: 'em-1',
+        routeId: 'route',
+        declaredAt: failedAt.add({ minutes: 1 }),
+      });
+      rows.RouteUnitRecovery!.push({
+        id: 'rec-1',
+        emergencyId: 'em-1',
+        routeId: 'route',
+        orderId: 'urgent',
+        orderItemId: 'item-1',
+        unitNumber: 1,
+        recoveredAt: failedAt.add({ minutes: 2 }),
+      });
+      await expect(
+        call({
+          action: 'CONFIRM_INCIDENT_READY',
+          orderId: 'urgent',
+          attemptId: 'failure',
+        }),
+      ).rejects.toMatchObject({ response: { code: 'EMERGENCY_CUSTODY_SEPARATE' } });
+      expect(rows.DispatchIntervention).toHaveLength(0);
+    });
+
+    it('rejects CONTACT and RESCHEDULE when a pending store pickup already exists', async () => {
+      failedInProgressWithReleasedClaim();
+      const contact = await call(agreement({ attemptId: 'failure' }));
+      await call({
+        action: 'CONFIRM_INCIDENT_READY',
+        orderId: 'urgent',
+        attemptId: 'failure',
+      });
+      await call({
+        action: 'PICKUP_AGREE',
+        orderId: 'urgent',
+        attemptId: 'failure',
+      });
+
+      await expect(
+        call({
+          action: 'CONTACT',
+          orderId: 'urgent',
+          attemptId: 'failure',
+          agreementConfirmed: false,
+        }),
+      ).rejects.toMatchObject({ response: { code: 'PICKUP_ALREADY_AGREED' } });
+
+      await expect(
+        call({
+          action: 'RESCHEDULE',
+          orderId: 'urgent',
+          agreementId: contact.id,
+        }),
+      ).rejects.toMatchObject({ response: { code: 'PICKUP_ALREADY_AGREED' } });
+
+      expect(rows.OrderPickup).toHaveLength(1);
+      expect(rows.Order![0]).toMatchObject({
+        status: 'PENDING',
+        routeId: null,
+        requiresAdministrativeReview: true,
+      });
+    });
+
+    it('rejects ordinary attempt-scoped CONTACT and PICKUP_DECLINE under current emergency custody while preserving emergency-scoped CONTACT', async () => {
+      const { failedAt } = failedInProgressWithReleasedClaim();
+      const emergencyAt = failedAt.add({ minutes: 5 });
+      rows.RouteEmergency!.push({
+        id: 'em-active',
+        routeId: 'route-em',
+        declaredAt: emergencyAt,
+      });
+      rows.RouteUnitRecovery!.push({
+        id: 'rec-active',
+        emergencyId: 'em-active',
+        routeId: 'route-em',
+        orderId: 'urgent',
+        orderItemId: 'item-1',
+        unitNumber: 1,
+        recoveredAt: null,
+      });
+
+      // While recovery is still pending, ordinary PICKUP_DECLINE and CONTACT reject with RECOVERY_PENDING.
+      await expect(
+        call({
+          action: 'PICKUP_DECLINE',
+          orderId: 'urgent',
+          attemptId: 'failure',
+        }),
+      ).rejects.toMatchObject({ response: { code: 'RECOVERY_PENDING' } });
+
+      // Once units are recovered, active emergency custody still owns the incident:
+      // ordinary attempt-scoped CONTACT and PICKUP_DECLINE must reject with EMERGENCY_CUSTODY_SEPARATE.
+      rows.RouteUnitRecovery![0]!.recoveredAt = emergencyAt.add({ minutes: 1 });
+      await expect(
+        call({
+          action: 'CONTACT',
+          orderId: 'urgent',
+          attemptId: 'failure',
+          agreementConfirmed: false,
+        }),
+      ).rejects.toMatchObject({ response: { code: 'EMERGENCY_CUSTODY_SEPARATE' } });
+      await expect(
+        call({
+          action: 'PICKUP_DECLINE',
+          orderId: 'urgent',
+          attemptId: 'failure',
+        }),
+      ).rejects.toMatchObject({ response: { code: 'EMERGENCY_CUSTODY_SEPARATE' } });
+
+      // Emergency-scoped CONTACT still succeeds for the owning emergency.
+      const emContact = await call(agreement({ emergencyId: 'em-active' }));
+      expect(emContact.outcome).toBe('APPLIED');
+      expect(emContact.result).toMatchObject({
+        orderId: 'urgent',
+        emergencyId: 'em-active',
+        attemptId: null,
+      });
     });
   });
 });

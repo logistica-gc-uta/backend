@@ -288,8 +288,8 @@ describe('Route emergency interruption and unit recovery (#51): PostgreSQL + JWT
       await api('patch', `/orders/${o1.order.id}/status`, { status: 'IN_TRANSIT' }, ids.driverUser, 'DRIVER').expect(200);
       await api('patch', `/orders/${o1.order.id}/status`, { status: 'DELIVERED' }, ids.driverUser, 'DRIVER').expect(200);
 
-      // Stop 2 failed (FAILED)
-      await api(
+      // Stop 2 failed (FAILED) — releases its own claim at failure time
+      const failedStop2 = await api(
         'post',
         `/routes/${route.id}/stops/${stop2.id}/failure`,
         { requestId: randomUUID(), reason: 'RECIPIENT_ABSENT', context: 'Nobody answered bell' },
@@ -370,7 +370,14 @@ describe('Route emergency interruption and unit recovery (#51): PostgreSQL + JWT
 
       const claims = await db.orm.public.OrderClaim.where({ routeId: route.id }).all();
       expect(claims).toHaveLength(4);
-      expect(claims.every((c) => c.releasedAt?.toString() === emergencyRow!.declaredAt.toString())).toBe(true);
+      expect(
+        claims.find((c) => c.orderId === o2.order.id)?.releasedAt?.toString(),
+      ).toBe(failedStop2.body.recordedAt);
+      expect(
+        claims
+          .filter((c) => c.orderId !== o2.order.id)
+          .every((c) => c.releasedAt?.toString() === emergencyRow!.declaredAt.toString()),
+      ).toBe(true);
 
       // Completed order 1 stays DELIVERED; failed order 2 stays ASSIGNED with requiresAdministrativeReview = true.
       expect(await db.orm.public.Order.where({ id: o1.order.id }).first()).toMatchObject({
@@ -484,7 +491,10 @@ describe('Route emergency interruption and unit recovery (#51): PostgreSQL + JWT
         requiresAdministrativeReview: true,
       });
 
-      // Failed Stop 1 can still be resolved independently via its attemptId.
+      // Failed Stop 1 is not an emergency custody item and resolves via store readiness + attemptId.
+      const blocked = await intervene({ action: 'PICKUP_AGREE', orderId: o1.order.id, attemptId }).expect(409);
+      expect(blocked.body.code).toBe('INCIDENT_NOT_READY_AT_STORE');
+      await intervene({ action: 'CONFIRM_INCIDENT_READY', orderId: o1.order.id, attemptId }).expect(200);
       await intervene({ action: 'PICKUP_AGREE', orderId: o1.order.id, attemptId }).expect(200);
       await intervene({ action: 'EMERGENCY_DRIVER_RELEASE', routeId: route.id }).expect(200);
     });

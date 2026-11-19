@@ -370,4 +370,45 @@ describe('RealtimeService', () => {
       }),
     );
   });
+
+  it('publishes CONFIRM_INCIDENT_READY only to ADMIN incidents subscribers without leaking to order owner', async () => {
+    const service = new RealtimeService(createPrisma({
+      users: {
+        [USER_ID]: { id: USER_ID, role: Role.CLIENT },
+        [OTHER_USER_ID]: { id: OTHER_USER_ID, role: Role.ADMIN },
+      },
+      orders: { [ORDER_ID]: { id: ORDER_ID, userId: USER_ID, routeId: ROUTE_ID } },
+    }));
+    const clientOrder = createSocket(signedToken(USER_ID, Role.CLIENT), [`order:${ORDER_ID}`]);
+    const adminIncidents = createSocket(signedToken(OTHER_USER_ID, Role.ADMIN), ['incidents:admin']);
+    service.attach({
+      sockets: new Map([
+        ['client-order', clientOrder],
+        ['admin-incidents', adminIncidents],
+      ]),
+    } as never);
+
+    await service.publish([
+      {
+        type: 'dispatch.incident.updated',
+        orderId: ORDER_ID,
+        routeId: ROUTE_ID,
+        action: 'CONFIRM_INCIDENT_READY',
+        requiresAdministrativeReview: true,
+      },
+    ]);
+
+    expect(clientOrder.emit).not.toHaveBeenCalled();
+    expect(adminIncidents.emit).toHaveBeenCalledWith(
+      'dispatch.incident.updated',
+      expect.objectContaining({
+        data: {
+          orderId: ORDER_ID,
+          routeId: ROUTE_ID,
+          action: 'CONFIRM_INCIDENT_READY',
+          requiresAdministrativeReview: true,
+        },
+      }),
+    );
+  });
 });

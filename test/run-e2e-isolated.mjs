@@ -4,7 +4,7 @@ import { resolve, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const historicalTarget = 'eb8ebd14b89f17eea5458cd12220be7bd572fa8f0e3771b68d2089c880e18f83';
-const target = '1b4e7632062d3ea2fdbb235d224cf37ae0a5daaddd961bcce901eb985e47d9a6';
+const target = '973c66fbba6fd6fb7bc1926da46af1dd3efe74ca17073eb430209d58d890e95c';
 const legacyNames = ['app.e2e-spec.ts', 'orders-security.e2e-spec.ts', 'drivers-routes-security.e2e-spec.ts'];
 let activeChild;
 let interrupted = false;

@@ -30,6 +30,18 @@ import {
   RouteStatus,
 } from './route-lifecycle.policy.js';
 import {
+  FAILED_DELIVERY_READINESS_CODES,
+  findAppliedReadinessAudit,
+  hasReleasedFailedClaim,
+  isEmergencyCustodyActiveForOrder,
+  isValidFailedAttemptRoute,
+  selectLatestCanonicalFailedAttempt,
+  type CanonicalFailedAttemptLike,
+  type CanonicalFailedStopLike,
+  type LatestCanonicalFailedAttempt,
+  type RouteEmergencyLike,
+} from './failed-delivery-readiness.js';
+import {
   DispatchAuditDto,
   DispatchInterventionDto,
 } from './dto/dispatch-intervention.dto.js';
@@ -146,6 +158,7 @@ export class DispatchInterventionService {
       PICKUP_AGREE: ['orderId', 'attemptId', 'emergencyId'],
       PICKUP_DECLINE: ['orderId', 'attemptId'],
       PICKUP_CONFIRM: ['orderId'],
+      CONFIRM_INCIDENT_READY: ['orderId', 'attemptId'],
       RELEASE_DRAFT: ['routeId'],
       CANCEL_ROUTE: ['routeId'],
       LOSS_DECLARE: ['orderId', 'orderItemId', 'unitNumber', 'attemptId', 'emergencyId'],
@@ -170,6 +183,7 @@ export class DispatchInterventionService {
       PICKUP_AGREE: ['orderId'],
       PICKUP_DECLINE: ['orderId'],
       PICKUP_CONFIRM: ['orderId'],
+      CONFIRM_INCIDENT_READY: ['orderId', 'attemptId'],
       RELEASE_DRAFT: ['routeId'],
       CANCEL_ROUTE: ['routeId'],
       LOSS_DECLARE: ['orderId', 'orderItemId'],
@@ -273,6 +287,258 @@ export class DispatchInterventionService {
     return emergency;
   }
 
+  private async loadFailedDeliveryEvidence(tx: Transaction, orderId: string) {
+    const db = tx.orm.public;
+    const failedStops = await db.RouteStop.where({
+      orderId,
+      outcome: 'FAILED',
+    }).all();
+    const failedAttempts: CanonicalFailedAttemptLike[] = [];
+    for (const stop of failedStops) {
+      for (const attempt of await db.DeliveryAttempt.where({
+        stopId: stop.id,
+        outcome: 'FAILED',
+      }).all()) {
+        failedAttempts.push(attempt);
+      }
+    }
+    const latest = selectLatestCanonicalFailedAttempt(
+      failedStops as CanonicalFailedStopLike[],
+      failedAttempts,
+    );
+    const unitRecoveries = db.RouteUnitRecovery
+      ? await db.RouteUnitRecovery.where({ orderId }).all()
+      : [];
+    const emergenciesById = new Map<string, RouteEmergencyLike>();
+    if (unitRecoveries.length > 0 && db.RouteEmergency) {
+      for (const emergencyId of new Set(
+        unitRecoveries.map((u) => u.emergencyId),
+      )) {
+        const emergency = await db.RouteEmergency.where({
+          id: emergencyId,
+        }).first();
+        if (emergency) emergenciesById.set(emergency.id, emergency);
+      }
+    }
+    const emergencyCustodyActive = isEmergencyCustodyActiveForOrder(
+      unitRecoveries,
+      emergenciesById,
+      latest?.attempt ?? null,
+    );
+    return { latest, emergencyCustodyActive };
+  }
+
+  private async assertFailedAttemptReadyForResolution(
+    tx: Transaction,
+    orderId: string,
+    latest: LatestCanonicalFailedAttempt | null,
+    attemptId: string | undefined,
+    emergencyCustodyActive: boolean,
+    mismatchMessage: string,
+    actionLabel: string,
+  ) {
+    const db = tx.orm.public;
+    if (emergencyCustodyActive) {
+      throw this.pickupConflict(
+        FAILED_DELIVERY_READINESS_CODES.EMERGENCY_CUSTODY_SEPARATE,
+        'Emergency custody orders must use the emergency recovery flow',
+      );
+    }
+    if (!latest || attemptId !== latest.attempt.id) {
+      throw new ConflictException(mismatchMessage);
+    }
+    const attemptRoute = await db.Route.where({
+      id: latest.stop.routeId,
+    }).first();
+    if (!isValidFailedAttemptRoute(attemptRoute, latest.attempt)) {
+      throw new ConflictException('Route structure is frozen or unverified');
+    }
+    const activeOrderClaims = await db.OrderClaim.where({
+      orderId,
+      releasedAt: null,
+    }).all();
+    if (activeOrderClaims.some((c) => c.routeId !== latest.stop.routeId)) {
+      throw this.pickupConflict(
+        FAILED_DELIVERY_READINESS_CODES.ORDER_CLAIMED_BY_ANOTHER_ROUTE,
+        'Order already has an active claim on another route',
+      );
+    }
+    const routeClaims = await db.OrderClaim.where({
+      routeId: latest.stop.routeId,
+      orderId,
+    }).all();
+    if (
+      !hasReleasedFailedClaim(
+        latest.stop.routeId,
+        orderId,
+        attemptRoute!.status,
+        latest.attempt,
+        routeClaims,
+        activeOrderClaims,
+      )
+    ) {
+      throw this.pickupConflict(
+        FAILED_DELIVERY_READINESS_CODES.CLAIM_NOT_RELEASED,
+        `Failed order claim must be released before ${actionLabel}`,
+      );
+    }
+    const readinessAudits = await db.DispatchIntervention.where({
+      orderId,
+      action: 'CONFIRM_INCIDENT_READY',
+      outcome: 'APPLIED',
+    }).all();
+    if (!findAppliedReadinessAudit(readinessAudits, orderId, latest.attempt.id)) {
+      throw this.pickupConflict(
+        FAILED_DELIVERY_READINESS_CODES.INCIDENT_NOT_READY_AT_STORE,
+        `Store readiness must be confirmed for the latest failed attempt before ${actionLabel}`,
+      );
+    }
+    return attemptRoute!;
+  }
+
+  private async confirmIncidentReady(
+    tx: Transaction,
+    dto: DispatchInterventionDto,
+    actorId: string,
+    changes: RealtimeChange[],
+  ) {
+    const db = tx.orm.public;
+    const initial = await db.Order.where({ id: dto.orderId! }).first();
+    if (!initial) throw new NotFoundException('Order not found');
+    const reserved = initial.routeId
+      ? null
+      : await db.OrderClaim.where({
+          orderId: initial.id,
+          releasedAt: null,
+        }).first();
+    const routeId = initial.routeId ?? reserved?.routeId ?? null;
+    if (routeId) {
+      const initialRoute = await db.Route.where({ id: routeId }).first();
+      if (initialRoute) {
+        if (initialRoute.driverId) {
+          await this.assignment.lockDriver(tx, initialRoute.driverId);
+        }
+        await db.Route.where({ id: initialRoute.id }).update({
+          id: initialRoute.id,
+        });
+      }
+    }
+    const order = await db.Order.where({ id: initial.id }).update({
+      id: initial.id,
+    });
+    if (!order || order.routeId !== initial.routeId) {
+      throw new ConflictException('Order route changed; refresh decision');
+    }
+    if (order.status === 'DELIVERED' || order.status === 'CANCELLED') {
+      throw this.pickupConflict(
+        FAILED_DELIVERY_READINESS_CODES.ORDER_COMMERCIALLY_RESOLVED,
+        'Commercially resolved order cannot confirm store readiness',
+      );
+    }
+    if (!order.requiresAdministrativeReview) {
+      throw this.pickupConflict(
+        FAILED_DELIVERY_READINESS_CODES.INCIDENT_NOT_IN_REVIEW,
+        'Order does not require administrative review for a failed delivery',
+      );
+    }
+    if (db.OrderPickup && (await db.OrderPickup.where({ orderId: order.id }).first())) {
+      throw this.pickupConflict(
+        'PICKUP_ALREADY_AGREED',
+        'Order already has an agreed store pickup',
+      );
+    }
+    if (!(await this.emergencies.isOrderRecoveryResolved(tx, order.id))) {
+      throw this.pickupConflict(
+        'RECOVERY_PENDING',
+        'Order has unrecovered units from route emergency',
+      );
+    }
+    const { latest, emergencyCustodyActive } =
+      await this.loadFailedDeliveryEvidence(tx, order.id);
+    if (emergencyCustodyActive) {
+      throw this.pickupConflict(
+        FAILED_DELIVERY_READINESS_CODES.EMERGENCY_CUSTODY_SEPARATE,
+        'Emergency custody orders must use the emergency recovery flow',
+      );
+    }
+    if (!latest) {
+      throw this.pickupConflict(
+        FAILED_DELIVERY_READINESS_CODES.FAILED_ATTEMPT_NOT_FOUND,
+        'No canonical failed delivery attempt found for order',
+      );
+    }
+    if (dto.attemptId !== latest.attempt.id) {
+      throw this.pickupConflict(
+        FAILED_DELIVERY_READINESS_CODES.STALE_FAILED_ATTEMPT,
+        'Readiness must attest the latest canonical failed delivery attempt',
+      );
+    }
+    const attemptRoute = await db.Route.where({
+      id: latest.stop.routeId,
+    }).first();
+    if (!isValidFailedAttemptRoute(attemptRoute, latest.attempt)) {
+      throw this.pickupConflict(
+        FAILED_DELIVERY_READINESS_CODES.INVALID_FAILED_ATTEMPT,
+        'Failed attempt lacks verified route evidence',
+      );
+    }
+    const activeOrderClaims = await db.OrderClaim.where({
+      orderId: order.id,
+      releasedAt: null,
+    }).all();
+    if (activeOrderClaims.some((c) => c.routeId !== latest.stop.routeId)) {
+      throw this.pickupConflict(
+        FAILED_DELIVERY_READINESS_CODES.ORDER_CLAIMED_BY_ANOTHER_ROUTE,
+        'Order already has an active claim on another route',
+      );
+    }
+    const routeClaims = await db.OrderClaim.where({
+      routeId: latest.stop.routeId,
+      orderId: order.id,
+    }).all();
+    if (
+      !hasReleasedFailedClaim(
+        latest.stop.routeId,
+        order.id,
+        attemptRoute!.status,
+        latest.attempt,
+        routeClaims,
+        activeOrderClaims,
+      )
+    ) {
+      throw this.pickupConflict(
+        FAILED_DELIVERY_READINESS_CODES.CLAIM_NOT_RELEASED,
+        'Verified released order claim for the failed attempt is required',
+      );
+    }
+    const existingReadiness = await db.DispatchIntervention.where({
+      orderId: order.id,
+      action: 'CONFIRM_INCIDENT_READY',
+      outcome: 'APPLIED',
+    }).all();
+    if (
+      findAppliedReadinessAudit(existingReadiness, order.id, latest.attempt.id)
+    ) {
+      throw this.pickupConflict(
+        FAILED_DELIVERY_READINESS_CODES.INCIDENT_ALREADY_READY,
+        'Store readiness has already been confirmed for this failed attempt',
+      );
+    }
+    const audit = await this.createAudit(tx, dto, actorId, latest.stop.routeId, {
+      orderId: order.id,
+      routeId: latest.stop.routeId,
+      attemptId: latest.attempt.id,
+    });
+    changes.push({
+      type: 'dispatch.incident.updated',
+      orderId: order.id,
+      routeId: latest.stop.routeId,
+      action: 'CONFIRM_INCIDENT_READY',
+      requiresAdministrativeReview: order.requiresAdministrativeReview,
+    });
+    return this.response(audit);
+  }
+
   private async schedule(
     tx: Transaction,
     dto: DispatchInterventionDto,
@@ -282,8 +548,15 @@ export class DispatchInterventionService {
     const db = tx.orm.public;
     const initial = await db.Order.where({ id: dto.orderId! }).first();
     if (!initial) throw new NotFoundException('Order not found');
-    let route = initial.routeId
-      ? await db.Route.where({ id: initial.routeId }).first()
+    const reserved = initial.routeId
+      ? null
+      : await db.OrderClaim.where({
+          orderId: initial.id,
+          releasedAt: null,
+        }).first();
+    const routeId = initial.routeId ?? reserved?.routeId ?? null;
+    let route = routeId
+      ? await db.Route.where({ id: routeId }).first()
       : null;
     if (route) {
       if (route.driverId) await this.assignment.lockDriver(tx, route.driverId);
@@ -298,29 +571,30 @@ export class DispatchInterventionService {
       throw new ConflictException(
         'Commercially resolved order cannot be rescheduled',
       );
+    const existingPickup = db.OrderPickup
+      ? await db.OrderPickup.where({ orderId: order.id }).first()
+      : null;
+    if (existingPickup) {
+      if (existingPickup.confirmedAt) {
+        throw this.pickupConflict(
+          'PICKUP_ALREADY_CONFIRMED',
+          'Order store pickup has already been confirmed',
+        );
+      }
+      throw this.pickupConflict(
+        'PICKUP_ALREADY_AGREED',
+        'Order already has an agreed store pickup',
+      );
+    }
     if (!(await this.emergencies.isOrderRecoveryResolved(tx, order.id))) {
       throw this.pickupConflict(
         'RECOVERY_PENDING',
         'Order has unrecovered units from route emergency',
       );
     }
-    const attempts = [];
-    for (const stop of await db.RouteStop.where({
-      orderId: order.id,
-      outcome: 'FAILED',
-    }).all()) {
-      for (const attempt of await db.DeliveryAttempt.where({
-        stopId: stop.id,
-        outcome: 'FAILED',
-      }).all())
-        attempts.push(attempt);
-    }
-    attempts.sort(
-      (a, b) =>
-        Temporal.Instant.compare(b.recordedAt, a.recordedAt) ||
-        b.id.localeCompare(a.id),
-    );
-    const latest = attempts[0];
+    const { latest: latestFailed, emergencyCustodyActive } =
+      await this.loadFailedDeliveryEvidence(tx, order.id);
+    const latest = latestFailed?.attempt;
     if (dto.action === 'CONTACT') {
       if (typeof dto.agreementConfirmed !== 'boolean')
         throw new BadRequestException(
@@ -340,10 +614,18 @@ export class DispatchInterventionService {
             order.id,
             dto.emergencyId,
           );
-        } else if (!latest || dto.attemptId !== latest.id) {
-          throw new ConflictException(
-            'Contact must refer to the latest failed attempt',
-          );
+        } else {
+          if (emergencyCustodyActive) {
+            throw this.pickupConflict(
+              FAILED_DELIVERY_READINESS_CODES.EMERGENCY_CUSTODY_SEPARATE,
+              'Emergency custody orders must use the emergency recovery flow',
+            );
+          }
+          if (!latest || dto.attemptId !== latest.id) {
+            throw new ConflictException(
+              'Contact must refer to the latest failed attempt',
+            );
+          }
         }
       } else if (dto.attemptId || dto.emergencyId) {
         throw new ConflictException('No unresolved failed attempt');
@@ -449,27 +731,28 @@ export class DispatchInterventionService {
       orderId: order.id,
       releasedAt: null,
     }).first();
-    if (
-      route &&
-      !canMutateRouteStructure(route.status as RouteStatus | null) &&
-      route.status !== 'COMPLETED' &&
-      route.status !== 'INTERRUPTED'
-    )
-      throw new ConflictException('Route structure is frozen or unverified');
     if (order.requiresAdministrativeReview) {
       if (payload.emergencyId) {
         if (claim || order.routeId !== null)
           throw new ConflictException(
             'Emergency order must be detached from route before retry',
           );
-      } else if (
-        (route?.status !== 'COMPLETED' && route?.status !== 'INTERRUPTED') ||
-        claim
-      ) {
-        throw new ConflictException(
-          'Failed original route must complete and release the order before retry',
+      } else {
+        await this.assertFailedAttemptReadyForResolution(
+          tx,
+          order.id,
+          latestFailed,
+          payload.attemptId,
+          emergencyCustodyActive,
+          'Agreement must resolve the latest failed attempt',
+          'rescheduling',
         );
       }
+    } else if (
+      route &&
+      !canMutateRouteStructure(route.status as RouteStatus | null)
+    ) {
+      throw new ConflictException('Route structure is frozen or unverified');
     }
     if (claim && (!route || claim.routeId !== route.id || !claim.claimedAt))
       throw new ConflictException('Matching verified source claim required');
@@ -486,7 +769,11 @@ export class DispatchInterventionService {
       )
     )
       throw new ConflictException('Agreement already consumed');
-    const auditRouteId = order.routeId ?? rescheduleEmergency?.routeId ?? null;
+    const auditRouteId =
+      order.routeId ??
+      rescheduleEmergency?.routeId ??
+      latestFailed?.stop.routeId ??
+      null;
     const audit = await this.createAudit(tx, dto, actorId, auditRouteId, {
       orderId: order.id,
       routeId: auditRouteId,
@@ -568,18 +855,19 @@ export class DispatchInterventionService {
       throw new ConflictException('Order route changed; refresh decision');
     if (order.status === 'DELIVERED' || order.status === 'CANCELLED')
       throw new ConflictException('Commercially resolved order cannot be managed for pickup');
-    const attempts = [];
-    for (const stop of await db.RouteStop.where({ orderId: order.id, outcome: 'FAILED' }).all()) {
-      for (const attempt of await db.DeliveryAttempt.where({ stopId: stop.id, outcome: 'FAILED' }).all())
-        attempts.push(attempt);
-    }
-    attempts.sort(
-      (a, b) => Temporal.Instant.compare(b.recordedAt, a.recordedAt) || b.id.localeCompare(a.id),
-    );
+    const { latest: latestFailed, emergencyCustodyActive } =
+      await this.loadFailedDeliveryEvidence(tx, order.id);
     const emergency = emergencyId
       ? await this.assertEmergencyContext(tx, order.id, emergencyId)
       : null;
-    return { order, route, latest: attempts[0], emergency };
+    return {
+      order,
+      route,
+      latest: latestFailed?.attempt,
+      latestFailed,
+      emergencyCustodyActive,
+      emergency,
+    };
   }
 
   /**
@@ -599,11 +887,8 @@ export class DispatchInterventionService {
     const db = tx.orm.public;
     if (dto.attemptId && dto.emergencyId)
       throw new BadRequestException('Provide either attemptId or emergencyId, not both');
-    const { order, route, latest, emergency } = await this.loadIncident(
-      tx,
-      dto.orderId!,
-      dto.emergencyId,
-    );
+    const { order, route, latest, latestFailed, emergencyCustodyActive, emergency } =
+      await this.loadIncident(tx, dto.orderId!, dto.emergencyId);
     const existing = await db.OrderPickup.where({ orderId: order.id }).first();
 
     if (dto.action === 'PICKUP_CONFIRM') {
@@ -643,7 +928,7 @@ export class DispatchInterventionService {
     if (existing)
       throw this.pickupConflict('PICKUP_ALREADY_AGREED', 'El pedido ya tiene un retiro en tienda acordado');
     if (
-      dto.action === 'PICKUP_AGREE' &&
+      (dto.action === 'PICKUP_AGREE' || dto.action === 'PICKUP_DECLINE') &&
       !(await this.emergencies.isOrderRecoveryResolved(tx, order.id))
     )
       throw this.pickupConflict(
@@ -651,8 +936,17 @@ export class DispatchInterventionService {
         'Order has unrecovered units from route emergency',
       );
     if (order.requiresAdministrativeReview) {
-      if (!dto.emergencyId && (!latest || dto.attemptId !== latest.id))
-        throw new ConflictException('Pickup must refer to the latest failed attempt');
+      if (!dto.emergencyId) {
+        if (emergencyCustodyActive) {
+          throw this.pickupConflict(
+            FAILED_DELIVERY_READINESS_CODES.EMERGENCY_CUSTODY_SEPARATE,
+            'Emergency custody orders must use the emergency recovery flow',
+          );
+        }
+        if (!latest || dto.attemptId !== latest.id) {
+          throw new ConflictException('Pickup must refer to the latest failed attempt');
+        }
+      }
     } else if (dto.attemptId || dto.emergencyId) {
       throw new ConflictException('No unresolved failed attempt');
     }
@@ -674,20 +968,26 @@ export class DispatchInterventionService {
 
     // PICKUP_AGREE: reservas operativas con las mismas protecciones que una reprogramación.
     const claim = await db.OrderClaim.where({ orderId: order.id, releasedAt: null }).first();
-    if (
-      route &&
-      !canMutateRouteStructure(route.status as RouteStatus | null) &&
-      route.status !== 'COMPLETED' &&
-      route.status !== 'INTERRUPTED'
-    )
-      throw new ConflictException('Route structure is frozen or unverified');
     if (order.requiresAdministrativeReview) {
       if (dto.emergencyId) {
         if (claim || order.routeId !== null)
           throw new ConflictException('Emergency order must be detached from route before the pickup');
-      } else if ((route?.status !== 'COMPLETED' && route?.status !== 'INTERRUPTED') || claim) {
-        throw new ConflictException('Failed original route must complete and release the order before the pickup');
+      } else {
+        await this.assertFailedAttemptReadyForResolution(
+          tx,
+          order.id,
+          latestFailed,
+          dto.attemptId,
+          emergencyCustodyActive,
+          'Pickup must refer to the latest failed attempt',
+          'agreeing store pickup',
+        );
       }
+    } else if (
+      route &&
+      !canMutateRouteStructure(route.status as RouteStatus | null)
+    ) {
+      throw new ConflictException('Route structure is frozen or unverified');
     }
     if (claim && (!route || claim.routeId !== route.id || !claim.claimedAt))
       throw new ConflictException('Matching verified source claim required');
@@ -699,7 +999,11 @@ export class DispatchInterventionService {
       agreementRequestId: dto.requestId,
     });
     // La auditoría va ANTES de tocar el pedido: el guard de la base de datos exige la resolución auditada en la misma transacción.
-    const auditRouteId = emergency?.routeId ?? route?.id ?? order.routeId;
+    const auditRouteId =
+      emergency?.routeId ??
+      route?.id ??
+      latestFailed?.stop.routeId ??
+      order.routeId;
     const audit = await this.createAudit(tx, dto, actorId, auditRouteId, {
       orderId: order.id,
       routeId: auditRouteId,
@@ -826,6 +1130,8 @@ export class DispatchInterventionService {
           );
         if (dto.action === 'CONTACT' || dto.action === 'RESCHEDULE')
           return this.schedule(tx, dto, actorId, changes);
+        if (dto.action === 'CONFIRM_INCIDENT_READY')
+          return this.confirmIncidentReady(tx, dto, actorId, changes);
         if (
           dto.action === 'LOSS_DECLARE' ||
           dto.action === 'REPLACEMENT_PREPARE' ||
@@ -1142,7 +1448,45 @@ export class DispatchInterventionService {
           requestId: dto.requestId,
         }).first();
       if (prior) return this.replay(prior, actorId, dto);
+      if (
+        dto.action === 'CONFIRM_INCIDENT_READY' &&
+        this.isReadinessUniqueViolation(error)
+      ) {
+        throw this.pickupConflict(
+          FAILED_DELIVERY_READINESS_CODES.INCIDENT_ALREADY_READY,
+          'Store readiness has already been confirmed for this failed attempt',
+        );
+      }
       throw error;
     }
+  }
+
+  private isReadinessUniqueViolation(error: unknown): boolean {
+    const queue: unknown[] = [error];
+    const seen = new Set<object>();
+    for (let i = 0; i < queue.length; i += 1) {
+      const candidate = queue[i];
+      if (!candidate || typeof candidate !== 'object' || seen.has(candidate)) {
+        continue;
+      }
+      seen.add(candidate);
+      const record = candidate as Record<string, unknown>;
+      const text = [
+        record.code,
+        record.constraint,
+        record.constraint_name,
+        record.message,
+      ]
+        .map((value) => (typeof value === 'string' ? value : ''))
+        .join(' ');
+      if (
+        (record.code === '23505' || /23505|unique/i.test(text)) &&
+        text.includes('dispatch_incident_ready_unique_attempt_idx')
+      ) {
+        return true;
+      }
+      queue.push(record.cause, record.originalError);
+    }
+    return false;
   }
 }
