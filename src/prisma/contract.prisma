@@ -82,15 +82,18 @@ model User {
 }
 
 model Driver {
-  id          String   @id @default(uuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id])
-  vehicle     String
-  isAvailable Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  vehicle         String
+  vehicleCapacity Int?
+  isAvailable     Boolean  @default(true)
+  createdAt       DateTime @default(now())
 
-  routes      Route[]
-  absences    DriverAbsence[]
+  routes          Route[]
+  absences        DriverAbsence[]
+
+  @@check(expression: "\"vehicleCapacity\" IS NULL OR \"vehicleCapacity\" >= 1", name: "driver_vehicle_capacity_positive")
 }
 
 // Absence of a driver for a closed range of operational days (America/Guayaquil, YYYY-MM-DD) (#44).

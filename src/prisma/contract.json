@@ -1166,6 +1166,13 @@
                   "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
+              },
+              "vehicleCapacity": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
               }
             },
             "relations": {
@@ -1232,6 +1239,9 @@
                 },
                 "vehicle": {
                   "column": "vehicle"
+                },
+                "vehicleCapacity": {
+                  "column": "vehicleCapacity"
                 }
               },
               "namespaceId": "public",
@@ -6974,6 +6984,13 @@
               ]
             },
             "driver": {
+              "checks": [
+                {
+                  "expression": "\"vehicleCapacity\" IS NULL OR \"vehicleCapacity\" >= 1",
+                  "name": "driver_vehicle_capacity_positive_54f17fab",
+                  "prefix": "driver_vehicle_capacity_positive"
+                }
+              ],
               "columns": {
                 "createdAt": {
                   "codecId": "pg/timestamptz-temporal@1",
@@ -7007,6 +7024,11 @@
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "vehicleCapacity": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
                 }
               },
               "foreignKeys": [
@@ -11148,7 +11170,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "defd240814f2524f7af9bf379253487edc9887ac231ea845a81baa9c7f768009"
+    "storageHash": "4f1c811137748b11cce955f4802840d44e900a662cca49432139410ca3195b57"
   },
   "execution": {
     "executionHash": "197f1c374ba6fd8fc85f656c8567a0200cbdc7b2a6e63079ef2b9e5b94a20e6e",

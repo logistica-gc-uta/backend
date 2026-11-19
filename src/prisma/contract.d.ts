@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'defd240814f2524f7af9bf379253487edc9887ac231ea845a81baa9c7f768009'>;
+  StorageHashBase<'4f1c811137748b11cce955f4802840d44e900a662cca49432139410ca3195b57'>;
 export type ExecutionHash =
   ExecutionHashBase<'197f1c374ba6fd8fc85f656c8567a0200cbdc7b2a6e63079ef2b9e5b94a20e6e'>;
 export type ProfileHash =
@@ -312,6 +312,7 @@ export type FieldOutputTypes = {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'];
       readonly vehicle: CodecTypes['pg/text@1']['output'];
+      readonly vehicleCapacity: CodecTypes['pg/int4@1']['output'] | null;
       readonly isAvailable: CodecTypes['pg/bool@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
@@ -715,6 +716,7 @@ export type FieldInputTypes = {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly userId: CodecTypes['pg/text@1']['input'];
       readonly vehicle: CodecTypes['pg/text@1']['input'];
+      readonly vehicleCapacity: CodecTypes['pg/int4@1']['input'] | null;
       readonly isAvailable: CodecTypes['pg/bool@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
@@ -1120,6 +1122,7 @@ export type StorageColumnTypes = {
       readonly isAvailable: CodecTypes['pg/bool@1']['output'];
       readonly userId: CodecTypes['pg/text@1']['output'];
       readonly vehicle: CodecTypes['pg/text@1']['output'];
+      readonly vehicleCapacity: CodecTypes['pg/int4@1']['output'] | null;
     };
     readonly driverAbsence: {
       readonly cancelledAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
@@ -1523,6 +1526,7 @@ export type StorageColumnInputTypes = {
       readonly isAvailable: CodecTypes['pg/bool@1']['input'];
       readonly userId: CodecTypes['pg/text@1']['input'];
       readonly vehicle: CodecTypes['pg/text@1']['input'];
+      readonly vehicleCapacity: CodecTypes['pg/int4@1']['input'] | null;
     };
     readonly driverAbsence: {
       readonly cancelledAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
@@ -1913,6 +1917,7 @@ export namespace Models {
     id: CodecTypes['pg/text@1']['output'];
     userId: CodecTypes['pg/text@1']['output'];
     vehicle: CodecTypes['pg/text@1']['output'];
+    vehicleCapacity: CodecTypes['pg/int4@1']['output'] | null;
     isAvailable: CodecTypes['pg/bool@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     absences: public_DriverAbsence[];
@@ -3143,6 +3148,11 @@ type ContractBase = Omit<
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
                   readonly nullable: false;
+                };
+                readonly vehicleCapacity: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
                 };
                 readonly isAvailable: {
                   readonly nativeType: 'bool';
@@ -6901,6 +6911,10 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly vehicleCapacity: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
               readonly isAvailable: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
@@ -6953,6 +6967,7 @@ type ContractBase = Omit<
                 readonly id: { readonly column: 'id' };
                 readonly userId: { readonly column: 'userId' };
                 readonly vehicle: { readonly column: 'vehicle' };
+                readonly vehicleCapacity: { readonly column: 'vehicleCapacity' };
                 readonly isAvailable: { readonly column: 'isAvailable' };
                 readonly createdAt: { readonly column: 'createdAt' };
               };

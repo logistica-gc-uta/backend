@@ -111,6 +111,7 @@ export class DriversService {
         const driver = await tx.orm.public.Driver.create({
           userId: user.id,
           vehicle: dto.vehicle.trim(),
+          vehicleCapacity: dto.vehicleCapacity ?? null,
           isAvailable: true,
         });
         return driver.id;
@@ -123,12 +124,17 @@ export class DriversService {
   }
 
   /**
-   * Corrección ADMIN de nombre, correo y vehículo. Bloquea la fila del repartidor y NO toca `isAvailable`,
+   * Corrección ADMIN de nombre, correo, vehículo y capacidad. Bloquea la fila del repartidor y NO toca `isAvailable`,
    * el rol, las rutas ni las reservas: corregir un dato no libera a un repartidor ocupado ni reasigna nada.
    */
   async update(driverId: string, dto: UpdateDriverDto) {
-    if (dto.name === undefined && dto.email === undefined && dto.vehicle === undefined) {
-      throw new BadRequestException('Indica al menos un campo: name, email o vehicle');
+    if (
+      dto.name === undefined &&
+      dto.email === undefined &&
+      dto.vehicle === undefined &&
+      dto.vehicleCapacity === undefined
+    ) {
+      throw new BadRequestException('Indica al menos un campo: name, email, vehicle o vehicleCapacity');
     }
     try {
       await this.prisma.client.transaction(async (tx) => {
@@ -150,8 +156,11 @@ export class DriversService {
             throw new NotFoundException('Driver identity not found');
           }
         }
-        if (dto.vehicle !== undefined) {
-          await tx.orm.public.Driver.where({ id: driverId, userId: driver.userId }).update({ vehicle: dto.vehicle.trim() });
+        const driverChanges: { vehicle?: string; vehicleCapacity?: number | null } = {};
+        if (dto.vehicle !== undefined) driverChanges.vehicle = dto.vehicle.trim();
+        if (dto.vehicleCapacity !== undefined) driverChanges.vehicleCapacity = dto.vehicleCapacity;
+        if (Object.keys(driverChanges).length) {
+          await tx.orm.public.Driver.where({ id: driverId, userId: driver.userId }).update(driverChanges);
         }
       });
     } catch (error) {

@@ -1,0 +1,86 @@
+[
+  {
+    "id": "column.public.driver.vehicleCapacity",
+    "label": "Add column \"vehicleCapacity\" to \"driver\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "vehicleCapacity",
+        "table": "driver"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"vehicleCapacity\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "driver",
+          "vehicleCapacity"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"vehicleCapacity\"",
+        "sql": "ALTER TABLE \"public\".\"driver\" ADD COLUMN \"vehicleCapacity\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"vehicleCapacity\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "driver",
+          "vehicleCapacity"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.driver.driver_vehicle_capacity_positive_54f17fab",
+    "label": "Add check constraint \"driver_vehicle_capacity_positive_54f17fab\" on \"driver\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "driver_vehicle_capacity_positive_54f17fab",
+        "table": "driver"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"driver_vehicle_capacity_positive_54f17fab\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "driver_vehicle_capacity_positive_54f17fab",
+          "public",
+          "\"public\".\"driver\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"driver_vehicle_capacity_positive_54f17fab\"",
+        "sql": "ALTER TABLE \"public\".\"driver\" ADD CONSTRAINT \"driver_vehicle_capacity_positive_54f17fab\" CHECK (\"vehicleCapacity\" IS NULL OR \"vehicleCapacity\" >= 1)"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"driver_vehicle_capacity_positive_54f17fab\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "driver_vehicle_capacity_positive_54f17fab",
+          "public",
+          "\"public\".\"driver\""
+        ]
+      }
+    ]
+  }
+]
