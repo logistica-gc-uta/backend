@@ -133,6 +133,7 @@ export class AdminRouteHistoryDriverDto {
   @ApiProperty() id!: string;
   @ApiProperty() userId!: string;
   @ApiProperty() vehicle!: string;
+  @ApiProperty({ type: Number, nullable: true, minimum: 1 }) vehicleCapacity!: number | null;
   @ApiProperty() isAvailable!: boolean;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
   @ApiProperty({ type: AdminRouteHistoryUserDto })

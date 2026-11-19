@@ -16,19 +16,20 @@ const PINNED_CODES = [
   'INVALID_ZONE_DEPOT_COORDINATES',
   'ACTIVE_ROUTE_CLAIM',
   'ADMINISTRATIVE_REVIEW_REQUIRED',
+  'VEHICLE_CAPACITY_EXCEEDED',
 ];
 
 describe('códigos de exclusión de las propuestas', () => {
-  it('son exactamente los 7 códigos acordados con la interfaz, sin repetidos', () => {
+  it('son exactamente los 8 códigos acordados con la interfaz, sin repetidos', () => {
     expect([...PLANNING_EXCLUSION_REASONS]).toEqual(PINNED_CODES);
     expect(new Set(PLANNING_EXCLUSION_REASONS).size).toBe(PLANNING_EXCLUSION_REASONS.length);
   });
 
-  it('incluyen los dos motivos no geográficos', () => {
+  it('incluyen los tres motivos no geográficos', () => {
     expect(PLANNING_EXCLUSION_REASONS).toEqual(expect.arrayContaining(Object.values(ExclusionReason)));
   });
 
-  it('Swagger publica reasons como un arreglo de ese enum con los 7 códigos', async () => {
+  it('Swagger publica reasons como un arreglo de ese enum con los 8 códigos', async () => {
     const module = await Test.createTestingModule({
       controllers: [RoutePlanningController],
       providers: [{ provide: RoutePlanningService, useValue: {} }],
@@ -50,6 +51,10 @@ describe('códigos de exclusión de las propuestas', () => {
     const ref: string | undefined = reasons.items.$ref;
     const enumSchema = ref ? schemas[ref.split('/').pop() as string] : reasons.items;
     expect(enumSchema.enum).toEqual(PINNED_CODES);
-    expect(enumSchema.enum).toHaveLength(7);
+    expect(enumSchema.enum).toHaveLength(8);
+    expect(schemas['ExcludedOrderDto'].properties.requiredUnits).toBeDefined();
+    expect(schemas['RouteProposalDto'].properties.loadUnits).toBeDefined();
+    const queryParams = (document.paths['/route-proposals']?.get?.parameters ?? []) as Array<{ name: string; in: string }>;
+    expect(queryParams).toEqual(expect.arrayContaining([expect.objectContaining({ name: 'driverId', in: 'query' })]));
   });
 });

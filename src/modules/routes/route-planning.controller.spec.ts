@@ -6,7 +6,11 @@ describe('RoutePlanningController', () => {
     const proposal = { date: '2030-02-14', proposals: [], excluded: [] };
     const planning: any = { propose: jest.fn().mockResolvedValue(proposal) };
     const controller = new RoutePlanningController(planning);
-    const query = { date: '2030-02-14', zoneId: '2f782f43-6ec2-41ff-875f-c4c93d303fa4' };
+    const query = {
+      date: '2030-02-14',
+      zoneId: '2f782f43-6ec2-41ff-875f-c4c93d303fa4',
+      driverId: '7f782f43-6ec2-41ff-875f-c4c93d303fa4',
+    };
 
     await expect(controller.propose(query)).resolves.toBe(proposal);
 

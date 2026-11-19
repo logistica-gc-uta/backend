@@ -59,7 +59,13 @@ function setup(options: { users?: any[]; drivers?: any[]; failDriverCreate?: boo
       }
     }),
   };
-  const prisma: any = { client, driver: { where: (filter: any) => ({ include: () => ({ first: async () => withUser(tables.Driver!.find(match(filter))) }) }) } };
+  const prisma: any = {
+    client,
+    driver: {
+      where: (filter: any) => ({ include: () => ({ first: async () => withUser(tables.Driver!.find(match(filter))) }) }),
+      include: () => ({ all: async () => tables.Driver!.map((driver) => withUser(driver)) }),
+    },
+  };
   const availability: any = { effective: jest.fn(async () => ({ isAvailable: true, blockingRouteIds: [] })) };
   return { tables, client, service: new DriversService(prisma, availability, {} as any) };
 }
@@ -69,7 +75,7 @@ const existing = () => ({
     { id: 'u-admin', name: 'Otro', email: 'ocupado@delivery.com', role: 'CLIENT', createdAt: Temporal.Now.instant() },
     { id: 'u-driver', name: 'Carlos', email: 'carlos@delivery.com', role: 'DRIVER', createdAt: Temporal.Now.instant() },
   ],
-  drivers: [{ id: 'driver', userId: 'u-driver', vehicle: 'Moto', isAvailable: false, createdAt: Temporal.Now.instant() }],
+  drivers: [{ id: 'driver', userId: 'u-driver', vehicle: 'Moto', vehicleCapacity: 6 as number | null, isAvailable: false, createdAt: Temporal.Now.instant() }],
 });
 
 describe('DriversService (#43): alta y corrección con una base de datos en memoria', () => {
@@ -77,11 +83,22 @@ describe('DriversService (#43): alta y corrección con una base de datos en memo
     it('crea la identidad DRIVER y el perfil, y devuelve la contraseña temporal solo una vez', async () => {
       const { service, tables } = setup();
       const result = await service.create({ name: ' Ana Chofer ', email: 'Ana@Delivery.com', vehicle: ' Camioneta ' });
-      expect(result).toMatchObject({ vehicle: 'Camioneta', isAvailable: true, user: { name: 'Ana Chofer', email: 'ana@delivery.com', role: 'DRIVER' } });
+      expect(result).toMatchObject({ vehicle: 'Camioneta', vehicleCapacity: null, isAvailable: true, user: { name: 'Ana Chofer', email: 'ana@delivery.com', role: 'DRIVER' } });
       expect(result.temporaryPassword).toMatch(/^[A-Za-z0-9_-]{24}$/);
       expect(tables.User![0]!.password).not.toContain(result.temporaryPassword);
       expect(tables.User![0]!.password).toMatch(/^bcrypt-sha256:v1:/);
       expect(tables.Driver).toHaveLength(1);
+    });
+
+    it('persiste vehicleCapacity explícito en el alta y conserva null cuando se envía null', async () => {
+      const { service, tables } = setup();
+      const configured = await service.create({ name: 'Ana', email: 'ana@delivery.com', vehicle: 'Furgoneta', vehicleCapacity: 12 });
+      expect(configured).toMatchObject({ vehicle: 'Furgoneta', vehicleCapacity: 12 });
+      expect(tables.Driver![0]!.vehicleCapacity).toBe(12);
+
+      const cleared = await service.create({ name: 'Beto', email: 'beto@delivery.com', vehicle: 'Moto', vehicleCapacity: null });
+      expect(cleared).toMatchObject({ vehicle: 'Moto', vehicleCapacity: null });
+      expect(tables.Driver![1]!.vehicleCapacity).toBeNull();
     });
 
     it('un correo ya registrado (sin distinguir mayúsculas) da EMAIL_ALREADY_EXISTS sin crear nada', async () => {
@@ -104,18 +121,29 @@ describe('DriversService (#43): alta y corrección con una base de datos en memo
   });
 
   describe('update', () => {
-    it('corrige nombre, correo y vehículo sin tocar isAvailable ni el rol', async () => {
+    it('corrige nombre, correo, vehículo y capacidad sin tocar isAvailable ni el rol', async () => {
       const { service, tables } = setup(existing());
-      const result = await service.update('driver', { name: ' Carlos Corregido ', email: 'Nuevo@Delivery.com', vehicle: ' Furgoneta ' });
-      expect(result).toMatchObject({ vehicle: 'Furgoneta', isAvailable: false, user: { name: 'Carlos Corregido', email: 'nuevo@delivery.com', role: 'DRIVER' } });
+      const result = await service.update('driver', { name: ' Carlos Corregido ', email: 'Nuevo@Delivery.com', vehicle: ' Furgoneta ', vehicleCapacity: 10 });
+      expect(result).toMatchObject({ vehicle: 'Furgoneta', vehicleCapacity: 10, isAvailable: false, user: { name: 'Carlos Corregido', email: 'nuevo@delivery.com', role: 'DRIVER' } });
       expect(tables.Driver![0]!.isAvailable).toBe(false);
     });
 
-    it('acepta una corrección parcial: solo el vehículo, solo el nombre o solo el correo', async () => {
+    it('acepta una corrección parcial y conserva vehicleCapacity cuando se omite', async () => {
       const { service } = setup(existing());
-      expect(await service.update('driver', { vehicle: 'Camión' })).toMatchObject({ vehicle: 'Camión', user: { name: 'Carlos' } });
-      expect(await service.update('driver', { name: 'Solo Nombre' })).toMatchObject({ vehicle: 'Camión', user: { name: 'Solo Nombre' } });
-      expect(await service.update('driver', { email: 'solo@delivery.com' })).toMatchObject({ user: { email: 'solo@delivery.com' } });
+      expect(await service.update('driver', { vehicle: 'Camión' })).toMatchObject({ vehicle: 'Camión', vehicleCapacity: 6, user: { name: 'Carlos' } });
+      expect(await service.update('driver', { name: 'Solo Nombre' })).toMatchObject({ vehicle: 'Camión', vehicleCapacity: 6, user: { name: 'Solo Nombre' } });
+      expect(await service.update('driver', { email: 'solo@delivery.com' })).toMatchObject({ vehicleCapacity: 6, user: { email: 'solo@delivery.com' } });
+    });
+
+    it('actualiza solo vehicleCapacity y permite limpiarlo con null explícito sin tocar otros campos', async () => {
+      const { service, tables } = setup(existing());
+      const updated = await service.update('driver', { vehicleCapacity: 14 });
+      expect(updated).toMatchObject({ vehicle: 'Moto', vehicleCapacity: 14, isAvailable: false, user: { name: 'Carlos', email: 'carlos@delivery.com', role: 'DRIVER' } });
+      expect(tables.Driver![0]!.vehicleCapacity).toBe(14);
+
+      const reset = await service.update('driver', { vehicleCapacity: null });
+      expect(reset).toMatchObject({ vehicle: 'Moto', vehicleCapacity: null, isAvailable: false, user: { name: 'Carlos', email: 'carlos@delivery.com', role: 'DRIVER' } });
+      expect(tables.Driver![0]!.vehicleCapacity).toBeNull();
     });
 
     it('conservar el mismo correo no es un conflicto', async () => {
@@ -125,9 +153,10 @@ describe('DriversService (#43): alta y corrección con una base de datos en memo
 
     it('un correo de otro usuario da EMAIL_ALREADY_EXISTS y no cambia ningún otro campo', async () => {
       const { service, tables } = setup(existing());
-      await expect(service.update('driver', { name: 'No debe guardarse', vehicle: 'Tampoco', email: 'ocupado@delivery.com' })).rejects.toMatchObject({ response: { code: 'EMAIL_ALREADY_EXISTS' } });
+      await expect(service.update('driver', { name: 'No debe guardarse', vehicle: 'Tampoco', vehicleCapacity: 20, email: 'ocupado@delivery.com' })).rejects.toMatchObject({ response: { code: 'EMAIL_ALREADY_EXISTS' } });
       expect(tables.User!.find((u) => u.id === 'u-driver')!.name).toBe('Carlos');
       expect(tables.Driver![0]!.vehicle).toBe('Moto');
+      expect(tables.Driver![0]!.vehicleCapacity).toBe(6);
     });
 
     it('un repartidor inexistente da 404', async () => {
@@ -135,16 +164,31 @@ describe('DriversService (#43): alta y corrección con una base de datos en memo
       await expect(service.update('nadie', { name: 'Ana' })).rejects.toMatchObject({ status: 404 });
     });
 
-    it('si la identidad no se puede actualizar da 404 y la corrección del vehículo no se aplica', async () => {
+    it('si la identidad no se puede actualizar da 404 y la corrección del vehículo ni la capacidad se aplican', async () => {
       const { service, tables } = setup({ ...existing(), failUserUpdate: true });
-      await expect(service.update('driver', { name: 'Ana', vehicle: 'Otro' })).rejects.toMatchObject({ status: 404 });
+      await expect(service.update('driver', { name: 'Ana', vehicle: 'Otro', vehicleCapacity: 20 })).rejects.toMatchObject({ status: 404 });
       expect(tables.Driver![0]!.vehicle).toBe('Moto');
+      expect(tables.Driver![0]!.vehicleCapacity).toBe(6);
     });
 
     it('una violación de unicidad concurrente al corregir se traduce a EMAIL_ALREADY_EXISTS', async () => {
       const { service, client } = setup(existing());
       client.transaction.mockRejectedValueOnce(Object.assign(new Error('duplicate'), { code: '23505', constraint: 'user_email_key' }));
       await expect(service.update('driver', { email: 'otro@delivery.com' })).rejects.toMatchObject({ response: { code: 'EMAIL_ALREADY_EXISTS' } });
+    });
+  });
+
+  describe('findAll', () => {
+    it('expone vehicleCapacity crudo (entero o null) en el listado sin sustituirlo por 4', async () => {
+      const { service } = setup();
+      await service.create({ name: 'Ana', email: 'ana@delivery.com', vehicle: 'Moto' });
+      await service.create({ name: 'Beto', email: 'beto@delivery.com', vehicle: 'Camioneta', vehicleCapacity: 9 });
+
+      const listed = await service.findAll();
+      expect(listed).toEqual([
+        expect.objectContaining({ vehicle: 'Moto', vehicleCapacity: null }),
+        expect.objectContaining({ vehicle: 'Camioneta', vehicleCapacity: 9 }),
+      ]);
     });
   });
 });

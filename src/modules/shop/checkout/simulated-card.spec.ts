@@ -19,9 +19,21 @@ describe('Simulated Card & Payment Foundation (C1)', () => {
   });
 
   describe('Gating & Environment Verification', () => {
-    it('throws HTTP 503 PAYMENT_SIMULATION_DISABLED if NODE_ENV is production', () => {
-      process.env.NODE_ENV = 'production';
-      process.env.SIMULATED_PAYMENTS_ENABLED = 'true';
+    it.each([
+      ['production', undefined],
+      ['production', 'false'],
+      ['production', 'TRUE'],
+      ['production', '1'],
+      ['development', 'true'],
+      [undefined, 'true'],
+      ['staging', 'true'],
+      ['test', undefined],
+      ['demo', 'false'],
+    ])('rejects environment %s with flag %s using typed HTTP 503', (environment, flag) => {
+      if (environment === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = environment;
+      if (flag === undefined) delete process.env.SIMULATED_PAYMENTS_ENABLED;
+      else process.env.SIMULATED_PAYMENTS_ENABLED = flag;
       expect(() => assertPaymentSimulationEnabled()).toThrow(
         expect.objectContaining({
           status: HttpStatus.SERVICE_UNAVAILABLE,
@@ -34,39 +46,9 @@ describe('Simulated Card & Payment Foundation (C1)', () => {
       );
     });
 
-    it('throws HTTP 503 PAYMENT_SIMULATION_DISABLED if SIMULATED_PAYMENTS_ENABLED is false or unset', () => {
-      process.env.NODE_ENV = 'test';
-      delete process.env.SIMULATED_PAYMENTS_ENABLED;
-      expect(() => assertPaymentSimulationEnabled()).toThrow(
-        expect.objectContaining({
-          status: HttpStatus.SERVICE_UNAVAILABLE,
-          response: expect.objectContaining({
-            error: expect.objectContaining({
-              code: 'PAYMENT_SIMULATION_DISABLED',
-            }),
-          }),
-        }),
-      );
-
-      process.env.SIMULATED_PAYMENTS_ENABLED = 'false';
-      expect(() => assertPaymentSimulationEnabled()).toThrow(
-        expect.objectContaining({
-          status: HttpStatus.SERVICE_UNAVAILABLE,
-          response: expect.objectContaining({
-            error: expect.objectContaining({
-              code: 'PAYMENT_SIMULATION_DISABLED',
-            }),
-          }),
-        }),
-      );
-    });
-
-    it('passes gating when NODE_ENV is test or demo and SIMULATED_PAYMENTS_ENABLED is true', () => {
-      process.env.NODE_ENV = 'test';
+    it.each(['production', 'test', 'demo'])('allows %s when explicitly enabled', (environment) => {
+      process.env.NODE_ENV = environment;
       process.env.SIMULATED_PAYMENTS_ENABLED = 'true';
-      expect(() => assertPaymentSimulationEnabled()).not.toThrow();
-
-      process.env.NODE_ENV = 'demo';
       expect(() => assertPaymentSimulationEnabled()).not.toThrow();
     });
   });
@@ -404,7 +386,7 @@ describe('Simulated Card & Payment Foundation (C1)', () => {
   describe('Bootstrap Idempotency & Balance Preservation', () => {
     it('refuses bootstrap when simulation is disabled (fails closed)', async () => {
       process.env.NODE_ENV = 'production';
-      process.env.SIMULATED_PAYMENTS_ENABLED = 'true';
+      process.env.SIMULATED_PAYMENTS_ENABLED = 'false';
       const fakeDb = { client: { rawSql: jest.fn() } };
       await expect(bootstrapSimulatedCards(fakeDb as any)).rejects.toThrow(
         expect.objectContaining({

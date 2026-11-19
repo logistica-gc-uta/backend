@@ -7,10 +7,13 @@ import { PlanningIneligibilityReason } from '../orders/order-geography.util.js';
  * - ADMINISTRATIVE_REVIEW_REQUIRED: el administrador debe revisarlo a mano; ocurre cuando
  *   una entrega falló (visita fallida) y el pedido no se replanifica hasta que un ADMIN
  *   intervenga y acuerde una nueva fecha.
+ * - VEHICLE_CAPACITY_EXCEEDED: la demanda indivisible del pedido en unidades de producto
+ *   supera la capacidad del vehículo seleccionado (o el valor por defecto de 4 unidades).
  */
 export const ExclusionReason = {
   ACTIVE_ROUTE_CLAIM: 'ACTIVE_ROUTE_CLAIM',
   ADMINISTRATIVE_REVIEW_REQUIRED: 'ADMINISTRATIVE_REVIEW_REQUIRED',
+  VEHICLE_CAPACITY_EXCEEDED: 'VEHICLE_CAPACITY_EXCEEDED',
 } as const;
 
 /**

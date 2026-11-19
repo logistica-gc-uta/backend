@@ -23,6 +23,15 @@ export class PlanRoutesQueryDto {
 
   @ApiPropertyOptional({
     description:
+      'Optional driver ID whose stored vehicleCapacity (or default 4 when unset) bounds product-unit load per proposed route',
+    format: 'uuid',
+  })
+  @IsOptional()
+  @IsUUID()
+  driverId?: string;
+
+  @ApiPropertyOptional({
+    description:
       'Include the road trace of every proposal for the map. Only meaningful when the road engine is active; it asks the engine once per proposal',
     default: false,
   })

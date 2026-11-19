@@ -6,7 +6,7 @@ import { planRoutes, type ClarkeWrightOptions, type PlannedRoute, type RoutingOr
 import { matrixDistance, matrixDuration, type DistanceMatrix } from './algorithms/matrix-distance.js';
 import type { PlanRequest } from './algorithms/plan-routes.worker.js';
 
-type PlanOptions = Pick<ClarkeWrightOptions, 'depots' | 'capacity' | 'timeWindowMarginMinutes'> & {
+type PlanOptions = Pick<ClarkeWrightOptions, 'depots' | 'capacity' | 'maxStops' | 'timeWindowMarginMinutes'> & {
   /** Matriz vial (km y duraciones en s, direccional). Sin ella se usa la línea recta de siempre. */
   matrix?: DistanceMatrix;
 };
@@ -27,13 +27,14 @@ export function planKey(orders: readonly RoutingOrder[], options: PlanOptions): 
   hash.update(
     JSON.stringify([
       options.capacity ?? null,
+      options.maxStops ?? null,
       options.timeWindowMarginMinutes ?? null,
       Object.entries(options.depots).sort(([a], [b]) => a.localeCompare(b)),
     ]),
   );
   for (const order of [...orders].sort((a, b) => a.id.localeCompare(b.id))) {
     hash.update(
-      `|${order.id},${order.zoneId},${order.deliveryDate},${order.location.lat},${order.location.lng},${order.scheduledAtMs ?? ''}`,
+      `|${order.id},${order.zoneId},${order.deliveryDate},${order.location.lat},${order.location.lng},${order.scheduledAtMs ?? ''},${order.demandUnits ?? 1}`,
     );
   }
   // La red vial cambia el resultado: dos matrices distintas nunca comparten caché.

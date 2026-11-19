@@ -79,17 +79,15 @@ export const SIMULATED_CARD_FIXTURES: readonly SimulatedCardFixture[] = [
   },
 ];
 
-/**
- * Validates that simulation is permitted in the current runtime environment.
- * Fails closed with HTTP 503 PAYMENT_SIMULATION_DISABLED unless:
- * - NODE_ENV is explicitly 'test' or 'demo'
- * - SIMULATED_PAYMENTS_ENABLED is explicitly 'true'
- */
-export function assertPaymentSimulationEnabled(): void {
-  const nodeEnv = (process.env.NODE_ENV ?? '').trim();
-  const simulationEnabled = (process.env.SIMULATED_PAYMENTS_ENABLED ?? '').trim() === 'true';
+/** Simulation is opt-in, including in production. Development and unknown environments stay off. */
+export function isPaymentSimulationEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  const nodeEnv = env.NODE_ENV?.trim();
+  return (nodeEnv === 'production' || nodeEnv === 'test' || nodeEnv === 'demo')
+    && env.SIMULATED_PAYMENTS_ENABLED?.trim() === 'true';
+}
 
-  if ((nodeEnv !== 'test' && nodeEnv !== 'demo') || !simulationEnabled) {
+export function assertPaymentSimulationEnabled(env: NodeJS.ProcessEnv = process.env): void {
+  if (!isPaymentSimulationEnabled(env)) {
     throw shopError(
       HttpStatus.SERVICE_UNAVAILABLE,
       'PAYMENT_SIMULATION_DISABLED',
@@ -214,8 +212,8 @@ export function validateSimulatedCard(
  * - Inserts MISSING fixtures ONLY.
  * - NEVER overwrites spent balances, reset card states, or reactivates modified cards.
  */
-export async function bootstrapSimulatedCards(db: PrismaHandle): Promise<void> {
-  assertPaymentSimulationEnabled();
+export async function bootstrapSimulatedCards(db: PrismaHandle, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+  assertPaymentSimulationEnabled(env);
 
   const client = resolvePrismaClient(db);
 

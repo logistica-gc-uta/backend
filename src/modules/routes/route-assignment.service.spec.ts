@@ -2,6 +2,7 @@ import { RouteAvailabilityService } from './route-availability.service.js';
 import {
   BadRequestException,
   ConflictException,
+  NotFoundException,
   ValidationPipe,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
@@ -21,12 +22,17 @@ describe('RouteAssignmentService', () => {
   };
   let service: RouteAssignmentService;
   let orders: any[];
+  let orderItems: Array<{ orderId: string; quantity: number }>;
   let route: any;
+  let routeStops: any[];
   let holds: any[];
   let claims: any[];
   let reservation: any;
   let driver: any;
   let orderUpdate: jest.Mock;
+  let routeCreate: jest.Mock;
+  let routeStopCreate: jest.Mock;
+  let reservationCreate: jest.Mock;
   beforeEach(() => {
     orders = [
       {
@@ -37,6 +43,7 @@ describe('RouteAssignmentService', () => {
         scheduledDeliveryDate: Temporal.Instant.from(dto.routeDate),
       },
     ];
+    orderItems = [];
     route = {
       id: 'route',
       status: 'DRAFT',
@@ -45,18 +52,32 @@ describe('RouteAssignmentService', () => {
       date: Temporal.Instant.from(dto.routeDate),
       createdAt: Temporal.Instant.from(dto.routeDate),
     };
+    routeStops = [
+      {
+        orderId: 'order',
+        sequence: 1,
+        outcome: 'PENDING',
+        isLegacy: false,
+      },
+    ];
     holds = [];
     claims = [];
-    driver = { id: 'driver', userId: 'driver-user', isAvailable: true };
+    driver = { id: 'driver', userId: 'driver-user', vehicleCapacity: null, isAvailable: true };
     reservation = null;
+    routeCreate = jest.fn((value: any) => ({ ...route, ...value }));
+    routeStopCreate = jest.fn((value: any) => value);
+    reservationCreate = jest.fn((value: any) => {
+      reservation = value;
+      return value;
+    });
     const model = (
       first: (filter: any) => any,
-      all: () => unknown[] = () => [],
+      all: (filter?: any) => unknown[] = () => [],
       create = (value: any) => value,
     ) => ({
       where: (filter: any) => ({
         first: async () => first(filter),
-        all: async () => all(),
+        all: async () => all(filter),
         update: async (value: any) => {
           const row = first(filter);
           if (row) Object.assign(row, value);
@@ -82,13 +103,26 @@ describe('RouteAssignmentService', () => {
             role: filter.id === 'admin' ? 'ADMIN' : 'DRIVER',
           })),
           Zone: model(() => ({ id: 'zone' })),
-          Driver: model(() => driver),
+          Driver: model((filter) => (driver && driver.id === filter.id ? driver : null)),
           Route: model(
             () => route,
             () => holds as never[],
-            (value) => ({ ...route, ...value }),
+            routeCreate,
           ),
           Order: order,
+          OrderItem: model(
+            () => null,
+            (filter) => {
+              if (typeof filter === 'function') {
+                let ids: string[] = [];
+                filter({ orderId: { in: (v: string[]) => (ids = v) } });
+                return orderItems.filter((item) => ids.includes(item.orderId));
+              }
+              return filter?.orderId
+                ? orderItems.filter((item) => item.orderId === filter.orderId)
+                : orderItems;
+            },
+          ),
           OrderClaim: model(
             (filter) =>
               claims.find((claim) =>
@@ -105,19 +139,13 @@ describe('RouteAssignmentService', () => {
           ),
           RouteStop: model(
             () => null,
-            () =>
-              [
-                {
-                  orderId: 'order',
-                  sequence: 1,
-                  outcome: 'PENDING',
-                  isLegacy: false,
-                },
-              ] as never[],
+            () => routeStops as never[],
+            routeStopCreate,
           ),
           DriverReservation: model(
             () => reservation,
             () => (reservation ? [reservation] : []),
+            reservationCreate,
           ),
           LegacyRouteReconciliation: model(() => null),
           DriverAbsence: model(() => null),
@@ -597,5 +625,201 @@ describe('RouteAssignmentService', () => {
       'admin',
     );
     expect(created).toMatchObject({ zoneId: null, status: 'ASSIGNED', driverId: 'driver' });
+  });
+
+  describe('vehicle capacity guards on confirmDraft, assignDraft and assignLegacy', () => {
+    it('rejects confirmDraft when load exceeds provided driver capacity (or default 4) with structured 409 and no writes', async () => {
+      orders.push({ ...orders[0], id: 'order-2' });
+      orderItems = [
+        { orderId: 'order', quantity: 3 },
+        { orderId: 'order-2', quantity: 3 },
+      ];
+      driver.vehicleCapacity = null; // default 4
+
+      await expect(
+        service.confirmDraft(
+          { ...dto, orderIds: ['order', 'order-2'], driverId: 'driver' },
+          'admin',
+        ),
+      ).rejects.toMatchObject({
+        response: {
+          statusCode: 409,
+          code: 'VEHICLE_CAPACITY_EXCEEDED',
+          requiredUnits: 6,
+          capacity: 4,
+        },
+      });
+      expect(routeCreate).not.toHaveBeenCalled();
+      expect(routeStopCreate).not.toHaveBeenCalled();
+      expect(claims).toHaveLength(0);
+
+      // Omitting driverId falls back to default 4 and also rejects 6 units with no writes.
+      await expect(
+        service.confirmDraft({ ...dto, orderIds: ['order', 'order-2'] }, 'admin'),
+      ).rejects.toMatchObject({
+        response: {
+          statusCode: 409,
+          code: 'VEHICLE_CAPACITY_EXCEEDED',
+          requiredUnits: 6,
+          capacity: 4,
+        },
+      });
+      expect(routeCreate).not.toHaveBeenCalled();
+      expect(claims).toHaveLength(0);
+
+      // With capacity 6, exact fit succeeds and leaves route as unassigned DRAFT.
+      driver.vehicleCapacity = 6;
+      await expect(
+        service.confirmDraft(
+          { ...dto, orderIds: ['order', 'order-2'], driverId: 'driver' },
+          'admin',
+        ),
+      ).resolves.toMatchObject({ status: 'DRAFT', driverId: null });
+    });
+
+    it('rejects confirmDraft with 404 when provided driverId does not exist and writes nothing', async () => {
+      await expect(
+        service.confirmDraft({ ...dto, driverId: 'missing-driver' }, 'admin'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(routeCreate).not.toHaveBeenCalled();
+      expect(claims).toHaveLength(0);
+    });
+
+    it('revalidates actual chosen driver capacity on assignDraft with no writes on rejection', async () => {
+      orders.push({ ...orders[0], id: 'order-2' });
+      orderItems = [
+        { orderId: 'order', quantity: 3 },
+        { orderId: 'order-2', quantity: 3 },
+      ];
+      routeStops = [
+        { orderId: 'order', sequence: 1, outcome: 'PENDING', isLegacy: false },
+        { orderId: 'order-2', sequence: 2, outcome: 'PENDING', isLegacy: false },
+      ];
+      claims = [
+        { id: 'c1', orderId: 'order', routeId: 'route', claimedAt: Temporal.Instant.from(dto.routeDate) },
+        { id: 'c2', orderId: 'order-2', routeId: 'route', claimedAt: Temporal.Instant.from(dto.routeDate) },
+      ];
+      driver.vehicleCapacity = 4;
+
+      await expect(
+        service.assignDraft('route', { driverId: 'driver' }, 'admin'),
+      ).rejects.toMatchObject({
+        response: {
+          statusCode: 409,
+          code: 'VEHICLE_CAPACITY_EXCEEDED',
+          requiredUnits: 6,
+          capacity: 4,
+        },
+      });
+      expect(reservationCreate).not.toHaveBeenCalled();
+      expect(route.status).toBe('DRAFT');
+      expect(route.driverId).toBeNull();
+      expect(orders.every((o) => o.status === 'PENDING')).toBe(true);
+      expect(driver.isAvailable).toBe(true);
+
+      driver.vehicleCapacity = 6;
+      await expect(
+        service.assignDraft('route', { driverId: 'driver' }, 'admin'),
+      ).resolves.toMatchObject({ status: 'ASSIGNED', driverId: 'driver' });
+    });
+
+    it('validates actual chosen driver capacity on assignLegacy with no writes on rejection and accepts exact fit', async () => {
+      orders.push({ ...orders[0], id: 'order-2' });
+      orderItems = [
+        { orderId: 'order', quantity: 3 },
+        { orderId: 'order-2', quantity: 3 },
+      ];
+      routeStops = [
+        { orderId: 'order', sequence: 1, outcome: 'PENDING', isLegacy: false },
+        { orderId: 'order-2', sequence: 2, outcome: 'PENDING', isLegacy: false },
+      ];
+      driver.vehicleCapacity = 4;
+
+      await expect(
+        service.assignLegacy(
+          { driverId: 'driver', zoneId: 'zone', orderIds: ['order', 'order-2'] },
+          'admin',
+        ),
+      ).rejects.toMatchObject({
+        response: {
+          statusCode: 409,
+          code: 'VEHICLE_CAPACITY_EXCEEDED',
+          requiredUnits: 6,
+          capacity: 4,
+        },
+      });
+      expect(routeCreate).not.toHaveBeenCalled();
+      expect(routeStopCreate).not.toHaveBeenCalled();
+      expect(claims).toHaveLength(0);
+      expect(reservationCreate).not.toHaveBeenCalled();
+      expect(driver.isAvailable).toBe(true);
+
+      driver.vehicleCapacity = 6;
+      await expect(
+        service.assignLegacy(
+          { driverId: 'driver', zoneId: 'zone', orderIds: ['order', 'order-2'] },
+          'admin',
+        ),
+      ).resolves.toMatchObject({ status: 'ASSIGNED', driverId: 'driver' });
+    });
+
+    it('sums multi-line OrderItems and treats itemless legacy orders as 1 unit on confirm/assign', async () => {
+      orders.push({ ...orders[0], id: 'legacy-itemless' });
+      orders.push({ ...orders[0], id: 'third' });
+      orderItems = [
+        { orderId: 'order', quantity: 2 },
+        { orderId: 'order', quantity: 1 },
+        // legacy-itemless has no OrderItem rows -> counts as 1 (total so far: 4)
+        { orderId: 'third', quantity: 1 },
+      ];
+      driver.vehicleCapacity = null; // default 4
+
+      // order (3) + legacy-itemless (1) = 4 -> exact fit allowed
+      await expect(
+        service.confirmDraft(
+          { ...dto, orderIds: ['order', 'legacy-itemless'], driverId: 'driver' },
+          'admin',
+        ),
+      ).resolves.toMatchObject({ status: 'DRAFT' });
+
+      // order (3) + legacy-itemless (1) + third (1) = 5 > 4 -> rejected with no writes
+      routeCreate.mockClear();
+      claims = [];
+      await expect(
+        service.confirmDraft(
+          { ...dto, orderIds: ['order', 'legacy-itemless', 'third'], driverId: 'driver' },
+          'admin',
+        ),
+      ).rejects.toMatchObject({
+        response: {
+          statusCode: 409,
+          code: 'VEHICLE_CAPACITY_EXCEEDED',
+          requiredUnits: 5,
+          capacity: 4,
+        },
+      });
+      expect(routeCreate).not.toHaveBeenCalled();
+      expect(claims).toHaveLength(0);
+    });
+
+    it('accepts optional nullable driverId on ConfirmDraftRouteDto and rejects blank driverId', async () => {
+      const pipe = new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      });
+      const validateBody = (value: unknown) =>
+        pipe.transform(value, { type: 'body', metatype: ConfirmDraftRouteDto });
+
+      await expect(validateBody({ ...dto, driverId: 'driver' })).resolves.toBeInstanceOf(
+        ConfirmDraftRouteDto,
+      );
+      await expect(validateBody({ ...dto, driverId: null })).resolves.toBeInstanceOf(
+        ConfirmDraftRouteDto,
+      );
+      await expect(validateBody({ ...dto, driverId: '   ' })).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
   });
 });

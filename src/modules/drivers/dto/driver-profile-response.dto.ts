@@ -14,6 +14,14 @@ export class DriverProfileResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() userId!: string;
   @ApiProperty() vehicle!: string;
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    minimum: 1,
+    maximum: 2_147_483_647,
+    description: 'Capacidad configurada del vehículo en unidades de productos, o null cuando no está definida.',
+  })
+  vehicleCapacity!: number | null;
   @ApiProperty({ description: 'Bandera de compatibilidad; la disponibilidad real es `effectiveAvailability`.' }) isAvailable!: boolean;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
   @ApiProperty({ type: DriverUserSummaryDto }) user!: DriverUserSummaryDto;

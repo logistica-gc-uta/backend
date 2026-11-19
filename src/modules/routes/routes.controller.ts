@@ -211,7 +211,8 @@ export class RoutesController {
   @ApiResponse({ status: 201, type: RouteAssignmentResponseDto })
   @ApiResponse({
     status: 409,
-    description: 'Order eligibility, active claim or exact timestamp conflict',
+    description:
+      'Order eligibility, active claim, exact timestamp or vehicle capacity conflict (VEHICLE_CAPACITY_EXCEEDED)',
   })
   async confirmDraft(
     @Body() dto: ConfirmDraftRouteDto,
@@ -229,7 +230,8 @@ export class RoutesController {
   @ApiResponse({ status: 200, type: RouteAssignmentResponseDto })
   @ApiResponse({
     status: 409,
-    description: 'Driver hold, lifecycle, claim or eligibility conflict',
+    description:
+      'Driver hold, lifecycle, claim, eligibility or vehicle capacity conflict (VEHICLE_CAPACITY_EXCEEDED)',
   })
   async assignDraft(
     @Param('id', ParseUUIDPipe) id: string,
@@ -254,7 +256,7 @@ export class RoutesController {
   @ApiResponse({
     status: 409,
     description:
-      'Eligibility, date, claim, reservation or driver hold conflict',
+      'Eligibility, date, claim, reservation, driver hold or vehicle capacity conflict (VEHICLE_CAPACITY_EXCEEDED)',
   })
   @HttpCode(HttpStatus.CREATED)
   async assign(

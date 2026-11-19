@@ -27,16 +27,16 @@ export class RoutePlanningController {
     summary:
       'Propose routes grouped by compatible delivery time window and road/distance savings (read-only; nothing is persisted)',
     description:
-      'Selects the PENDING, geographically ready orders scheduled on the given America/Guayaquil calendar day, groups them by zone (or common store origin when zoneId is null) and compatible scheduled-hour window (max - min <= ShopBusinessSettings.routePlanning.timeWindowMarginMinutes, default 30 min), and returns temporary proposals of at most four stops ordered chronologically (earliest scheduledDeliveryDate first). When StoreCoverage is configured, its store location is used as the common origin and return depot across proposals (falling back to zone depot coordinates otherwise). When ROAD_ENGINE=OSRM is active, OSRM estimated road durations (no live traffic, not an ETA) are used as the primary routing cost with road distance for tie-breaks; otherwise straight-line Haversine distance is used. Orders that cannot be planned are listed in `excluded` with their reasons. A proposal is confirmed as DRAFT with POST /routes (using its `routeDate`, `orderIds`, and optional nullable `zoneId`) and assigned with POST /routes/:id/assign.',
+      'Selects the PENDING, geographically ready orders scheduled on the given America/Guayaquil calendar day, groups them by zone (or common store origin when zoneId is null) and compatible scheduled-hour window (max - min <= ShopBusinessSettings.routePlanning.timeWindowMarginMinutes, default 30 min), and returns temporary proposals bounded by both an independent four-stop maximum and the effective vehicle capacity in product units (selected driverId stored vehicleCapacity, or default 4 when unset or omitted), ordered chronologically (earliest scheduledDeliveryDate first). Order demand is the indivisible sum of OrderItem.quantity (legacy itemless orders count as 1); orders exceeding vehicle capacity are never split and appear in `excluded` with reason `VEHICLE_CAPACITY_EXCEEDED` and `requiredUnits`. When StoreCoverage is configured, its store location is used as the common origin and return depot across proposals (falling back to zone depot coordinates otherwise). When ROAD_ENGINE=OSRM is active, OSRM estimated road durations (no live traffic, not an ETA) are used as the primary routing cost with road distance for tie-breaks; otherwise straight-line Haversine distance is used. A proposal is confirmed as DRAFT with POST /routes (using its `routeDate`, `orderIds`, optional nullable `zoneId`, and optional `driverId`) and assigned with POST /routes/:id/assign.',
   })
   @ApiResponse({ status: 200, type: RouteProposalResponseDto })
   @ApiResponse({
     status: 400,
-    description: 'Invalid or missing date, invalid zoneId or unknown query field',
+    description: 'Invalid or missing date, invalid zoneId, invalid driverId or unknown query field',
   })
   @ApiResponse({ status: 401, description: 'Authentication required' })
   @ApiResponse({ status: 403, description: 'Current ADMIN role required' })
-  @ApiResponse({ status: 404, description: 'Zone not found' })
+  @ApiResponse({ status: 404, description: 'Zone or driver not found' })
   @ApiResponse({
     status: 422,
     description:
