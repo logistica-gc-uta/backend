@@ -78,6 +78,15 @@ describe('RoutePlanner (P-1 de #15): cálculo fuera del hilo, memoizado y sin du
       planKey(scheduled, { depots, capacity: 4, timeWindowMarginMinutes: 30 }),
     );
 
+    // maxStops y demandUnits
+    expect(planKey(orders, { depots, capacity: 6 })).not.toBe(
+      planKey(orders, { depots, capacity: 6, maxStops: 4 }),
+    );
+    const withDemand = orders.map((o, i) => (i === 0 ? { ...o, demandUnits: 3 } : o));
+    expect(planKey(orders, { depots, capacity: 6, maxStops: 4 })).not.toBe(
+      planKey(withDemand, { depots, capacity: 6, maxStops: 4 }),
+    );
+
     // matrix.durationS
     const pts = [depots.z1, orders[0]!.location];
     const baseMatrix: DistanceMatrix = {
@@ -174,6 +183,18 @@ describe('RoutePlanner (P-1 de #15): cálculo fuera del hilo, memoizado y sin du
     expect(viaPlanner).toEqual(direct);
     expect(viaPlanner.map((r) => r.orderIds)).toEqual([['a', 'b'], ['c']]);
     expect(viaPlanner[0]!.totalDistance).toBe(7); // depot->A(2) + A->B(1) + B->depot(4)
+
+    const demandOrders: RoutingOrder[] = [
+      { id: 'd1', zoneId: 'z1', deliveryDate: '2030-02-14', location: pA, scheduledAtMs: Date.parse('2030-02-14T19:30:00Z'), demandUnits: 3 },
+      { id: 'd2', zoneId: 'z1', deliveryDate: '2030-02-14', location: pB, scheduledAtMs: Date.parse('2030-02-14T19:35:00Z'), demandUnits: 3 },
+      { id: 'd3', zoneId: 'z1', deliveryDate: '2030-02-14', location: pC, scheduledAtMs: Date.parse('2030-02-14T19:40:00Z'), demandUnits: 3 },
+    ];
+    const cap4 = await planner.plan(demandOrders, { depots, capacity: 4, maxStops: 4, timeWindowMarginMinutes: 30 });
+    const cap6 = await planner.plan(demandOrders, { depots, capacity: 6, maxStops: 4, timeWindowMarginMinutes: 30 });
+    expect(cap4).toEqual(planRoutes(demandOrders, { depots, capacity: 4, maxStops: 4, timeWindowMarginMinutes: 30 }));
+    expect(cap6).toEqual(planRoutes(demandOrders, { depots, capacity: 6, maxStops: 4, timeWindowMarginMinutes: 30 }));
+    expect(cap4).toHaveLength(3);
+    expect(cap6).toHaveLength(2);
   });
 
   it('sin build compilado no hay worker (tests y desarrollo calculan en línea)', () => {

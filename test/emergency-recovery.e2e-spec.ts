@@ -146,6 +146,7 @@ describe('Route emergency interruption and unit recovery (#51): PostgreSQL + JWT
         zoneId: ids.zone,
         routeDate: now().toString(),
         orderIds,
+        driverId,
       }).expect(201)
     ).body;
     await api('post', `/routes/${route.id}/assign`, { driverId }).expect(200);
@@ -201,6 +202,7 @@ describe('Route emergency interruption and unit recovery (#51): PostgreSQL + JWT
       id: ids.driver,
       userId: ids.driverUser,
       vehicle: 'Van 1',
+      vehicleCapacity: 6,
       isAvailable: true,
     });
     await db.orm.public.Driver.create({

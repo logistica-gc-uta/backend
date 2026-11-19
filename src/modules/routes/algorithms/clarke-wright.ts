@@ -8,6 +8,8 @@ export interface RoutingOrder {
   location: GeoPoint;
   /** Instante programado de entrega en milisegundos desde época Unix (opcional). */
   scheduledAtMs?: number;
+  /** Demanda indivisible del pedido en unidades de producto (opcional; por defecto 1). */
+  demandUnits?: number;
 }
 
 export type DistanceFn = (a: GeoPoint, b: GeoPoint) => number;
@@ -15,8 +17,10 @@ export type DistanceFn = (a: GeoPoint, b: GeoPoint) => number;
 export interface ClarkeWrightOptions {
   /** Punto de salida (depósito) de cada zona. */
   depots: Record<string, GeoPoint>;
-  /** Máximo de pedidos por ruta. Por defecto 4 (regla de negocio). */
+  /** Capacidad máxima por ruta en unidades de demanda (o pedidos cuando `demandUnits` se omite). Por defecto 4. */
   capacity?: number;
+  /** Máximo independiente de paradas por ruta (opcional). Si se omite, no añade restricción adicional sobre `capacity`. */
+  maxStops?: number;
   /** Función de distancia en km. Por defecto Haversine en km. */
   distance?: DistanceFn;
   /** Función de duración en segundos para priorizar el costo vial (opcional). */
@@ -71,6 +75,10 @@ export function planRoutes(orders: RoutingOrder[], options: ClarkeWrightOptions)
   if (!Number.isInteger(capacity) || capacity < 1) {
     throw new Error('La capacidad por ruta debe ser un entero mayor o igual a 1');
   }
+  const maxStops = options.maxStops;
+  if (maxStops !== undefined && (!Number.isInteger(maxStops) || maxStops < 1)) {
+    throw new Error('El máximo de paradas por ruta debe ser un entero mayor o igual a 1');
+  }
   if (
     options.timeWindowMarginMinutes !== undefined &&
     (!Number.isInteger(options.timeWindowMarginMinutes) || options.timeWindowMarginMinutes < 0)
@@ -87,6 +95,16 @@ export function planRoutes(orders: RoutingOrder[], options: ClarkeWrightOptions)
     }
     if (order.scheduledAtMs !== undefined && !Number.isFinite(order.scheduledAtMs)) {
       throw new Error(`Instante programado inválido para el pedido '${order.id}'`);
+    }
+    if (order.demandUnits !== undefined) {
+      if (!Number.isInteger(order.demandUnits) || order.demandUnits < 1) {
+        throw new Error(`Demanda inválida para el pedido '${order.id}'`);
+      }
+      if (order.demandUnits > capacity) {
+        throw new Error(
+          `La demanda del pedido '${order.id}' (${order.demandUnits}) supera la capacidad (${capacity})`,
+        );
+      }
     }
     seen.add(order.id);
   }
@@ -126,6 +144,7 @@ export function planRoutes(orders: RoutingOrder[], options: ClarkeWrightOptions)
         subgroup,
         depot,
         capacity,
+        maxStops,
         decisionDistance,
         decisionDuration,
         distance,
@@ -213,6 +232,7 @@ function planGroup(
   group: RoutingOrder[],
   depot: GeoPoint,
   capacity: number,
+  maxStops: number | undefined,
   decisionDistance: DistanceFn,
   decisionDuration: DistanceFn | undefined,
   realDistance: DistanceFn,
@@ -223,9 +243,11 @@ function planGroup(
   const orders = [...group].sort((a, b) => a.id.localeCompare(b.id));
 
   const routes = new Map<number, number[]>();
+  const routeLoad = new Map<number, number>();
   const routeOf: number[] = [];
-  orders.forEach((_, index) => {
+  orders.forEach((order, index) => {
     routes.set(index, [index]);
+    routeLoad.set(index, order.demandUnits ?? 1);
     routeOf.push(index);
   });
 
@@ -257,7 +279,9 @@ function planGroup(
 
     const a = routes.get(routeI)!;
     const b = routes.get(routeJ)!;
-    if (a.length + b.length > capacity) continue;
+    const mergedLoad = routeLoad.get(routeI)! + routeLoad.get(routeJ)!;
+    if (mergedLoad > capacity) continue;
+    if (maxStops !== undefined && a.length + b.length > maxStops) continue;
 
     // Solo se pueden unir rutas por sus extremos.
     const iIsEnd = a[0] === i || a[a.length - 1] === i;
@@ -270,6 +294,8 @@ function planGroup(
     const merged = a.concat(b);
     routes.set(routeI, merged);
     routes.delete(routeJ);
+    routeLoad.set(routeI, mergedLoad);
+    routeLoad.delete(routeJ);
     for (const index of b) routeOf[index] = routeI;
   }
 

@@ -76,6 +76,13 @@ export class RouteProposalDto {
 
   @ApiProperty({
     description:
+      'Total product units carried on this proposed route (sum of OrderItem quantities across stops; legacy itemless orders count as 1)',
+    example: 4,
+  })
+  loadUnits!: number;
+
+  @ApiProperty({
+    description:
       'Round trip depot -> stops -> depot in kilometres, rounded to 3 decimals. With the road engine it is the road distance, measured in the real direction of each leg; otherwise a straight line',
     example: 4.213,
   })
@@ -150,10 +157,17 @@ export class ExcludedOrderDto {
     enumName: 'PlanningExclusionReason',
     isArray: true,
     description:
-      'Why the order was not planned. MISSING_/INVALID_DELIVERY_COORDINATES: destination without or with malformed coordinates. MISSING_ZONE: no zone. MISSING_/INVALID_ZONE_DEPOT_COORDINATES: the zone has no valid depot. ACTIVE_ROUTE_CLAIM: already reserved by a confirmed proposal (DRAFT route). ADMINISTRATIVE_REVIEW_REQUIRED: an ADMIN must review it by hand (a failed delivery is not replanned until an ADMIN intervenes)',
+      'Why the order was not planned. MISSING_/INVALID_DELIVERY_COORDINATES: destination without or with malformed coordinates. MISSING_ZONE: no zone. MISSING_/INVALID_ZONE_DEPOT_COORDINATES: the zone has no valid depot. ACTIVE_ROUTE_CLAIM: already reserved by a confirmed proposal (DRAFT route). ADMINISTRATIVE_REVIEW_REQUIRED: an ADMIN must review it by hand (a failed delivery is not replanned until an ADMIN intervenes). VEHICLE_CAPACITY_EXCEEDED: indivisible order product-unit demand exceeds the effective vehicle capacity',
     example: ['MISSING_DELIVERY_COORDINATES'],
   })
   reasons!: PlanningExclusionReason[];
+
+  @ApiPropertyOptional({
+    description:
+      'Indivisible product units required by the order. Present only when reasons includes VEHICLE_CAPACITY_EXCEEDED',
+    example: 5,
+  })
+  requiredUnits?: number;
 }
 
 export class RouteProposalSummaryDto {
@@ -215,7 +229,11 @@ export class RouteProposalResponseDto {
   })
   canConfirm!: boolean;
 
-  @ApiProperty({ example: 4 })
+  @ApiProperty({
+    example: 4,
+    description:
+      'Effective vehicle capacity in product units applied to this proposal (selected driver vehicleCapacity, or default 4 when unset or when driverId is omitted). Independent of the four-stop maximum per route',
+  })
   capacity!: number;
 
   @ApiProperty({

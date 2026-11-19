@@ -912,9 +912,10 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
   });
 
   describe('cobertura global sin Zone (zoneId null)', () => {
-    it('confirma NEW_ROUTE urgente cuando proposal.zoneId es null usando StoreCoverage', async () => {
+    it('conserva la política de NEW_ROUTE urgente sin zona para un pedido de más de cuatro unidades', async () => {
       rows.Zone = [];
       rows.Order = [currentOrder('urgent', { zoneId: null })];
+      rows.OrderItem = [{ id: 'urgent-item', orderId: 'urgent', quantity: 5 }];
       rows.StoreCoverage!.push({ singletonKey: 'GLOBAL', lat: -1.24, lng: -78.61 });
       propose.mockResolvedValue({
         kind: 'NEW_ROUTE',

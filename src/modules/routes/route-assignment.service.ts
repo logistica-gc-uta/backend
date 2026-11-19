@@ -32,6 +32,12 @@ import {
   type RealtimeChange,
   type RealtimePublisher,
 } from '../realtime/realtime.contract.js';
+import {
+  assertVehicleCapacity,
+  orderDemandUnits,
+  resolveVehicleCapacity,
+  routeLoadUnits,
+} from './vehicle-capacity.js';
 
 type Transaction = Parameters<
   Parameters<PrismaService['client']['transaction']>[0]
@@ -143,6 +149,29 @@ export class RouteAssignmentService {
       date: route.date.toString(),
       createdAt: route.createdAt.toString(),
     };
+  }
+
+  private async routeLoadInTransaction(
+    tx: Transaction,
+    orderIds: readonly string[],
+  ): Promise<number> {
+    if (!orderIds.length) return 0;
+    const orderItemModel = tx.orm.public.OrderItem;
+    if (!orderItemModel) {
+      return orderIds.length;
+    }
+    const items = await orderItemModel
+      .where((item) => item.orderId.in([...orderIds]))
+      .all();
+    const byOrder = new Map<string, Array<{ quantity: number }>>();
+    for (const item of items) {
+      const list = byOrder.get(item.orderId);
+      if (list) list.push(item);
+      else byOrder.set(item.orderId, [item]);
+    }
+    return routeLoadUnits(
+      orderIds.map((orderId) => orderDemandUnits(byOrder.get(orderId))),
+    );
   }
 
   private async lockOrders(
@@ -347,6 +376,7 @@ export class RouteAssignmentService {
         tx,
         {
           zoneId,
+          driverId: dto.driverId,
           orderIds: dto.orderIds,
           routeDate: date.toString(),
         },
@@ -388,18 +418,25 @@ export class RouteAssignmentService {
     tx: Transaction,
     dto: ConfirmDraftRouteDto,
     date: Temporal.Instant,
+    workflow: 'planning' | 'urgent' = 'planning',
   ): Promise<RouteAssignmentResponseDto> {
     assertOperationalDay(date);
+    const driver =
+      dto.driverId != null ? await this.lockDriver(tx, dto.driverId) : null;
     const zoneId = dto.zoneId ?? null;
     if (zoneId != null && !(await tx.orm.public.Zone.where({ id: zoneId }).first()))
       throw new NotFoundException('Zone not found');
+    await this.lockOrders(tx, dto.orderIds, zoneId, date);
+    if (workflow === 'planning') {
+      const requiredUnits = await this.routeLoadInTransaction(tx, dto.orderIds);
+      assertVehicleCapacity(requiredUnits, resolveVehicleCapacity(driver?.vehicleCapacity));
+    }
     const route = await tx.orm.public.Route.create({
       status: 'DRAFT',
       driverId: null,
       zoneId,
       date,
     });
-    await this.lockOrders(tx, dto.orderIds, zoneId, date);
     const claimedAt = nowInstant();
     for (const [index, orderId] of dto.orderIds.entries()) {
       await tx.orm.public.RouteStop.create({
@@ -451,6 +488,7 @@ export class RouteAssignmentService {
     id: string,
     dto: AssignDraftRouteDto,
     changes?: RealtimeChange[],
+    workflow: 'planning' | 'urgent' = 'planning',
   ): Promise<RouteAssignmentResponseDto> {
     const driver = await this.lockDriver(tx, dto.driverId);
     const route = await tx.orm.public.Route.where({ id }).update({ id });
@@ -515,6 +553,13 @@ export class RouteAssignmentService {
       route.date,
       id,
     );
+    if (workflow === 'planning') {
+      const requiredUnits = await this.routeLoadInTransaction(
+        tx,
+        ordered.map((stop) => stop.orderId),
+      );
+      assertVehicleCapacity(requiredUnits, resolveVehicleCapacity(driver.vehicleCapacity));
+    }
     await tx.orm.public.DriverReservation.create({
       driverId: driver.id,
       routeId: id,
