@@ -453,11 +453,8 @@ describe('Issue12 dispatch: PostgreSQL + actual JWT HTTP', () => {
           deliveryWindowEnd: time.add({ minutes: 10 }).toString(),
         }).expect(200)
       ).body;
-      await intervene({
-        action: 'RESCHEDULE',
-        orderId,
-        agreementId: contact.id,
-      }).expect(409);
+      const beforeReady = { action: 'RESCHEDULE', orderId, agreementId: contact.id };
+      expect((await intervene(beforeReady).expect(409)).body.code).toBe('INCIDENT_NOT_READY_AT_STORE');
       await api(
         'post',
         `/routes/${route.id}/complete`,
@@ -465,12 +462,14 @@ describe('Issue12 dispatch: PostgreSQL + actual JWT HTTP', () => {
         ids.driverUser,
         'DRIVER',
       ).expect(200);
-      const body = {
-        action: 'RESCHEDULE',
+      expect((await intervene(beforeReady).expect(409)).body.code).toBe('INCIDENT_NOT_READY_AT_STORE');
+      await intervene({
+        action: 'CONFIRM_INCIDENT_READY',
         orderId,
-        agreementId: contact.id,
-        requestId: randomUUID(),
-      };
+        attemptId,
+        reason: 'Returned order verified at the store',
+      }).expect(200);
+      const body = { ...beforeReady, requestId: randomUUID() };
       const scheduled = (await intervene(body).expect(200)).body;
       expect(scheduled.orderId).toBe(orderId);
       expect((await intervene(body).expect(200)).body).toEqual(scheduled);
@@ -949,6 +948,12 @@ describe('Issue12 dispatch: PostgreSQL + actual JWT HTTP', () => {
           }).expect(200)
         ).body,
       );
+    await intervene({
+      action: 'CONFIRM_INCIDENT_READY',
+      orderId,
+      attemptId,
+      reason: 'Returned order verified at the store',
+    }).expect(200);
     const before = await auditRows();
     const responses = await Promise.all(
       agreements.map((a) =>
@@ -976,7 +981,9 @@ describe('Issue12 dispatch: PostgreSQL + actual JWT HTTP', () => {
         routeId: null,
         stopOrder: null,
       }),
-    ).rejects.toThrow('Failed order requires an explicit persisted agreement');
+    ).rejects.toThrow(
+      'Failed order requires store readiness confirmation and an explicit persisted agreement or emergency resolution after claim release or recovery',
+    );
     await expect(
       db.orm.public.RouteStop.where({ id: stops[0].id }).update({
         sequence: 2,
