@@ -19,6 +19,18 @@ export class ConfirmDraftRouteDto {
   @Matches(/\S/)
   zoneId?: string | null;
 
+  @ApiPropertyOptional({
+    format: 'uuid',
+    nullable: true,
+    description:
+      'Optional driver ID whose vehicleCapacity is validated against the total product units of orderIds on confirmation (does not assign the driver; route remains DRAFT). Falls back to default capacity 4 when omitted or null',
+  })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @Matches(/\S/)
+  driverId?: string | null;
+
   @ApiProperty({
     format: 'date-time',
     description:

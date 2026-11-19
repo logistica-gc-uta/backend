@@ -900,6 +900,7 @@ export class DispatchInterventionService {
                 orderIds: proposal.orderIds,
               },
               Temporal.Instant.from(proposal.routeDate!),
+              'urgent',
             );
             routeId = draft.id;
             await this.assignment.assignInTransaction(
@@ -907,6 +908,7 @@ export class DispatchInterventionService {
               routeId,
               { driverId: dto.driverId },
               changes,
+              'urgent',
             );
           }
           const audit = await this.createAudit(tx, dto, actorId, routeId, {

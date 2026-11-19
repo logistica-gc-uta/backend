@@ -84,6 +84,7 @@ export class DriversController {
   @ApiResponse({
     status: 200,
     description: 'Listado de repartidores con su usuario asociado',
+    type: [DriverProfileResponseDto],
   })
   @ApiResponse({ status: 403, description: 'Prohibido: se requiere rol ADMIN' })
   async findAll() {
@@ -97,7 +98,7 @@ export class DriversController {
   @ApiOperation({
     summary: 'Registrar un repartidor (solo ADMIN)',
     description:
-      'Crea en una sola transacción la identidad DRIVER y su perfil. El rol lo fija el servidor: el cuerpo solo acepta name, email y vehicle. El acceso inicial es una contraseña temporal aleatoria devuelta UNA vez en `temporaryPassword` (no se guarda en claro ni se registra); el ADMIN la entrega en persona. No envía correos.',
+      'Crea en una sola transacción la identidad DRIVER y su perfil. El rol lo fija el servidor: el cuerpo solo acepta name, email, vehicle y opcionalmente vehicleCapacity (entero positivo o null). El acceso inicial es una contraseña temporal aleatoria devuelta UNA vez en `temporaryPassword` (no se guarda en claro ni se registra); el ADMIN la entrega en persona. No envía correos.',
   })
   @ApiResponse({ status: 201, type: DriverCreatedResponseDto })
   @ApiResponse({ status: 400, description: 'Campos inválidos o no permitidos (por ejemplo `role`)' })
@@ -111,9 +112,9 @@ export class DriversController {
   @Patch(':id')
   @Roles(Role.ADMIN)
   @ApiOperation({
-    summary: 'Corregir nombre, correo o vehículo de un repartidor (solo ADMIN)',
+    summary: 'Corregir nombre, correo, vehículo o capacidad de un repartidor (solo ADMIN)',
     description:
-      'No modifica el rol, `isAvailable`, rutas ni reservas: editar un perfil no libera a un repartidor ocupado ni reasigna rutas. La baja o desactivación no está definida y no existe.',
+      'No modifica el rol, `isAvailable`, rutas ni reservas: editar un perfil no libera a un repartidor ocupado ni reasigna rutas. Omitir `vehicleCapacity` lo deja sin cambios; enviar `null` lo limpia. La baja o desactivación no está definida y no existe.',
   })
   @ApiResponse({ status: 200, type: DriverProfileResponseDto })
   @ApiResponse({ status: 400, description: 'Campos inválidos, no permitidos o ninguno enviado' })

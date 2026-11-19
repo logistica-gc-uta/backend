@@ -11,10 +11,14 @@ import { driverRouteDay } from '../drivers/driver-route-date.util.js';
 import { evaluatePlanningEligibility } from '../orders/order-geography.util.js';
 import { ShopSettingsService } from '../shop/settings/shop-settings.service.js';
 import { StoreCoverageService } from '../store-coverage/store-coverage.service.js';
+import { type RoutingOrder } from './algorithms/clarke-wright.js';
 import {
-  DEFAULT_ROUTE_CAPACITY,
-  type RoutingOrder,
-} from './algorithms/clarke-wright.js';
+  DEFAULT_VEHICLE_CAPACITY,
+  MAX_ROUTE_STOPS,
+  orderDemandUnits,
+  resolveVehicleCapacity,
+  routeLoadUnits,
+} from './vehicle-capacity.js';
 import { type GeoPoint, haversineKm } from './algorithms/geo.util.js';
 import { indexByKey, matrixDistance, pointKey, uniquePoints, type DistanceMatrix } from './algorithms/matrix-distance.js';
 import { RoadMetricsService } from './road/road-metrics.service.js';
@@ -114,6 +118,15 @@ export class RoutePlanningService implements OnModuleDestroy {
       throw new NotFoundException(`Zone '${query.zoneId}' not found`);
     }
 
+    let capacity = DEFAULT_VEHICLE_CAPACITY;
+    if (query.driverId) {
+      const driver = await this.prisma.driver.where({ id: query.driverId }).first();
+      if (!driver) {
+        throw new NotFoundException(`Driver '${query.driverId}' not found`);
+      }
+      capacity = resolveVehicleCapacity(driver.vehicleCapacity);
+    }
+
     const marginMinutes = this.shopSettings
       ? await this.shopSettings.getRouteTimeWindowMarginMinutes()
       : DEFAULT_TIME_WINDOW_MARGIN_MINUTES;
@@ -134,7 +147,10 @@ const STORE_ROUTE_GROUP_KEY = '__STORE__';
       .where((order) => order.scheduledDeliveryDate.gte(day.start))
       .where((order) => order.scheduledDeliveryDate.lt(day.end));
     if (query.zoneId) orderQuery = orderQuery.where({ zoneId: query.zoneId });
-    const candidates = await orderQuery.include('zone').all();
+    const candidates = await orderQuery
+      .include('zone')
+      .include('items', (item) => item.select('quantity'))
+      .all();
 
     const claimed = new Set<string>();
     if (candidates.length) {
@@ -148,6 +164,7 @@ const STORE_ROUTE_GROUP_KEY = '__STORE__';
 
     const excluded: ExcludedOrderDto[] = [];
     const routable: RoutingOrder[] = [];
+    const demands = new Map<string, number>();
     const instants = new Map<string, string>();
     const addresses = new Map<string, string>();
     const depots: Record<string, GeoPoint> = {};
@@ -162,6 +179,11 @@ const STORE_ROUTE_GROUP_KEY = '__STORE__';
       if (order.requiresAdministrativeReview) {
         reasons.push(ExclusionReason.ADMINISTRATIVE_REVIEW_REQUIRED);
       }
+      const demandUnits = orderDemandUnits(order.items);
+      const exceedsCapacity = demandUnits > capacity;
+      if (exceedsCapacity) {
+        reasons.push(ExclusionReason.VEHICLE_CAPACITY_EXCEEDED);
+      }
       const groupKey = order.zoneId ?? STORE_ROUTE_GROUP_KEY;
       const depot =
         storeOrigin ??
@@ -171,7 +193,12 @@ const STORE_ROUTE_GROUP_KEY = '__STORE__';
           ? { lat: order.zone.depotLat, lng: order.zone.depotLng }
           : null);
       if (reasons.length || !deliveryLocation || !depot) {
-        excluded.push({ orderId: order.id, zoneId: order.zoneId, reasons });
+        excluded.push({
+          orderId: order.id,
+          zoneId: order.zoneId,
+          reasons,
+          ...(exceedsCapacity ? { requiredUnits: demandUnits } : {}),
+        });
         continue;
       }
 
@@ -185,6 +212,7 @@ const STORE_ROUTE_GROUP_KEY = '__STORE__';
 
       depots[groupKey] = depot;
       zones.set(groupKey, { zoneId: order.zoneId ?? null, code: order.zone?.code ?? null });
+      demands.set(order.id, demandUnits);
       instants.set(order.id, order.scheduledDeliveryDate!.toString());
       addresses.set(order.id, order.deliveryAddress);
       routable.push({
@@ -193,6 +221,7 @@ const STORE_ROUTE_GROUP_KEY = '__STORE__';
         deliveryDate: query.date,
         location: deliveryLocation,
         scheduledAtMs: order.scheduledDeliveryDate!.epochMilliseconds,
+        demandUnits,
       });
     }
 
@@ -202,7 +231,8 @@ const STORE_ROUTE_GROUP_KEY = '__STORE__';
     const road = this.roads.active ? await this.roadMatrix(routable, depots) : null;
     const planned = await this.planner.plan(routable, {
       depots,
-      capacity: DEFAULT_ROUTE_CAPACITY,
+      capacity,
+      maxStops: MAX_ROUTE_STOPS,
       timeWindowMarginMinutes: marginMinutes,
       ...(road ? { matrix: road.km } : {}),
     });
@@ -232,6 +262,7 @@ const STORE_ROUTE_GROUP_KEY = '__STORE__';
           scheduledDeliveryDate: instants.get(orderId)!,
           ...(legs ? { legDistanceKm: legs[index]!.km, legDurationSeconds: legs[index]!.seconds } : {}),
         })),
+        loadUnits: routeLoadUnits(route.orderIds.map((id) => demands.get(id)!)),
         ...(legs
           ? {
               straightLineKm: savingsFigures(0, [depot, ...stopPoints, depot].slice(1).reduce((sum, point, i) => sum + haversineKm([depot, ...stopPoints, depot][i]!, point), 0)).plannedKm,
@@ -269,7 +300,7 @@ const STORE_ROUTE_GROUP_KEY = '__STORE__';
       timeZone: PLANNING_TIME_ZONE,
       isToday,
       canConfirm: isToday,
-      capacity: DEFAULT_ROUTE_CAPACITY,
+      capacity,
       timeWindowMarginMinutes: marginMinutes,
       distanceMethod: road ? ROAD_DISTANCE_METHOD : DISTANCE_METHOD,
       ...(road

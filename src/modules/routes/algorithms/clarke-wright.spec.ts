@@ -399,4 +399,107 @@ describe('planRoutes (Clarke & Wright)', () => {
       );
     });
   });
+
+  describe('capacidad por unidades de producto (demandUnits) y tope independiente de paradas (maxStops)', () => {
+    const withDemand = (
+      id: string,
+      lat: number,
+      lng: number,
+      demandUnits: number,
+      hhmm: string,
+    ): RoutingOrder => ({
+      ...order(id, lat, lng, 'Z1', '2030-02-14', Date.parse(`2030-02-14T${hhmm}:00-05:00`)),
+      demandUnits,
+    });
+
+    it('reproduce 3+3+3 a las 14:30/14:35/14:40: con capacidad 4 separa en 3 rutas y con capacidad 6 agrupa en 2 rutas (6 + 3)', () => {
+      const orders = [
+        withDemand('o1', 10, 0, 3, '14:30'),
+        withDemand('o2', 10, 0.2, 3, '14:35'),
+        withDemand('o3', 10, 0.4, 3, '14:40'),
+      ];
+
+      const cap4 = planRoutes(orders, {
+        depots,
+        distance: euclid,
+        capacity: 4,
+        maxStops: 4,
+        timeWindowMarginMinutes: 30,
+      });
+      expect(cap4).toHaveLength(3);
+      expect(cap4.map((r) => r.orderIds)).toEqual([['o1'], ['o2'], ['o3']]);
+
+      const cap6 = planRoutes(orders, {
+        depots,
+        distance: euclid,
+        capacity: 6,
+        maxStops: 4,
+        timeWindowMarginMinutes: 30,
+      });
+      expect(cap6).toHaveLength(2);
+      expect(cap6.map((r) => r.orderIds.length).sort((a, b) => a - b)).toEqual([1, 2]);
+      expect(cap6).toEqual(
+        planRoutes([...orders].reverse(), {
+          depots,
+          distance: euclid,
+          capacity: 6,
+          maxStops: 4,
+          timeWindowMarginMinutes: 30,
+        }),
+      );
+    });
+
+    it('preserva el margen horario junto a la capacidad: no mezcla un pedido de 1 unidad fuera de la ventana de 30 min', () => {
+      const orders = [
+        withDemand('o1', 10, 0, 3, '14:30'),
+        withDemand('o2', 10, 0.2, 3, '14:35'),
+        withDemand('o3', 10, 0.4, 3, '14:40'),
+        withDemand('late', 10, 0.5, 1, '15:30'),
+      ];
+
+      const cap6 = planRoutes(orders, {
+        depots,
+        distance: euclid,
+        capacity: 6,
+        maxStops: 4,
+        timeWindowMarginMinutes: 30,
+      });
+      expect(cap6).toHaveLength(3);
+      expect(cap6[2]!.orderIds).toEqual(['late']);
+    });
+
+    it('respeta maxStops independientemente de una capacidad mayor (cap 10, maxStops 4 con 5 pedidos de 1 unidad -> 4 + 1)', () => {
+      const orders = ['a', 'b', 'c', 'd', 'e'].map((id, i) => withDemand(id, 10, i * 0.1, 1, '14:30'));
+
+      const routes = planRoutes(orders, {
+        depots,
+        distance: euclid,
+        capacity: 10,
+        maxStops: 4,
+        timeWindowMarginMinutes: 30,
+      });
+
+      expect(routes.map((r) => r.orderIds.length).sort((a, b) => a - b)).toEqual([1, 4]);
+    });
+
+    it('sin demandUnits ni maxStops conserva la semántica heredada de conteo por paradas', () => {
+      const orders = ['a', 'b', 'c', 'd', 'e', 'f'].map((id, i) => order(id, 10, i * 0.1));
+      const routes = planRoutes(orders, { depots, distance: euclid, capacity: 6 });
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]!.orderIds).toHaveLength(6);
+    });
+
+    it('rechaza demandUnits o maxStops inválidos y pedidos individuales que superan la capacidad', () => {
+      expect(() =>
+        planRoutes([withDemand('bad', 10, 0, 0, '14:30')], { depots, distance: euclid, capacity: 4 }),
+      ).toThrow();
+      expect(() =>
+        planRoutes([withDemand('oversized', 10, 0, 5, '14:30')], { depots, distance: euclid, capacity: 4 }),
+      ).toThrow();
+      expect(() =>
+        planRoutes([order('a', 10, 0)], { depots, distance: euclid, capacity: 4, maxStops: 0 }),
+      ).toThrow();
+    });
+  });
 });

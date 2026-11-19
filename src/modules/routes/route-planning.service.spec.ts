@@ -42,6 +42,7 @@ describe('RoutePlanningService', () => {
   let orders: any[];
   let claims: any[];
   let zonesById: Record<string, unknown>;
+  let driversById: Record<string, { id: string; vehicleCapacity: number | null }>;
   let captured: { gte?: unknown; lt?: unknown; filters: unknown[] };
   let claimQueryArgs: unknown[];
   let writes: jest.Mock;
@@ -50,6 +51,7 @@ describe('RoutePlanningService', () => {
     orders = [];
     claims = [];
     zonesById = {};
+    driversById = {};
     captured = { filters: [] };
     claimQueryArgs = [];
     writes = jest.fn();
@@ -87,6 +89,7 @@ describe('RoutePlanningService', () => {
     prisma = {
       order: orderChain,
       zone: { where: ({ id }: { id: string }) => ({ first: async () => zonesById[id] ?? null }) },
+      driver: { where: ({ id }: { id: string }) => ({ first: async () => driversById[id] ?? null }) },
       client: {
         orm: { public: { OrderClaim: claimChain } },
         transaction: writes,
@@ -646,5 +649,101 @@ describe('RoutePlanningService', () => {
         `Zone 'STORE' has more than ${MAX_ORDERS_PER_ZONE} plannable orders for ${DAY}; narrow the request`,
       ),
     );
+  });
+
+  describe('capacidad de vehículo por unidades de producto (S1–S4)', () => {
+    const atLocal = (hhmm: string) => Temporal.Instant.from(`${DAY}T${hhmm}:00-05:00`);
+
+    it('reproduce 3+3+3 a las 14:30/14:35/14:40: capacidad por defecto 4 separa en 3 rutas (loadUnits 3) y driverId con capacidad 6 agrupa en 2 rutas (6 + 3)', async () => {
+      const z = zone('z1', 'CEN-01');
+      orders = [
+        order('o1', z, {
+          scheduledDeliveryDate: atLocal('14:30'),
+          deliveryLat: -1.242,
+          items: [{ quantity: 2 }, { quantity: 1 }],
+        }),
+        order('o2', z, {
+          scheduledDeliveryDate: atLocal('14:35'),
+          deliveryLat: -1.2425,
+          items: [{ quantity: 3 }],
+        }),
+        order('o3', z, {
+          scheduledDeliveryDate: atLocal('14:40'),
+          deliveryLat: -1.243,
+          items: [{ quantity: 3 }],
+        }),
+      ];
+      driversById['driver-default'] = { id: 'driver-default', vehicleCapacity: null };
+      driversById['driver-cap-6'] = { id: 'driver-cap-6', vehicleCapacity: 6 };
+
+      const withoutDriver = await service.propose({ date: DAY });
+      expect(withoutDriver.capacity).toBe(4);
+      expect(withoutDriver.proposals).toHaveLength(3);
+      expect(withoutDriver.proposals.map((p) => p.orderIds)).toEqual([['o1'], ['o2'], ['o3']]);
+      expect(withoutDriver.proposals.map((p) => p.loadUnits)).toEqual([3, 3, 3]);
+      expect(withoutDriver.excluded).toEqual([]);
+
+      const withNullCapDriver = await service.propose({ date: DAY, driverId: 'driver-default' });
+      expect(withNullCapDriver.capacity).toBe(4);
+      expect(withNullCapDriver.proposals).toHaveLength(3);
+      expect(withNullCapDriver.proposals.map((p) => p.loadUnits)).toEqual([3, 3, 3]);
+
+      const withCap6 = await service.propose({ date: DAY, driverId: 'driver-cap-6' });
+      expect(withCap6.capacity).toBe(6);
+      expect(withCap6.proposals).toHaveLength(2);
+      expect(withCap6.proposals.map((p) => p.loadUnits).sort((a, b) => a - b)).toEqual([3, 6]);
+      expect(withCap6.proposals.every((p) => p.orderIds.length <= 4)).toBe(true);
+      expect(withCap6.excluded).toEqual([]);
+      expect(writes).not.toHaveBeenCalled();
+    });
+
+    it('excluye un pedido indivisible de 5 unidades ante capacidad 4 con VEHICLE_CAPACITY_EXCEEDED y requiredUnits solo en esa exclusión', async () => {
+      const z = zone('z1', 'CEN-01');
+      orders = [
+        order('fits-exact', z, { items: [{ quantity: 4 }] }),
+        order('oversized', z, { items: [{ quantity: 2 }, { quantity: 3 }] }),
+        order('no-coords', z, { deliveryLat: null, deliveryLng: null, items: [{ quantity: 2 }] }),
+      ];
+
+      const result = await service.propose({ date: DAY });
+
+      expect(result.capacity).toBe(4);
+      expect(result.proposals).toHaveLength(1);
+      expect(result.proposals[0]!.orderIds).toEqual(['fits-exact']);
+      expect(result.proposals[0]!.loadUnits).toBe(4);
+      expect(result.excluded).toEqual([
+        {
+          orderId: 'no-coords',
+          zoneId: 'z1',
+          reasons: [PlanningIneligibilityReason.MISSING_DELIVERY_COORDINATES],
+        },
+        {
+          orderId: 'oversized',
+          zoneId: 'z1',
+          reasons: [ExclusionReason.VEHICLE_CAPACITY_EXCEEDED],
+          requiredUnits: 5,
+        },
+      ]);
+      expect('requiredUnits' in result.excluded[0]!).toBe(false);
+      expect(result.summary).toMatchObject({ candidateOrders: 3, plannedOrders: 1, excludedOrders: 2, routes: 1 });
+    });
+
+    it('mantiene el tope independiente de 4 paradas aunque el vehículo soporte 10 unidades y cuenta pedidos legados sin ítems como 1', async () => {
+      const z = zone('z1', 'CEN-01');
+      driversById['driver-cap-10'] = { id: 'driver-cap-10', vehicleCapacity: 10 };
+      orders = ['a', 'b', 'c', 'd', 'e'].map((id) => order(id, z, { items: [] }));
+
+      const result = await service.propose({ date: DAY, driverId: 'driver-cap-10' });
+
+      expect(result.capacity).toBe(10);
+      expect(result.proposals).toHaveLength(2);
+      expect(result.proposals.map((p) => p.orderIds.length).sort((a, b) => a - b)).toEqual([1, 4]);
+      expect(result.proposals.map((p) => p.loadUnits).sort((a, b) => a - b)).toEqual([1, 4]);
+    });
+
+    it('responde 404 si el driverId indicado no existe', async () => {
+      await expect(service.propose({ date: DAY, driverId: 'missing-driver' })).rejects.toThrow(NotFoundException);
+      expect(writes).not.toHaveBeenCalled();
+    });
   });
 });

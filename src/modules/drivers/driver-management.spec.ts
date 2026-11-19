@@ -18,6 +18,28 @@ describe('Gestión ADMIN de repartidores (#43): DTO de alta', () => {
     expect(await check(CreateDriverDto, valid)).toMatchObject({ name: 'Carlos Chofer', email: 'carlos@delivery.com', vehicle: 'Camioneta' });
   });
 
+  it('acepta vehicleCapacity omitido, null o entero positivo en 1..2147483647', async () => {
+    const omitted = await check(CreateDriverDto, valid);
+    expect(omitted.vehicleCapacity).toBeUndefined();
+    expect(await check(CreateDriverDto, { ...valid, vehicleCapacity: null })).toMatchObject({ vehicleCapacity: null });
+    expect(await check(CreateDriverDto, { ...valid, vehicleCapacity: 1 })).toMatchObject({ vehicleCapacity: 1 });
+    expect(await check(CreateDriverDto, { ...valid, vehicleCapacity: 6 })).toMatchObject({ vehicleCapacity: 6 });
+    expect(await check(CreateDriverDto, { ...valid, vehicleCapacity: 2147483647 })).toMatchObject({ vehicleCapacity: 2147483647 });
+  });
+
+  it.each([
+    ['capacidad cero', { vehicleCapacity: 0 }],
+    ['capacidad negativa', { vehicleCapacity: -1 }],
+    ['capacidad decimal', { vehicleCapacity: 4.5 }],
+    ['capacidad sobre int4', { vehicleCapacity: 2147483648 }],
+    ['capacidad como texto', { vehicleCapacity: '4' }],
+    ['capacidad vacía', { vehicleCapacity: '' }],
+    ['capacidad booleana', { vehicleCapacity: true }],
+    ['capacidad objeto', { vehicleCapacity: {} }],
+  ])('rechaza %s en el alta', async (_label, bad) => {
+    await expect(check(CreateDriverDto, { ...valid, ...bad })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it.each([
     ['role', { role: 'ADMIN' }],
     ['isAvailable', { isAvailable: false }],
@@ -48,11 +70,32 @@ describe('Gestión ADMIN de repartidores (#43): DTO de alta', () => {
 
 describe('Gestión ADMIN de repartidores (#43): DTO de corrección', () => {
   it('todos los campos son opcionales y se normalizan cuando llegan', async () => {
-    expect(await check(UpdateDriverDto, { vehicle: '  Moto  ' })).toMatchObject({ vehicle: 'Moto' });
+    const vehicleOnly = await check(UpdateDriverDto, { vehicle: '  Moto  ' });
+    expect(vehicleOnly).toMatchObject({ vehicle: 'Moto' });
+    expect(vehicleOnly.vehicleCapacity).toBeUndefined();
     expect(await check(UpdateDriverDto, { email: ' A@B.CO ' })).toMatchObject({ email: 'a@b.co' });
+    expect(await check(UpdateDriverDto, { vehicleCapacity: 1 })).toMatchObject({ vehicleCapacity: 1 });
+    expect(await check(UpdateDriverDto, { vehicleCapacity: 8 })).toMatchObject({ vehicleCapacity: 8 });
+    expect(await check(UpdateDriverDto, { vehicleCapacity: 2147483647 })).toMatchObject({ vehicleCapacity: 2147483647 });
+    expect(await check(UpdateDriverDto, { vehicleCapacity: null })).toMatchObject({ vehicleCapacity: null });
   });
 
-  it.each([{ role: 'ADMIN' }, { isAvailable: true }, { userId: 'x' }, { name: 'A' }, { email: 'no' }, { vehicle: ' ' }])(
+  it.each([
+    { role: 'ADMIN' },
+    { isAvailable: true },
+    { userId: 'x' },
+    { name: 'A' },
+    { email: 'no' },
+    { vehicle: ' ' },
+    { vehicleCapacity: 0 },
+    { vehicleCapacity: -3 },
+    { vehicleCapacity: 2.5 },
+    { vehicleCapacity: 2147483648 },
+    { vehicleCapacity: '6' },
+    { vehicleCapacity: '' },
+    { vehicleCapacity: false },
+    { vehicleCapacity: [] },
+  ])(
     'rechaza %j',
     async (bad) => {
       await expect(check(UpdateDriverDto, bad)).rejects.toBeInstanceOf(BadRequestException);
@@ -71,12 +114,12 @@ describe('Gestión ADMIN de repartidores (#43): servicio y controlador', () => {
   it('el alta y la corrección delegan en el servicio y exigen el rol ADMIN', async () => {
     const service: any = { create: jest.fn().mockResolvedValue({ id: 'd1' }), update: jest.fn().mockResolvedValue({ id: 'd1' }) };
     const controller = new DriversController(service);
-    const dto = { name: 'Carlos', email: 'c@d.co', vehicle: 'Moto' };
+    const dto = { name: 'Carlos', email: 'c@d.co', vehicle: 'Moto', vehicleCapacity: 6 };
 
     expect(await controller.create(dto as CreateDriverDto)).toEqual({ id: 'd1' });
-    expect(await controller.update('11111111-1111-4111-8111-111111111111', { vehicle: 'Camión' })).toEqual({ id: 'd1' });
+    expect(await controller.update('11111111-1111-4111-8111-111111111111', { vehicle: 'Camión', vehicleCapacity: null })).toEqual({ id: 'd1' });
     expect(service.create).toHaveBeenCalledWith(dto);
-    expect(service.update).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111', { vehicle: 'Camión' });
+    expect(service.update).toHaveBeenCalledWith('11111111-1111-4111-8111-111111111111', { vehicle: 'Camión', vehicleCapacity: null });
 
     for (const handler of [DriversController.prototype.create, DriversController.prototype.update]) {
       expect(Reflect.getMetadata(ROLES_KEY, handler)).toEqual([Role.ADMIN]);

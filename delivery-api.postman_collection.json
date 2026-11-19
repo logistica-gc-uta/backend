@@ -1281,7 +1281,7 @@
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.test('El pedido nace en estado PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
-                  "pm.test('Total = 2 x precio unitario', () => pm.expect(body.total).to.eql(2 * 49.9));",
+                  "pm.test('Total igual al precio unitario', () => pm.expect(body.total).to.eql(49.9));",
                   "pm.test('Conserva la dirección de entrega', () => pm.expect(body.deliveryAddress).to.include('Ambato'));",
                   "pm.collectionVariables.set('orderId1', body.id);",
                   "pm.test('DEMO/TEST destination coordinates persist', () => { const o = pm.response.json(); pm.expect(o.deliveryLat).to.eql(-1.25); pm.expect(o.deliveryLng).to.eql(-78.63); });"
@@ -1319,7 +1319,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #1, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayOrderDate}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #1, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayOrderDate}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
             }
           }
         },
@@ -1334,7 +1334,7 @@
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.test('El pedido nace en estado PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
-                  "pm.test('Total = 2 x precio unitario', () => pm.expect(body.total).to.eql(2 * 49.9));",
+                  "pm.test('Total igual al precio unitario', () => pm.expect(body.total).to.eql(49.9));",
                   "pm.test('Conserva la dirección de entrega', () => pm.expect(body.deliveryAddress).to.include('Ambato'));",
                   "pm.collectionVariables.set('orderId2', body.id);",
                   "pm.test('DEMO/TEST destination coordinates persist', () => { const o = pm.response.json(); pm.expect(o.deliveryLat).to.eql(-1.25); pm.expect(o.deliveryLng).to.eql(-78.63); });"
@@ -1372,7 +1372,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #2, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayOrderDate}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #2, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayOrderDate}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
             }
           }
         },
@@ -1387,7 +1387,7 @@
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.test('El pedido nace en estado PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
-                  "pm.test('Total = 2 x precio unitario', () => pm.expect(body.total).to.eql(2 * 49.9));",
+                  "pm.test('Total igual al precio unitario', () => pm.expect(body.total).to.eql(49.9));",
                   "pm.test('Conserva la dirección de entrega', () => pm.expect(body.deliveryAddress).to.include('Ambato'));",
                   "pm.collectionVariables.set('orderId3', body.id);",
                   "pm.test('DEMO/TEST destination coordinates persist', () => { const o = pm.response.json(); pm.expect(o.deliveryLat).to.eql(-1.25); pm.expect(o.deliveryLng).to.eql(-78.63); });"
@@ -1425,7 +1425,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #3, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayOrderDate}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #3, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayOrderDate}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"deliveryLat\": -1.25,\n  \"deliveryLng\": -78.63\n}"
             }
           }
         },
@@ -1440,7 +1440,7 @@
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.test('El pedido nace en estado PENDING', () => pm.expect(body.status).to.eql('PENDING'));",
-                  "pm.test('Total = 2 x precio unitario', () => pm.expect(body.total).to.eql(2 * 49.9));",
+                  "pm.test('Total igual al precio unitario', () => pm.expect(body.total).to.eql(49.9));",
                   "pm.test('Conserva la dirección de entrega', () => pm.expect(body.deliveryAddress).to.include('Ambato'));",
                   "pm.collectionVariables.set('orderId4', body.id);",
                   "pm.test('Omitted pair persists both NULLs', () => { const o = pm.response.json(); pm.expect(o.deliveryLat).to.be.null; pm.expect(o.deliveryLng).to.be.null; });"
@@ -1478,7 +1478,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #4, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayOrderDate}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 2\n    }\n  ]\n}"
+              "raw": "{\n  \"zoneId\": \"{{zoneId}}\",\n  \"deliveryAddress\": \"Av. Los Chasquis #4, Ambato\",\n  \"scheduledDeliveryDate\": \"{{todayOrderDate}}\",\n  \"items\": [\n    {\n      \"productId\": \"{{productId}}\",\n      \"quantity\": 1\n    }\n  ]\n}"
             }
           }
         },
@@ -2142,7 +2142,7 @@
                   "  pm.expect(b.status).to.eql('PENDING');",
                   "  pm.expect(b.routeId).to.be.null;",
                   "  pm.expect(b.zoneId).to.eql(pm.collectionVariables.get('zoneId'));",
-                  "  pm.expect(b.total).to.eql(2 * 49.9);",
+                  "  pm.expect(b.total).to.eql(49.9);",
                   "  pm.expect(b.deliveryAddress).to.include('Ambato');",
                   "  pm.expect(b.items).to.have.lengthOf(1);",
                   "});"
@@ -3350,7 +3350,7 @@
                   "  pm.expect(b.userId).to.be.a('string');",
                   "  pm.expect(b.zoneId).to.eql(pm.collectionVariables.get('zoneId'));",
                   "  pm.expect(b.routeId).to.eql(pm.collectionVariables.get('routeId'));",
-                  "  pm.expect(b.total).to.eql(2 * 49.9);",
+                  "  pm.expect(b.total).to.eql(49.9);",
                   "  pm.expect(b.deliveryAddress).to.include('Ambato');",
                   "  pm.expect(b.items).to.have.lengthOf(1);",
                   "});"
@@ -3507,7 +3507,7 @@
                   "  pm.expect(b.userId).to.be.a('string');",
                   "  pm.expect(b.zoneId).to.eql(pm.collectionVariables.get('zoneId'));",
                   "  pm.expect(b.routeId).to.eql(pm.collectionVariables.get('routeId'));",
-                  "  pm.expect(b.total).to.eql(2 * 49.9);",
+                  "  pm.expect(b.total).to.eql(49.9);",
                   "  pm.expect(b.deliveryAddress).to.include('Ambato');",
                   "  pm.expect(b.items).to.have.lengthOf(1);",
                   "});"
