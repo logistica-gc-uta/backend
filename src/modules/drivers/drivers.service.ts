@@ -47,7 +47,8 @@ export class DriversService {
       .orderBy((route) => route.id.asc())
       .include('zone', (zone) => zone.select('id', 'name', 'code'))
       .all();
-    return this.history.project(routes);
+    const activeRoutes = routes.filter((route) => route.status !== 'CANCELLED');
+    return this.history.project(activeRoutes);
   }
 
   async findMyAvailability(

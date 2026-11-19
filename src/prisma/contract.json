@@ -240,6 +240,10 @@
               {
                 "name": "INTERRUPTED",
                 "value": "INTERRUPTED"
+              },
+              {
+                "name": "CANCELLED",
+                "value": "CANCELLED"
               }
             ]
           },
@@ -4052,6 +4056,27 @@
           },
           "Route": {
             "fields": {
+              "cancelReason": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "cancelledAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "cancelledById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "completedAt": {
                 "nullable": true,
                 "type": {
@@ -4144,6 +4169,22 @@
               }
             },
             "relations": {
+              "cancelledBy": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "cancelledById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
               "completedBy": {
                 "cardinality": "N:1",
                 "nullable": true,
@@ -4273,6 +4314,15 @@
             },
             "storage": {
               "fields": {
+                "cancelReason": {
+                  "column": "cancelReason"
+                },
+                "cancelledAt": {
+                  "column": "cancelledAt"
+                },
+                "cancelledById": {
+                  "column": "cancelledById"
+                },
                 "completedAt": {
                   "column": "completedAt"
                 },
@@ -6828,8 +6878,8 @@
             "dispatchIntervention": {
               "checks": [
                 {
-                  "expression": "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'RELEASE_DRAFT', 'LOSS_DECLARE', 'REPLACEMENT_PREPARE', 'ORIGINAL_RECOVER', 'LOSS_CANCEL', 'EMERGENCY_DECLARE', 'UNIT_RECOVERY_CONFIRM', 'EMERGENCY_CLOSE', 'EMERGENCY_DRIVER_RELEASE', 'EMERGENCY_REQUEUE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500",
-                  "name": "dispatch_audit_valid_11fbfe53",
+                  "expression": "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'RELEASE_DRAFT', 'CANCEL_ROUTE', 'LOSS_DECLARE', 'REPLACEMENT_PREPARE', 'ORIGINAL_RECOVER', 'LOSS_CANCEL', 'EMERGENCY_DECLARE', 'UNIT_RECOVERY_CONFIRM', 'EMERGENCY_CLOSE', 'EMERGENCY_DRIVER_RELEASE', 'EMERGENCY_REQUEUE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500",
+                  "name": "dispatch_audit_valid_70314cc0",
                   "prefix": "dispatch_audit_valid"
                 }
               ],
@@ -9506,12 +9556,32 @@
             "route": {
               "checks": [
                 {
-                  "expression": "\"status\" IN ('DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'INTERRUPTED')",
-                  "name": "route_status_check_736c4cf9",
+                  "expression": "(status IS DISTINCT FROM 'CANCELLED' AND \"cancelledAt\" IS NULL AND \"cancelledById\" IS NULL AND \"cancelReason\" IS NULL) OR (status = 'CANCELLED' AND \"driverId\" IS NOT NULL AND \"cancelledAt\" IS NOT NULL AND \"cancelledById\" IS NOT NULL AND \"cancelReason\" IS NOT NULL AND length(trim(\"cancelReason\")) BETWEEN 1 AND 500 AND \"startedAt\" IS NULL AND \"startedById\" IS NULL AND \"completedAt\" IS NULL AND \"completedById\" IS NULL AND \"returnedAt\" IS NULL AND \"returnedById\" IS NULL)",
+                  "name": "route_cancellation_consistent_02c529e8",
+                  "prefix": "route_cancellation_consistent"
+                },
+                {
+                  "expression": "\"status\" IN ('DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'INTERRUPTED', 'CANCELLED')",
+                  "name": "route_status_check_2ae0f5f1",
                   "prefix": "route_status_check"
                 }
               ],
               "columns": {
+                "cancelReason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "cancelledAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "cancelledById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "completedAt": {
                   "codecId": "pg/timestamptz-temporal@1",
                   "nativeType": "timestamptz",
@@ -9667,6 +9737,22 @@
                     "namespaceId": "public",
                     "tableName": "user"
                   }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "cancelledById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "route"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
                 }
               ],
               "indexes": [
@@ -9678,6 +9764,14 @@
                   "prefix": "one_in_progress_route_per_driver",
                   "unique": true,
                   "where": "(status = 'IN_PROGRESS')"
+                },
+                {
+                  "columns": [
+                    "cancelledById"
+                  ],
+                  "name": "route_cancelledById_idx_03ce7bea",
+                  "prefix": "route_cancelledById_idx",
+                  "unique": false
                 },
                 {
                   "columns": [
@@ -11146,7 +11240,8 @@
                 "ASSIGNED",
                 "IN_PROGRESS",
                 "COMPLETED",
-                "INTERRUPTED"
+                "INTERRUPTED",
+                "CANCELLED"
               ]
             },
             "VisitFailureReason": {
@@ -11170,7 +11265,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "4f1c811137748b11cce955f4802840d44e900a662cca49432139410ca3195b57"
+    "storageHash": "1b4e7632062d3ea2fdbb235d224cf37ae0a5daaddd961bcce901eb985e47d9a6"
   },
   "execution": {
     "executionHash": "197f1c374ba6fd8fc85f656c8567a0200cbdc7b2a6e63079ef2b9e5b94a20e6e",

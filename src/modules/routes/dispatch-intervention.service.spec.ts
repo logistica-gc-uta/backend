@@ -1254,4 +1254,82 @@ describe('ADMIN dispatch services: decisions, replay, schedule and central invar
       ).toEqual(cancelled);
     });
   });
+
+  describe('CANCEL_ROUTE intervention (T2 / S2)', () => {
+    it('cancels an ASSIGNED route before start, replays idempotently, rejects conflicts, and preserves RELEASE_DRAFT', async () => {
+      baseRoute('ASSIGNED', 2, 'cancel-route-1');
+      rows.Route![0]!.startedAt = null;
+      rows.Route![0]!.startedById = null;
+      rows.Route![0]!.completedAt = null;
+      rows.Route![0]!.completedById = null;
+      rows.Route![0]!.returnedAt = null;
+      rows.Route![0]!.returnedById = null;
+      rows.Route![0]!.cancelledAt = null;
+      rows.Route![0]!.cancelledById = null;
+      rows.Route![0]!.cancelReason = null;
+
+      await expect(call({ action: 'CANCEL_ROUTE' })).rejects.toThrow(
+        'exact resource fields',
+      );
+      await expect(
+        call({
+          action: 'CANCEL_ROUTE',
+          routeId: 'cancel-route-1',
+          orderId: 'cancel-route-1-order0',
+        }),
+      ).rejects.toThrow('exact resource fields');
+
+      const cancelled = await call({
+        action: 'CANCEL_ROUTE',
+        routeId: 'cancel-route-1',
+        requestId: 'cancel-route-req-1',
+        reason: 'Driver vehicle unavailable',
+      });
+      expect(cancelled).toMatchObject({
+        action: 'CANCEL_ROUTE',
+        outcome: 'APPLIED',
+        routeId: 'cancel-route-1',
+        orderId: null,
+        reason: 'Driver vehicle unavailable',
+      });
+      expect(rows.Route![0]!).toMatchObject({
+        status: 'CANCELLED',
+        driverId: 'driver',
+        cancelledById: 'admin',
+        cancelReason: 'Driver vehicle unavailable',
+        startedAt: null,
+        returnedAt: null,
+      });
+      expect(rows.RouteStop).toHaveLength(2);
+      expect(rows.OrderClaim!.every((c) => c.releasedAt !== null)).toBe(true);
+      expect(rows.DriverReservation![0]!.releasedAt).not.toBeNull();
+      expect(
+        rows.Order!.filter((o) => o.id.startsWith('cancel-route-1-order')).every(
+          (o) => o.status === 'PENDING' && o.routeId === null && o.stopOrder === null,
+        ),
+      ).toBe(true);
+      expect((await availability.effective('driver')).isAvailable).toBe(true);
+
+      // Exact replay returns identical audit without duplicating records.
+      const auditCount = rows.DispatchIntervention!.length;
+      const replayed = await call({
+        action: 'CANCEL_ROUTE',
+        routeId: 'cancel-route-1',
+        requestId: 'cancel-route-req-1',
+        reason: 'Driver vehicle unavailable',
+      });
+      expect(replayed).toEqual(cancelled);
+      expect(rows.DispatchIntervention).toHaveLength(auditCount);
+
+      // Conflicting payload on same requestId rejects with 409.
+      await expect(
+        call({
+          action: 'CANCEL_ROUTE',
+          routeId: 'cancel-route-1',
+          requestId: 'cancel-route-req-1',
+          reason: 'Another reason',
+        }),
+      ).rejects.toThrow('another actor or payload');
+    });
+  });
 });

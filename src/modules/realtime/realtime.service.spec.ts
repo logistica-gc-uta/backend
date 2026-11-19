@@ -334,4 +334,40 @@ describe('RealtimeService', () => {
       }),
     );
   });
+
+  it('preserves CANCELLED status on route.updated envelopes without allowing CANCEL_ROUTE as a delivery incident action', async () => {
+    const service = new RealtimeService(createPrisma({
+      users: {
+        [USER_ID]: { id: USER_ID, role: Role.DRIVER },
+        [OTHER_USER_ID]: { id: OTHER_USER_ID, role: Role.ADMIN },
+      },
+      routes: { [ROUTE_ID]: { id: ROUTE_ID, driverId: DRIVER_ID } },
+      drivers: { [DRIVER_ID]: { id: DRIVER_ID, userId: USER_ID } },
+    }));
+    const routeDriver = createSocket(signedToken(USER_ID, Role.DRIVER), [`route:${ROUTE_ID}`]);
+    const adminRoute = createSocket(signedToken(OTHER_USER_ID, Role.ADMIN), [`route:${ROUTE_ID}`]);
+    service.attach({
+      sockets: new Map([
+        ['route-driver', routeDriver],
+        ['admin-route', adminRoute],
+      ]),
+    } as never);
+
+    await service.publish([
+      { type: 'route.updated', routeId: ROUTE_ID, status: 'CANCELLED' },
+    ]);
+
+    expect(routeDriver.emit).toHaveBeenCalledWith(
+      'route.updated',
+      expect.objectContaining({
+        data: { routeId: ROUTE_ID, status: 'CANCELLED' },
+      }),
+    );
+    expect(adminRoute.emit).toHaveBeenCalledWith(
+      'route.updated',
+      expect.objectContaining({
+        data: { routeId: ROUTE_ID, status: 'CANCELLED' },
+      }),
+    );
+  });
 });

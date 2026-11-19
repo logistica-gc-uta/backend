@@ -6,6 +6,7 @@ export enum RouteStatus {
   IN_PROGRESS = 'IN_PROGRESS',
   COMPLETED = 'COMPLETED',
   INTERRUPTED = 'INTERRUPTED',
+  CANCELLED = 'CANCELLED',
 }
 
 export enum VisitOutcome {
@@ -25,6 +26,9 @@ export interface DriverReservationContext {
   readonly status: RouteStatus | null;
   readonly returnedAt: Date | null;
   readonly returnedById?: string | null;
+  readonly cancelledAt?: Date | null;
+  readonly cancelledById?: string | null;
+  readonly cancelReason?: string | null;
   readonly legacyRelease?: LegacyReservationRelease | null;
 }
 
@@ -39,6 +43,9 @@ export function canTransitionRoute(
   from: RouteStatus | null,
   to: RouteStatus,
 ): boolean {
+  if (from === RouteStatus.ASSIGNED && to === RouteStatus.CANCELLED) {
+    return true;
+  }
   if (from === RouteStatus.IN_PROGRESS && to === RouteStatus.INTERRUPTED) {
     return true;
   }
@@ -48,6 +55,10 @@ export function canTransitionRoute(
     [RouteStatus.IN_PROGRESS]: RouteStatus.COMPLETED,
   };
   return from !== null && next[from] === to;
+}
+
+export function canCancelRoute(status: RouteStatus | null): boolean {
+  return status === RouteStatus.ASSIGNED;
 }
 
 export function canMutateRouteStructure(status: RouteStatus | null): boolean {
@@ -100,6 +111,17 @@ export function holdsDriverReservation(
   context: DriverReservationContext,
 ): boolean {
   if (context.status === RouteStatus.DRAFT) return false;
+  if (context.status === RouteStatus.CANCELLED) {
+    return !(
+      context.cancelledAt instanceof Date &&
+      Number.isFinite(context.cancelledAt.getTime()) &&
+      typeof context.cancelledById === 'string' &&
+      context.cancelledById.trim().length > 0 &&
+      typeof context.cancelReason === 'string' &&
+      context.cancelReason.trim().length > 0 &&
+      context.returnedAt === null
+    );
+  }
   if (context.status === null) {
     const evidence = context.legacyRelease;
     return !(

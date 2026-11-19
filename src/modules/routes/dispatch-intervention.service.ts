@@ -24,6 +24,7 @@ import { RouteAvailabilityService } from './route-availability.service.js';
 import { RouteUrgencyService } from './route-urgency.service.js';
 import { DispatchLossService } from './dispatch-loss.service.js';
 import { DispatchEmergencyService } from './dispatch-emergency.service.js';
+import { RouteCancellationService } from './route-cancellation.service.js';
 import {
   canMutateRouteStructure,
   RouteStatus,
@@ -71,13 +72,18 @@ export class DispatchInterventionService {
     private readonly storeCoverage?: StoreCoverageService,
     @Optional()
     emergencyService?: DispatchEmergencyService,
+    @Optional()
+    cancellationService?: RouteCancellationService,
   ) {
     this.losses = new DispatchLossService(prisma);
     this.emergencies =
       emergencyService ?? new DispatchEmergencyService(prisma, availability);
+    this.cancellations =
+      cancellationService ?? new RouteCancellationService(availability);
   }
   private readonly losses: DispatchLossService;
   private readonly emergencies: DispatchEmergencyService;
+  private readonly cancellations: RouteCancellationService;
 
   private async publishCommitted(changes: readonly RealtimeChange[]) {
     if (!changes.length || !this.realtime) return;
@@ -141,6 +147,7 @@ export class DispatchInterventionService {
       PICKUP_DECLINE: ['orderId', 'attemptId'],
       PICKUP_CONFIRM: ['orderId'],
       RELEASE_DRAFT: ['routeId'],
+      CANCEL_ROUTE: ['routeId'],
       LOSS_DECLARE: ['orderId', 'orderItemId', 'unitNumber', 'attemptId', 'emergencyId'],
       REPLACEMENT_PREPARE: ['lossId'],
       ORIGINAL_RECOVER: ['lossId', 'recoveryCondition'],
@@ -164,6 +171,7 @@ export class DispatchInterventionService {
       PICKUP_DECLINE: ['orderId'],
       PICKUP_CONFIRM: ['orderId'],
       RELEASE_DRAFT: ['routeId'],
+      CANCEL_ROUTE: ['routeId'],
       LOSS_DECLARE: ['orderId', 'orderItemId'],
       REPLACEMENT_PREPARE: ['lossId'],
       ORIGINAL_RECOVER: ['lossId', 'recoveryCondition'],
@@ -805,6 +813,17 @@ export class DispatchInterventionService {
         if (prior) return this.replay(prior, actorId, dto);
         if (dto.action === 'RELEASE_DRAFT')
           return this.releaseDraft(tx, dto, actorId, changes);
+        if (dto.action === 'CANCEL_ROUTE')
+          return this.response(
+            await this.cancellations.cancel(
+              tx,
+              dto,
+              actorId,
+              changes,
+              (routeId, result, orderId) =>
+                this.createAudit(tx, dto, actorId, routeId, result, orderId),
+            ),
+          );
         if (dto.action === 'CONTACT' || dto.action === 'RESCHEDULE')
           return this.schedule(tx, dto, actorId, changes);
         if (

@@ -52,7 +52,7 @@ export class DispatchController {
   @HttpCode(200)
   @ApiOperation({
     summary:
-      'Atomically confirm/reject, reorder, move, reassign, prioritize, contact or reschedule with ADMIN audit',
+      'Atomically confirm/reject, reorder, move, reassign, cancel before start, release draft, prioritize, contact or reschedule with ADMIN audit',
   })
   @ApiResponse({ status: 200, type: DispatchAuditDto })
   @ApiResponse({

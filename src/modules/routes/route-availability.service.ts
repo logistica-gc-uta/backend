@@ -40,6 +40,20 @@ export class RouteAvailabilityService {
         route.returnedById
       )
         continue;
+      if (
+        route.status === 'CANCELLED' &&
+        route.cancelledAt &&
+        route.cancelledById &&
+        typeof route.cancelReason === 'string' &&
+        route.cancelReason.trim().length > 0 &&
+        !route.startedAt &&
+        !route.startedById &&
+        !route.completedAt &&
+        !route.completedById &&
+        !route.returnedAt &&
+        !route.returnedById
+      )
+        continue;
       if (route.status === null) {
         const audit = await tx.orm.public.LegacyRouteReconciliation.where({
           routeId: route.id,

@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'4f1c811137748b11cce955f4802840d44e900a662cca49432139410ca3195b57'>;
+  StorageHashBase<'1b4e7632062d3ea2fdbb235d224cf37ae0a5daaddd961bcce901eb985e47d9a6'>;
 export type ExecutionHash =
   ExecutionHashBase<'197f1c374ba6fd8fc85f656c8567a0200cbdc7b2a6e63079ef2b9e5b94a20e6e'>;
 export type ProfileHash =
@@ -515,13 +515,17 @@ export type FieldOutputTypes = {
       readonly zoneId: CodecTypes['pg/text@1']['output'] | null;
       readonly date: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
-      readonly status: 'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'INTERRUPTED' | null;
+      readonly status:
+        'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'INTERRUPTED' | 'CANCELLED' | null;
       readonly startedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly returnedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly cancelledAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly startedById: CodecTypes['pg/text@1']['output'] | null;
       readonly completedById: CodecTypes['pg/text@1']['output'] | null;
       readonly returnedById: CodecTypes['pg/text@1']['output'] | null;
+      readonly cancelledById: CodecTypes['pg/text@1']['output'] | null;
+      readonly cancelReason: CodecTypes['pg/text@1']['output'] | null;
     };
     readonly RouteEmergency: {
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -919,13 +923,17 @@ export type FieldInputTypes = {
       readonly zoneId: CodecTypes['pg/text@1']['input'] | null;
       readonly date: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
-      readonly status: 'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'INTERRUPTED' | null;
+      readonly status:
+        'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'INTERRUPTED' | 'CANCELLED' | null;
       readonly startedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly returnedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly cancelledAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly startedById: CodecTypes['pg/text@1']['input'] | null;
       readonly completedById: CodecTypes['pg/text@1']['input'] | null;
       readonly returnedById: CodecTypes['pg/text@1']['input'] | null;
+      readonly cancelledById: CodecTypes['pg/text@1']['input'] | null;
+      readonly cancelReason: CodecTypes['pg/text@1']['input'] | null;
     };
     readonly RouteEmergency: {
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -1318,6 +1326,9 @@ export type StorageColumnTypes = {
       readonly totalCents: CodecTypes['pg/int8@1']['output'];
     };
     readonly route: {
+      readonly cancelledAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly cancelledById: CodecTypes['pg/text@1']['output'] | null;
+      readonly cancelReason: CodecTypes['pg/text@1']['output'] | null;
       readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly completedById: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -1328,7 +1339,8 @@ export type StorageColumnTypes = {
       readonly returnedById: CodecTypes['pg/text@1']['output'] | null;
       readonly startedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly startedById: CodecTypes['pg/text@1']['output'] | null;
-      readonly status: 'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'INTERRUPTED' | null;
+      readonly status:
+        'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'INTERRUPTED' | 'CANCELLED' | null;
       readonly zoneId: CodecTypes['pg/text@1']['output'] | null;
     };
     readonly routeEmergency: {
@@ -1722,6 +1734,9 @@ export type StorageColumnInputTypes = {
       readonly totalCents: CodecTypes['pg/int8@1']['input'];
     };
     readonly route: {
+      readonly cancelledAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly cancelledById: CodecTypes['pg/text@1']['input'] | null;
+      readonly cancelReason: CodecTypes['pg/text@1']['input'] | null;
       readonly completedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly completedById: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
@@ -1732,7 +1747,8 @@ export type StorageColumnInputTypes = {
       readonly returnedById: CodecTypes['pg/text@1']['input'] | null;
       readonly startedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly startedById: CodecTypes['pg/text@1']['input'] | null;
-      readonly status: 'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'INTERRUPTED' | null;
+      readonly status:
+        'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'INTERRUPTED' | 'CANCELLED' | null;
       readonly zoneId: CodecTypes['pg/text@1']['input'] | null;
     };
     readonly routeEmergency: {
@@ -2037,13 +2053,17 @@ export namespace Models {
     zoneId: CodecTypes['pg/text@1']['output'] | null;
     date: CodecTypes['pg/timestamptz-temporal@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
-    status: 'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'INTERRUPTED' | null;
+    status: 'DRAFT' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'INTERRUPTED' | 'CANCELLED' | null;
     startedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
     completedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
     returnedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    cancelledAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
     startedById: CodecTypes['pg/text@1']['output'] | null;
     completedById: CodecTypes['pg/text@1']['output'] | null;
     returnedById: CodecTypes['pg/text@1']['output'] | null;
+    cancelledById: CodecTypes['pg/text@1']['output'] | null;
+    cancelReason: CodecTypes['pg/text@1']['output'] | null;
+    cancelledBy: public_User | null;
     completedBy: public_User | null;
     driver: public_Driver | null;
     emergency: public_RouteEmergency | null;
@@ -2053,6 +2073,7 @@ export namespace Models {
     unitRecoveries: public_RouteUnitRecovery[];
     zone: public_Zone | null;
     readonly [RelationKeys]?:
+      | 'cancelledBy'
       | 'completedBy'
       | 'driver'
       | 'emergency'
@@ -5074,6 +5095,11 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-temporal@1';
                   readonly nullable: true;
                 };
+                readonly cancelledAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
                 readonly startedById: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
@@ -5085,6 +5111,16 @@ type ContractBase = Omit<
                   readonly nullable: true;
                 };
                 readonly returnedById: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly cancelledById: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly cancelReason: {
                   readonly nativeType: 'text';
                   readonly codecId: 'pg/text@1';
                   readonly nullable: true;
@@ -5122,6 +5158,12 @@ type ContractBase = Omit<
                   readonly name: 'route_returnedById_idx_c7b1121b';
                   readonly prefix: 'route_returnedById_idx';
                   readonly columns: readonly ['returnedById'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'route_cancelledById_idx_03ce7bea';
+                  readonly prefix: 'route_cancelledById_idx';
+                  readonly columns: readonly ['cancelledById'];
                   readonly unique: false;
                 },
                 {
@@ -5185,6 +5227,18 @@ type ContractBase = Omit<
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'route';
                     readonly columns: readonly ['returnedById'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'route';
+                    readonly columns: readonly ['cancelledById'];
                   };
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
@@ -6248,6 +6302,7 @@ type ContractBase = Omit<
                 'IN_PROGRESS',
                 'COMPLETED',
                 'INTERRUPTED',
+                'CANCELLED',
               ];
             };
             readonly VisitFailureReason: {
@@ -8782,6 +8837,13 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-temporal@1';
                 };
               };
+              readonly cancelledAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
               readonly startedById: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -8794,8 +8856,25 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly cancelledById: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly cancelReason: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
             };
             readonly relations: {
+              readonly cancelledBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['cancelledById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
               readonly completedBy: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
@@ -8892,9 +8971,12 @@ type ContractBase = Omit<
                 readonly startedAt: { readonly column: 'startedAt' };
                 readonly completedAt: { readonly column: 'completedAt' };
                 readonly returnedAt: { readonly column: 'returnedAt' };
+                readonly cancelledAt: { readonly column: 'cancelledAt' };
                 readonly startedById: { readonly column: 'startedById' };
                 readonly completedById: { readonly column: 'completedById' };
                 readonly returnedById: { readonly column: 'returnedById' };
+                readonly cancelledById: { readonly column: 'cancelledById' };
+                readonly cancelReason: { readonly column: 'cancelReason' };
               };
             };
           };
@@ -10124,6 +10206,7 @@ type ContractBase = Omit<
               { readonly name: 'IN_PROGRESS'; readonly value: 'IN_PROGRESS' },
               { readonly name: 'COMPLETED'; readonly value: 'COMPLETED' },
               { readonly name: 'INTERRUPTED'; readonly value: 'INTERRUPTED' },
+              { readonly name: 'CANCELLED'; readonly value: 'CANCELLED' },
             ];
           };
           readonly VisitOutcome: {
