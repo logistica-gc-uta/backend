@@ -126,10 +126,14 @@ export class RouteExecutionService {
       ) {
         throw new ConflictException('Matching active order claims required');
       }
-      for (const stop of ordered) {
+      // Lock orders in sorted ID order after Driver -> Route to coordinate with CANCEL_ROUTE and dispatch mutations.
+      const sortedOrderIds = [
+        ...new Set(ordered.map((stop) => stop.orderId)),
+      ].sort();
+      for (const orderId of sortedOrderIds) {
         const order = await tx.orm.public.Order.where({
-          id: stop.orderId,
-        }).first();
+          id: orderId,
+        }).update({ id: orderId });
         if (
           !order ||
           !orderBelongsToRouteZone(order.zoneId, route.zoneId) ||

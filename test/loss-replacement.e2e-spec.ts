@@ -526,6 +526,12 @@ describe('Pérdida, reemplazo y recuperación tardía (#52): PostgreSQL + JWT HT
           deliveryWindowEnd: `${tomorrow}T16:00:00-05:00`,
         }).expect(200)
       ).body;
+      await intervene({
+        action: 'CONFIRM_INCIDENT_READY',
+        orderId: order.id,
+        attemptId,
+        reason: 'Replacement verified at the store',
+      }).expect(200);
       await intervene({ action: 'RESCHEDULE', orderId: order.id, agreementId: contact.id }).expect(200);
       expect((await db.orm.public.Order.where({ id: order.id }).first())!.requiresAdministrativeReview).toBe(false);
 

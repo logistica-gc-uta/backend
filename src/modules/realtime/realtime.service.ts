@@ -7,7 +7,7 @@ import type { RealtimeChange, RealtimeEnvelope, RealtimePublisher } from './real
 
 const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 const ORDER_STATUSES = new Set(['PENDING', 'ASSIGNED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED']);
-const ROUTE_STATUSES = new Set(['DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'INTERRUPTED']);
+const ROUTE_STATUSES = new Set(['DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'INTERRUPTED', 'CANCELLED']);
 const INCIDENT_ACTIONS = new Set([
   'CONFIRM',
   'REJECT',
@@ -20,6 +20,7 @@ const INCIDENT_ACTIONS = new Set([
   'PICKUP_AGREE',
   'PICKUP_DECLINE',
   'PICKUP_CONFIRM',
+  'CONFIRM_INCIDENT_READY',
   'RELEASE_DRAFT',
   'LOSS_DECLARE',
   'REPLACEMENT_PREPARE',

@@ -351,4 +351,53 @@ describe('Batched stable route history', () => {
       { kind: 'RETURNED', actorId: 'admin-1', recordedAt: timestamp.toString() },
     ]);
   });
+
+  it('projects CANCELLED routes with preserved stops, CANCELLED event, and no fabricated start or return', async () => {
+    const { service, stopQuery, attemptQuery } = setup();
+    stopQuery.all.mockResolvedValue([
+      {
+        id: 's-cancel',
+        routeId: 'cancel-route',
+        orderId: 'o-cancel',
+        sequence: 1,
+        outcome: 'PENDING',
+        isLegacy: false,
+        createdAt: timestamp,
+        order: {
+          id: 'o-cancel',
+          routeId: null,
+          deliveryAddress: 'Addr Cancel',
+          status: 'PENDING',
+          scheduledDeliveryDate: timestamp,
+        },
+      },
+    ]);
+    attemptQuery.all.mockResolvedValue([]);
+
+    const [cancelled]: any = await service.project([
+      {
+        id: 'cancel-route',
+        status: 'CANCELLED',
+        startedAt: null,
+        startedById: null,
+        completedAt: null,
+        completedById: null,
+        returnedAt: null,
+        returnedById: null,
+        cancelledAt: timestamp,
+        cancelledById: 'admin-1',
+        cancelReason: 'Vehicle unavailable',
+      },
+    ]);
+
+    expect(cancelled.status).toBe('CANCELLED');
+    expect(cancelled.cancelReason).toBe('Vehicle unavailable');
+    expect(cancelled.stops).toHaveLength(1);
+    expect(cancelled.orders).toEqual([
+      expect.objectContaining({ id: 'o-cancel', status: 'PENDING', stopOrder: 1 }),
+    ]);
+    expect(cancelled.events).toEqual([
+      { kind: 'CANCELLED', actorId: 'admin-1', recordedAt: timestamp.toString() },
+    ]);
+  });
 });

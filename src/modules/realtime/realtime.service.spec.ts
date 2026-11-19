@@ -334,4 +334,81 @@ describe('RealtimeService', () => {
       }),
     );
   });
+
+  it('preserves CANCELLED status on route.updated envelopes without allowing CANCEL_ROUTE as a delivery incident action', async () => {
+    const service = new RealtimeService(createPrisma({
+      users: {
+        [USER_ID]: { id: USER_ID, role: Role.DRIVER },
+        [OTHER_USER_ID]: { id: OTHER_USER_ID, role: Role.ADMIN },
+      },
+      routes: { [ROUTE_ID]: { id: ROUTE_ID, driverId: DRIVER_ID } },
+      drivers: { [DRIVER_ID]: { id: DRIVER_ID, userId: USER_ID } },
+    }));
+    const routeDriver = createSocket(signedToken(USER_ID, Role.DRIVER), [`route:${ROUTE_ID}`]);
+    const adminRoute = createSocket(signedToken(OTHER_USER_ID, Role.ADMIN), [`route:${ROUTE_ID}`]);
+    service.attach({
+      sockets: new Map([
+        ['route-driver', routeDriver],
+        ['admin-route', adminRoute],
+      ]),
+    } as never);
+
+    await service.publish([
+      { type: 'route.updated', routeId: ROUTE_ID, status: 'CANCELLED' },
+    ]);
+
+    expect(routeDriver.emit).toHaveBeenCalledWith(
+      'route.updated',
+      expect.objectContaining({
+        data: { routeId: ROUTE_ID, status: 'CANCELLED' },
+      }),
+    );
+    expect(adminRoute.emit).toHaveBeenCalledWith(
+      'route.updated',
+      expect.objectContaining({
+        data: { routeId: ROUTE_ID, status: 'CANCELLED' },
+      }),
+    );
+  });
+
+  it('publishes CONFIRM_INCIDENT_READY only to ADMIN incidents subscribers without leaking to order owner', async () => {
+    const service = new RealtimeService(createPrisma({
+      users: {
+        [USER_ID]: { id: USER_ID, role: Role.CLIENT },
+        [OTHER_USER_ID]: { id: OTHER_USER_ID, role: Role.ADMIN },
+      },
+      orders: { [ORDER_ID]: { id: ORDER_ID, userId: USER_ID, routeId: ROUTE_ID } },
+    }));
+    const clientOrder = createSocket(signedToken(USER_ID, Role.CLIENT), [`order:${ORDER_ID}`]);
+    const adminIncidents = createSocket(signedToken(OTHER_USER_ID, Role.ADMIN), ['incidents:admin']);
+    service.attach({
+      sockets: new Map([
+        ['client-order', clientOrder],
+        ['admin-incidents', adminIncidents],
+      ]),
+    } as never);
+
+    await service.publish([
+      {
+        type: 'dispatch.incident.updated',
+        orderId: ORDER_ID,
+        routeId: ROUTE_ID,
+        action: 'CONFIRM_INCIDENT_READY',
+        requiresAdministrativeReview: true,
+      },
+    ]);
+
+    expect(clientOrder.emit).not.toHaveBeenCalled();
+    expect(adminIncidents.emit).toHaveBeenCalledWith(
+      'dispatch.incident.updated',
+      expect.objectContaining({
+        data: {
+          orderId: ORDER_ID,
+          routeId: ROUTE_ID,
+          action: 'CONFIRM_INCIDENT_READY',
+          requiresAdministrativeReview: true,
+        },
+      }),
+    );
+  });
 });

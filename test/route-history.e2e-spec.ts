@@ -175,6 +175,12 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
       deliveryWindowEnd: scheduled.add({ minutes: 10 }).toString(),
     }).expect(200);
     await dispatch({
+      action: 'CONFIRM_INCIDENT_READY',
+      orderId,
+      attemptId: failure.body.id,
+      reason: 'Returned order verified at the store',
+    }).expect(200);
+    await dispatch({
       action: 'RESCHEDULE',
       orderId,
       agreementId: contact.body.id,
@@ -454,6 +460,8 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
       'ASSIGNED',
       'IN_PROGRESS',
       'COMPLETED',
+      'INTERRUPTED',
+      'CANCELLED',
     ]);
   });
 });

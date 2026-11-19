@@ -11,6 +11,9 @@ type RouteAudit = {
   completedById?: string | null;
   returnedAt?: { toString(): string } | null;
   returnedById?: string | null;
+  cancelledAt?: { toString(): string } | null;
+  cancelledById?: string | null;
+  cancelReason?: string | null;
 };
 
 @Injectable()
@@ -90,6 +93,7 @@ export class RouteHistoryService {
         ['STARTED', route.startedAt, route.startedById],
         ['COMPLETED', route.completedAt, route.completedById],
         ['RETURNED', route.returnedAt, route.returnedById],
+        ['CANCELLED', route.cancelledAt, route.cancelledById],
       ] as const) {
         if (time && actor)
           events.push({ kind, actorId: actor, recordedAt: time.toString() });

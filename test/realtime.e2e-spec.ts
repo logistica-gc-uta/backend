@@ -220,7 +220,7 @@ describe('Issue13: real PostgreSQL, Socket.IO JWT rooms and REST resynchronizati
     expect((await readOrder(target.id)).status).toBe('DELIVERED');
   });
 
-  it('isolates failed-attempt and CONTACT/RESCHEDULE hints to ADMIN without conversation leakage', async () => {
+  it('isolates failed-attempt, CONTACT, readiness and RESCHEDULE hints to ADMIN without conversation leakage', async () => {
     const failed = await order(); const delivered = await order(); const r = await route([failed, delivered]); await start(r);
     const owner = await connect(token(ids.client!, 'CLIENT')); await listen(owner, 'order', failed.id);
     const admin = await connect(token(ids.admin!)); await listen(admin, 'incidents');
@@ -241,6 +241,21 @@ describe('Issue13: real PostgreSQL, Socket.IO JWT rooms and REST resynchronizati
     const future = Temporal.Now.zonedDateTimeISO('America/Guayaquil').add({ days: 1 }).with({ hour: 12, minute: 0, second: 0, millisecond: 0, microsecond: 0, nanosecond: 0 }).toInstant();
     const contact = (await intervene({ action: 'CONTACT', orderId: failed.id, attemptId: incident.attempts[0].id, agreementConfirmed: true, scheduledDeliveryDate: future.toString(), deliveryWindowStart: future.subtract({ minutes: 10 }).toString(), deliveryWindowEnd: future.add({ minutes: 10 }).toString() }).expect(200)).body;
     await pause();
+    await intervene({
+      action: 'CONFIRM_INCIDENT_READY',
+      orderId: failed.id,
+      attemptId: incident.attempts[0].id,
+    }).expect(200);
+    await pause();
+    const readinessPackets = adminPackets.filter(
+      (p) => p.event === 'dispatch.incident.updated' && p.payload.data.action === 'CONFIRM_INCIDENT_READY',
+    );
+    expect(readinessPackets.map((p) => p.payload.data)).toEqual([{
+      orderId: failed.id,
+      routeId: r,
+      action: 'CONFIRM_INCIDENT_READY',
+      requiresAdministrativeReview: true,
+    }]);
     await intervene({ action: 'RESCHEDULE', orderId: failed.id, agreementId: contact.id }).expect(200); await pause();
     expect((await readOrder(failed.id)).status).toBe('PENDING');
     expect(adminPackets.some((p) => p.payload.data.action === 'CONTACT')).toBe(true);

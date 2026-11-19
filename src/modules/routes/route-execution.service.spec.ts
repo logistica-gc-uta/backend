@@ -39,8 +39,9 @@ describe('RouteExecutionService.start', () => {
       first: jest.fn(async () => first()),
       all: jest.fn(async () => all()),
       update: jest.fn(async (data) => {
-        if (data.status) Object.assign(route, data);
-        return route;
+        const current = first();
+        if (data.status && current) Object.assign(current, data);
+        return current;
       }),
     });
     tx = {
@@ -94,11 +95,36 @@ describe('RouteExecutionService.start', () => {
     expect(tx.orm.public.Route.update).not.toHaveBeenCalled();
     expect(route.startedAt).toBeNull();
   });
-  it.each([null, 'DRAFT', 'COMPLETED'])('rejects status %s', async (status) => {
-    route.status = status;
-    await expect(service.start('route', 'user')).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+  it.each([null, 'DRAFT', 'COMPLETED', 'CANCELLED'])(
+    'rejects status %s',
+    async (status) => {
+      route.status = status;
+      await expect(service.start('route', 'user')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    },
+  );
+  it('locks stop orders in sorted ID order after locking Driver and Route', async () => {
+    stops = [
+      { orderId: 'order-z', sequence: 1, outcome: 'PENDING', isLegacy: false },
+      { orderId: 'order-a', sequence: 2, outcome: 'PENDING', isLegacy: false },
+    ];
+    claims = [
+      { orderId: 'order-z', claimedAt: {} },
+      { orderId: 'order-a', claimedAt: {} },
+    ];
+    await expect(service.start('route', 'user')).resolves.toMatchObject({
+      id: 'route',
+      status: 'IN_PROGRESS',
+    });
+    expect(tx.orm.public.Order.where.mock.calls.map((c: any[]) => c[0])).toEqual([
+      { id: 'order-a' },
+      { id: 'order-z' },
+    ]);
+    expect(tx.orm.public.Order.update.mock.calls.map((c: any[]) => c[0])).toEqual([
+      { id: 'order-a' },
+      { id: 'order-z' },
+    ]);
   });
   it('rejects missing routes and ownership', async () => {
     route.driverId = 'other';

@@ -55,7 +55,8 @@ export class RouteHistoryStopDto {
 }
 
 export class RouteHistoryEventDto {
-  @ApiProperty({ enum: ['STARTED', 'COMPLETED', 'RETURNED'] }) kind!: string;
+  @ApiProperty({ enum: ['STARTED', 'COMPLETED', 'RETURNED', 'CANCELLED'] })
+  kind!: string;
   @ApiProperty() actorId!: string;
   @ApiProperty({ format: 'date-time' }) recordedAt!: string;
 }
@@ -73,7 +74,15 @@ export class RouteHistoryResponseDto {
   @ApiProperty({ type: RouteHistoryZoneDto, nullable: true })
   zone!: RouteHistoryZoneDto | null;
   @ApiProperty({
-    enum: ['UNVERIFIED', 'DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED'],
+    enum: [
+      'UNVERIFIED',
+      'DRAFT',
+      'ASSIGNED',
+      'IN_PROGRESS',
+      'COMPLETED',
+      'INTERRUPTED',
+      'CANCELLED',
+    ],
     description: 'UNVERIFIED projects NULL; it is not a persisted enum value',
   })
   status!: string;
@@ -158,6 +167,10 @@ export class AdminRouteHistoryResponseDto extends RouteHistoryResponseDto {
   @ApiProperty({ type: String, nullable: true }) driverId!: string | null;
   @ApiProperty({ type: String, nullable: true }) zoneId!: string | null;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  cancelledAt!: string | null;
+  @ApiProperty({ type: String, nullable: true }) cancelledById!: string | null;
+  @ApiProperty({ type: String, nullable: true }) cancelReason!: string | null;
   @ApiProperty({ type: AdminRouteHistoryDriverDto, nullable: true })
   driver!: AdminRouteHistoryDriverDto | null;
 }

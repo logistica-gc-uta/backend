@@ -37,7 +37,7 @@ describe('RouteAvailabilityService', () => {
       client: tx,
     } as unknown as PrismaService).effective('driver');
   };
-  it.each(['ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'INTERRUPTED', null])(
+  it.each(['ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'INTERRUPTED', 'CANCELLED', null])(
     'blocks unresolved %s routes',
     async (status) => {
       expect(
@@ -119,6 +119,62 @@ describe('RouteAvailabilityService', () => {
       blockingRouteIds: ['interrupted-pending-return'],
     });
   });
+  it('does not hold a driver for a genuinely CANCELLED route without fabricated start or return', async () => {
+    expect(
+      await evaluate([
+        {
+          id: 'cancelled-route',
+          status: 'CANCELLED',
+          cancelledAt: Temporal.Instant.from('2026-10-10T00:00:00Z'),
+          cancelledById: 'admin',
+          cancelReason: 'Vehicle unavailable',
+          startedAt: null,
+          startedById: null,
+          completedAt: null,
+          completedById: null,
+          returnedAt: null,
+          returnedById: null,
+        },
+      ]),
+    ).toEqual({
+      isAvailable: true,
+      hasPersistedHolds: false,
+      compatibilityFlagBlocks: false,
+      blockingRouteIds: [],
+    });
+  });
+
+  it('blocks an incoherent CANCELLED route missing reason or carrying fabricated start/return', async () => {
+    expect(
+      (
+        await evaluate([
+          {
+            id: 'cancelled-blank-reason',
+            status: 'CANCELLED',
+            cancelledAt: Temporal.Instant.from('2026-10-10T00:00:00Z'),
+            cancelledById: 'admin',
+            cancelReason: '   ',
+          },
+        ])
+      ).isAvailable,
+    ).toBe(false);
+    expect(
+      (
+        await evaluate([
+          {
+            id: 'cancelled-with-return',
+            status: 'CANCELLED',
+            cancelledAt: Temporal.Instant.from('2026-10-10T00:00:00Z'),
+            cancelledById: 'admin',
+            cancelReason: 'Valid reason',
+            returnedAt: Temporal.Instant.from('2026-10-10T00:05:00Z'),
+            returnedById: 'admin',
+          },
+        ])
+      ).isAvailable,
+    ).toBe(false);
+  });
+
   it('accepts only persisted validated structured legacy release evidence', async () => {
     const audit = {
       id: 'audit',

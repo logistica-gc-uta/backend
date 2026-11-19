@@ -21,6 +21,7 @@ import {
   RouteStatus,
   VisitOutcome,
 } from './route-lifecycle.policy.js';
+import { classifyFailedStopClaimForCompletion } from './failed-delivery-readiness.js';
 import {
   REALTIME_PUBLISHER,
   type RealtimeChange,
@@ -125,7 +126,7 @@ export class RouteProgressService {
       order.requiresAdministrativeReview
     )
       throw new ConflictException('Order is not operationally eligible');
-    return { stop, order };
+    return { stop, order, claim };
   }
 
   private response(
@@ -178,11 +179,12 @@ export class RouteProgressService {
         return this.response(existing);
       }
       await this.active(tx, route);
-      const { order } = await this.visit(tx, routeId, stopId);
+      const { order, claim } = await this.visit(tx, routeId, stopId);
+      const recordedAt = nowInstant();
       const attempt = await tx.orm.public.DeliveryAttempt.create({
         stopId,
         driverId: driver.id,
-        recordedAt: nowInstant(),
+        recordedAt,
         outcome: 'FAILED',
         failureReason: dto.reason,
         context: { description: dto.context },
@@ -199,7 +201,13 @@ export class RouteProgressService {
         status: order.status,
         requiresAdministrativeReview: false,
       }).update({ requiresAdministrativeReview: true });
-      if (!resolved || !flagged)
+      const releasedClaim = await tx.orm.public.OrderClaim.where({
+        id: claim.id,
+        routeId,
+        orderId: order.id,
+        releasedAt: null,
+      }).update({ releasedAt: attempt.recordedAt });
+      if (!resolved || !flagged || !releasedClaim)
         throw new ConflictException('Concurrent visit resolution');
       changes.push(
         {
@@ -392,13 +400,12 @@ export class RouteProgressService {
         throw new ConflictException(
           'One to four resolved verified visits required',
         );
-      const claims = await tx.orm.public.OrderClaim.where({
+      const routeClaims = await tx.orm.public.OrderClaim.where({
         routeId,
-        releasedAt: null,
       }).all();
+      const activeClaims = routeClaims.filter((c) => c.releasedAt === null);
       if (
-        claims.length !== stops.length ||
-        claims.some(
+        activeClaims.some(
           (c) => !c.claimedAt || !stops.some((s) => s.orderId === c.orderId),
         )
       )
@@ -415,18 +422,49 @@ export class RouteProgressService {
           attempts[0].driverId !== driver.id ||
           !attempts[0].recordedAt ||
           attempts[0].outcome !== stop.outcome ||
-          !order ||
-          order.routeId !== routeId ||
-          (stop.outcome === 'SUCCESSFUL'
-            ? order.status !== 'DELIVERED' || attempts[0].failureReason !== null
-            : !order.requiresAdministrativeReview ||
-              !['ASSIGNED', 'IN_TRANSIT'].includes(order.status) ||
-              !attempts[0].failureReason)
+          !order
         )
           throw new ConflictException(
             'Visit evidence does not match commercial history',
           );
         const attempt = attempts[0];
+        if (stop.outcome === 'SUCCESSFUL') {
+          const hasActiveStopClaim = activeClaims.some(
+            (c) => c.orderId === stop.orderId && c.claimedAt !== null,
+          );
+          if (!hasActiveStopClaim)
+            throw new ConflictException('Matching active order claims required');
+          if (
+            order.routeId !== routeId ||
+            order.status !== 'DELIVERED' ||
+            attempt.failureReason !== null
+          )
+            throw new ConflictException(
+              'Visit evidence does not match commercial history',
+            );
+        } else {
+          if (!attempt.failureReason)
+            throw new ConflictException(
+              'Visit evidence does not match commercial history',
+            );
+          const failedClaimState = classifyFailedStopClaimForCompletion(
+            routeId,
+            stop.orderId,
+            attempt.recordedAt,
+            routeClaims,
+          );
+          if (failedClaimState === 'INVALID')
+            throw new ConflictException('Matching active order claims required');
+          if (
+            failedClaimState === 'ACTIVE_LEGACY' &&
+            (order.routeId !== routeId ||
+              !order.requiresAdministrativeReview ||
+              !['ASSIGNED', 'IN_TRANSIT'].includes(order.status))
+          )
+            throw new ConflictException(
+              'Visit evidence does not match commercial history',
+            );
+        }
         const description = (
           attempt.context as { description?: unknown } | null
         )?.description;
@@ -465,9 +503,10 @@ export class RouteProgressService {
         routeId: completed.id,
         status: completed.status ?? RouteStatus.COMPLETED,
       });
-      for (const claim of claims) {
+      for (const claim of activeClaims) {
         const released = await tx.orm.public.OrderClaim.where({
           id: claim.id,
+          routeId,
           releasedAt: null,
         }).update({ releasedAt: completedAt });
         if (!released)
