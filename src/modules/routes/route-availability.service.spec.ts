@@ -44,6 +44,7 @@ describe('RouteAvailabilityService', () => {
         await evaluate([{ id: 'route', status, returnedAt: null }]),
       ).toEqual({
         isAvailable: false,
+        isActive: true,
         hasPersistedHolds: true,
         compatibilityFlagBlocks: false,
         blockingRouteIds: ['route'],
@@ -53,6 +54,7 @@ describe('RouteAvailabilityService', () => {
   it('does not report assignable availability when the compatibility flag is unverified false', async () => {
     expect(await evaluate([], [], [], false)).toEqual({
       isAvailable: false,
+      isActive: true,
       hasPersistedHolds: false,
       compatibilityFlagBlocks: true,
       blockingRouteIds: [],
@@ -61,6 +63,7 @@ describe('RouteAvailabilityService', () => {
   it('active reservations override returned routes and compatibility flags', async () => {
     expect(await evaluate([], [{ routeId: 'route' }])).toEqual({
       isAvailable: false,
+      isActive: true,
       hasPersistedHolds: true,
       compatibilityFlagBlocks: false,
       blockingRouteIds: ['route'],
@@ -93,6 +96,7 @@ describe('RouteAvailabilityService', () => {
       ]),
     ).toEqual({
       isAvailable: true,
+      isActive: true,
       hasPersistedHolds: false,
       compatibilityFlagBlocks: false,
       blockingRouteIds: [],
@@ -114,6 +118,7 @@ describe('RouteAvailabilityService', () => {
       ]),
     ).toEqual({
       isAvailable: false,
+      isActive: true,
       hasPersistedHolds: true,
       compatibilityFlagBlocks: false,
       blockingRouteIds: ['interrupted-pending-return'],
@@ -138,6 +143,7 @@ describe('RouteAvailabilityService', () => {
       ]),
     ).toEqual({
       isAvailable: true,
+      isActive: true,
       hasPersistedHolds: false,
       compatibilityFlagBlocks: false,
       blockingRouteIds: [],

@@ -26,13 +26,13 @@ describe('RouteAvailabilityService con ausencias por fecha', () => {
 
   it('sin día conserva exactamente la forma histórica y no consulta ausencias', async () => {
     const result = await evaluate({ absences: [absent('2030-01-01', '2030-12-31')] });
-    expect(result).toEqual({ isAvailable: true, hasPersistedHolds: false, compatibilityFlagBlocks: false, blockingRouteIds: [] });
+    expect(result).toEqual({ isAvailable: true, isActive: true, hasPersistedHolds: false, compatibilityFlagBlocks: false, blockingRouteIds: [] });
   });
 
   it('ausente ese día: no elegible, sin inventar bloqueos de ruta, y expone la ausencia', async () => {
     const result = await evaluate({ absences: [absent('2030-02-14', '2030-02-15', { reason: 'Cita' })] }, day('2030-02-14'));
     expect(result).toMatchObject({
-      isAvailable: false, hasPersistedHolds: false, compatibilityFlagBlocks: false, blockingRouteIds: [],
+      isAvailable: false, isActive: true, hasPersistedHolds: false, compatibilityFlagBlocks: false, blockingRouteIds: [],
       date: '2030-02-14', absence: { startDate: '2030-02-14', endDate: '2030-02-15', reason: 'Cita' },
     });
   });
