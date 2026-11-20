@@ -899,6 +899,7 @@ describe('Shop Quote v1.2 HTTP Contract & DB Verification (owned PostgreSQL fixt
         },
         limits: {
           maxUnitsPerSkuPerOrder: 10,
+          maxUnitsPerOrder: null,
         },
         deliverySchedule: {
           timeZone: 'America/Guayaquil',
