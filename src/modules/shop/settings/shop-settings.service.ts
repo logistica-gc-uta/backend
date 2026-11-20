@@ -56,6 +56,7 @@ interface RawSettingsRow {
   taxEnabled: boolean;
   taxRateBps: number;
   maxUnitsPerSkuPerOrder: number;
+  maxUnitsPerOrder: number | null;
   deliveryTimeZone: string;
   deliveryStartTime: string;
   deliveryEndTime: string;
@@ -89,6 +90,7 @@ export class ShopSettingsService {
       },
       limits: {
         maxUnitsPerSkuPerOrder: row.maxUnitsPerSkuPerOrder,
+        maxUnitsPerOrder: row.maxUnitsPerOrder ?? null,
       },
       deliverySchedule: {
         timeZone: 'America/Guayaquil',
@@ -276,14 +278,27 @@ export class ShopSettingsService {
           ? patch.limits.maxUnitsPerSkuPerOrder
           : current.maxUnitsPerSkuPerOrder;
 
+      // Máximo de unidades por pedido (#83): null = sin límite. Es independiente del máximo por SKU.
+      const currentMaxOrderUnits = current.maxUnitsPerOrder ?? null;
+      const newMaxOrderUnits =
+        patch.limits?.maxUnitsPerOrder !== undefined
+          ? patch.limits.maxUnitsPerOrder
+          : currentMaxOrderUnits;
+
+      const limitChanges: Record<string, unknown> = {};
       if (
         patch.limits?.maxUnitsPerSkuPerOrder !== undefined &&
         patch.limits.maxUnitsPerSkuPerOrder !== current.maxUnitsPerSkuPerOrder
       ) {
-        changedFields['limits'] = {
-          maxUnitsPerSkuPerOrder: patch.limits.maxUnitsPerSkuPerOrder,
-        };
+        limitChanges['maxUnitsPerSkuPerOrder'] = patch.limits.maxUnitsPerSkuPerOrder;
         hasChange = true;
+      }
+      if (patch.limits?.maxUnitsPerOrder !== undefined && newMaxOrderUnits !== currentMaxOrderUnits) {
+        limitChanges['maxUnitsPerOrder'] = newMaxOrderUnits;
+        hasChange = true;
+      }
+      if (Object.keys(limitChanges).length > 0) {
+        changedFields['limits'] = limitChanges;
       }
 
       if (patch.deliverySchedule) {
@@ -340,6 +355,7 @@ export class ShopSettingsService {
         taxEnabled: newTaxEnabled,
         taxRateBps: newTaxRateBps,
         maxUnitsPerSkuPerOrder: newMaxUnits,
+        maxUnitsPerOrder: newMaxOrderUnits,
         deliveryStartTime: mergedStartTime,
         deliveryEndTime: mergedEndTime,
         routeTimeWindowMarginMinutes: newMarginMinutes,
@@ -361,6 +377,7 @@ export class ShopSettingsService {
             taxEnabled: current.taxEnabled,
             taxRateBps: current.taxRateBps,
             maxUnitsPerSkuPerOrder: current.maxUnitsPerSkuPerOrder,
+            maxUnitsPerOrder: currentMaxOrderUnits,
             deliveryStartTime: current.deliveryStartTime,
             deliveryEndTime: current.deliveryEndTime,
             routeTimeWindowMarginMinutes: current.routeTimeWindowMarginMinutes,
@@ -372,6 +389,7 @@ export class ShopSettingsService {
             taxEnabled: newTaxEnabled,
             taxRateBps: newTaxRateBps,
             maxUnitsPerSkuPerOrder: newMaxUnits,
+            maxUnitsPerOrder: newMaxOrderUnits,
             deliveryStartTime: mergedStartTime,
             deliveryEndTime: mergedEndTime,
             routeTimeWindowMarginMinutes: newMarginMinutes,
@@ -388,6 +406,7 @@ export class ShopSettingsService {
         taxEnabled: newTaxEnabled,
         taxRateBps: newTaxRateBps,
         maxUnitsPerSkuPerOrder: newMaxUnits,
+        maxUnitsPerOrder: newMaxOrderUnits,
         deliveryStartTime: mergedStartTime,
         deliveryEndTime: mergedEndTime,
         routeTimeWindowMarginMinutes: newMarginMinutes,
@@ -496,17 +515,27 @@ export class ShopSettingsService {
     }
 
     if (patch.limits) {
-      if (
-        patch.limits.maxUnitsPerSkuPerOrder === undefined ||
-        patch.limits.maxUnitsPerSkuPerOrder === null ||
-        !Number.isInteger(patch.limits.maxUnitsPerSkuPerOrder) ||
-        patch.limits.maxUnitsPerSkuPerOrder < 1 ||
-        patch.limits.maxUnitsPerSkuPerOrder > 100
-      ) {
+      const { maxUnitsPerSkuPerOrder: perSku, maxUnitsPerOrder: perOrder } = patch.limits;
+      if (perSku === undefined && perOrder === undefined) {
+        throw shopError(
+          HttpStatus.BAD_REQUEST,
+          'VALIDATION_ERROR',
+          'limits patch must contain at least one of maxUnitsPerSkuPerOrder or maxUnitsPerOrder',
+        );
+      }
+      if (perSku !== undefined && (perSku === null || !Number.isInteger(perSku) || perSku < 1 || perSku > 100)) {
         throw shopError(
           HttpStatus.BAD_REQUEST,
           'VALIDATION_ERROR',
           'limits.maxUnitsPerSkuPerOrder must be an integer between 1 and 100',
+        );
+      }
+      // null quita el límite total; cualquier otro valor debe ser un entero entre 1 y 1000.
+      if (perOrder !== undefined && perOrder !== null && (!Number.isInteger(perOrder) || perOrder < 1 || perOrder > 1000)) {
+        throw shopError(
+          HttpStatus.BAD_REQUEST,
+          'VALIDATION_ERROR',
+          'limits.maxUnitsPerOrder must be null (no limit) or an integer between 1 and 1000',
         );
       }
     }

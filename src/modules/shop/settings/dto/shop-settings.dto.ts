@@ -41,6 +41,17 @@ export class ShopSettingsTaxDto {
 export class ShopLimitsDto {
   @ApiProperty({ example: 10, minimum: 1, maximum: 100 })
   readonly maxUnitsPerSkuPerOrder!: number;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    example: 50,
+    minimum: 1,
+    maximum: 1000,
+    description:
+      'Máximo de unidades por pedido, sumando todas las líneas (#83). null = sin límite. Se aplica en la tienda y en el panel; el máximo por SKU sigue vigente.',
+  })
+  readonly maxUnitsPerOrder!: number | null;
 }
 
 export class DeliveryScheduleDto {
@@ -121,11 +132,26 @@ export class ShopSettingsTaxPatchDto {
 }
 
 export class ShopLimitsPatchDto {
-  @ApiProperty({ example: 10, minimum: 1, maximum: 100 })
+  @ApiPropertyOptional({ example: 10, minimum: 1, maximum: 100 })
+  @ValidateIf((_, val) => val !== undefined)
   @IsInt()
   @Min(1)
   @Max(100)
-  readonly maxUnitsPerSkuPerOrder!: number;
+  readonly maxUnitsPerSkuPerOrder?: number;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    example: 50,
+    minimum: 1,
+    maximum: 1000,
+    description: 'Entero entre 1 y 1000, o null para quitar el límite total por pedido.',
+  })
+  @ValidateIf((_, val) => val !== undefined && val !== null)
+  @IsInt()
+  @Min(1)
+  @Max(1000)
+  readonly maxUnitsPerOrder?: number | null;
 }
 
 export class DeliverySchedulePatchDto {
