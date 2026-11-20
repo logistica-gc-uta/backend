@@ -125,6 +125,17 @@ describe('Failed-delivery readiness upgrade & pre-migration MOVE out/back legacy
     databaseUrl = createOwnedDatabase(database);
     // Stop strictly at the pre-readiness schema (20261119T1543_route_cancellation).
     runPrismaMigrate(databaseUrl, PRE_READINESS_CONTRACT_HASH);
+    // #82: la aplicación lee el estado administrativo del repartidor (`driver.isActive`) en cada asignación, también en esta fase
+    // "antes de la migración". Se agregan solo esas columnas (con los mismos valores por defecto) y la migración real de #82 se
+    // aplica después de forma idempotente; lo que se prueba aquí es la mejora de la entrega fallida, no ese estado.
+    execPsqlCommand(
+      database,
+      `ALTER TABLE public.driver
+         ADD COLUMN IF NOT EXISTS "isActive" boolean NOT NULL DEFAULT true,
+         ADD COLUMN IF NOT EXISTS "statusChangedAt" timestamptz,
+         ADD COLUMN IF NOT EXISTS "statusChangedById" text,
+         ADD COLUMN IF NOT EXISTS "statusReason" text;`,
+    );
 
     db = postgres<Contract>({ contractJson, url: databaseUrl });
     for (const [id, role] of [
@@ -141,16 +152,13 @@ describe('Failed-delivery readiness upgrade & pre-migration MOVE out/back legacy
         password: 'fixture',
       });
     }
-    await db.orm.public.Driver.create({
-      id: ids.driver1,
-      userId: ids.driverUser1,
-      vehicle: 'Upgrade Van 1',
-    });
-    await db.orm.public.Driver.create({
-      id: ids.driver2,
-      userId: ids.driverUser2,
-      vehicle: 'Upgrade Van 2',
-    });
+    // La base está en un esquema anterior: los repartidores se insertan solo con las columnas que ya existían (#82 agrega `isActive`).
+    execPsqlCommand(
+      database,
+      `INSERT INTO public.driver (id, "userId", vehicle) VALUES
+        ('${ids.driver1}', '${ids.driverUser1}', 'Upgrade Van 1'),
+        ('${ids.driver2}', '${ids.driverUser2}', 'Upgrade Van 2');`,
+    );
     await db.orm.public.Zone.create({
       id: ids.zone,
       code: 'UPG',
