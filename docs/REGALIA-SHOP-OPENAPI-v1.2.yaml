@@ -3882,7 +3882,7 @@ components:
             code:
               type: string
               description: Incluye SHOP_SETTINGS_CHANGED, SETTINGS_VERSION_CONFLICT, DELIVERY_OUTSIDE_HOURS,
-                QUANTITY_LIMIT_EXCEEDED, además de los errores existentes; frontend discrimina por code.
+                QUANTITY_LIMIT_EXCEEDED, ORDER_UNITS_LIMIT_EXCEEDED (details con requestedUnits y maximumAllowed), además de los errores existentes; frontend discrimina por code.
             message:
               type: string
             details:
@@ -3976,6 +3976,7 @@ components:
       type: object
       required:
       - maxUnitsPerSkuPerOrder
+      - maxUnitsPerOrder
       properties:
         maxUnitsPerSkuPerOrder:
           type: integer
@@ -3983,6 +3984,13 @@ components:
           maximum: 100
           default: 10
           description: Máximo total de unidades por SKU por pedido; duplicados se consolidan
+        maxUnitsPerOrder:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 1000
+          default: null
+          description: Máximo de unidades por pedido, sumando todas las líneas (#83); null = sin límite.
+            Se aplica en la tienda y en el panel; el máximo por SKU sigue vigente.
       additionalProperties: false
     DeliverySchedule:
       type: object
@@ -4102,13 +4110,17 @@ components:
       additionalProperties: false
     ShopLimitsPatch:
       type: object
-      required:
-      - maxUnitsPerSkuPerOrder
+      minProperties: 1
       properties:
         maxUnitsPerSkuPerOrder:
           type: integer
           minimum: 1
           maximum: 100
+        maxUnitsPerOrder:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 1000
+          description: Entero entre 1 y 1000, o null para quitar el límite total por pedido (#83).
       additionalProperties: false
     DeliverySchedulePatch:
       type: object
