@@ -57,7 +57,7 @@ model User {
   role      Role     @default(CLIENT)
   createdAt DateTime @default(now())
 
-  driver    Driver?
+  driver    Driver? @relation("DriverUser")
   orders        Order[] @relation("OrderOwner")
   createdOrders Order[] @relation("OrderCreator")
   uploadedAssets UploadedAsset[] @relation("UploadActor")
@@ -80,21 +80,51 @@ model User {
   emergenciesClosed       RouteEmergency[] @relation("EmergencyClosedBy")
   unitRecoveriesConfirmed RouteUnitRecovery[] @relation("UnitRecoveryConfirmedBy")
   stockMovements          ProductStockMovement[] @relation("StockMovementBy")
+  driverStatusChanged     Driver[] @relation("DriverStatusChangedBy")
+  driverStatusChanges     DriverStatusChange[] @relation("DriverStatusChangeActor")
 }
 
 model Driver {
   id              String   @id @default(uuid())
   userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id])
+  user            User     @relation("DriverUser", fields: [userId], references: [id])
   vehicle         String
   vehicleCapacity Int?
   isAvailable     Boolean  @default(true)
+  // Baja operativa reversible (#82): estado administrativo distinto de `isAvailable` (calculada por rutas) y de las ausencias.
+  // Activo por defecto: las cuentas existentes siguen activas. Un repartidor inactivo no inicia sesión, no conserva su sesión
+  // previa y no recibe asignaciones; reactivarlo no toca ausencias ni otras restricciones.
+  isActive          Boolean  @default(true)
+  statusChangedAt   DateTime?
+  statusChangedById String?
+  statusChangedBy   User?    @relation("DriverStatusChangedBy", fields: [statusChangedById], references: [id])
+  statusReason      String?
   createdAt       DateTime @default(now())
 
   routes          Route[]
   absences        DriverAbsence[]
+  statusChanges   DriverStatusChange[]
 
+  @@index([statusChangedById])
   @@check(expression: "\"vehicleCapacity\" IS NULL OR \"vehicleCapacity\" >= 1", name: "driver_vehicle_capacity_positive")
+  @@check(expression: "\"isActive\" OR (\"statusChangedAt\" IS NOT NULL AND \"statusChangedById\" IS NOT NULL)", name: "driver_inactive_has_actor")
+  @@check(expression: "\"statusReason\" IS NULL OR length(trim(\"statusReason\")) BETWEEN 1 AND 500", name: "driver_status_reason_valid")
+}
+
+// Historial append-only de bajas y reactivaciones de un repartidor (#82). Nunca se edita ni se borra.
+model DriverStatusChange {
+  id        String   @id @default(uuid())
+  driverId  String
+  driver    Driver   @relation(fields: [driverId], references: [id])
+  active    Boolean
+  reason    String?
+  actorId   String
+  actor     User     @relation("DriverStatusChangeActor", fields: [actorId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([driverId, createdAt])
+  @@index([actorId])
+  @@check(expression: "\"reason\" IS NULL OR length(trim(\"reason\")) BETWEEN 1 AND 500", name: "driver_status_change_reason_valid")
 }
 
 // Absence of a driver for a closed range of operational days (America/Guayaquil, YYYY-MM-DD) (#44).
