@@ -10,11 +10,13 @@ describe('AuthService', () => {
   let prismaMock: any;
   let jwtMock: any;
   let lookupRows: any[];
+  let driverRow: { isActive?: boolean } | null;
   let queryMock: jest.Mock;
   let rawSqlMock: jest.Mock;
 
   beforeEach(async () => {
     lookupRows = [];
+    driverRow = { isActive: true };
     queryMock = jest.fn(() => Promise.resolve(lookupRows));
     const builder = {
       returnsRow: jest.fn(),
@@ -28,6 +30,7 @@ describe('AuthService', () => {
         create: jest.fn(),
       },
       client: {
+        orm: { public: { Driver: { where: jest.fn(() => ({ first: jest.fn(async () => driverRow) })) } } },
         raw: { sql: rawSqlMock },
         transaction: jest.fn(async (callback: any) => callback({ query: queryMock })),
       },
@@ -105,6 +108,30 @@ describe('AuthService', () => {
         });
       },
     );
+
+    it('un repartidor dado de baja no inicia sesión (403 DRIVER_INACTIVE) aunque la contraseña sea correcta', async () => {
+      lookupRows = [{ id: 'user-driver', name: 'R', email: 'driver@example.com', password: hashedPassword, role: Role.DRIVER }];
+      driverRow = { isActive: false };
+      await expect(service.login({ email: 'driver@example.com', password: rawPassword })).rejects.toMatchObject({
+        status: 403,
+        response: expect.objectContaining({ code: 'DRIVER_INACTIVE' }),
+      });
+      expect(jwtMock.sign).not.toHaveBeenCalled();
+    });
+
+    it('con contraseña incorrecta no revela que la cuenta está dada de baja', async () => {
+      lookupRows = [{ id: 'user-driver', name: 'R', email: 'driver@example.com', password: hashedPassword, role: Role.DRIVER }];
+      driverRow = { isActive: false };
+      await expect(service.login({ email: 'driver@example.com', password: 'otra-clave' })).rejects.toMatchObject({ status: 401 });
+    });
+
+    it('la baja de un repartidor no afecta el login de ADMIN ni de CLIENT', async () => {
+      driverRow = { isActive: false };
+      for (const role of [Role.ADMIN, Role.CLIENT]) {
+        lookupRows = [{ id: `user-${role}`, name: 'U', email: `${role.toLowerCase()}@example.com`, password: hashedPassword, role }];
+        await expect(service.login({ email: `${role.toLowerCase()}@example.com`, password: rawPassword })).resolves.toHaveProperty('access_token');
+      }
+    });
 
     it('mantiene válidos los passwords cortos de cuentas legadas', async () => {
       const legacyPassword = 'short';

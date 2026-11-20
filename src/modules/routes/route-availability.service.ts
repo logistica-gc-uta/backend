@@ -122,8 +122,11 @@ export class RouteAvailabilityService {
     const blockingRouteIds = await this.persistedHolds(driverId, tx);
     const driver = await tx.orm.public.Driver.where({ id: driverId }).first();
     const compatibilityFlagBlocks = driver?.isAvailable !== true;
+    // La baja operativa (#82) es un estado administrativo aparte: deja `isAvailable` en false pero no toca holds ni ausencias. El
+    // estado se lee en el perfil (`isActive`); esta respuesta conserva su forma histórica (la consume Flutter).
+    const isActive = driver?.isActive !== false;
     const base = {
-      isAvailable: blockingRouteIds.length === 0 && !compatibilityFlagBlocks,
+      isAvailable: blockingRouteIds.length === 0 && !compatibilityFlagBlocks && isActive,
       hasPersistedHolds: blockingRouteIds.length !== 0,
       compatibilityFlagBlocks,
       blockingRouteIds,

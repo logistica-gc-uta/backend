@@ -99,7 +99,7 @@ describe('Confirmed draft and assignment: owned PostgreSQL16 and real JWT', () =
         RolesGuard,
         {
           provide: PrismaService,
-          useValue: { client: db, user: db.orm.public.User },
+          useValue: { client: db, user: db.orm.public.User, driver: db.orm.public.Driver },
         },
         { provide: RouteExecutionService, useValue: {} },
       ],

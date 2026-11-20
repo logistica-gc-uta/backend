@@ -16,6 +16,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
+import { assertDriverActive } from '../drivers/driver-status.util.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { businessDay, isSameBusinessDay, nowInstant } from '../../common/temporal.util.js';
 import { OrderStatus } from '../orders/dto/update-order-status.dto.js';
@@ -348,7 +349,7 @@ export class RouteAssignmentService {
     const changes: RealtimeChange[] = [];
     const result = await this.transaction(actorId, async (tx) => {
       // Hold the shared driver before creating the route and locking sorted orders.
-      await this.lockDriver(tx, dto.driverId);
+      assertDriverActive(await this.lockDriver(tx, dto.driverId));
       const zoneId = dto.zoneId ?? null;
       if (zoneId != null && !(await tx.orm.public.Zone.where({ id: zoneId }).first()))
         throw new NotFoundException('Zone not found');
@@ -423,6 +424,7 @@ export class RouteAssignmentService {
     assertOperationalDay(date);
     const driver =
       dto.driverId != null ? await this.lockDriver(tx, dto.driverId) : null;
+    assertDriverActive(driver);
     const zoneId = dto.zoneId ?? null;
     if (zoneId != null && !(await tx.orm.public.Zone.where({ id: zoneId }).first()))
       throw new NotFoundException('Zone not found');
@@ -491,6 +493,8 @@ export class RouteAssignmentService {
     workflow: 'planning' | 'urgent' = 'planning',
   ): Promise<RouteAssignmentResponseDto> {
     const driver = await this.lockDriver(tx, dto.driverId);
+    // La baja operativa se valida con la fila del repartidor ya bloqueada: una baja concurrente espera a esta transacción (#82).
+    assertDriverActive(driver);
     const route = await tx.orm.public.Route.where({ id }).update({ id });
     if (!route) throw new NotFoundException('Route not found');
     if (

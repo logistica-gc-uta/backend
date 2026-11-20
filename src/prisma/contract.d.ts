@@ -34,9 +34,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'973c66fbba6fd6fb7bc1926da46af1dd3efe74ca17073eb430209d58d890e95c'>;
+  StorageHashBase<'2ba9059120d3e914cfd40c2b6f0520d25b2c6e26c198e93389573d9c48b1cfda'>;
 export type ExecutionHash =
-  ExecutionHashBase<'197f1c374ba6fd8fc85f656c8567a0200cbdc7b2a6e63079ef2b9e5b94a20e6e'>;
+  ExecutionHashBase<'82584b87e80021070bb3a92b18bff87f033d048b2d78bebee192d108125bb417'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -314,6 +314,10 @@ export type FieldOutputTypes = {
       readonly vehicle: CodecTypes['pg/text@1']['output'];
       readonly vehicleCapacity: CodecTypes['pg/int4@1']['output'] | null;
       readonly isAvailable: CodecTypes['pg/bool@1']['output'];
+      readonly isActive: CodecTypes['pg/bool@1']['output'];
+      readonly statusChangedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly statusChangedById: CodecTypes['pg/text@1']['output'] | null;
+      readonly statusReason: CodecTypes['pg/text@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
     readonly DriverAbsence: {
@@ -334,6 +338,14 @@ export type FieldOutputTypes = {
       readonly routeId: CodecTypes['pg/text@1']['output'];
       readonly reservedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly releasedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    };
+    readonly DriverStatusChange: {
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly driverId: CodecTypes['pg/text@1']['output'];
+      readonly active: CodecTypes['pg/bool@1']['output'];
+      readonly reason: CodecTypes['pg/text@1']['output'] | null;
+      readonly actorId: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     };
     readonly ExternalPaymentDeclaration: {
       readonly id: CodecTypes['pg/text@1']['output'];
@@ -722,6 +734,10 @@ export type FieldInputTypes = {
       readonly vehicle: CodecTypes['pg/text@1']['input'];
       readonly vehicleCapacity: CodecTypes['pg/int4@1']['input'] | null;
       readonly isAvailable: CodecTypes['pg/bool@1']['input'];
+      readonly isActive: CodecTypes['pg/bool@1']['input'];
+      readonly statusChangedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly statusChangedById: CodecTypes['pg/text@1']['input'] | null;
+      readonly statusReason: CodecTypes['pg/text@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
     readonly DriverAbsence: {
@@ -742,6 +758,14 @@ export type FieldInputTypes = {
       readonly routeId: CodecTypes['pg/text@1']['input'];
       readonly reservedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly releasedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+    };
+    readonly DriverStatusChange: {
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly driverId: CodecTypes['pg/text@1']['input'];
+      readonly active: CodecTypes['pg/bool@1']['input'];
+      readonly reason: CodecTypes['pg/text@1']['input'] | null;
+      readonly actorId: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
     };
     readonly ExternalPaymentDeclaration: {
       readonly id: CodecTypes['pg/text@1']['input'];
@@ -1127,7 +1151,11 @@ export type StorageColumnTypes = {
     readonly driver: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
+      readonly isActive: CodecTypes['pg/bool@1']['output'];
       readonly isAvailable: CodecTypes['pg/bool@1']['output'];
+      readonly statusChangedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+      readonly statusChangedById: CodecTypes['pg/text@1']['output'] | null;
+      readonly statusReason: CodecTypes['pg/text@1']['output'] | null;
       readonly userId: CodecTypes['pg/text@1']['output'];
       readonly vehicle: CodecTypes['pg/text@1']['output'];
       readonly vehicleCapacity: CodecTypes['pg/int4@1']['output'] | null;
@@ -1150,6 +1178,14 @@ export type StorageColumnTypes = {
       readonly releasedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly reservedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
       readonly routeId: CodecTypes['pg/text@1']['output'];
+    };
+    readonly driverStatusChange: {
+      readonly active: CodecTypes['pg/bool@1']['output'];
+      readonly actorId: CodecTypes['pg/text@1']['output'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+      readonly driverId: CodecTypes['pg/text@1']['output'];
+      readonly id: CodecTypes['pg/text@1']['output'];
+      readonly reason: CodecTypes['pg/text@1']['output'] | null;
     };
     readonly externalPaymentDeclaration: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
@@ -1535,7 +1571,11 @@ export type StorageColumnInputTypes = {
     readonly driver: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
+      readonly isActive: CodecTypes['pg/bool@1']['input'];
       readonly isAvailable: CodecTypes['pg/bool@1']['input'];
+      readonly statusChangedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
+      readonly statusChangedById: CodecTypes['pg/text@1']['input'] | null;
+      readonly statusReason: CodecTypes['pg/text@1']['input'] | null;
       readonly userId: CodecTypes['pg/text@1']['input'];
       readonly vehicle: CodecTypes['pg/text@1']['input'];
       readonly vehicleCapacity: CodecTypes['pg/int4@1']['input'] | null;
@@ -1558,6 +1598,14 @@ export type StorageColumnInputTypes = {
       readonly releasedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly reservedAt: CodecTypes['pg/timestamptz-temporal@1']['input'] | null;
       readonly routeId: CodecTypes['pg/text@1']['input'];
+    };
+    readonly driverStatusChange: {
+      readonly active: CodecTypes['pg/bool@1']['input'];
+      readonly actorId: CodecTypes['pg/text@1']['input'];
+      readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
+      readonly driverId: CodecTypes['pg/text@1']['input'];
+      readonly id: CodecTypes['pg/text@1']['input'];
+      readonly reason: CodecTypes['pg/text@1']['input'] | null;
     };
     readonly externalPaymentDeclaration: {
       readonly createdAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
@@ -1888,6 +1936,8 @@ export namespace Models {
     driver: public_Driver | null;
     driverAbsencesCancelled: public_DriverAbsence[];
     driverAbsencesCreated: public_DriverAbsence[];
+    driverStatusChanged: public_Driver[];
+    driverStatusChanges: public_DriverStatusChange[];
     emergenciesClosed: public_RouteEmergency[];
     emergenciesDeclared: public_RouteEmergency[];
     externalDeclarations: public_ExternalPaymentDeclaration[];
@@ -1912,6 +1962,8 @@ export namespace Models {
       | 'driver'
       | 'driverAbsencesCancelled'
       | 'driverAbsencesCreated'
+      | 'driverStatusChanged'
+      | 'driverStatusChanges'
       | 'emergenciesClosed'
       | 'emergenciesDeclared'
       | 'externalDeclarations'
@@ -1935,11 +1987,28 @@ export namespace Models {
     vehicle: CodecTypes['pg/text@1']['output'];
     vehicleCapacity: CodecTypes['pg/int4@1']['output'] | null;
     isAvailable: CodecTypes['pg/bool@1']['output'];
+    isActive: CodecTypes['pg/bool@1']['output'];
+    statusChangedAt: CodecTypes['pg/timestamptz-temporal@1']['output'] | null;
+    statusChangedById: CodecTypes['pg/text@1']['output'] | null;
+    statusReason: CodecTypes['pg/text@1']['output'] | null;
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     absences: public_DriverAbsence[];
     routes: public_Route[];
+    statusChangedBy: public_User | null;
+    statusChanges: public_DriverStatusChange[];
     user: public_User;
-    readonly [RelationKeys]?: 'absences' | 'routes' | 'user';
+    readonly [RelationKeys]?: 'absences' | 'routes' | 'statusChangedBy' | 'statusChanges' | 'user';
+  };
+  export type public_DriverStatusChange = {
+    id: CodecTypes['pg/text@1']['output'];
+    driverId: CodecTypes['pg/text@1']['output'];
+    active: CodecTypes['pg/bool@1']['output'];
+    reason: CodecTypes['pg/text@1']['output'] | null;
+    actorId: CodecTypes['pg/text@1']['output'];
+    createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
+    actor: public_User;
+    driver: public_Driver;
+    readonly [RelationKeys]?: 'actor' | 'driver';
   };
   export type public_DriverAbsence = {
     id: CodecTypes['pg/text@1']['output'];
@@ -2506,6 +2575,7 @@ export declare const models: {
   public: {
     User: Models.public_User;
     Driver: Models.public_Driver;
+    DriverStatusChange: Models.public_DriverStatusChange;
     DriverAbsence: Models.public_DriverAbsence;
     StoreCoverage: Models.public_StoreCoverage;
     Zone: Models.public_Zone;
@@ -3184,6 +3254,30 @@ type ContractBase = Omit<
                     readonly value: DefaultLiteralValue<'pg/bool@1', true>;
                   };
                 };
+                readonly isActive: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', true>;
+                  };
+                };
+                readonly statusChangedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: true;
+                };
+                readonly statusChangedById: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly statusReason: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
                 readonly createdAt: {
                   readonly nativeType: 'timestamptz';
                   readonly codecId: 'pg/timestamptz-temporal@1';
@@ -3193,13 +3287,32 @@ type ContractBase = Omit<
               };
               primaryKey: { readonly columns: readonly ['id'] };
               uniques: readonly [{ readonly columns: readonly ['userId'] }];
-              indexes: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'driver_statusChangedById_idx_e761b954';
+                  readonly prefix: 'driver_statusChangedById_idx';
+                  readonly columns: readonly ['statusChangedById'];
+                  readonly unique: false;
+                },
+              ];
               foreignKeys: readonly [
                 {
                   readonly source: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'driver';
                     readonly columns: readonly ['userId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'driver';
+                    readonly columns: readonly ['statusChangedById'];
                   };
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
@@ -3404,6 +3517,89 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'route';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
+            readonly driverStatusChange: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly driverId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly active: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                };
+                readonly reason: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly actorId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'driverStatusChange_driverId_createdAt_idx_adf85faa';
+                  readonly prefix: 'driverStatusChange_driverId_createdAt_idx';
+                  readonly columns: readonly ['driverId', 'createdAt'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'driverStatusChange_actorId_idx_a58f6b4b';
+                  readonly prefix: 'driverStatusChange_actorId_idx';
+                  readonly columns: readonly ['actorId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'driverStatusChange_driverId_idx_8eed3317';
+                  readonly prefix: 'driverStatusChange_driverId_idx';
+                  readonly columns: readonly ['driverId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'driverStatusChange';
+                    readonly columns: readonly ['driverId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'driver';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'driverStatusChange';
+                    readonly columns: readonly ['actorId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'user';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -6326,6 +6522,10 @@ type ContractBase = Omit<
   readonly roots: {
     readonly user: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
     readonly driver: { readonly namespace: 'public' & NamespaceId; readonly model: 'Driver' };
+    readonly driverStatusChange: {
+      readonly namespace: 'public' & NamespaceId;
+      readonly model: 'DriverStatusChange';
+    };
     readonly driverAbsence: {
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'DriverAbsence';
@@ -6974,6 +7174,25 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
               };
+              readonly isActive: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+              readonly statusChangedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+              readonly statusChangedById: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly statusReason: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly createdAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -7005,6 +7224,26 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['driverId'];
                 };
               };
+              readonly statusChangedBy: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['statusChangedById'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly statusChanges: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'DriverStatusChange';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['driverId'];
+                };
+              };
               readonly user: {
                 readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
                 readonly cardinality: 'N:1';
@@ -7024,6 +7263,10 @@ type ContractBase = Omit<
                 readonly vehicle: { readonly column: 'vehicle' };
                 readonly vehicleCapacity: { readonly column: 'vehicleCapacity' };
                 readonly isAvailable: { readonly column: 'isAvailable' };
+                readonly isActive: { readonly column: 'isActive' };
+                readonly statusChangedAt: { readonly column: 'statusChangedAt' };
+                readonly statusChangedById: { readonly column: 'statusChangedById' };
+                readonly statusReason: { readonly column: 'statusReason' };
                 readonly createdAt: { readonly column: 'createdAt' };
               };
             };
@@ -7190,6 +7433,72 @@ type ContractBase = Omit<
                 readonly routeId: { readonly column: 'routeId' };
                 readonly reservedAt: { readonly column: 'reservedAt' };
                 readonly releasedAt: { readonly column: 'releasedAt' };
+              };
+            };
+          };
+          readonly DriverStatusChange: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly driverId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly active: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+              readonly reason: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly actorId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-temporal@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly actor: {
+                readonly to: { readonly namespace: 'public' & NamespaceId; readonly model: 'User' };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['actorId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly driver: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Driver';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: false;
+                readonly on: {
+                  readonly localFields: readonly ['driverId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'driverStatusChange';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly driverId: { readonly column: 'driverId' };
+                readonly active: { readonly column: 'active' };
+                readonly reason: { readonly column: 'reason' };
+                readonly actorId: { readonly column: 'actorId' };
+                readonly createdAt: { readonly column: 'createdAt' };
               };
             };
           };
@@ -9914,6 +10223,28 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['createdById'];
                 };
               };
+              readonly driverStatusChanged: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Driver';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['statusChangedById'];
+                };
+              };
+              readonly driverStatusChanges: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'DriverStatusChange';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['actorId'];
+                };
+              };
               readonly emergenciesClosed: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -10325,6 +10656,14 @@ type ContractBase = Omit<
           readonly ref: {
             readonly namespace: 'public';
             readonly table: 'driverReservation';
+            readonly column: 'id';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'driverStatusChange';
             readonly column: 'id';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'uuidv4' };

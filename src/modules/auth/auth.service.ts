@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../database/prisma.service.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -10,6 +10,7 @@ import {
   normalizedEmail,
 } from './email-identity.util.js';
 import { hashNewPassword, verifyPassword } from './password-hash.util.js';
+import { DRIVER_INACTIVE, isDriverInactive } from '../drivers/driver-status.util.js';
 
 type CreatedUser = Awaited<ReturnType<PrismaService['user']['create']>>;
 
@@ -91,6 +92,16 @@ export class AuthService {
 
     const isPasswordValid = await verifyPassword(dto.password, user.password);
     if (!isPasswordValid) throw invalidCredentials();
+
+    // Baja operativa (#82): solo después de verificar la contraseña, para no revelar qué cuentas existen o están inactivas.
+    if (user.role === Role.DRIVER && isDriverInactive(await this.prisma.client.orm.public.Driver.where({ userId: user.id }).first())) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        message: 'Tu cuenta de repartidor está dada de baja. Consulta con un administrador.',
+        error: 'Forbidden',
+        code: DRIVER_INACTIVE,
+      });
+    }
 
     const payload: JwtPayload = {
       sub: user.id,

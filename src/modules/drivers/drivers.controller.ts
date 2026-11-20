@@ -30,6 +30,7 @@ import { DriversService } from './drivers.service.js';
 import { CreateDriverDto } from './dto/create-driver.dto.js';
 import { DriverCreatedResponseDto, DriverProfileResponseDto } from './dto/driver-profile-response.dto.js';
 import { UpdateDriverDto } from './dto/update-driver.dto.js';
+import { ChangeDriverStatusDto, DriverStatusChangeResponseDto } from './dto/driver-status.dto.js';
 
 @ApiTags('Drivers')
 @ApiBearerAuth('JWT-auth')
@@ -114,7 +115,7 @@ export class DriversController {
   @ApiOperation({
     summary: 'Corregir nombre, correo, vehículo o capacidad de un repartidor (solo ADMIN)',
     description:
-      'No modifica el rol, `isAvailable`, rutas ni reservas: editar un perfil no libera a un repartidor ocupado ni reasigna rutas. Omitir `vehicleCapacity` lo deja sin cambios; enviar `null` lo limpia. La baja o desactivación no está definida y no existe.',
+      'No modifica el rol, `isAvailable`, rutas ni reservas: editar un perfil no libera a un repartidor ocupado ni reasigna rutas. Omitir `vehicleCapacity` lo deja sin cambios; enviar `null` lo limpia. La baja operativa se hace con `POST /drivers/:id/deactivate`.',
   })
   @ApiResponse({ status: 200, type: DriverProfileResponseDto })
   @ApiResponse({ status: 400, description: 'Campos inválidos, no permitidos o ninguno enviado' })
@@ -124,5 +125,59 @@ export class DriversController {
   @ApiResponse({ status: 409, description: 'EMAIL_ALREADY_EXISTS' })
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateDriverDto) {
     return this.driversService.update(id, dto);
+  }
+
+  @Post(':id/deactivate')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Dar de baja a un repartidor (solo ADMIN, reversible)',
+    description:
+      'Baja operativa (#82): el repartidor no puede iniciar sesión, su sesión previa deja de valer y no recibe asignaciones. No borra usuarios, rutas ni historial ni toca las ausencias. Si tiene una ruta asignada, en curso o terminada/interrumpida sin regreso al depósito confirmado, responde 409 `DRIVER_HAS_OPEN_ROUTE` con `blockingRoutes` y no cambia nada. El actor sale del JWT.',
+  })
+  @ApiResponse({ status: 200, type: DriverProfileResponseDto })
+  @ApiResponse({ status: 400, description: 'Cuerpo inválido o con campos no permitidos' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid JWT' })
+  @ApiResponse({ status: 403, description: 'Prohibido: se requiere rol ADMIN' })
+  @ApiResponse({ status: 404, description: 'Driver profile not found' })
+  @ApiResponse({ status: 409, description: 'DRIVER_HAS_OPEN_ROUTE o DRIVER_ALREADY_INACTIVE' })
+  async deactivate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ChangeDriverStatusDto,
+    @CurrentUser('userId') actorId: string,
+  ) {
+    return this.driversService.deactivate(id, dto, actorId);
+  }
+
+  @Post(':id/activate')
+  @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Reactivar a un repartidor dado de baja (solo ADMIN)',
+    description:
+      'Restablece el acceso y la posibilidad de recibir asignaciones. No anula ausencias ni otras restricciones de disponibilidad.',
+  })
+  @ApiResponse({ status: 200, type: DriverProfileResponseDto })
+  @ApiResponse({ status: 400, description: 'Cuerpo inválido o con campos no permitidos' })
+  @ApiResponse({ status: 401, description: 'Missing or invalid JWT' })
+  @ApiResponse({ status: 403, description: 'Prohibido: se requiere rol ADMIN' })
+  @ApiResponse({ status: 404, description: 'Driver profile not found' })
+  @ApiResponse({ status: 409, description: 'DRIVER_ALREADY_ACTIVE' })
+  async activate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ChangeDriverStatusDto,
+    @CurrentUser('userId') actorId: string,
+  ) {
+    return this.driversService.activate(id, dto, actorId);
+  }
+
+  @Get(':id/status-changes')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Historial de bajas y reactivaciones de un repartidor (solo ADMIN)' })
+  @ApiResponse({ status: 200, type: [DriverStatusChangeResponseDto] })
+  @ApiResponse({ status: 403, description: 'Prohibido: se requiere rol ADMIN' })
+  @ApiResponse({ status: 404, description: 'Driver profile not found' })
+  async statusHistory(@Param('id', ParseUUIDPipe) id: string) {
+    return this.driversService.statusHistory(id);
   }
 }

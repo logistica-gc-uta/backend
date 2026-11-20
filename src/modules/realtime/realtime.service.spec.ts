@@ -99,6 +99,46 @@ describe('RealtimeService', () => {
     )).resolves.toBe(false);
   });
 
+  describe('baja operativa del repartidor (#82)', () => {
+    const prismaWithDriverState = (isActive: boolean | undefined) =>
+      ({
+        user: modelReader({ [USER_ID]: { id: USER_ID, role: Role.DRIVER } }),
+        order: modelReader({}),
+        route: modelReader({}),
+        driver: {
+          where: jest.fn((filter: { userId?: string }) => ({
+            select: jest.fn().mockReturnThis(),
+            first: jest.fn(async () => (filter.userId === USER_ID ? { id: DRIVER_ID, isActive } : null)),
+          })),
+        },
+      }) as unknown as PrismaService;
+
+    it('un repartidor activo (o sin la marca) abre su canal', async () => {
+      for (const isActive of [true, undefined]) {
+        const service = new RealtimeService(prismaWithDriverState(isActive));
+        await expect(service.authenticate(signedToken(USER_ID, Role.DRIVER))).resolves.toEqual({ userId: USER_ID, role: Role.DRIVER });
+      }
+    });
+
+    it('un repartidor dado de baja no abre canal aunque su JWT siga vigente', async () => {
+      const service = new RealtimeService(prismaWithDriverState(false));
+      await expect(service.authenticate(signedToken(USER_ID, Role.DRIVER))).resolves.toBeNull();
+    });
+
+    it('una conexión abierta antes de la baja ya no puede suscribirse', async () => {
+      const service = new RealtimeService(prismaWithDriverState(false));
+      await expect(service.canSubscribe({ userId: USER_ID, role: Role.DRIVER }, { resource: 'routes', id: ROUTE_ID } as never)).resolves.toBe(false);
+    });
+
+    it('si no se puede consultar el estado, no se abre canal', async () => {
+      const prisma = {
+        user: modelReader({ [USER_ID]: { id: USER_ID, role: Role.DRIVER } }),
+        driver: { where: jest.fn(() => { throw new Error('base de datos no disponible'); }) },
+      } as unknown as PrismaService;
+      await expect(new RealtimeService(prisma).authenticate(signedToken(USER_ID, Role.DRIVER))).resolves.toBeNull();
+    });
+  });
+
   it('authorizes only the order owner, current assigned driver, or ADMIN', async () => {
     const prisma = createPrisma({
       orders: { [ORDER_ID]: { id: ORDER_ID, userId: USER_ID, routeId: ROUTE_ID } },

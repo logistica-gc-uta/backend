@@ -85,6 +85,14 @@ export class RealtimeService implements RealtimePublisher {
     this.namespace = namespace;
   }
 
+  private async isDriverInactive(userId: string): Promise<boolean> {
+    try {
+      return (await this.prisma.driver.where({ userId }).select('id', 'isActive').first())?.isActive === false;
+    } catch {
+      return true; // ante la duda, sin canal
+    }
+  }
+
   async authenticate(token: unknown): Promise<RealtimePrincipal | null> {
     const secret = process.env.JWT_SECRET;
     if (typeof secret !== 'string' || secret.length === 0 || typeof token !== 'string') {
@@ -100,6 +108,8 @@ export class RealtimeService implements RealtimePublisher {
         .select('id', 'role')
         .first();
       if (!user || !isRole(user.role)) return null;
+      // Un repartidor dado de baja no abre un canal de tiempo real (#82).
+      if (user.role === Role.DRIVER && (await this.isDriverInactive(user.id))) return null;
       return { userId: user.id, role: user.role };
     } catch {
       return null;
@@ -111,6 +121,8 @@ export class RealtimeService implements RealtimePublisher {
     subscription: RealtimeSubscription,
   ): Promise<boolean> {
     if (!principal || !isUuid(principal.userId) || !isRole(principal.role)) return false;
+    // Una conexión abierta antes de la baja tampoco puede suscribirse a nada nuevo (#82).
+    if (principal.role === Role.DRIVER && (await this.isDriverInactive(principal.userId))) return false;
     if (subscription.resource === 'incidents') return principal.role === Role.ADMIN;
     if (!isUuid(subscription.id)) return false;
 
