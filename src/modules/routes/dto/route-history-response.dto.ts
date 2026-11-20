@@ -144,6 +144,10 @@ export class AdminRouteHistoryDriverDto {
   @ApiProperty() vehicle!: string;
   @ApiProperty({ type: Number, nullable: true, minimum: 1 }) vehicleCapacity!: number | null;
   @ApiProperty() isAvailable!: boolean;
+  @ApiProperty({ description: 'Estado administrativo (#82): false si el repartidor está dado de baja.' }) isActive!: boolean;
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' }) statusChangedAt!: string | null;
+  @ApiProperty({ type: String, nullable: true }) statusChangedById!: string | null;
+  @ApiProperty({ type: String, nullable: true }) statusReason!: string | null;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
   @ApiProperty({ type: AdminRouteHistoryUserDto })
   user!: AdminRouteHistoryUserDto;
