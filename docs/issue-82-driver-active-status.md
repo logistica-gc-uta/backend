@@ -17,7 +17,7 @@ Estado administrativo **en `Driver`** (la cuenta de repartidor), no en `User`: l
 | `Driver.statusChangedAt/ById`, `statusReason` | Último cambio de estado (quién, cuándo y por qué). Una baja exige actor y momento (restricción de la base de datos). |
 | `DriverStatusChange` | Historial **append-only** de cada baja y reactivación (un disparador rechaza editar o borrar). |
 
-La disponibilidad efectiva (`effectiveAvailability`) suma `isActive` y deja `isAvailable = false` mientras esté dado de baja, pero la baja **no modifica** `isAvailable`, las reservas ni las ausencias: reactivar solo devuelve el acceso.
+La disponibilidad efectiva (`effectiveAvailability`) deja `isAvailable = false` mientras esté dado de baja (su forma no cambia: no expone `isActive`; el estado se lee en el perfil), pero la baja **no modifica** `isAvailable`, las reservas ni las ausencias: reactivar solo devuelve el acceso.
 
 ## Contrato
 
@@ -27,7 +27,7 @@ Todo es solo ADMIN, con el actor tomado del JWT (el cuerpo no acepta actor).
 |---|---|
 | `POST /drivers/:id/deactivate` `{ reason? }` | Baja. Registra actor, momento, motivo e historial. |
 | `POST /drivers/:id/activate` `{ reason? }` | Reactivación. Restablece el acceso; no anula ausencias ni otras restricciones. |
-| `GET /drivers` y respuestas de la baja/reactivación | Incluyen `isActive`, `statusChangedAt`, `statusChangedById`, `statusReason` y `effectiveAvailability.isActive`. |
+| `GET /drivers` y respuestas de la baja/reactivación | Incluyen `isActive`, `statusChangedAt`, `statusChangedById`, y `statusReason`. |
 | `GET /drivers/:id/status-changes` | Historial de bajas y reactivaciones, del más reciente al más antiguo. |
 
 ### Motivos estables (para la web)

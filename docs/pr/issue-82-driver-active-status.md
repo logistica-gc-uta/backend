@@ -33,7 +33,7 @@ La suite cubre la migración por etapas de una cuenta existente, permisos, sesi�
 
 ## Impacto técnico
 
-**API / Contratos:** tres endpoints nuevos y campos nuevos en el perfil y en `effectiveAvailability`. Los motivos estables están documentados; hay que acordarlos con web (`frontend-web-logistica#64`).
+**API / Contratos:** tres endpoints nuevos y campos nuevos en el perfil del repartidor. `effectiveAvailability` conserva su forma y solo deja `isAvailable` en `false` para un inactivo. Los motivos estables están documentados; hay que acordarlos con web (`frontend-web-logistica#64`).
 
 **Base de datos / Migraciones:** columnas nuevas en `driver`, una tabla y tres disparadores. La relación `Driver.user` se renombra en el contrato; no cambia ninguna columna.
 
