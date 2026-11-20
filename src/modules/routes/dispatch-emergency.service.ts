@@ -42,6 +42,11 @@ export class DispatchEmergencyService {
     private readonly availability: RouteAvailabilityService,
   ) {}
 
+  /** 404 con código estable: el consumidor distingue «la ruta no existe» de «la ruta no tiene emergencia». */
+  private notFound(code: string, message: string): NotFoundException {
+    return new NotFoundException({ statusCode: 404, message, error: 'Not Found', code });
+  }
+
   private conflict(code: string, message: string): ConflictException {
     return new ConflictException({ statusCode: 409, message, error: 'Conflict', code });
   }
@@ -226,6 +231,7 @@ export class DispatchEmergencyService {
     changes.push({
       type: 'dispatch.incident.updated',
       routeId: route.id,
+      emergencyId: emergency.id,
       action: 'EMERGENCY_DECLARE',
     });
 
@@ -296,6 +302,8 @@ export class DispatchEmergencyService {
     changes.push({
       type: 'dispatch.incident.updated',
       orderId: recovery.orderId,
+      routeId: recovery.routeId,
+      emergencyId: recovery.emergencyId,
       action: 'UNIT_RECOVERY_CONFIRM',
       requiresAdministrativeReview: order.requiresAdministrativeReview,
     });
@@ -349,6 +357,7 @@ export class DispatchEmergencyService {
     changes.push({
       type: 'dispatch.incident.updated',
       routeId: route.id,
+      emergencyId: emergency.id,
       action: 'EMERGENCY_CLOSE',
     });
 
@@ -427,6 +436,7 @@ export class DispatchEmergencyService {
 
     const availability = await this.availability.recomputeProjection(driver.id, driver.userId, tx);
     const today = await this.availability.effective(driver.id, tx, businessDay(returnedAt));
+    const routeEmergency = await db.RouteEmergency.where({ routeId: route.id }).first();
 
     const audit = await createAudit(
       route.id,
@@ -454,6 +464,7 @@ export class DispatchEmergencyService {
       {
         type: 'dispatch.incident.updated',
         routeId: route.id,
+        emergencyId: routeEmergency?.id ?? null,
         action: 'EMERGENCY_DRIVER_RELEASE',
       },
     );
@@ -566,6 +577,8 @@ export class DispatchEmergencyService {
       {
         type: 'dispatch.incident.updated',
         orderId: order.id,
+        routeId: emergency.routeId,
+        emergencyId: emergency.id,
         action: 'EMERGENCY_REQUEUE',
         requiresAdministrativeReview: false,
       },
@@ -631,9 +644,9 @@ export class DispatchEmergencyService {
   async emergencyDetail(routeId: string): Promise<RouteEmergencyDetailDto> {
     const db = this.prisma.client.orm.public;
     const route = await db.Route.where({ id: routeId }).first();
-    if (!route) throw new NotFoundException('Route not found');
+    if (!route) throw this.notFound('ROUTE_NOT_FOUND', 'Route not found');
     const emergency = await db.RouteEmergency.where({ routeId }).first();
-    if (!emergency) throw new NotFoundException('Route emergency not found');
+    if (!emergency) throw this.notFound('ROUTE_EMERGENCY_NOT_FOUND', 'Route emergency not found');
     return this.buildEmergencyDetail(emergency, route);
   }
 

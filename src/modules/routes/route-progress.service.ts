@@ -219,6 +219,7 @@ export class RouteProgressService {
         {
           type: 'dispatch.incident.updated',
           orderId: flagged.id,
+          routeId,
           requiresAdministrativeReview: flagged.requiresAdministrativeReview,
         },
       );

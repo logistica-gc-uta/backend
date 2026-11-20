@@ -129,9 +129,11 @@ export class RouteReturnService {
         },
       );
       if (routeStatus === 'INTERRUPTED') {
+        const routeEmergency = await tx.orm.public.RouteEmergency.where({ routeId: returned.id }).first();
         changes.push({
           type: 'dispatch.incident.updated',
           routeId: returned.id,
+          emergencyId: routeEmergency?.id ?? null,
           action: 'EMERGENCY_DRIVER_RETURN',
         });
       }

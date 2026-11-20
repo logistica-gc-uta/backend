@@ -61,6 +61,7 @@ describe('RouteReturnService', () => {
             () => route,
             (value) => (lostRoute ? null : Object.assign(route, value)),
           ),
+          RouteEmergency: model(() => ({ id: 'emergency', routeId: 'route' }), (value) => value),
           DriverReservation: model(
             () => reservation,
             (value) => {
@@ -136,6 +137,7 @@ describe('RouteReturnService', () => {
       {
         type: 'dispatch.incident.updated',
         routeId: 'route',
+        emergencyId: 'emergency',
         action: 'EMERGENCY_DRIVER_RETURN',
       },
     ]);

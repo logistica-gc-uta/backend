@@ -293,6 +293,7 @@ describe('DispatchEmergencyService (#51)', () => {
         {
           type: 'dispatch.incident.updated',
           routeId: 'route-1',
+          emergencyId: expect.any(String),
           action: 'EMERGENCY_DECLARE',
         },
       ]);
@@ -360,6 +361,8 @@ describe('DispatchEmergencyService (#51)', () => {
         {
           type: 'dispatch.incident.updated',
           orderId: 'order-pending-1',
+          routeId: 'route-1',
+          emergencyId: expect.any(String),
           action: 'UNIT_RECOVERY_CONFIRM',
           requiresAdministrativeReview: true,
         },
@@ -426,6 +429,7 @@ describe('DispatchEmergencyService (#51)', () => {
         {
           type: 'dispatch.incident.updated',
           routeId: 'route-1',
+          emergencyId: expect.any(String),
           action: 'EMERGENCY_CLOSE',
         },
       ]);
@@ -479,6 +483,7 @@ describe('DispatchEmergencyService (#51)', () => {
         {
           type: 'dispatch.incident.updated',
           routeId: 'route-1',
+          emergencyId: expect.any(String),
           action: 'EMERGENCY_DRIVER_RELEASE',
         },
       ]);
@@ -548,6 +553,8 @@ describe('DispatchEmergencyService (#51)', () => {
         {
           type: 'dispatch.incident.updated',
           orderId: 'order-pending-1',
+          routeId: 'route-1',
+          emergencyId,
           action: 'EMERGENCY_REQUEUE',
           requiresAdministrativeReview: false,
         },
