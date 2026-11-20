@@ -29,10 +29,8 @@ describe('AuthService', () => {
       user: {
         create: jest.fn(),
       },
-      driver: {
-        where: jest.fn(() => ({ first: jest.fn(async () => driverRow) })),
-      },
       client: {
+        orm: { public: { Driver: { where: jest.fn(() => ({ first: jest.fn(async () => driverRow) })) } } },
         raw: { sql: rawSqlMock },
         transaction: jest.fn(async (callback: any) => callback({ query: queryMock })),
       },

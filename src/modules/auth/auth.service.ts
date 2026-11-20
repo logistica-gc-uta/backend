@@ -94,7 +94,7 @@ export class AuthService {
     if (!isPasswordValid) throw invalidCredentials();
 
     // Baja operativa (#82): solo después de verificar la contraseña, para no revelar qué cuentas existen o están inactivas.
-    if (user.role === Role.DRIVER && isDriverInactive(await this.prisma.driver.where({ userId: user.id }).first())) {
+    if (user.role === Role.DRIVER && isDriverInactive(await this.prisma.client.orm.public.Driver.where({ userId: user.id }).first())) {
       throw new ForbiddenException({
         statusCode: 403,
         message: 'Tu cuenta de repartidor está dada de baja. Consulta con un administrador.',

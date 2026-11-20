@@ -27,7 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Token no válido o usuario inexistente');
     }
     // Una sesión emitida antes de la baja deja de valer en la siguiente petición (#82).
-    if (user.role === 'DRIVER' && isDriverInactive(await this.prisma.driver.where({ userId: user.id }).first())) {
+    if (user.role === 'DRIVER' && isDriverInactive(await this.prisma.client.orm.public.Driver.where({ userId: user.id }).first())) {
       throw new UnauthorizedException({
         statusCode: 401,
         message: 'La cuenta de repartidor está dada de baja',

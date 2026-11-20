@@ -143,7 +143,7 @@ describe('Baja operativa de repartidores (#82): PostgreSQL + JWT HTTP', () => {
       expect(await historyOf(ids.legacyDriver)).toHaveLength(0);
       const listed = (await api('get', '/drivers').expect(200)).body.find((d: any) => d.id === ids.legacyDriver);
       expect(listed).toMatchObject({ isActive: true, statusChangedAt: null, statusReason: null });
-      expect(listed.effectiveAvailability).toMatchObject({ isActive: true, isAvailable: true });
+      expect(listed.effectiveAvailability).toMatchObject({ isAvailable: true });
     });
 
     it('la base de datos exige actor y momento en toda baja y limita el motivo', async () => {
@@ -160,7 +160,7 @@ describe('Baja operativa de repartidores (#82): PostgreSQL + JWT HTTP', () => {
       const res = await deactivate(d.driverId, { reason: '  Licencia vencida  ' }).expect(200);
       expect(res.body).toMatchObject({ id: d.driverId, isActive: false, statusChangedById: ids.admin, statusReason: 'Licencia vencida', isAvailable: true });
       expect(res.body.statusChangedAt).toEqual(expect.any(String));
-      expect(res.body.effectiveAvailability).toMatchObject({ isActive: false, isAvailable: false });
+      expect(res.body.effectiveAvailability).toMatchObject({ isAvailable: false, hasPersistedHolds: false });
       expect(await stateOf(d.driverId)).toMatchObject({ isActive: false, statusChangedById: ids.admin, statusReason: 'Licencia vencida' });
       const listed = (await api('get', '/drivers').expect(200)).body.find((x: any) => x.id === d.driverId);
       expect(listed).toMatchObject({ isActive: false, statusReason: 'Licencia vencida' });
@@ -173,7 +173,7 @@ describe('Baja operativa de repartidores (#82): PostgreSQL + JWT HTTP', () => {
       await deactivate(d.driverId).expect(200);
       const res = await activate(d.driverId, { reason: 'Renovó la licencia' }, ids.admin2).expect(200);
       expect(res.body).toMatchObject({ isActive: true, statusChangedById: ids.admin2, statusReason: 'Renovó la licencia', isAvailable: true });
-      expect(res.body.effectiveAvailability).toMatchObject({ isActive: true, isAvailable: true });
+      expect(res.body.effectiveAvailability).toMatchObject({ isAvailable: true });
       const history = (await api('get', `/drivers/${d.driverId}/status-changes`).expect(200)).body;
       expect(history.map((h: any) => h.active)).toEqual([true, false]);
     });
@@ -268,7 +268,7 @@ describe('Baja operativa de repartidores (#82): PostgreSQL + JWT HTTP', () => {
       const d = await makeDriver();
       await deactivate(d.driverId).expect(200);
       const listed = (await api('get', '/drivers').expect(200)).body.find((x: any) => x.id === d.driverId);
-      expect(listed.effectiveAvailability).toMatchObject({ isActive: false, isAvailable: false, hasPersistedHolds: false });
+      expect(listed.effectiveAvailability).toMatchObject({ isAvailable: false, hasPersistedHolds: false, compatibilityFlagBlocks: false });
     });
 
     it('la base de datos rechaza por sí sola una reserva o una ruta para un repartidor inactivo (red de seguridad)', async () => {
@@ -400,7 +400,7 @@ describe('Baja operativa de repartidores (#82): PostgreSQL + JWT HTTP', () => {
       const state = await stateOf(d.driverId);
       expect(state).toMatchObject({ isActive: true, isAvailable: false }); // la restricción previa sigue
       const listed = (await api('get', '/drivers').expect(200)).body.find((x: any) => x.id === d.driverId);
-      expect(listed.effectiveAvailability).toMatchObject({ isActive: true, isAvailable: false, compatibilityFlagBlocks: true });
+      expect(listed.effectiveAvailability).toMatchObject({ isAvailable: false, compatibilityFlagBlocks: true });
     });
   });
 

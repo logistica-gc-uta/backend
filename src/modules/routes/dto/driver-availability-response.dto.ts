@@ -4,16 +4,9 @@ export class DriverAvailabilityResponseDto {
   @ApiProperty({
     type: Boolean,
     description:
-      'Assignable only when persisted holds are absent and compatibility availability is verified',
+      'Assignable only when persisted holds are absent, compatibility availability is verified and the driver is not deactivated (#82)',
   })
   isAvailable!: boolean;
-
-  @ApiProperty({
-    type: Boolean,
-    description:
-      'Estado administrativo (#82): false si el repartidor está dado de baja. Es independiente de las rutas, las reservas y las ausencias; mientras sea false `isAvailable` es false.',
-  })
-  isActive!: boolean;
 
   @ApiProperty({
     type: Boolean,

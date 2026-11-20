@@ -5,7 +5,7 @@ import type { PrismaService } from '../../database/prisma.service.js';
 function strategy(options: { user?: Record<string, unknown> | null; driver?: Record<string, unknown> | null }) {
   const prisma = {
     user: { where: jest.fn(() => ({ first: jest.fn(async () => options.user ?? null) })) },
-    driver: { where: jest.fn(() => ({ first: jest.fn(async () => options.driver ?? null) })) },
+    client: { orm: { public: { Driver: { where: jest.fn(() => ({ first: jest.fn(async () => options.driver ?? null) })) } } } },
   } as unknown as PrismaService;
   return { strategy: new JwtStrategy(prisma), prisma };
 }
@@ -31,7 +31,7 @@ describe('JwtStrategy (#82: la sesión previa a una baja deja de valer)', () => 
     for (const role of ['ADMIN', 'CLIENT']) {
       const { strategy: s, prisma } = strategy({ user: { id: 'u1', email: 'x@y.test', role }, driver: { isActive: false } });
       await expect(s.validate({ ...payload, role })).resolves.toMatchObject({ role });
-      expect((prisma as any).driver.where).not.toHaveBeenCalled();
+      expect((prisma as any).client.orm.public.Driver.where).not.toHaveBeenCalled();
     }
   });
 });
