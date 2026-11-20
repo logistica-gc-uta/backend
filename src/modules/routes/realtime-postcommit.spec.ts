@@ -222,7 +222,7 @@ describe('post-commit realtime producers', () => {
     expect(events.publish).toHaveBeenCalledTimes(1);
     expect(events.publish).toHaveBeenCalledWith([
       { type: 'order.status.updated', orderId: 'order', status: 'ASSIGNED', requiresAdministrativeReview: true },
-      { type: 'dispatch.incident.updated', orderId: 'order', requiresAdministrativeReview: true },
+      { type: 'dispatch.incident.updated', orderId: 'order', routeId: 'route', requiresAdministrativeReview: true },
     ]);
     expect(rows.DeliveryAttempt).toHaveLength(1);
   });

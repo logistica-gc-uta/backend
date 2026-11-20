@@ -13,7 +13,7 @@ Realtime events are post-commit invalidation hints. The authorized REST response
 
 - `order.status.updated` follows committed delivery progress, administrative cancellation, failed-visit review holds, and rescheduling. Payload state comes from the persisted order result.
 - `route.updated` follows committed assignment, route start/completion, and actual route composition or lifecycle changes. A move records both changed route IDs.
-- `dispatch.incident.updated` carries only an affected order ID, a bounded action where applicable, and the persisted administrative-review flag when that state is relevant. It never carries a reason, contact detail, or conversation.
+- `dispatch.incident.updated` carries only the affected order, route and emergency identifiers (#85: emergency events include `routeId` and `emergencyId`), a bounded action where applicable, and the persisted administrative-review flag when that state is relevant. It never carries a reason, contact detail, or conversation.
 - `driver.availability.updated` is emitted only after a confirmed depot return, using the availability computed and persisted by that return transaction. Route completion alone does not release or announce driver availability.
 
 The versioned event envelope, audience rules, and client reconnection behavior are defined in [the realtime protocol](realtime-protocol.md).
