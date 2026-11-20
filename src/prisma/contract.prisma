@@ -649,6 +649,7 @@ model ShopBusinessSettings {
   taxEnabled                  Boolean  @default(true)
   taxRateBps                  Int      @default(1500)
   maxUnitsPerSkuPerOrder      Int      @default(10)
+  maxUnitsPerOrder            Int?
   deliveryTimeZone            String   @default("America/Guayaquil")
   deliveryStartTime           String   @default("07:00")
   deliveryEndTime             String   @default("17:00")
@@ -662,7 +663,7 @@ model ShopBusinessSettings {
   audits                      ShopSettingsAudit[]
 
   @@check(expression: "\"singletonKey\" = 'GLOBAL'", name: "shop_settings_singleton")
-  @@check(expression: "version >= 1 AND currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"shippingIncludedInPrices\" = true AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"maxUnitsPerSkuPerOrder\" BETWEEN 1 AND 100 AND \"deliveryTimeZone\" = 'America/Guayaquil' AND \"deliveryBoundariesInclusive\" = true AND \"deliveryStartTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryEndTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryStartTime\" < \"deliveryEndTime\" AND \"routeTimeWindowMarginMinutes\" BETWEEN 5 AND 180", name: "shop_settings_valid")
+  @@check(expression: "version >= 1 AND currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"shippingIncludedInPrices\" = true AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"maxUnitsPerSkuPerOrder\" BETWEEN 1 AND 100 AND \"deliveryTimeZone\" = 'America/Guayaquil' AND \"deliveryBoundariesInclusive\" = true AND \"deliveryStartTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryEndTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryStartTime\" < \"deliveryEndTime\" AND \"routeTimeWindowMarginMinutes\" BETWEEN 5 AND 180 AND (\"maxUnitsPerOrder\" IS NULL OR \"maxUnitsPerOrder\" BETWEEN 1 AND 1000)", name: "shop_settings_valid")
 }
 
 // Append-only audit log for atomic shop settings CAS modifications

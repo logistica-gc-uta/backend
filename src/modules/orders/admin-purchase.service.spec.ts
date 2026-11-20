@@ -157,6 +157,7 @@ describe('AdminPurchaseService', () => {
     settings = {
       getPublicSettings: jest.fn().mockResolvedValue({
         tax: { enabled: true, rateBps: 1500 },
+        limits: { maxUnitsPerSkuPerOrder: 10, maxUnitsPerOrder: null },
         deliverySchedule: {
           timeZone: 'America/Guayaquil', startTime: '07:00', endTime: '17:00', boundariesInclusive: true,
         },

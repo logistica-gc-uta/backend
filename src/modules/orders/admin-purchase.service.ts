@@ -19,6 +19,7 @@ import { UpdateOrderContactDto } from './dto/update-order-contact.dto.js';
 import { assertDeliveryFuture, deliveryClock, parseDeliveryTiming } from './order-delivery.util.js';
 import { validateCoordinatePair } from './order-geography.util.js';
 import { consolidateOrderItems } from './order-inventory.util.js';
+import { assertOrderUnitsWithinLimit } from './order-units-limit.util.js';
 import { projectOrder } from './order-response.util.js';
 
 type Client = PrismaService['client'];
@@ -579,6 +580,9 @@ export class AdminPurchaseService {
           { idempotencyKey },
         );
       }
+
+      // Máximo de unidades por pedido (#83): se lee bajo bloqueo compartido de la configuración, antes de tocar stock.
+      assertOrderUnitsWithinLimit(consolidated, (await this.settingsService.getPublicSettings(tx)).limits.maxUnitsPerOrder);
 
       assertDeliveryFuture(timing, await deliveryClock(tx, this.prisma.client.raw));
       const reserved: Array<{

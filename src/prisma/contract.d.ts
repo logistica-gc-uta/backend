@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'2ba9059120d3e914cfd40c2b6f0520d25b2c6e26c198e93389573d9c48b1cfda'>;
+  StorageHashBase<'26b9ce897d81c1659e885bf4417cfcfda96d2a33bc6fa69a24ed74be8788a332'>;
 export type ExecutionHash =
   ExecutionHashBase<'82584b87e80021070bb3a92b18bff87f033d048b2d78bebee192d108125bb417'>;
 export type ProfileHash =
@@ -587,6 +587,7 @@ export type FieldOutputTypes = {
       readonly taxEnabled: CodecTypes['pg/bool@1']['output'];
       readonly taxRateBps: CodecTypes['pg/int4@1']['output'];
       readonly maxUnitsPerSkuPerOrder: CodecTypes['pg/int4@1']['output'];
+      readonly maxUnitsPerOrder: CodecTypes['pg/int4@1']['output'] | null;
       readonly deliveryTimeZone: CodecTypes['pg/text@1']['output'];
       readonly deliveryStartTime: CodecTypes['pg/text@1']['output'];
       readonly deliveryEndTime: CodecTypes['pg/text@1']['output'];
@@ -1007,6 +1008,7 @@ export type FieldInputTypes = {
       readonly taxEnabled: CodecTypes['pg/bool@1']['input'];
       readonly taxRateBps: CodecTypes['pg/int4@1']['input'];
       readonly maxUnitsPerSkuPerOrder: CodecTypes['pg/int4@1']['input'];
+      readonly maxUnitsPerOrder: CodecTypes['pg/int4@1']['input'] | null;
       readonly deliveryTimeZone: CodecTypes['pg/text@1']['input'];
       readonly deliveryStartTime: CodecTypes['pg/text@1']['input'];
       readonly deliveryEndTime: CodecTypes['pg/text@1']['input'];
@@ -1423,6 +1425,7 @@ export type StorageColumnTypes = {
       readonly deliveryStartTime: CodecTypes['pg/text@1']['output'];
       readonly deliveryTimeZone: CodecTypes['pg/text@1']['output'];
       readonly id: CodecTypes['pg/text@1']['output'];
+      readonly maxUnitsPerOrder: CodecTypes['pg/int4@1']['output'] | null;
       readonly maxUnitsPerSkuPerOrder: CodecTypes['pg/int4@1']['output'];
       readonly routeTimeWindowMarginMinutes: CodecTypes['pg/int4@1']['output'];
       readonly shippingAmountCents: CodecTypes['pg/int4@1']['output'];
@@ -1843,6 +1846,7 @@ export type StorageColumnInputTypes = {
       readonly deliveryStartTime: CodecTypes['pg/text@1']['input'];
       readonly deliveryTimeZone: CodecTypes['pg/text@1']['input'];
       readonly id: CodecTypes['pg/text@1']['input'];
+      readonly maxUnitsPerOrder: CodecTypes['pg/int4@1']['input'] | null;
       readonly maxUnitsPerSkuPerOrder: CodecTypes['pg/int4@1']['input'];
       readonly routeTimeWindowMarginMinutes: CodecTypes['pg/int4@1']['input'];
       readonly shippingAmountCents: CodecTypes['pg/int4@1']['input'];
@@ -2417,6 +2421,7 @@ export namespace Models {
     taxEnabled: CodecTypes['pg/bool@1']['output'];
     taxRateBps: CodecTypes['pg/int4@1']['output'];
     maxUnitsPerSkuPerOrder: CodecTypes['pg/int4@1']['output'];
+    maxUnitsPerOrder: CodecTypes['pg/int4@1']['output'] | null;
     deliveryTimeZone: CodecTypes['pg/text@1']['output'];
     deliveryStartTime: CodecTypes['pg/text@1']['output'];
     deliveryEndTime: CodecTypes['pg/text@1']['output'];
@@ -5950,6 +5955,11 @@ type ContractBase = Omit<
                     readonly kind: 'literal';
                     readonly value: DefaultLiteralValue<'pg/int4@1', 10>;
                   };
+                };
+                readonly maxUnitsPerOrder: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
                 };
                 readonly deliveryTimeZone: {
                   readonly nativeType: 'text';
@@ -9696,6 +9706,10 @@ type ContractBase = Omit<
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
+              readonly maxUnitsPerOrder: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
               readonly deliveryTimeZone: {
                 readonly nullable: false;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
@@ -9772,6 +9786,7 @@ type ContractBase = Omit<
                 readonly taxEnabled: { readonly column: 'taxEnabled' };
                 readonly taxRateBps: { readonly column: 'taxRateBps' };
                 readonly maxUnitsPerSkuPerOrder: { readonly column: 'maxUnitsPerSkuPerOrder' };
+                readonly maxUnitsPerOrder: { readonly column: 'maxUnitsPerOrder' };
                 readonly deliveryTimeZone: { readonly column: 'deliveryTimeZone' };
                 readonly deliveryStartTime: { readonly column: 'deliveryStartTime' };
                 readonly deliveryEndTime: { readonly column: 'deliveryEndTime' };

@@ -132,6 +132,7 @@ describe('OrdersService', () => {
           provide: ShopSettingsService,
           useValue: {
             getPublicSettings: jest.fn().mockResolvedValue({
+              limits: { maxUnitsPerSkuPerOrder: 10, maxUnitsPerOrder: null },
               deliverySchedule: {
                 timeZone: 'America/Guayaquil',
                 startTime: '07:00',
