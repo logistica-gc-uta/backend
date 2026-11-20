@@ -11,6 +11,13 @@ export class DriverAvailabilityResponseDto {
   @ApiProperty({
     type: Boolean,
     description:
+      'Estado administrativo (#82): false si el repartidor está dado de baja. Es independiente de las rutas, las reservas y las ausencias; mientras sea false `isAvailable` es false.',
+  })
+  isActive!: boolean;
+
+  @ApiProperty({
+    type: Boolean,
+    description:
       'Whether persisted reservation or lifecycle records block reuse',
   })
   hasPersistedHolds!: boolean;

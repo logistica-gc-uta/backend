@@ -23,6 +23,15 @@ export class DriverProfileResponseDto {
   })
   vehicleCapacity!: number | null;
   @ApiProperty({ description: 'Bandera de compatibilidad; la disponibilidad real es `effectiveAvailability`.' }) isAvailable!: boolean;
+  @ApiProperty({
+    description:
+      'Estado administrativo (#82): false si el repartidor está dado de baja (no inicia sesión ni recibe asignaciones). Distinto de `isAvailable` y de las ausencias.',
+  })
+  isActive!: boolean;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true, description: 'Último cambio de estado (baja o reactivación), o null si nunca cambió.' })
+  statusChangedAt!: string | null;
+  @ApiProperty({ type: String, nullable: true }) statusChangedById!: string | null;
+  @ApiProperty({ type: String, nullable: true, description: 'Motivo del último cambio de estado.' }) statusReason!: string | null;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
   @ApiProperty({ type: DriverUserSummaryDto }) user!: DriverUserSummaryDto;
   @ApiProperty({ type: DriverAvailabilityResponseDto }) effectiveAvailability!: DriverAvailabilityResponseDto;

@@ -7,6 +7,7 @@ import {
   evaluatePlanningEligibility,
   type GeoPoint,
 } from '../orders/order-geography.util.js';
+import { assertDriverActive } from '../drivers/driver-status.util.js';
 import { StoreCoverageService } from '../store-coverage/store-coverage.service.js';
 import {
   BadRequestException,
@@ -1307,6 +1308,8 @@ export class DispatchInterventionService {
               'Reassignment requires a different driver on ASSIGNED',
             );
           const next = await db.Driver.where({ id: dto.driverId! }).first();
+          // `lockResources` ya bloqueó al repartidor destino: la baja operativa se lee con su fila bloqueada (#82).
+          assertDriverActive(next);
           if (
             !next ||
             !(await db.User.where({

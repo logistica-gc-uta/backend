@@ -122,8 +122,11 @@ export class RouteAvailabilityService {
     const blockingRouteIds = await this.persistedHolds(driverId, tx);
     const driver = await tx.orm.public.Driver.where({ id: driverId }).first();
     const compatibilityFlagBlocks = driver?.isAvailable !== true;
+    // La baja operativa (#82) es un estado administrativo aparte: bloquea toda asignación pero no toca holds ni ausencias.
+    const isActive = driver?.isActive !== false;
     const base = {
-      isAvailable: blockingRouteIds.length === 0 && !compatibilityFlagBlocks,
+      isAvailable: blockingRouteIds.length === 0 && !compatibilityFlagBlocks && isActive,
+      isActive,
       hasPersistedHolds: blockingRouteIds.length !== 0,
       compatibilityFlagBlocks,
       blockingRouteIds,
