@@ -1,3 +1,4 @@
+import { assertOrderUnitsWithinLimit } from '../../orders/order-units-limit.util.js';
 import { randomUUID } from 'node:crypto';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { toInstant } from '../../../common/temporal.util.js';
@@ -792,6 +793,9 @@ export class CheckoutConfirmationService {
             );
           }
         }
+
+        // Máximo de unidades por pedido (#83) con la configuración vigente, leída bajo el bloqueo compartido de la fila.
+        assertOrderUnitsWithinLimit(consolidatedItems, currentSettings.limits.maxUnitsPerOrder);
 
         // Enforce product publication, category activity, live stock, and exact price snapshots
         const moneyLines: MoneyLineInput[] = [];

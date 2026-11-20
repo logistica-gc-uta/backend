@@ -26,6 +26,7 @@ import { validateCoordinatePair } from './order-geography.util.js';
 import { validateOrderTransition } from './order-status.policy.js';
 import { AdminPurchaseService } from './admin-purchase.service.js';
 import { consolidateOrderItems, lockInventoryProduct } from './order-inventory.util.js';
+import { assertOrderUnitsWithinLimit } from './order-units-limit.util.js';
 
 @Injectable()
 export class OrdersService {
@@ -90,6 +91,8 @@ export class OrdersService {
 
     const consolidated = consolidateOrderItems(dto.items);
     return this.prisma.client.transaction(async (tx) => {
+      // Máximo de unidades por pedido (#83), leído bajo bloqueo compartido de la configuración y antes de tocar stock.
+      assertOrderUnitsWithinLimit(consolidated, (await this.settingsService.getPublicSettings(tx)).limits.maxUnitsPerOrder);
       // One authoritative advancing clock, including the initial deadline check.
       assertDeliveryFuture(timing, await deliveryClock(tx, this.prisma.client.raw));
       let totalOrder = 0;

@@ -5,6 +5,7 @@ import { assertWithinOperatingHours } from '../../orders/delivery-hours.util.js'
 import { deliveryClock, parseDeliveryTiming } from '../../orders/order-delivery.util.js';
 import { validateCoordinatePair } from '../../orders/order-geography.util.js';
 import { consolidateOrderItems } from '../../orders/order-inventory.util.js';
+import { assertOrderUnitsWithinLimit } from '../../orders/order-units-limit.util.js';
 import { ShopSettingsPublicDto } from '../settings/dto/shop-settings.dto.js';
 import { ShopSettingsService } from '../settings/shop-settings.service.js';
 import { StoreCoverageService } from '../../store-coverage/store-coverage.service.js';
@@ -70,6 +71,9 @@ export class CheckoutService {
         );
       }
     }
+
+    // 3b. Máximo de unidades por pedido: suma de todas las líneas (#83); el máximo por SKU sigue vigente.
+    assertOrderUnitsWithinLimit(consolidated, settings.limits.maxUnitsPerOrder);
 
     // 4. Validate coordinate pair syntax and bounds
     validateCoordinatePair(
