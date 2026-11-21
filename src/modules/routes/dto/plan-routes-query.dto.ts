@@ -23,7 +23,7 @@ export class PlanRoutesQueryDto {
 
   @ApiPropertyOptional({
     description:
-      'Optional driver ID whose stored vehicleCapacity (or default 4 when unset) bounds product-unit load per proposed route',
+      'Optional driver ID whose stored vehicleCapacity (or default 4 when unset) bounds product-unit load per proposed route; when omitted, planning uses the heterogeneous capacities of all available drivers',
     format: 'uuid',
   })
   @IsOptional()

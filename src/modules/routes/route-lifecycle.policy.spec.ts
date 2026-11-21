@@ -84,14 +84,14 @@ describe('Route lifecycle policy', () => {
   });
 
   it.each([null, ...states])(
-    'requires IN_PROGRESS and one to four resolved visits for %s',
+    'requires IN_PROGRESS and at least one resolved visit for %s',
     (status) => {
-      for (const length of [0, 1, 2, 3, 4, 5]) {
+      for (const length of [0, 1, 2, 3, 4, 5, 6]) {
         const outcomes = Array.from({ length }, (_, index) =>
           index % 2 ? VisitOutcome.FAILED : VisitOutcome.SUCCESSFUL,
         );
         expect(canCompleteRoute(status, outcomes)).toBe(
-          status === RouteStatus.IN_PROGRESS && length >= 1 && length <= 4,
+          status === RouteStatus.IN_PROGRESS && length >= 1,
         );
       }
       for (const unresolved of [null, VisitOutcome.PENDING]) {

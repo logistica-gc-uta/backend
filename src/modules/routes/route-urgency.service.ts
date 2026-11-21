@@ -21,7 +21,13 @@ import {
 } from './route-lifecycle.policy.js';
 import { RouteAvailabilityService } from './route-availability.service.js';
 import {
-  DEFAULT_ROUTE_CAPACITY,
+  DEFAULT_VEHICLE_CAPACITY,
+  loadOrderDemandsMap,
+  MAX_ROUTE_STOPS,
+  resolveVehicleCapacity,
+  routeLoadUnits,
+} from './vehicle-capacity.js';
+import {
   planRoutes,
   type RoutingOrder,
 } from './algorithms/clarke-wright.js';
@@ -165,19 +171,28 @@ export class RouteUrgencyService {
       lat: o.deliveryLat,
       lng: o.deliveryLng,
     });
+    const computeOrderDemands = (orderIds: readonly string[]) =>
+      loadOrderDemandsMap(db.OrderItem, orderIds);
     const make = async (
       orders: (typeof order)[],
       routeId: string | null,
       routeDate: string,
       evidence: unknown,
+      targetCapacity: number,
     ) => {
       const routingGroupKey = order.zoneId ?? STORE_URGENCY_GROUP_KEY;
+      const demandsByOrder = await computeOrderDemands(orders.map((o) => o.id));
       const routing: RoutingOrder[] = orders.map((o) => ({
         id: o.id,
         zoneId: routingGroupKey,
         deliveryDate: date,
         location: { lat: o.deliveryLat!, lng: o.deliveryLng! },
+        demandUnits: demandsByOrder.get(o.id) ?? 1,
       }));
+      const effectiveCapacity = Math.max(
+        targetCapacity,
+        ...routing.map((r) => r.demandUnits ?? 1),
+      );
       // Degenerate/zero-savings groups can produce separate tours; flatten the
       // deterministic tours since all validated candidates already fit one vehicle.
       // Con el motor vial, la matriz se pide una sola vez y sirve para agrupar y para medir la visita.
@@ -189,7 +204,8 @@ export class RouteUrgencyService {
       const distanceFn = km ? matrixDistance(km) : haversineKm;
       const ids = planRoutes(routing, {
         depots: { [routingGroupKey]: depot },
-        capacity: DEFAULT_ROUTE_CAPACITY,
+        capacity: effectiveCapacity,
+        maxStops: MAX_ROUTE_STOPS,
         ...(km ? { distance: distanceFn, directional: true } : {}),
       }).flatMap((r) => r.orderIds);
       const locations = new Map(routing.map((o) => [o.id, o.location]));
@@ -235,13 +251,20 @@ export class RouteUrgencyService {
       ).sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
       if (
         !stops.length ||
-        stops.length >= DEFAULT_ROUTE_CAPACITY ||
+        stops.length >= MAX_ROUTE_STOPS ||
         stops.some(
           (s, i) =>
             s.isLegacy || s.outcome !== 'PENDING' || s.sequence !== i + 1,
         )
       )
         continue;
+      const routeDriver =
+        route.driverId && db.Driver && typeof db.Driver.where === 'function'
+          ? await db.Driver.where({ id: route.driverId }).first()
+          : null;
+      const targetCapacity = resolveVehicleCapacity(
+        routeDriver?.vehicleCapacity,
+      );
       const claims = await db.OrderClaim.where({
         routeId: route.id,
         releasedAt: null,
@@ -285,22 +308,34 @@ export class RouteUrgencyService {
         orders.push(current);
       }
       if (orders.length !== stops.length + 1) continue;
-      return await make(orders, route.id, route.date.toString(), {
-        status: route.status,
-        driverId: route.driverId,
-        stops: stops.map((s) => ({
-          id: s.id,
-          sequence: s.sequence,
-          orderId: s.orderId,
-        })),
-        claims: claims.map((c) => c.id).sort(),
-      });
+      const demandsByOrder = await computeOrderDemands(orders.map((o) => o.id));
+      const candidateLoadUnits = routeLoadUnits(
+        orders.map((o) => demandsByOrder.get(o.id) ?? 1),
+      );
+      if (candidateLoadUnits > targetCapacity) continue;
+      return await make(
+        orders,
+        route.id,
+        route.date.toString(),
+        {
+          status: route.status,
+          driverId: route.driverId,
+          stops: stops.map((s) => ({
+            id: s.id,
+            sequence: s.sequence,
+            orderId: s.orderId,
+          })),
+          claims: claims.map((c) => c.id).sort(),
+        },
+        targetCapacity,
+      );
     }
     const proposal = await make(
       [order],
       null,
       order.scheduledDeliveryDate!.toString(),
       null,
+      DEFAULT_VEHICLE_CAPACITY,
     );
     for (const driver of await db.Driver.all()) {
       if (

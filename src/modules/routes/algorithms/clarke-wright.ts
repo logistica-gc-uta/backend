@@ -19,6 +19,8 @@ export interface ClarkeWrightOptions {
   depots: Record<string, GeoPoint>;
   /** Capacidad máxima por ruta en unidades de demanda (o pedidos cuando `demandUnits` se omite). Por defecto 4. */
   capacity?: number;
+  /** Capacidades heterogéneas disponibles de la flota (ordenadas descendentemente al evaluar fusiones). */
+  fleetCapacities?: readonly number[];
   /** Máximo independiente de paradas por ruta (opcional). Si se omite, no añade restricción adicional sobre `capacity`. */
   maxStops?: number;
   /** Función de distancia en km. Por defecto Haversine en km. */
@@ -68,7 +70,18 @@ interface EmittedRoute {
  * Es una función pura y determinista: no accede a la base de datos.
  */
 export function planRoutes(orders: RoutingOrder[], options: ClarkeWrightOptions): PlannedRoute[] {
-  const capacity = options.capacity ?? DEFAULT_ROUTE_CAPACITY;
+  let normalizedFleet: readonly number[] | undefined;
+  if (options.fleetCapacities !== undefined) {
+    for (const cap of options.fleetCapacities) {
+      if (!Number.isInteger(cap) || cap < 1) {
+        throw new Error('Cada capacidad de flota debe ser un entero mayor o igual a 1');
+      }
+    }
+    if (options.fleetCapacities.length > 0) {
+      normalizedFleet = [...options.fleetCapacities].sort((a, b) => b - a);
+    }
+  }
+  const capacity = options.capacity ?? normalizedFleet?.[0] ?? DEFAULT_ROUTE_CAPACITY;
   const distance = options.distance ?? haversineKm;
   const duration = options.duration;
 
@@ -144,6 +157,7 @@ export function planRoutes(orders: RoutingOrder[], options: ClarkeWrightOptions)
         subgroup,
         depot,
         capacity,
+        normalizedFleet,
         maxStops,
         decisionDistance,
         decisionDuration,
@@ -232,6 +246,7 @@ function planGroup(
   group: RoutingOrder[],
   depot: GeoPoint,
   capacity: number,
+  fleetCapacities: readonly number[] | undefined,
   maxStops: number | undefined,
   decisionDistance: DistanceFn,
   decisionDuration: DistanceFn | undefined,
@@ -287,6 +302,26 @@ function planGroup(
     const iIsEnd = a[0] === i || a[a.length - 1] === i;
     const jIsEnd = b[0] === j || b[b.length - 1] === j;
     if (!iIsEnd || !jIsEnd) continue;
+
+    if (fleetCapacities && fleetCapacities.length > 0) {
+      const candidateLoads: number[] = [mergedLoad];
+      for (const [rid, load] of routeLoad) {
+        if (rid !== routeI && rid !== routeJ) {
+          candidateLoads.push(load);
+        }
+      }
+      candidateLoads.sort((x, y) => y - x);
+      const maxFleetCap = fleetCapacities[0]!;
+      let feasible = true;
+      for (let k = 0; k < candidateLoads.length; k++) {
+        const limit = k < fleetCapacities.length ? fleetCapacities[k]! : maxFleetCap;
+        if (candidateLoads[k]! > limit) {
+          feasible = false;
+          break;
+        }
+      }
+      if (!feasible) continue;
+    }
 
     if (a[a.length - 1] !== i) a.reverse();
     if (b[0] !== j) b.reverse();

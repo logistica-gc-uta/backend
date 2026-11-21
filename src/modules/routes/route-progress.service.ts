@@ -107,7 +107,6 @@ export class RouteProgressService {
       stop.isLegacy ||
       !stop.sequence ||
       stop.sequence < 1 ||
-      stop.sequence > 4 ||
       stop.outcome !== 'PENDING'
     )
       throw new ConflictException('Verified pending visit required');
@@ -399,7 +398,7 @@ export class RouteProgressService {
         ordered.some((s, i) => s.isLegacy || s.sequence !== i + 1)
       )
         throw new ConflictException(
-          'One to four resolved verified visits required',
+          'At least one resolved verified visit required',
         );
       const routeClaims = await tx.orm.public.OrderClaim.where({
         routeId,

@@ -1,5 +1,9 @@
 import { RouteUrgencyService } from './route-urgency.service.js';
+import { RoadMetricsService } from './road/road-metrics.service.js';
+import { DEFAULT_ROAD_CONFIG } from './road/road-metrics.types.js';
 import { businessDay, nowInstant } from '../../common/temporal.util.js';
+
+const haversineRoads = () => new RoadMetricsService({ ...DEFAULT_ROAD_CONFIG });
 
 const instant = () => nowInstant();
 const order = (id: string, extra = {}) => ({
@@ -56,6 +60,7 @@ describe('Urgency proposals (CP-RUT-003/004/008/009)', () => {
     service = new RouteUrgencyService(
       { client: { orm: { public: models }, transaction: writes } } as any,
       { effective: async () => ({ isAvailable: true }) } as any,
+      haversineRoads(),
     );
   });
   const addRoute = (status = 'ASSIGNED', count = 3) => {
@@ -264,6 +269,7 @@ describe('Urgency proposals (CP-RUT-003/004/008/009)', () => {
         },
       } as any,
       { effective: async () => ({ isAvailable: false }) } as any,
+      haversineRoads(),
     );
 
     const p = await blockedSvc.propose('urgent-store');
@@ -392,7 +398,7 @@ describe('Urgency proposals (CP-RUT-003/004/008/009)', () => {
     const svc = new RouteUrgencyService(
       { client: { orm: { public: models }, transaction: writes } } as any,
       { effective: async () => ({ isAvailable: true }) } as any,
-      undefined,
+      haversineRoads(),
       coverageSvc,
     );
 
@@ -480,6 +486,7 @@ describe('Urgency proposals (CP-RUT-003/004/008/009)', () => {
     const svc = new RouteUrgencyService(
       { client: { orm: { public: models }, transaction: writes } } as any,
       { effective: async () => ({ isAvailable: true }) } as any,
+      haversineRoads(),
     );
 
     // Even if administrative review were false, unresolved RouteUnitRecovery keeps propose BLOCKED.
@@ -887,6 +894,7 @@ describe('Urgency proposals (CP-RUT-003/004/008/009)', () => {
       const emService = new RouteUrgencyService(
         { client: { orm: { public: emModels }, transaction: writes } } as any,
         { effective: async () => ({ isAvailable: true }) } as any,
+        haversineRoads(),
       );
 
       const inbox: any = await emService.inbox();
@@ -971,6 +979,7 @@ describe('Urgency proposals (CP-RUT-003/004/008/009)', () => {
       const countedSvc = new RouteUrgencyService(
         { client: { orm: { public: countedModels }, transaction: writes } } as any,
         { effective: async () => ({ isAvailable: true }) } as any,
+        haversineRoads(),
       );
 
       for (let i = 1; i <= 5; i++) {
@@ -1089,6 +1098,7 @@ describe('Urgency proposals (CP-RUT-003/004/008/009)', () => {
       const snapshotSvc = new RouteUrgencyService(
         { client: snapshotClient } as any,
         { effective: async () => ({ isAvailable: true }) } as any,
+        haversineRoads(),
       );
 
       const inbox: any = await snapshotSvc.inbox();

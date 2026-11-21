@@ -46,6 +46,7 @@ export function projectOrder(order: Source, includeContact: boolean) {
       buyerName: order.buyerName ?? null,
       buyerPhone: order.buyerPhone ?? null,
       contactRevision: order.contactRevision ?? 0,
+      requiresAdministrativeReview: Boolean(order.requiresAdministrativeReview),
     } : {}),
     deliveryWindowStart: order.deliveryWindowStart ?? null,
     deliveryWindowEnd: order.deliveryWindowEnd ?? null,

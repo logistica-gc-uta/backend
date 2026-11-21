@@ -6,7 +6,10 @@ import { planRoutes, type ClarkeWrightOptions, type PlannedRoute, type RoutingOr
 import { matrixDistance, matrixDuration, type DistanceMatrix } from './algorithms/matrix-distance.js';
 import type { PlanRequest } from './algorithms/plan-routes.worker.js';
 
-type PlanOptions = Pick<ClarkeWrightOptions, 'depots' | 'capacity' | 'maxStops' | 'timeWindowMarginMinutes'> & {
+type PlanOptions = Pick<
+  ClarkeWrightOptions,
+  'depots' | 'capacity' | 'fleetCapacities' | 'maxStops' | 'timeWindowMarginMinutes'
+> & {
   /** Matriz vial (km y duraciones en s, direccional). Sin ella se usa la línea recta de siempre. */
   matrix?: DistanceMatrix;
 };
@@ -27,6 +30,7 @@ export function planKey(orders: readonly RoutingOrder[], options: PlanOptions): 
   hash.update(
     JSON.stringify([
       options.capacity ?? null,
+      options.fleetCapacities ?? null,
       options.maxStops ?? null,
       options.timeWindowMarginMinutes ?? null,
       Object.entries(options.depots).sort(([a], [b]) => a.localeCompare(b)),

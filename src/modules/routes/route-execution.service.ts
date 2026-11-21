@@ -100,7 +100,6 @@ export class RouteExecutionService {
       );
       if (
         ordered.length < 1 ||
-        ordered.length > 4 ||
         ordered.some(
           (stop, index) =>
             stop.isLegacy ||
@@ -109,7 +108,7 @@ export class RouteExecutionService {
         )
       ) {
         throw new ConflictException(
-          'One to four verified pending ordered stops required',
+          'At least one verified pending ordered stop required',
         );
       }
       const claims = await tx.orm.public.OrderClaim.where({

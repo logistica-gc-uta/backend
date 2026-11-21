@@ -10,7 +10,10 @@ import { matrixDistance, matrixDuration, type DistanceMatrix } from './matrix-di
 export interface PlanRequest {
   id: number;
   orders: RoutingOrder[];
-  options: Pick<ClarkeWrightOptions, 'depots' | 'capacity' | 'maxStops' | 'timeWindowMarginMinutes'> & {
+  options: Pick<
+    ClarkeWrightOptions,
+    'depots' | 'capacity' | 'fleetCapacities' | 'maxStops' | 'timeWindowMarginMinutes'
+  > & {
     matrix?: DistanceMatrix;
   };
 }

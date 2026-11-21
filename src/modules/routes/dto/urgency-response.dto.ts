@@ -10,7 +10,7 @@ import {
 
 export class UrgencyStopDto {
   @ApiProperty() orderId!: string;
-  @ApiProperty({ minimum: 1, maximum: 4 }) sequence!: number;
+  @ApiProperty({ minimum: 1 }) sequence!: number;
 }
 export class UrgencyProposalDto {
   @ApiProperty() orderId!: string;

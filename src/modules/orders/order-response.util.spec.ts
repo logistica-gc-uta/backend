@@ -18,9 +18,10 @@ describe('order response allowlist', () => {
     const response = projectOrder(source, true);
     expect(response.user).toEqual({ id: 'client', name: 'Current profile' });
     expect(response.recipientPhone).toBe('+593');
+    expect(response.requiresAdministrativeReview).toBe(true);
     expect(Object.keys(response).sort()).toEqual([
       'id', 'userId', 'createdById', 'recipientType', 'recipientName', 'recipientPhone',
-      'buyerName', 'buyerPhone', 'contactRevision',
+      'buyerName', 'buyerPhone', 'contactRevision', 'requiresAdministrativeReview',
       'zoneId', 'deliveryAddress', 'deliveryLat', 'deliveryLng', 'scheduledDeliveryDate',
       'deliveryWindowStart', 'deliveryWindowEnd', 'status', 'total', 'routeId', 'stopOrder',
       'createdAt', 'user', 'items', 'zone', 'deliveryLocation', 'planningEligibility',
@@ -40,8 +41,14 @@ describe('order response allowlist', () => {
     expect(response.items![0]).not.toHaveProperty('unitPriceCents');
   });
 
-  it('omits contact for CLIENT rather than implying that a stored contact is absent', () => {
-    expect(projectOrder(source, false)).not.toHaveProperty('recipientPhone');
+  it('omits contact and requiresAdministrativeReview for CLIENT while exposing requiresAdministrativeReview for ADMIN/DRIVER', () => {
+    const clientResponse = projectOrder(source, false);
+    expect(clientResponse).not.toHaveProperty('recipientPhone');
+    expect(clientResponse).not.toHaveProperty('requiresAdministrativeReview');
+
+    expect(projectOrder({ ...source, requiresAdministrativeReview: true }, true).requiresAdministrativeReview).toBe(true);
+    expect(projectOrder({ ...source, requiresAdministrativeReview: false }, true).requiresAdministrativeReview).toBe(false);
+    expect(projectOrder({ id: 'no-flag' }, true).requiresAdministrativeReview).toBe(false);
   });
 
   it('preserves truthful null historical metadata and guest owner instead of inferring identities', () => {
