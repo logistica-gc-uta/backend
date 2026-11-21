@@ -41,7 +41,7 @@ export default class M extends Migration<Start, End> {
           {
             description:
               'update route_integrity_guard, route_stop_integrity_guard, and t1e_validate_route_coherence to allow >= 1 stops without a 4-stop ceiling',
-            sql: `CREATE OR REPLACE FUNCTION public.route_integrity_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $
+            sql: `CREATE OR REPLACE FUNCTION public.route_integrity_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 BEGIN
   IF TG_OP = 'DELETE' THEN
     IF OLD.status IS NULL OR OLD.status IN ('IN_PROGRESS', 'COMPLETED', 'INTERRUPTED', 'CANCELLED') THEN
@@ -127,9 +127,9 @@ BEGIN
     END IF;
   END IF;
   RETURN NEW;
-END $;
+END $$;
 
-CREATE OR REPLACE FUNCTION public.route_stop_integrity_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $
+CREATE OR REPLACE FUNCTION public.route_stop_integrity_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 DECLARE
   route_ids text[];
   route_row record;
@@ -179,10 +179,10 @@ BEGIN
     RAISE EXCEPTION 'Route stop order must belong to the same zone' USING ERRCODE = '23514';
   END IF;
   RETURN NEW;
-END $;
+END $$;
 
 CREATE OR REPLACE FUNCTION public.t1e_validate_route_coherence(p_route_id text) RETURNS void
-LANGUAGE plpgsql SET search_path = pg_catalog, public AS $
+LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
 DECLARE
   route_row public.route%ROWTYPE;
   stop_count bigint;
@@ -453,7 +453,7 @@ BEGIN
     RAISE EXCEPTION 'Assigned or in-progress verified stops require their current order route pointer'
       USING ERRCODE = '23514';
   END IF;
-END $;`,
+END $$;`,
           },
         ],
         postcheck: [
