@@ -397,6 +397,7 @@ model RouteStop {
   @@unique([routeId, orderId])
   @@index([orderId])
   @@index([routeId, sequence], unique: true, where: "(NOT \"isLegacy\" AND sequence IS NOT NULL)", name: "verified_route_stop_sequence")
+  @@check(expression: "\"isLegacy\" OR \"sequence\" IS NULL OR \"sequence\" >= 1", name: "route_stop_sequence_positive")
 }
 
 // Append-only enforcement and actor authorization are introduced in T1c/T3.

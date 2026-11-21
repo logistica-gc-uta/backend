@@ -1,10 +1,8 @@
 #!/usr/bin/env -S node
-import type {
-  Contract as End,
-  Contract as Start,
-} from '../../snapshots/26b9ce897d81c1659e885bf4417cfcfda96d2a33bc6fa69a24ed74be8788a332/contract';
-import endContract from '../../snapshots/26b9ce897d81c1659e885bf4417cfcfda96d2a33bc6fa69a24ed74be8788a332/contract.json' with { type: 'json' };
+import type { Contract as Start } from '../../snapshots/26b9ce897d81c1659e885bf4417cfcfda96d2a33bc6fa69a24ed74be8788a332/contract';
 import startContract from '../../snapshots/26b9ce897d81c1659e885bf4417cfcfda96d2a33bc6fa69a24ed74be8788a332/contract.json' with { type: 'json' };
+import type { Contract as End } from '../../snapshots/5c8e1dbf367275ce7a022e294fe648c04bfa2b3e53d2e55a499fce569a77212c/contract';
+import endContract from '../../snapshots/5c8e1dbf367275ce7a022e294fe648c04bfa2b3e53d2e55a499fce569a77212c/contract.json' with { type: 'json' };
 import { Migration, MigrationCLI, rawSql } from '@prisma/orm-postgres/migration';
 
 export default class M extends Migration<Start, End> {
@@ -13,6 +11,12 @@ export default class M extends Migration<Start, End> {
 
   override get operations() {
     return [
+      this.addCheckConstraint({
+        schema: 'public',
+        table: 'routeStop',
+        constraint: 'route_stop_sequence_positive_592b3570',
+        expression: '"isLegacy" OR "sequence" IS NULL OR "sequence" >= 1',
+      }),
       rawSql({
         id: 'route-stops.lift-four-stop-limit',
         label:
@@ -37,7 +41,7 @@ export default class M extends Migration<Start, End> {
           {
             description:
               'update route_integrity_guard, route_stop_integrity_guard, and t1e_validate_route_coherence to allow >= 1 stops without a 4-stop ceiling',
-            sql: `CREATE OR REPLACE FUNCTION public.route_integrity_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+            sql: `CREATE OR REPLACE FUNCTION public.route_integrity_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $
 BEGIN
   IF TG_OP = 'DELETE' THEN
     IF OLD.status IS NULL OR OLD.status IN ('IN_PROGRESS', 'COMPLETED', 'INTERRUPTED', 'CANCELLED') THEN
@@ -123,9 +127,9 @@ BEGIN
     END IF;
   END IF;
   RETURN NEW;
-END $$;
+END $;
 
-CREATE OR REPLACE FUNCTION public.route_stop_integrity_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+CREATE OR REPLACE FUNCTION public.route_stop_integrity_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public AS $
 DECLARE
   route_ids text[];
   route_row record;
@@ -175,10 +179,10 @@ BEGIN
     RAISE EXCEPTION 'Route stop order must belong to the same zone' USING ERRCODE = '23514';
   END IF;
   RETURN NEW;
-END $$;
+END $;
 
 CREATE OR REPLACE FUNCTION public.t1e_validate_route_coherence(p_route_id text) RETURNS void
-LANGUAGE plpgsql SET search_path = pg_catalog, public AS $$
+LANGUAGE plpgsql SET search_path = pg_catalog, public AS $
 DECLARE
   route_row public.route%ROWTYPE;
   stop_count bigint;
@@ -449,7 +453,7 @@ BEGIN
     RAISE EXCEPTION 'Assigned or in-progress verified stops require their current order route pointer'
       USING ERRCODE = '23514';
   END IF;
-END $$;`,
+END $;`,
           },
         ],
         postcheck: [
