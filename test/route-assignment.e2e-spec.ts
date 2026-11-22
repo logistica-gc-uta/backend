@@ -412,9 +412,9 @@ describe('Confirmed draft and assignment: owned PostgreSQL16 and real JWT', () =
       expect((await db.orm.public.Driver.where({ id: 'driver' }).first())?.isAvailable).toBe(true);
     },
   );
-  it('enforces maximum four, uniqueness, timestamp, JWT ADMIN and body whitelist', async () => {
+  it('enforces max stops ceiling, uniqueness, timestamp, JWT ADMIN and body whitelist', async () => {
     await draft(['one', 'two', 'three', 'four']).expect(201);
-    await draft(['one', 'two', 'three', 'four', 'five']).expect(400);
+    await draft(Array.from({ length: 51 }, (_, i) => `overflow-${i}`)).expect(400);
     await draft(['five', 'five']).expect(400);
     const body = {
       zoneId: 'zone',
@@ -700,7 +700,7 @@ describe('Confirmed draft and assignment: owned PostgreSQL16 and real JWT', () =
       required: ['routeDate', 'orderIds'],
       properties: {
         zoneId: { nullable: true },
-        orderIds: { maxItems: 4, minItems: 1, uniqueItems: true },
+        orderIds: { maxItems: 50, minItems: 1, uniqueItems: true },
       },
     });
   });
