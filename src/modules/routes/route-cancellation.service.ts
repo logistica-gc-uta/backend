@@ -159,7 +159,6 @@ export class RouteCancellationService {
     );
     if (
       stops.length < 1 ||
-      stops.length > 4 ||
       stops.some(
         (stop, index) =>
           stop.isLegacy ||
@@ -169,7 +168,7 @@ export class RouteCancellationService {
     ) {
       throw this.conflict(
         'ROUTE_COHERENCE_INVALID',
-        'One to four verified pending ordered stops required',
+        'At least one verified pending ordered stop required',
       );
     }
     if (db.DeliveryAttempt) {

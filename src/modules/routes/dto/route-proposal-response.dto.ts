@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PLANNING_EXCLUSION_REASONS, type PlanningExclusionReason } from '../planning-exclusion-reason.js';
+import { MAX_ROUTE_STOPS } from '../vehicle-capacity.js';
 
 export class GeoPointDto {
   @ApiProperty({ example: -1.24908 })
@@ -66,8 +67,8 @@ export class RouteProposalDto {
 
   @ApiProperty({
     type: [String],
-    maxItems: 4,
-    description: 'Order ids in visiting order (1 to 4)',
+    maxItems: MAX_ROUTE_STOPS,
+    description: `Order ids in visiting order (1 to ${MAX_ROUTE_STOPS})`,
   })
   orderIds!: string[];
 
@@ -143,6 +144,18 @@ export class RouteProposalDto {
       'Earliest scheduled instant of the proposal. Send it as routeDate to POST /routes: any instant of the same America/Guayaquil business day as all its orders is accepted',
   })
   routeDate!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'True when this route exceeds the number of available drivers within an overlapping delivery time window',
+  })
+  exceedsAvailableFleet?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'True when planning today and at least one stop in this route has a scheduled delivery time already in the past',
+  })
+  hasOverdueStops?: boolean;
 }
 
 export class ExcludedOrderDto {
@@ -208,6 +221,37 @@ export class RoadMetricsInfoDto {
   @ApiProperty({ description: 'Largest distance in metres a point had to be snapped to the road network' }) maxSnapDistanceM!: number;
 }
 
+export class OverlappingWindowDeficitDto {
+  @ApiProperty({ format: 'date-time' })
+  windowStart!: string;
+
+  @ApiProperty({ format: 'date-time' })
+  windowEnd!: string;
+
+  @ApiProperty({ example: 3 })
+  routesRequired!: number;
+
+  @ApiProperty({ example: 2 })
+  availableDrivers!: number;
+
+  @ApiProperty({ example: 1 })
+  deficit!: number;
+}
+
+export class FleetPlanningSummaryDto {
+  @ApiProperty({ example: 2 })
+  availableDrivers!: number;
+
+  @ApiProperty({ type: [Number], example: [6, 4] })
+  capacities!: number[];
+
+  @ApiProperty({ example: 6 })
+  maxCapacity!: number;
+
+  @ApiProperty({ type: [OverlappingWindowDeficitDto] })
+  overlappingWindows!: OverlappingWindowDeficitDto[];
+}
+
 export class RouteProposalResponseDto {
   @ApiProperty({ example: '2030-02-14' })
   date!: string;
@@ -232,7 +276,7 @@ export class RouteProposalResponseDto {
   @ApiProperty({
     example: 4,
     description:
-      'Effective vehicle capacity in product units applied to this proposal (selected driver vehicleCapacity, or default 4 when unset or when driverId is omitted). Independent of the four-stop maximum per route',
+      'Effective vehicle capacity in product units applied to this proposal (selected driver vehicleCapacity, max available fleet capacity when driverId is omitted, or default 4 when none is available)',
   })
   capacity!: number;
 
@@ -262,4 +306,7 @@ export class RouteProposalResponseDto {
 
   @ApiProperty({ type: RouteProposalSummaryDto })
   summary!: RouteProposalSummaryDto;
+
+  @ApiProperty({ type: FleetPlanningSummaryDto })
+  fleet!: FleetPlanningSummaryDto;
 }

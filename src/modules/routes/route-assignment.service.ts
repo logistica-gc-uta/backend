@@ -35,9 +35,9 @@ import {
 } from '../realtime/realtime.contract.js';
 import {
   assertVehicleCapacity,
-  orderDemandUnits,
+  loadRouteUnitsForOrders,
+  MAX_ROUTE_STOPS,
   resolveVehicleCapacity,
-  routeLoadUnits,
 } from './vehicle-capacity.js';
 
 type Transaction = Parameters<
@@ -156,23 +156,7 @@ export class RouteAssignmentService {
     tx: Transaction,
     orderIds: readonly string[],
   ): Promise<number> {
-    if (!orderIds.length) return 0;
-    const orderItemModel = tx.orm.public.OrderItem;
-    if (!orderItemModel) {
-      return orderIds.length;
-    }
-    const items = await orderItemModel
-      .where((item) => item.orderId.in([...orderIds]))
-      .all();
-    const byOrder = new Map<string, Array<{ quantity: number }>>();
-    for (const item of items) {
-      const list = byOrder.get(item.orderId);
-      if (list) list.push(item);
-      else byOrder.set(item.orderId, [item]);
-    }
-    return routeLoadUnits(
-      orderIds.map((orderId) => orderDemandUnits(byOrder.get(orderId))),
-    );
+    return loadRouteUnitsForOrders(tx.orm.public.OrderItem, orderIds);
   }
 
   private async lockOrders(
@@ -240,10 +224,12 @@ export class RouteAssignmentService {
     if (
       !Array.isArray(orderIds) ||
       orderIds.length < 1 ||
-      orderIds.length > 4 ||
+      orderIds.length > MAX_ROUTE_STOPS ||
       new Set(orderIds).size !== orderIds.length
     )
-      throw new BadRequestException('One to four distinct orders required');
+      throw new BadRequestException(
+        `1 to ${MAX_ROUTE_STOPS} distinct orders required`,
+      );
   }
 
   // Rebuild only verified pre-start stops, preserving their identities. Deletion
@@ -533,7 +519,6 @@ export class RouteAssignmentService {
     );
     if (
       ordered.length < 1 ||
-      ordered.length > 4 ||
       ordered.some(
         (stop, index) =>
           stop.isLegacy ||
@@ -542,7 +527,7 @@ export class RouteAssignmentService {
       )
     )
       throw new ConflictException(
-        'Verified one-to-four pending stops required',
+        'Verified contiguous pending stops required',
       );
     const claims = await tx.orm.public.OrderClaim.where({
       routeId: id,

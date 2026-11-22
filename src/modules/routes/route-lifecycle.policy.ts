@@ -72,7 +72,6 @@ export function canCompleteRoute(
   return (
     status === RouteStatus.IN_PROGRESS &&
     outcomes.length >= 1 &&
-    outcomes.length <= 4 &&
     outcomes.every(
       (outcome) =>
         outcome === VisitOutcome.SUCCESSFUL || outcome === VisitOutcome.FAILED,

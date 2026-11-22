@@ -9,6 +9,7 @@ import {
   Matches,
   ValidateIf,
 } from 'class-validator';
+import { MAX_ROUTE_STOPS } from '../vehicle-capacity.js';
 
 export class AssignRouteDto {
   @ApiProperty({ description: 'ID del chofer asignado', example: 'cm_driver_123' })
@@ -29,13 +30,15 @@ export class AssignRouteDto {
   zoneId?: string | null;
 
   @ApiProperty({
-    description: 'Lista de IDs de pedidos asignados (máximo 4 pedidos)',
+    description: `Lista de IDs de pedidos asignados (máximo ${MAX_ROUTE_STOPS} pedidos)`,
     example: ['cm_order_1', 'cm_order_2'],
     type: [String],
   })
   @IsArray({ message: 'La lista de pedidos debe ser un arreglo' })
   @ArrayMinSize(1, { message: 'Debe incluir al menos un pedido' })
-  @ArrayMaxSize(4, { message: 'No se pueden asignar más de 4 pedidos a una ruta' })
+  @ArrayMaxSize(MAX_ROUTE_STOPS, {
+    message: `No se pueden asignar más de ${MAX_ROUTE_STOPS} pedidos a una ruta`,
+  })
   @IsString({ each: true, message: 'Cada ID de pedido debe ser una cadena de texto' })
   orderIds!: string[];
 }

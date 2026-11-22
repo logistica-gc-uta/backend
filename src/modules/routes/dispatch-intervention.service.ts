@@ -51,6 +51,12 @@ import {
   type RealtimeChange,
   type RealtimePublisher,
 } from '../realtime/realtime.contract.js';
+import {
+  assertVehicleCapacity,
+  loadRouteUnitsForOrders,
+  MAX_ROUTE_STOPS,
+  resolveVehicleCapacity,
+} from './vehicle-capacity.js';
 
 type Transaction = Parameters<
   Parameters<PrismaService['client']['transaction']>[0]
@@ -1400,8 +1406,25 @@ export class DispatchInterventionService {
         const target = (
           await db.RouteStop.where({ routeId: dto.targetRouteId! }).all()
         ).sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
-        if (target.length >= 4)
-          throw new ConflictException('Route maximum is four stops');
+        if (target.length >= MAX_ROUTE_STOPS)
+          throw new ConflictException(
+            `Route maximum is ${MAX_ROUTE_STOPS} stops`,
+          );
+        const targetRoute = await db.Route.where({
+          id: dto.targetRouteId!,
+        }).first();
+        const targetDriver = targetRoute?.driverId
+          ? await db.Driver.where({ id: targetRoute.driverId }).first()
+          : null;
+        const targetOrderIds = [...target.map((s) => s.orderId), dto.orderId!];
+        const targetLoadUnits = await loadRouteUnitsForOrders(
+          db.OrderItem,
+          targetOrderIds,
+        );
+        assertVehicleCapacity(
+          targetLoadUnits,
+          resolveVehicleCapacity(targetDriver?.vehicleCapacity),
+        );
         const claim = await db.OrderClaim.where({
           routeId: route.id,
           orderId: dto.orderId!,

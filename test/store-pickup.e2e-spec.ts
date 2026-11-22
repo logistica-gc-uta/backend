@@ -170,9 +170,9 @@ describe('Retiro en tienda acordado (#50): PostgreSQL + JWT HTTP', () => {
       expect(view.timeline.find((t: any) => t.code === 'PICKUP_AGREED').label).toBe('Pendiente de retiro en tienda');
       expect(view.timeline.map((t: any) => t.code)).not.toContain('PICKED_UP');
       expect((await inboxIncident(orderId)).pickup).toMatchObject({ state: 'PENDING_PICKUP', pickedUpAt: null });
-      // No se vuelve a planificar ni a reservar: sigue excluido de las propuestas de ruta y no se puede armar una ruta con él.
+      // No se vuelve a planificar ni a reservar: los pedidos con retiro acordado salen de planificación y no se puede armar una ruta con ellos.
       const proposals = (await api('get', `/route-proposals?date=${today().toZonedDateTimeISO('America/Guayaquil').toPlainDate()}`).expect(200)).body;
-      expect(proposals.excluded.find((e: any) => e.orderId === orderId)?.reasons).toContain('ADMINISTRATIVE_REVIEW_REQUIRED');
+      expect(proposals.excluded.find((e: any) => e.orderId === orderId)).toBeUndefined();
       expect(proposals.proposals.flatMap((p: any) => p.orderIds)).not.toContain(orderId);
       const attempt = await api('post', '/routes', { zoneId: ids.zone, routeDate: today().toString(), orderIds: [orderId] });
       expect(attempt.status).not.toBe(201);

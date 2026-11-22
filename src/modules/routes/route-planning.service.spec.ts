@@ -10,6 +10,11 @@ import {
   PLANNING_TIME_ZONE,
   RoutePlanningService,
 } from './route-planning.service.js';
+import { RoadMetricsService } from './road/road-metrics.service.js';
+import { DEFAULT_ROAD_CONFIG } from './road/road-metrics.types.js';
+import { MAX_ROUTE_STOPS } from './vehicle-capacity.js';
+
+const haversineRoads = () => new RoadMetricsService({ ...DEFAULT_ROAD_CONFIG });
 
 const DAY = '2030-02-14';
 const NOON = Temporal.Instant.from('2030-02-14T17:00:00Z');
@@ -41,6 +46,9 @@ describe('RoutePlanningService', () => {
   let prisma: any;
   let orders: any[];
   let claims: any[];
+  let pickups: any[];
+  let driversList: any[];
+  let driverUsers: any[];
   let zonesById: Record<string, unknown>;
   let driversById: Record<string, { id: string; vehicleCapacity: number | null }>;
   let captured: { gte?: unknown; lt?: unknown; filters: unknown[] };
@@ -50,6 +58,9 @@ describe('RoutePlanningService', () => {
   beforeEach(() => {
     orders = [];
     claims = [];
+    pickups = [];
+    driversList = [];
+    driverUsers = [];
     zonesById = {};
     driversById = {};
     captured = { filters: [] };
@@ -86,16 +97,43 @@ describe('RoutePlanningService', () => {
       }),
       all: jest.fn(async () => claims),
     };
+    const pickupChain: any = {
+      where: jest.fn((arg: unknown) => {
+        if (typeof arg === 'function') {
+          let ids: string[] | null = null;
+          (arg as (p: unknown) => void)({
+            orderId: { in: (list: string[]) => (ids = list) },
+          });
+          return {
+            all: async () =>
+              ids ? pickups.filter((p) => ids!.includes(p.orderId)) : pickups,
+          };
+        }
+        return pickupChain;
+      }),
+      all: async () => pickups,
+    };
     prisma = {
       order: orderChain,
       zone: { where: ({ id }: { id: string }) => ({ first: async () => zonesById[id] ?? null }) },
       driver: { where: ({ id }: { id: string }) => ({ first: async () => driversById[id] ?? null }) },
       client: {
-        orm: { public: { OrderClaim: claimChain } },
+        orm: {
+          public: {
+            OrderClaim: claimChain,
+            OrderPickup: pickupChain,
+            Driver: { all: async () => driversList },
+            User: {
+              where: ({ role }: { role: string }) => ({
+                all: async () => driverUsers.filter((u) => u.role === role),
+              }),
+            },
+          },
+        },
         transaction: writes,
       },
     };
-    service = new RoutePlanningService(prisma);
+    service = new RoutePlanningService(prisma, haversineRoads());
   });
 
   it('propone 2 rutas (4 + 1) para 5 pedidos de una zona y usa el instante programado como routeDate', async () => {
@@ -257,7 +295,7 @@ describe('RoutePlanningService', () => {
       const shopSettings: any = {
         getRouteTimeWindowMarginMinutes: jest.fn(async () => 60),
       };
-      const configuredService = new RoutePlanningService(prisma, undefined, undefined, shopSettings);
+      const configuredService = new RoutePlanningService(prisma, haversineRoads(), undefined, shopSettings);
 
       const result = await configuredService.propose({ date: DAY });
 
@@ -286,7 +324,7 @@ describe('RoutePlanningService', () => {
           updatedById: null,
         })),
       };
-      const configuredService = new RoutePlanningService(prisma, undefined, storeCoverage);
+      const configuredService = new RoutePlanningService(prisma, haversineRoads(), storeCoverage);
 
       const { proposals } = await configuredService.propose({ date: DAY });
       const expectedKm = roundKm(2 * haversineKm(storeLocation, orderPos));
@@ -308,7 +346,7 @@ describe('RoutePlanningService', () => {
       const storeCoverage: any = {
         getCoverage: jest.fn(async () => ({ configured: false })),
       };
-      const unconfiguredService = new RoutePlanningService(prisma, undefined, storeCoverage);
+      const unconfiguredService = new RoutePlanningService(prisma, haversineRoads(), storeCoverage);
 
       const { proposals } = await unconfiguredService.propose({ date: DAY });
 
@@ -530,7 +568,7 @@ describe('RoutePlanningService', () => {
         location: { lat: -1.241, lng: -78.619 },
       }),
     } as any;
-    const coveragePlanner = new RoutePlanningService(prisma, undefined, coverageService);
+    const coveragePlanner = new RoutePlanningService(prisma, haversineRoads(), coverageService);
     orders = [
       {
         id: 'store-order-1',
@@ -561,7 +599,7 @@ describe('RoutePlanningService', () => {
     const coverageService = {
       getCoverage: async () => ({ configured: false }),
     } as any;
-    const coveragePlanner = new RoutePlanningService(prisma, undefined, coverageService);
+    const coveragePlanner = new RoutePlanningService(prisma, haversineRoads(), coverageService);
     orders = [
       {
         id: 'store-order-1',
@@ -595,7 +633,7 @@ describe('RoutePlanningService', () => {
         location: { lat: -1.241, lng: -78.619 },
       }),
     } as any;
-    const coveragePlanner = new RoutePlanningService(prisma, undefined, coverageService);
+    const coveragePlanner = new RoutePlanningService(prisma, haversineRoads(), coverageService);
     const zNoDepot = zone('z-nodepot', 'NOR-02', null);
     orders = [
       {
@@ -631,7 +669,7 @@ describe('RoutePlanningService', () => {
         location: { lat: -1.241, lng: -78.619 },
       }),
     } as any;
-    const coveragePlanner = new RoutePlanningService(prisma, undefined, coverageService);
+    const coveragePlanner = new RoutePlanningService(prisma, haversineRoads(), coverageService);
     orders = Array.from({ length: MAX_ORDERS_PER_ZONE + 1 }, (_, i) => ({
       id: 'o-' + i,
       zoneId: null,
@@ -728,7 +766,7 @@ describe('RoutePlanningService', () => {
       expect(result.summary).toMatchObject({ candidateOrders: 3, plannedOrders: 1, excludedOrders: 2, routes: 1 });
     });
 
-    it('mantiene el tope independiente de 4 paradas aunque el vehículo soporte 10 unidades y cuenta pedidos legados sin ítems como 1', async () => {
+    it('permite más de 4 paradas cuando la capacidad del vehículo lo soporta (10 unidades, 5 pedidos legados -> 1 ruta de 5 paradas) y respeta MAX_ROUTE_STOPS', async () => {
       const z = zone('z1', 'CEN-01');
       driversById['driver-cap-10'] = { id: 'driver-cap-10', vehicleCapacity: 10 };
       orders = ['a', 'b', 'c', 'd', 'e'].map((id) => order(id, z, { items: [] }));
@@ -736,14 +774,177 @@ describe('RoutePlanningService', () => {
       const result = await service.propose({ date: DAY, driverId: 'driver-cap-10' });
 
       expect(result.capacity).toBe(10);
-      expect(result.proposals).toHaveLength(2);
-      expect(result.proposals.map((p) => p.orderIds.length).sort((a, b) => a - b)).toEqual([1, 4]);
-      expect(result.proposals.map((p) => p.loadUnits).sort((a, b) => a - b)).toEqual([1, 4]);
+      expect(result.proposals).toHaveLength(1);
+      expect(result.proposals[0]!.orderIds).toHaveLength(5);
+      expect(result.proposals[0]!.loadUnits).toBe(5);
+
+      driversById['driver-cap-60'] = { id: 'driver-cap-60', vehicleCapacity: 60 };
+      orders = Array.from({ length: MAX_ROUTE_STOPS + 1 }, (_, i) =>
+        order(`s${String(i).padStart(2, '0')}`, z, { items: [] }),
+      );
+
+      const cappedResult = await service.propose({ date: DAY, driverId: 'driver-cap-60' });
+
+      expect(cappedResult.proposals.map((p) => p.orderIds.length).sort((a, b) => a - b)).toEqual([
+        1,
+        MAX_ROUTE_STOPS,
+      ]);
     });
 
     it('responde 404 si el driverId indicado no existe', async () => {
       await expect(service.propose({ date: DAY, driverId: 'missing-driver' })).rejects.toThrow(NotFoundException);
       expect(writes).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('flota disponible, déficits por ventanas solapadas, reloj operativo y retiro en tienda', () => {
+    const atLocal = (hhmm: string) => Temporal.Instant.from(`${DAY}T${hhmm}:00-05:00`);
+
+    it('resuelve capacidades disponibles de flota heterogénea [6, 4] y agrupa 10 pedidos de 1 unidad en 2 rutas (6 + 4)', async () => {
+      const z = zone('z1', 'CEN-01');
+      driverUsers = [
+        { id: 'u1', role: 'DRIVER' },
+        { id: 'u2', role: 'DRIVER' },
+        { id: 'u3', role: 'DRIVER' },
+        { id: 'u-admin', role: 'ADMIN' },
+      ];
+      driversList = [
+        { id: 'd-small', userId: 'u1', vehicleCapacity: null },
+        { id: 'd-large', userId: 'u2', vehicleCapacity: 6 },
+        { id: 'd-absent', userId: 'u3', vehicleCapacity: 12 },
+        { id: 'd-non-driver', userId: 'u-admin', vehicleCapacity: 10 },
+      ];
+      const availability: any = {
+        effective: jest.fn(async (driverId: string) => ({
+          isAvailable: driverId !== 'd-absent',
+        })),
+      };
+      const fleetService = new RoutePlanningService(
+        prisma,
+        haversineRoads(),
+        undefined,
+        undefined,
+        availability,
+      );
+      orders = Array.from({ length: 10 }, (_, i) =>
+        order(`o${String(i + 1).padStart(2, '0')}`, z, {
+          deliveryLat: -1.242 - i * 0.0005,
+          items: [{ quantity: 1 }],
+        }),
+      );
+
+      const result = await fleetService.propose({ date: DAY });
+
+      expect(result.fleet).toEqual({
+        availableDrivers: 2,
+        capacities: [6, 4],
+        maxCapacity: 6,
+        overlappingWindows: [],
+      });
+      expect(result.capacity).toBe(6);
+      expect(result.proposals).toHaveLength(2);
+      expect(result.proposals.map((p) => p.orderIds.length).sort((a, b) => b - a)).toEqual([6, 4]);
+      expect(result.proposals.map((p) => p.loadUnits).sort((a, b) => b - a)).toEqual([6, 4]);
+      expect(result.proposals.every((p) => p.exceedsAvailableFleet === undefined)).toBe(true);
+    });
+
+    it('detecta déficit en fleet.overlappingWindows y marca exceedsAvailableFleet en las rutas excedentes', async () => {
+      const z1 = zone('z1', 'CEN-01');
+      const z2 = zone('z2', 'FIC-02', [-1.249, -78.632]);
+      const z3 = zone('z3', 'HUA-03', [-1.259, -78.642]);
+      driverUsers = [
+        { id: 'u1', role: 'DRIVER' },
+        { id: 'u2', role: 'DRIVER' },
+      ];
+      driversList = [
+        { id: 'd1', userId: 'u1', vehicleCapacity: 6, isActive: true, isAvailable: true },
+        { id: 'd2', userId: 'u2', vehicleCapacity: 4, isActive: true, isAvailable: true },
+      ];
+      orders = [
+        order('o-low-load', z1, { scheduledDeliveryDate: atLocal('10:10'), items: [{ quantity: 1 }] }),
+        order('o-high-load', z2, { scheduledDeliveryDate: atLocal('10:00'), items: [{ quantity: 4 }] }),
+        order('o-mid-load', z3, { scheduledDeliveryDate: atLocal('10:05'), items: [{ quantity: 2 }] }),
+      ];
+
+      const result = await service.propose({ date: DAY });
+
+      expect(result.fleet.availableDrivers).toBe(2);
+      expect(result.fleet.overlappingWindows).toHaveLength(1);
+      expect(result.fleet.overlappingWindows[0]).toMatchObject({
+        routesRequired: 3,
+        availableDrivers: 2,
+        deficit: 1,
+      });
+      const exceeded = result.proposals.filter((p) => p.exceedsAvailableFleet);
+      expect(exceeded).toHaveLength(1);
+      expect(exceeded[0]!.orderIds).toEqual(['o-low-load']);
+    });
+
+    it('ancla las rutas vencidas de hoy al reloj actual (max(scheduledMs, nowMs)) para detectar solapamiento real y marca hasOverdueStops', async () => {
+      const z1 = zone('z1', 'CEN-01');
+      const z2 = zone('z2', 'FIC-02', [-1.249, -78.632]);
+      const nowMock = atLocal('15:00');
+      const spy = jest.spyOn(Temporal.Now, 'instant').mockReturnValue(nowMock);
+      try {
+        driverUsers = [{ id: 'u1', role: 'DRIVER' }];
+        driversList = [{ id: 'd1', userId: 'u1', vehicleCapacity: 4, isActive: true, isAvailable: true }];
+        // 09:00 y 12:00 están separadas por 3h, pero ambas vencidas respecto a las 15:00 de hoy.
+        orders = [
+          order('early-overdue', z1, { scheduledDeliveryDate: atLocal('09:00'), items: [{ quantity: 1 }] }),
+          order('noon-overdue', z2, { scheduledDeliveryDate: atLocal('12:00'), items: [{ quantity: 2 }] }),
+        ];
+
+        const todayResult = await service.propose({ date: DAY });
+
+        expect(todayResult.isToday).toBe(true);
+        expect(todayResult.proposals).toHaveLength(2);
+        expect(todayResult.proposals.every((p) => p.hasOverdueStops === true)).toBe(true);
+        expect(todayResult.fleet.overlappingWindows).toEqual([
+          {
+            windowStart: nowMock.toString(),
+            windowEnd: nowMock.add({ minutes: DEFAULT_TIME_WINDOW_MARGIN_MINUTES }).toString(),
+            routesRequired: 2,
+            availableDrivers: 1,
+            deficit: 1,
+          },
+        ]);
+        expect(todayResult.proposals.find((p) => p.orderIds[0] === 'early-overdue')!.exceedsAvailableFleet).toBeUndefined();
+        expect(todayResult.proposals.find((p) => p.orderIds[0] === 'noon-overdue')!.exceedsAvailableFleet).toBe(true);
+
+        // En una fecha distinta de hoy no se aplica el anclaje al reloj ni hasOverdueStops.
+        const previewDay = '2030-02-15';
+        orders = [
+          order('p1', z1, { scheduledDeliveryDate: Temporal.Instant.from(`${previewDay}T09:00:00-05:00`) }),
+          order('p2', z2, { scheduledDeliveryDate: Temporal.Instant.from(`${previewDay}T12:00:00-05:00`) }),
+        ];
+        const previewResult = await service.propose({ date: previewDay });
+        expect(previewResult.isToday).toBe(false);
+        expect(previewResult.fleet.overlappingWindows).toEqual([]);
+        expect(previewResult.proposals.every((p) => p.hasOverdueStops === undefined)).toBe(true);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('filtra pedidos que ya tienen un OrderPickup registrado antes de planificar', async () => {
+      const z = zone('z1', 'CEN-01');
+      orders = [
+        order('delivery-order', z),
+        order('store-pickup-order', z),
+      ];
+      pickups = [{ orderId: 'store-pickup-order' }];
+
+      const result = await service.propose({ date: DAY });
+
+      expect(result.proposals).toHaveLength(1);
+      expect(result.proposals[0]!.orderIds).toEqual(['delivery-order']);
+      expect(result.excluded).toEqual([]);
+      expect(result.summary).toMatchObject({
+        candidateOrders: 1,
+        plannedOrders: 1,
+        excludedOrders: 0,
+        routes: 1,
+      });
     });
   });
 });
