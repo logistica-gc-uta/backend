@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'5c8e1dbf367275ce7a022e294fe648c04bfa2b3e53d2e55a499fce569a77212c'>;
+  StorageHashBase<'55eb8b3cd0f8ace944fb2e16f794a7bbdd3b6c39ed43431fa6154c8f800da189'>;
 export type ExecutionHash =
   ExecutionHashBase<'82584b87e80021070bb3a92b18bff87f033d048b2d78bebee192d108125bb417'>;
 export type ProfileHash =
@@ -421,6 +421,7 @@ export type FieldOutputTypes = {
       readonly unitNumber: CodecTypes['pg/int4@1']['output'];
       readonly productId: CodecTypes['pg/text@1']['output'];
       readonly attemptId: CodecTypes['pg/text@1']['output'] | null;
+      readonly emergencyId: CodecTypes['pg/text@1']['output'] | null;
       readonly declaredAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly declaredById: CodecTypes['pg/text@1']['output'];
       readonly declarationRequestId: CodecTypes['pg/text@1']['output'];
@@ -842,6 +843,7 @@ export type FieldInputTypes = {
       readonly unitNumber: CodecTypes['pg/int4@1']['input'];
       readonly productId: CodecTypes['pg/text@1']['input'];
       readonly attemptId: CodecTypes['pg/text@1']['input'] | null;
+      readonly emergencyId: CodecTypes['pg/text@1']['input'] | null;
       readonly declaredAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly declaredById: CodecTypes['pg/text@1']['input'];
       readonly declarationRequestId: CodecTypes['pg/text@1']['input'];
@@ -1266,6 +1268,7 @@ export type StorageColumnTypes = {
       readonly declarationRequestId: CodecTypes['pg/text@1']['output'];
       readonly declaredAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
       readonly declaredById: CodecTypes['pg/text@1']['output'];
+      readonly emergencyId: CodecTypes['pg/text@1']['output'] | null;
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly orderId: CodecTypes['pg/text@1']['output'];
       readonly orderItemId: CodecTypes['pg/text@1']['output'];
@@ -1687,6 +1690,7 @@ export type StorageColumnInputTypes = {
       readonly declarationRequestId: CodecTypes['pg/text@1']['input'];
       readonly declaredAt: CodecTypes['pg/timestamptz-temporal@1']['input'];
       readonly declaredById: CodecTypes['pg/text@1']['input'];
+      readonly emergencyId: CodecTypes['pg/text@1']['input'] | null;
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly orderId: CodecTypes['pg/text@1']['input'];
       readonly orderItemId: CodecTypes['pg/text@1']['input'];
@@ -2321,6 +2325,7 @@ export namespace Models {
     unitNumber: CodecTypes['pg/int4@1']['output'];
     productId: CodecTypes['pg/text@1']['output'];
     attemptId: CodecTypes['pg/text@1']['output'] | null;
+    emergencyId: CodecTypes['pg/text@1']['output'] | null;
     declaredAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     declaredById: CodecTypes['pg/text@1']['output'];
     declarationRequestId: CodecTypes['pg/text@1']['output'];
@@ -2338,6 +2343,7 @@ export namespace Models {
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     cancelledBy: public_User | null;
     declaredBy: public_User;
+    emergency: public_RouteEmergency | null;
     movements: public_ProductStockMovement[];
     order: public_Order;
     orderItem: public_OrderItem;
@@ -2347,6 +2353,7 @@ export namespace Models {
     readonly [RelationKeys]?:
       | 'cancelledBy'
       | 'declaredBy'
+      | 'emergency'
       | 'movements'
       | 'order'
       | 'orderItem'
@@ -2382,9 +2389,10 @@ export namespace Models {
     createdAt: CodecTypes['pg/timestamptz-temporal@1']['output'];
     closedBy: public_User | null;
     declaredBy: public_User;
+    itemLosses: public_OrderItemLoss[];
     route: public_Route;
     unitRecoveries: public_RouteUnitRecovery[];
-    readonly [RelationKeys]?: 'closedBy' | 'declaredBy' | 'route' | 'unitRecoveries';
+    readonly [RelationKeys]?: 'closedBy' | 'declaredBy' | 'itemLosses' | 'route' | 'unitRecoveries';
   };
   export type public_RouteUnitRecovery = {
     id: CodecTypes['pg/text@1']['output'];
@@ -4276,6 +4284,11 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/text@1';
                   readonly nullable: true;
                 };
+                readonly emergencyId: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
                 readonly declaredAt: {
                   readonly nativeType: 'timestamptz';
                   readonly codecId: 'pg/timestamptz-temporal@1';
@@ -4362,11 +4375,24 @@ type ContractBase = Omit<
               ];
               indexes: readonly [
                 {
-                  readonly name: 'active_order_item_loss_unit_2b134a02';
+                  readonly name: 'active_order_item_loss_emergency_unit_5034e1e7';
+                  readonly prefix: 'active_order_item_loss_emergency_unit';
+                  readonly columns: readonly ['emergencyId', 'orderItemId', 'unitNumber'];
+                  readonly where: '("cancelledAt" IS NULL AND "emergencyId" IS NOT NULL)';
+                  readonly unique: true;
+                },
+                {
+                  readonly name: 'active_order_item_loss_unit_151ab58d';
                   readonly prefix: 'active_order_item_loss_unit';
                   readonly columns: readonly ['orderItemId', 'unitNumber'];
-                  readonly where: '("cancelledAt" IS NULL)';
+                  readonly where: '("cancelledAt" IS NULL AND "emergencyId" IS NULL)';
                   readonly unique: true;
+                },
+                {
+                  readonly name: 'orderItemLoss_emergencyId_idx_ced4adec';
+                  readonly prefix: 'orderItemLoss_emergencyId_idx';
+                  readonly columns: readonly ['emergencyId'];
+                  readonly unique: false;
                 },
                 {
                   readonly name: 'orderItemLoss_orderId_idx_d284871b';
@@ -4445,6 +4471,18 @@ type ContractBase = Omit<
                   readonly target: {
                     readonly namespaceId: 'public' & NamespaceId;
                     readonly tableName: 'product';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'orderItemLoss';
+                    readonly columns: readonly ['emergencyId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'routeEmergency';
                     readonly columns: readonly ['id'];
                   };
                 },
@@ -8214,6 +8252,10 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
               };
+              readonly emergencyId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
               readonly declaredAt: {
                 readonly nullable: false;
                 readonly type: {
@@ -8309,6 +8351,18 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['id'];
                 };
               };
+              readonly emergency: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'RouteEmergency';
+                };
+                readonly cardinality: 'N:1';
+                readonly nullable: true;
+                readonly on: {
+                  readonly localFields: readonly ['emergencyId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
               readonly movements: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -8385,6 +8439,7 @@ type ContractBase = Omit<
                 readonly unitNumber: { readonly column: 'unitNumber' };
                 readonly productId: { readonly column: 'productId' };
                 readonly attemptId: { readonly column: 'attemptId' };
+                readonly emergencyId: { readonly column: 'emergencyId' };
                 readonly declaredAt: { readonly column: 'declaredAt' };
                 readonly declaredById: { readonly column: 'declaredById' };
                 readonly declarationRequestId: { readonly column: 'declarationRequestId' };
@@ -9372,6 +9427,17 @@ type ContractBase = Omit<
                 readonly on: {
                   readonly localFields: readonly ['declaredById'];
                   readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly itemLosses: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'OrderItemLoss';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['emergencyId'];
                 };
               };
               readonly route: {

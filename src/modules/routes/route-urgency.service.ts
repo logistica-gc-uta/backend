@@ -33,6 +33,7 @@ import {
 } from './algorithms/clarke-wright.js';
 import { haversineKm } from './algorithms/geo.util.js';
 import { matrixDistance, uniquePoints } from './algorithms/matrix-distance.js';
+import { matchesEmergencyUnitLoss } from './incident-inbox-projection.js';
 import { RoadMetricsService } from './road/road-metrics.service.js';
 import { RoadMetricsError } from './road/road-metrics.types.js';
 import {
@@ -123,13 +124,25 @@ export class RouteUrgencyService {
         const activeLosses = db.OrderItemLoss
           ? await db.OrderItemLoss.where({ orderId, cancelledAt: null }).all()
           : [];
+        const emergenciesById = new Map<
+          string,
+          { id: string; declaredAt: Temporal.Instant }
+        >();
+        if (db.RouteEmergency) {
+          for (const id of new Set(recoveries.map((u) => u.emergencyId))) {
+            const em = await db.RouteEmergency.where({ id }).first();
+            if (em) emergenciesById.set(id, em);
+          }
+        }
         const resolved = recoveries.every((unit) => {
           if (unit.recoveredAt != null) return true;
           return activeLosses.some(
             (loss) =>
-              loss.orderItemId === unit.orderItemId &&
-              loss.unitNumber === unit.unitNumber &&
-              loss.replacementPreparedAt != null,
+              matchesEmergencyUnitLoss(
+                loss,
+                unit,
+                emergenciesById.get(unit.emergencyId) ?? null,
+              ) && loss.replacementPreparedAt != null,
           );
         });
         if (!resolved) reasons.push('RECOVERY_PENDING');
@@ -651,15 +664,33 @@ export class RouteUrgencyService {
               await snapshotDb.Route.where({ status: 'INTERRUPTED' }).all()
             ).sort((a, b) => a.id.localeCompare(b.id))
           : [];
+        const matchUnitLoss = (
+          unit: (typeof allRecoveries)[number],
+        ) => {
+          const losses = activeLossByOrder.get(unit.orderId) ?? [];
+          const emergency = emergencyById.get(unit.emergencyId) ?? null;
+          return losses.find((l) => {
+            if (
+              l.orderItemId !== unit.orderItemId ||
+              l.unitNumber !== unit.unitNumber
+            ) {
+              return false;
+            }
+            if (l.emergencyId != null) {
+              return l.emergencyId === unit.emergencyId;
+            }
+            if (!emergency || !l.declaredAt || !emergency.declaredAt) {
+              return true;
+            }
+            return (
+              Temporal.Instant.compare(l.declaredAt, emergency.declaredAt) >= 0
+            );
+          });
+        };
         const snapshotPendingRecoveries = allRecoveries
           .filter((unit) => {
             if (unit.recoveredAt != null) return false;
-            const losses = activeLossByOrder.get(unit.orderId) ?? [];
-            const activeLoss = losses.find(
-              (l) =>
-                l.orderItemId === unit.orderItemId &&
-                l.unitNumber === unit.unitNumber,
-            );
+            const activeLoss = matchUnitLoss(unit);
             return !activeLoss || activeLoss.replacementPreparedAt == null;
           })
           .sort(
@@ -670,12 +701,7 @@ export class RouteUrgencyService {
               a.unitNumber - b.unitNumber,
           )
           .map((unit) => {
-            const losses = activeLossByOrder.get(unit.orderId) ?? [];
-            const activeLoss = losses.find(
-              (l) =>
-                l.orderItemId === unit.orderItemId &&
-                l.unitNumber === unit.unitNumber,
-            );
+            const activeLoss = matchUnitLoss(unit);
             return {
               recoveryId: unit.id,
               emergencyId: unit.emergencyId,

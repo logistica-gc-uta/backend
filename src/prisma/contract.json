@@ -2813,6 +2813,13 @@
                   "kind": "scalar"
                 }
               },
+              "emergencyId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "id": {
                 "nullable": false,
                 "type": {
@@ -2928,6 +2935,22 @@
                 },
                 "to": {
                   "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "emergency": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "emergencyId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "RouteEmergency",
                   "namespace": "public"
                 }
               },
@@ -3055,6 +3078,9 @@
                 },
                 "declaredById": {
                   "column": "declaredById"
+                },
+                "emergencyId": {
+                  "column": "emergencyId"
                 },
                 "id": {
                   "column": "id"
@@ -4653,6 +4679,21 @@
                 },
                 "to": {
                   "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "itemLosses": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "emergencyId"
+                  ]
+                },
+                "to": {
+                  "model": "OrderItemLoss",
                   "namespace": "public"
                 }
               },
@@ -8688,6 +8729,11 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "emergencyId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "id": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -8801,6 +8847,22 @@
                 {
                   "source": {
                     "columns": [
+                      "emergencyId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "orderItemLoss"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "routeEmergency"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
                       "declaredById"
                     ],
                     "namespaceId": "public",
@@ -8866,13 +8928,24 @@
               "indexes": [
                 {
                   "columns": [
+                    "emergencyId",
                     "orderItemId",
                     "unitNumber"
                   ],
-                  "name": "active_order_item_loss_unit_2b134a02",
+                  "name": "active_order_item_loss_emergency_unit_5034e1e7",
+                  "prefix": "active_order_item_loss_emergency_unit",
+                  "unique": true,
+                  "where": "(\"cancelledAt\" IS NULL AND \"emergencyId\" IS NOT NULL)"
+                },
+                {
+                  "columns": [
+                    "orderItemId",
+                    "unitNumber"
+                  ],
+                  "name": "active_order_item_loss_unit_151ab58d",
                   "prefix": "active_order_item_loss_unit",
                   "unique": true,
-                  "where": "(\"cancelledAt\" IS NULL)"
+                  "where": "(\"cancelledAt\" IS NULL AND \"emergencyId\" IS NULL)"
                 },
                 {
                   "columns": [
@@ -8888,6 +8961,14 @@
                   ],
                   "name": "orderItemLoss_declaredById_idx_dd0c7dda",
                   "prefix": "orderItemLoss_declaredById_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "emergencyId"
+                  ],
+                  "name": "orderItemLoss_emergencyId_idx_ced4adec",
+                  "prefix": "orderItemLoss_emergencyId_idx",
                   "unique": false
                 },
                 {
@@ -11665,7 +11746,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "5c8e1dbf367275ce7a022e294fe648c04bfa2b3e53d2e55a499fce569a77212c"
+    "storageHash": "55eb8b3cd0f8ace944fb2e16f794a7bbdd3b6c39ed43431fa6154c8f800da189"
   },
   "execution": {
     "executionHash": "82584b87e80021070bb3a92b18bff87f033d048b2d78bebee192d108125bb417",

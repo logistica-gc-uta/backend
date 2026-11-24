@@ -126,6 +126,8 @@ export interface IncidentRouteEmergencyLike extends RouteEmergencyLike {
 export interface IncidentActiveLossLike {
   orderItemId: string;
   unitNumber: number;
+  emergencyId?: string | null;
+  declaredAt?: Temporal.Instant | null;
   replacementPreparedAt: Temporal.Instant | null;
 }
 
@@ -191,9 +193,36 @@ function readStringField(container: unknown, key: string): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
+export function matchesEmergencyUnitLoss(
+  loss: Pick<
+    IncidentActiveLossLike,
+    'orderItemId' | 'unitNumber' | 'emergencyId' | 'declaredAt'
+  >,
+  unit: Pick<
+    IncidentEmergencyUnitLike,
+    'emergencyId' | 'orderItemId' | 'unitNumber'
+  >,
+  emergency: Pick<RouteEmergencyLike, 'id' | 'declaredAt'> | null,
+): boolean {
+  if (
+    loss.orderItemId !== unit.orderItemId ||
+    loss.unitNumber !== unit.unitNumber
+  ) {
+    return false;
+  }
+  if (loss.emergencyId != null) {
+    return loss.emergencyId === unit.emergencyId;
+  }
+  if (!emergency || !loss.declaredAt || !emergency.declaredAt) {
+    return true;
+  }
+  return Temporal.Instant.compare(loss.declaredAt, emergency.declaredAt) >= 0;
+}
+
 export function evaluateOrderRecoveryUnits(
   unitRecoveries: readonly IncidentEmergencyUnitLike[],
   activeLosses: readonly IncidentActiveLossLike[],
+  emergenciesById?: ReadonlyMap<string, Pick<RouteEmergencyLike, 'id' | 'declaredAt'>>,
 ): {
   totalUnitsCount: number;
   pendingUnitsCount: number;
@@ -202,10 +231,10 @@ export function evaluateOrderRecoveryUnits(
   let pendingUnitsCount = 0;
   for (const unit of unitRecoveries) {
     if (unit.recoveredAt != null) continue;
+    const emergency = emergenciesById?.get(unit.emergencyId) ?? null;
     const preparedLoss = activeLosses.some(
       (loss) =>
-        loss.orderItemId === unit.orderItemId &&
-        loss.unitNumber === unit.unitNumber &&
+        matchesEmergencyUnitLoss(loss, unit, emergency) &&
         loss.replacementPreparedAt != null,
     );
     if (!preparedLoss) {
@@ -365,6 +394,7 @@ export function projectIncidentInboxItem(
   const recoveryUnits = evaluateOrderRecoveryUnits(
     unitRecoveries,
     activeLosses,
+    emergenciesById,
   );
   const activeEmergencyRef = emergencyCustodyActive
     ? selectActiveEmergencyForOrder(
@@ -382,6 +412,7 @@ export function projectIncidentInboxItem(
   const selectedEmergencyRecovery = evaluateOrderRecoveryUnits(
     selectedEmergencyUnits,
     activeLosses,
+    emergenciesById,
   );
 
   const emergency: IncidentEmergencyContext | null = activeEmergencyRef
