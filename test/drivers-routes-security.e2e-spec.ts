@@ -127,6 +127,8 @@ describe('Driver-owned routes (real PostgreSQL)', () => {
     for (const order of route.orders) {
       expect(Object.keys(order).sort()).toEqual([
         'deliveryAddress',
+        'deliveryLat',
+        'deliveryLng',
         'id',
         'scheduledDeliveryDate',
         'status',
