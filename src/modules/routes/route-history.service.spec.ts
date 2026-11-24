@@ -200,6 +200,8 @@ describe('Batched stable route history', () => {
         expect(admin.orders[0]).toMatchObject({ total: 12.75, stopOrder: 3 });
         expect(Object.keys(admin.orders[0]).sort()).toEqual([
           'deliveryAddress',
+          'deliveryLat',
+          'deliveryLng',
           'id',
           'routeId',
           'scheduledDeliveryDate',
@@ -211,6 +213,8 @@ describe('Batched stable route history', () => {
         const [driver] = await service.project(route);
         expect(Object.keys(driver.orders[0]).sort()).toEqual([
           'deliveryAddress',
+          'deliveryLat',
+          'deliveryLng',
           'id',
           'scheduledDeliveryDate',
           'status',
@@ -220,6 +224,50 @@ describe('Batched stable route history', () => {
       }
     },
   );
+  it('exposes deliveryLat, deliveryLng, and depot coordinates (zone or StoreCoverage) for driver navigation', async () => {
+    const { service, stopQuery } = setup();
+    stopQuery.all.mockResolvedValue([
+      {
+        id: 's1',
+        routeId: 'r-store',
+        orderId: 'o1',
+        sequence: 1,
+        outcome: 'PENDING',
+        isLegacy: false,
+        createdAt: timestamp,
+        order: {
+          id: 'o1',
+          deliveryAddress: 'Av. Cevallos',
+          status: 'ASSIGNED',
+          scheduledDeliveryDate: timestamp,
+          deliveryLat: -1.2415,
+          deliveryLng: -78.6195,
+        },
+      },
+    ]);
+    (service as any).prisma.client.orm.public.StoreCoverage = {
+      where: jest.fn().mockReturnThis(),
+      first: jest.fn().mockResolvedValue({
+        singletonKey: 'GLOBAL',
+        lat: -1.24908,
+        lng: -78.61675,
+      }),
+    };
+    const [storeRoute, zonedRoute]: any = await service.project([
+      { id: 'r-store', status: 'IN_PROGRESS', zone: null },
+      {
+        id: 'r-zoned',
+        status: 'ASSIGNED',
+        zone: { id: 'z1', depotLat: -1.25, depotLng: -78.62 },
+      },
+    ]);
+    expect(storeRoute.depot).toEqual({ lat: -1.24908, lng: -78.61675 });
+    expect(storeRoute.orders[0]).toMatchObject({
+      deliveryLat: -1.2415,
+      deliveryLng: -78.6195,
+    });
+    expect(zonedRoute.depot).toEqual({ lat: -1.25, lng: -78.62 });
+  });
   it('does not fetch attempts when all selected routes have no stops', async () => {
     const { service, stopQuery, attemptQuery } = setup();
     stopQuery.all.mockResolvedValue([]);
@@ -349,6 +397,55 @@ describe('Batched stable route history', () => {
     expect(released.events).toEqual([
       { kind: 'STARTED', actorId: 'driver-1', recordedAt: timestamp.toString() },
       { kind: 'RETURNED', actorId: 'admin-1', recordedAt: timestamp.toString() },
+    ]);
+  });
+
+  it('projects CANCELLED routes with preserved stops, CANCELLED event, and no fabricated start or return', async () => {
+    const { service, stopQuery, attemptQuery } = setup();
+    stopQuery.all.mockResolvedValue([
+      {
+        id: 's-cancel',
+        routeId: 'cancel-route',
+        orderId: 'o-cancel',
+        sequence: 1,
+        outcome: 'PENDING',
+        isLegacy: false,
+        createdAt: timestamp,
+        order: {
+          id: 'o-cancel',
+          routeId: null,
+          deliveryAddress: 'Addr Cancel',
+          status: 'PENDING',
+          scheduledDeliveryDate: timestamp,
+        },
+      },
+    ]);
+    attemptQuery.all.mockResolvedValue([]);
+
+    const [cancelled]: any = await service.project([
+      {
+        id: 'cancel-route',
+        status: 'CANCELLED',
+        startedAt: null,
+        startedById: null,
+        completedAt: null,
+        completedById: null,
+        returnedAt: null,
+        returnedById: null,
+        cancelledAt: timestamp,
+        cancelledById: 'admin-1',
+        cancelReason: 'Vehicle unavailable',
+      },
+    ]);
+
+    expect(cancelled.status).toBe('CANCELLED');
+    expect(cancelled.cancelReason).toBe('Vehicle unavailable');
+    expect(cancelled.stops).toHaveLength(1);
+    expect(cancelled.orders).toEqual([
+      expect.objectContaining({ id: 'o-cancel', status: 'PENDING', stopOrder: 1 }),
+    ]);
+    expect(cancelled.events).toEqual([
+      { kind: 'CANCELLED', actorId: 'admin-1', recordedAt: timestamp.toString() },
     ]);
   });
 });

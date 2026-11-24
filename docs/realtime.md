@@ -22,7 +22,7 @@ All events use `{ version: 1, eventId, occurredAt, data }`. `eventId` is a UUID 
 |---|---|---|
 | `order.status.updated` | `orderId`, optional `status`, optional `requiresAdministrativeReview` | ADMIN, owning CLIENT, currently assigned DRIVER |
 | `route.updated` | `routeId`, optional `status` | ADMIN, currently assigned DRIVER |
-| `dispatch.incident.updated` | `orderId`, optional allow-listed `action` (`CONFIRM`, `REJECT`, `REORDER`, `MOVE`, `REASSIGN_DRIVER`, `PRIORITIZE`, `CONTACT`, `RESCHEDULE`), optional `requiresAdministrativeReview` | ADMIN only |
+| `dispatch.incident.updated` | `orderId` and/or `routeId`, optional `emergencyId` (emergency events, #85), optional allow-listed `action` (`CONFIRM`, `REJECT`, `REORDER`, `MOVE`, `REASSIGN_DRIVER`, `PRIORITIZE`, `CONTACT`, `RESCHEDULE`), optional `requiresAdministrativeReview` | ADMIN only |
 | `driver.availability.updated` | `driverId`, `available` | ADMIN and that DRIVER, after confirmed depot return only |
 
 These are authorization-scoped invalidation hints, not a claim that the client has the complete current state. After each event, clients should fetch the relevant REST resource and render the authorized response. A successful subscription ACK only confirms authorization to join; it is not a ready-state or replay boundary.

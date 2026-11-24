@@ -118,6 +118,7 @@ describe('Shop Settings v1.2 HTTP contract & DB verification (owned PostgreSQL f
         },
         limits: {
           maxUnitsPerSkuPerOrder: 10,
+          maxUnitsPerOrder: null,
         },
         deliverySchedule: {
           timeZone: 'America/Guayaquil',
@@ -177,6 +178,7 @@ describe('Shop Settings v1.2 HTTP contract & DB verification (owned PostgreSQL f
         },
         limits: {
           maxUnitsPerSkuPerOrder: 10,
+          maxUnitsPerOrder: null,
         },
         deliverySchedule: {
           timeZone: 'America/Guayaquil',

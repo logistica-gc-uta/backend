@@ -16,6 +16,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
+import { assertDriverActive } from '../drivers/driver-status.util.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { businessDay, isSameBusinessDay, nowInstant } from '../../common/temporal.util.js';
 import { OrderStatus } from '../orders/dto/update-order-status.dto.js';
@@ -34,9 +35,9 @@ import {
 } from '../realtime/realtime.contract.js';
 import {
   assertVehicleCapacity,
-  orderDemandUnits,
+  loadRouteUnitsForOrders,
+  MAX_ROUTE_STOPS,
   resolveVehicleCapacity,
-  routeLoadUnits,
 } from './vehicle-capacity.js';
 
 type Transaction = Parameters<
@@ -155,23 +156,7 @@ export class RouteAssignmentService {
     tx: Transaction,
     orderIds: readonly string[],
   ): Promise<number> {
-    if (!orderIds.length) return 0;
-    const orderItemModel = tx.orm.public.OrderItem;
-    if (!orderItemModel) {
-      return orderIds.length;
-    }
-    const items = await orderItemModel
-      .where((item) => item.orderId.in([...orderIds]))
-      .all();
-    const byOrder = new Map<string, Array<{ quantity: number }>>();
-    for (const item of items) {
-      const list = byOrder.get(item.orderId);
-      if (list) list.push(item);
-      else byOrder.set(item.orderId, [item]);
-    }
-    return routeLoadUnits(
-      orderIds.map((orderId) => orderDemandUnits(byOrder.get(orderId))),
-    );
+    return loadRouteUnitsForOrders(tx.orm.public.OrderItem, orderIds);
   }
 
   private async lockOrders(
@@ -239,10 +224,12 @@ export class RouteAssignmentService {
     if (
       !Array.isArray(orderIds) ||
       orderIds.length < 1 ||
-      orderIds.length > 4 ||
+      orderIds.length > MAX_ROUTE_STOPS ||
       new Set(orderIds).size !== orderIds.length
     )
-      throw new BadRequestException('One to four distinct orders required');
+      throw new BadRequestException(
+        `1 to ${MAX_ROUTE_STOPS} distinct orders required`,
+      );
   }
 
   // Rebuild only verified pre-start stops, preserving their identities. Deletion
@@ -348,7 +335,7 @@ export class RouteAssignmentService {
     const changes: RealtimeChange[] = [];
     const result = await this.transaction(actorId, async (tx) => {
       // Hold the shared driver before creating the route and locking sorted orders.
-      await this.lockDriver(tx, dto.driverId);
+      assertDriverActive(await this.lockDriver(tx, dto.driverId));
       const zoneId = dto.zoneId ?? null;
       if (zoneId != null && !(await tx.orm.public.Zone.where({ id: zoneId }).first()))
         throw new NotFoundException('Zone not found');
@@ -423,6 +410,7 @@ export class RouteAssignmentService {
     assertOperationalDay(date);
     const driver =
       dto.driverId != null ? await this.lockDriver(tx, dto.driverId) : null;
+    assertDriverActive(driver);
     const zoneId = dto.zoneId ?? null;
     if (zoneId != null && !(await tx.orm.public.Zone.where({ id: zoneId }).first()))
       throw new NotFoundException('Zone not found');
@@ -491,6 +479,8 @@ export class RouteAssignmentService {
     workflow: 'planning' | 'urgent' = 'planning',
   ): Promise<RouteAssignmentResponseDto> {
     const driver = await this.lockDriver(tx, dto.driverId);
+    // La baja operativa se valida con la fila del repartidor ya bloqueada: una baja concurrente espera a esta transacción (#82).
+    assertDriverActive(driver);
     const route = await tx.orm.public.Route.where({ id }).update({ id });
     if (!route) throw new NotFoundException('Route not found');
     if (
@@ -529,7 +519,6 @@ export class RouteAssignmentService {
     );
     if (
       ordered.length < 1 ||
-      ordered.length > 4 ||
       ordered.some(
         (stop, index) =>
           stop.isLegacy ||
@@ -538,7 +527,7 @@ export class RouteAssignmentService {
       )
     )
       throw new ConflictException(
-        'Verified one-to-four pending stops required',
+        'Verified contiguous pending stops required',
       );
     const claims = await tx.orm.public.OrderClaim.where({
       routeId: id,

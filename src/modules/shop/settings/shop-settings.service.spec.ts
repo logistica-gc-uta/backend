@@ -17,6 +17,7 @@ describe('ShopSettingsService (unit)', () => {
     taxEnabled: true,
     taxRateBps: 1500,
     maxUnitsPerSkuPerOrder: 10,
+    maxUnitsPerOrder: null,
     deliveryTimeZone: 'America/Guayaquil',
     deliveryStartTime: '07:00',
     deliveryEndTime: '17:00',
@@ -100,6 +101,7 @@ describe('ShopSettingsService (unit)', () => {
         },
         limits: {
           maxUnitsPerSkuPerOrder: 10,
+          maxUnitsPerOrder: null,
         },
         deliverySchedule: {
           timeZone: 'America/Guayaquil',
@@ -153,6 +155,7 @@ describe('ShopSettingsService (unit)', () => {
         },
         limits: {
           maxUnitsPerSkuPerOrder: 10,
+          maxUnitsPerOrder: null,
         },
         deliverySchedule: {
           timeZone: 'America/Guayaquil',
@@ -226,6 +229,22 @@ describe('ShopSettingsService (unit)', () => {
       ).rejects.toThrow(HttpException);
     });
 
+    it.each([
+      ['0', 0],
+      ['1001', 1001],
+      ['decimal', 1.5],
+      ['texto', '50'],
+    ])('rechaza un máximo total inválido (%s) sin modificar la configuración (#83)', async (_name, value) => {
+      await expect(
+        service.patchAdminSettings('admin-1', { expectedVersion: 1, limits: { maxUnitsPerOrder: value as never } }),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(mockPrisma.client.transaction).not.toHaveBeenCalled();
+    });
+
+    it('rechaza un limits vacío: debe traer al menos un máximo (#83)', async () => {
+      await expect(service.patchAdminSettings('admin-1', { expectedVersion: 1, limits: {} })).rejects.toMatchObject({ status: 400 });
+    });
+
     it('throws 400 VALIDATION_ERROR when partial schedule causes startTime >= endTime', async () => {
       // Current DB endTime is 17:00. Trying to set startTime to 18:00 must fail!
       await expect(
@@ -251,6 +270,8 @@ describe('ShopSettingsService (unit)', () => {
     it.each([
       ['tax.rateBps lower bound 0', { expectedVersion: 1, tax: { rateBps: 0 } }, (res: any) => expect(res.tax.rateBps).toBe(0)],
       ['tax.rateBps upper bound 10000', { expectedVersion: 1, tax: { rateBps: 10000 } }, (res: any) => expect(res.tax.rateBps).toBe(10000)],
+      ['limits.maxUnitsPerOrder fija el tope total (#83)', { expectedVersion: 1, limits: { maxUnitsPerOrder: 50 } }, (res: any) => expect(res.limits).toEqual({ maxUnitsPerSkuPerOrder: 10, maxUnitsPerOrder: 50 })],
+      ['limits.maxUnitsPerOrder cota superior 1000 (#83)', { expectedVersion: 1, limits: { maxUnitsPerOrder: 1000 } }, (res: any) => expect(res.limits.maxUnitsPerOrder).toBe(1000)],
       ['limits.maxUnits lower bound 1', { expectedVersion: 1, limits: { maxUnitsPerSkuPerOrder: 1 } }, (res: any) => expect(res.limits.maxUnitsPerSkuPerOrder).toBe(1)],
       ['limits.maxUnits upper bound 100', { expectedVersion: 1, limits: { maxUnitsPerSkuPerOrder: 100 } }, (res: any) => expect(res.limits.maxUnitsPerSkuPerOrder).toBe(100)],
       ['schedule full-day boundary 00:00 < 23:59', { expectedVersion: 1, deliverySchedule: { startTime: '00:00', endTime: '23:59' } }, (res: any) => {

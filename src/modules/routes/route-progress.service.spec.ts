@@ -330,18 +330,18 @@ describe('Route progress transactional decisions', () => {
     );
   });
   it('rejects completion when attempt identity does not match the resolved visit', async () => {
-    await service.fail('route', 'stop', 'actor', dto);
+    const failed = await service.fail('route', 'stop', 'actor', dto);
     rows.DeliveryAttempt[0].driverId = 'other-driver';
     await expect(service.complete('route', 'actor')).rejects.toBeInstanceOf(
       ConflictException,
     );
     expect(rows.Route[0].completedAt).toBeUndefined();
-    expect(rows.OrderClaim[0].releasedAt).toBeNull();
+    expect(rows.OrderClaim[0].releasedAt?.toString()).toBe(failed.recordedAt);
   });
   it.each(['payload', 'context', 'timestamp'])(
     'rejects malformed canonical attempt %s',
     async (defect) => {
-      await service.fail('route', 'stop', 'actor', dto);
+      const failed = await service.fail('route', 'stop', 'actor', dto);
       if (defect === 'payload')
         rows.DeliveryAttempt[0].requestPayload.actorId = 'other';
       if (defect === 'context') rows.DeliveryAttempt[0].context = {};
@@ -352,7 +352,7 @@ describe('Route progress transactional decisions', () => {
       await expect(service.complete('route', 'actor')).rejects.toBeInstanceOf(
         ConflictException,
       );
-      expect(rows.OrderClaim[0].releasedAt).toBeNull();
+      expect(rows.OrderClaim[0].releasedAt?.toString()).toBe(failed.recordedAt);
     },
   );
   it('rejects an empty route even when no claims remain', async () => {
@@ -411,6 +411,125 @@ describe('Route progress transactional decisions', () => {
     await expect(service.cancelOrder('order')).resolves.toMatchObject({
       status: 'CANCELLED',
     });
+  });
+
+  it('releases the exact failed-stop claim in the same transaction while keeping administrative review', async () => {
+    const failed = await service.fail('route', 'stop', 'actor', dto);
+
+    expect(rows.Order[0]).toMatchObject({
+      status: 'ASSIGNED',
+      routeId: 'route',
+      requiresAdministrativeReview: true,
+    });
+    expect(rows.OrderClaim[0].releasedAt?.toString()).toBe(failed.recordedAt);
+
+    // A newer claim on another route is never touched when replaying the original failure.
+    rows.OrderClaim.push({
+      id: 'newer-claim',
+      routeId: 'route-2',
+      orderId: 'order',
+      claimedAt: Temporal.Now.instant(),
+      releasedAt: null,
+    });
+    await expect(service.fail('route', 'stop', 'actor', dto)).resolves.toEqual(
+      failed,
+    );
+    expect(rows.OrderClaim[1].releasedAt).toBeNull();
+  });
+
+  it('completes the original route from historical failed evidence after admin resolution, replan, or redelivery without touching newer claims', async () => {
+    rows.Order.push({
+      id: 'order-2',
+      routeId: 'route',
+      zoneId: 'zone',
+      status: 'ASSIGNED',
+      requiresAdministrativeReview: false,
+    });
+    rows.RouteStop.push({
+      id: 'stop-2',
+      routeId: 'route',
+      orderId: 'order-2',
+      sequence: 2,
+      isLegacy: false,
+      outcome: 'PENDING',
+    });
+    rows.OrderClaim.push({
+      id: 'claim-2',
+      routeId: 'route',
+      orderId: 'order-2',
+      claimedAt: Temporal.Now.instant(),
+      releasedAt: null,
+    });
+
+    await service.fail('route', 'stop', 'actor', dto);
+    // Simulate legitimate ADMIN resolution, replan onto route-2, and even redelivery before route completes.
+    rows.Order[0].status = 'DELIVERED';
+    rows.Order[0].routeId = 'route-2';
+    rows.Order[0].requiresAdministrativeReview = false;
+    rows.OrderClaim.push({
+      id: 'newer-claim',
+      routeId: 'route-2',
+      orderId: 'order',
+      claimedAt: Temporal.Now.instant(),
+      releasedAt: null,
+    });
+
+    await service.updateOrder('order-2', 'actor', OrderStatus.IN_TRANSIT);
+    await service.updateOrder('order-2', 'actor', OrderStatus.DELIVERED);
+
+    const closed = await service.complete('route', 'actor');
+    expect(closed.status).toBe('COMPLETED');
+    expect(rows.OrderClaim[0].releasedAt?.toString()).toBe(
+      rows.DeliveryAttempt[0].recordedAt.toString(),
+    );
+    expect(rows.OrderClaim[1].releasedAt?.toString()).toBe(closed.completedAt);
+    expect(rows.OrderClaim[2].releasedAt).toBeNull();
+  });
+
+  it('completes a route with a legacy active-claim FAILED stop that also has an earlier pre-start MOVE-out released claim', async () => {
+    const moveOutClaimedAt = Temporal.Now.instant().subtract({ minutes: 20 });
+    const moveOutReleasedAt = Temporal.Now.instant().subtract({ minutes: 15 });
+    const moveBackClaimedAt = Temporal.Now.instant().subtract({ minutes: 12 });
+    const startedAt = Temporal.Now.instant().subtract({ minutes: 5 });
+    const failedAt = Temporal.Now.instant().subtract({ seconds: 10 });
+
+    rows.Route[0].startedAt = startedAt;
+    rows.OrderClaim = [
+      {
+        id: 'claim-move-out',
+        routeId: 'route',
+        orderId: 'order',
+        claimedAt: moveOutClaimedAt,
+        releasedAt: moveOutReleasedAt,
+      },
+      {
+        id: 'claim-legacy-active',
+        routeId: 'route',
+        orderId: 'order',
+        claimedAt: moveBackClaimedAt,
+        releasedAt: null,
+      },
+    ];
+    rows.RouteStop[0].outcome = 'FAILED';
+    rows.Order[0].requiresAdministrativeReview = true;
+    rows.DeliveryAttempt.push({
+      id: 'legacy-attempt',
+      stopId: 'stop',
+      driverId: 'driver',
+      recordedAt: failedAt,
+      outcome: 'FAILED',
+      failureReason: dto.reason,
+      context: { description: dto.context },
+      idempotencyKey: dto.requestId,
+      requestPayload: { actorId: 'actor', reason: dto.reason, context: dto.context },
+    });
+
+    const closed = await service.complete('route', 'actor');
+    expect(closed.status).toBe('COMPLETED');
+    expect(rows.OrderClaim[0].releasedAt?.toString()).toBe(
+      moveOutReleasedAt.toString(),
+    );
+    expect(rows.OrderClaim[1].releasedAt?.toString()).toBe(closed.completedAt);
   });
 });
 

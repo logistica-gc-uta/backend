@@ -135,7 +135,13 @@ describe('DriversService route projection and ordering', () => {
     expect(query.include).toHaveBeenCalledTimes(1);
     const zone = { select: jest.fn() };
     query.include.mock.calls[0][1](zone);
-    expect(zone.select).toHaveBeenCalledWith('id', 'name', 'code');
+    expect(zone.select).toHaveBeenCalledWith(
+      'id',
+      'name',
+      'code',
+      'depotLat',
+      'depotLng',
+    );
   });
   it('adds inclusive/exclusive Route.date predicates without dropping ownership', async () => {
     const { service, query } = setup([]);
@@ -146,6 +152,26 @@ describe('DriversService route projection and ordering', () => {
     query.where.mock.calls[2][0]({ date: { lt } });
     expect(gte.mock.calls[0][0].toString()).toBe('2024-02-29T05:00:00Z');
     expect(lt.mock.calls[0][0].toString()).toBe('2024-03-01T05:00:00Z');
+  });
+  it('excludes CANCELLED routes from driver own-work projection while preserving legacy null and active routes', async () => {
+    const rows = [
+      { id: 'r-legacy', date: 'date', zone: { id: 'z' }, status: null },
+      { id: 'r-assigned', date: 'date', zone: { id: 'z' }, status: 'ASSIGNED' },
+      { id: 'r-cancelled', date: 'date', zone: { id: 'z' }, status: 'CANCELLED' },
+      { id: 'r-completed', date: 'date', zone: { id: 'z' }, status: 'COMPLETED' },
+    ];
+    const { service } = setup(rows);
+    const projected = await service.findMyRoutes('jwt-user');
+    expect(projected.map((r: any) => r.id)).toEqual([
+      'r-legacy',
+      'r-assigned',
+      'r-completed',
+    ]);
+    expect(historyMock.project).toHaveBeenCalledWith([
+      rows[0],
+      rows[1],
+      rows[3],
+    ]);
   });
   it('rejects absent identity and invalid dates before any lookup', async () => {
     const { service, prisma } = setup([]);

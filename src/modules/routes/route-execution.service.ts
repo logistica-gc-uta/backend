@@ -100,7 +100,6 @@ export class RouteExecutionService {
       );
       if (
         ordered.length < 1 ||
-        ordered.length > 4 ||
         ordered.some(
           (stop, index) =>
             stop.isLegacy ||
@@ -109,7 +108,7 @@ export class RouteExecutionService {
         )
       ) {
         throw new ConflictException(
-          'One to four verified pending ordered stops required',
+          'At least one verified pending ordered stop required',
         );
       }
       const claims = await tx.orm.public.OrderClaim.where({
@@ -126,10 +125,14 @@ export class RouteExecutionService {
       ) {
         throw new ConflictException('Matching active order claims required');
       }
-      for (const stop of ordered) {
+      // Lock orders in sorted ID order after Driver -> Route to coordinate with CANCEL_ROUTE and dispatch mutations.
+      const sortedOrderIds = [
+        ...new Set(ordered.map((stop) => stop.orderId)),
+      ].sort();
+      for (const orderId of sortedOrderIds) {
         const order = await tx.orm.public.Order.where({
-          id: stop.orderId,
-        }).first();
+          id: orderId,
+        }).update({ id: orderId });
         if (
           !order ||
           !orderBelongsToRouteZone(order.zoneId, route.zoneId) ||

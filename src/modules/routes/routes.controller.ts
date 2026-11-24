@@ -41,6 +41,7 @@ import { ConfirmDraftRouteDto } from './dto/confirm-draft-route.dto.js';
 import { AssignDraftRouteDto } from './dto/assign-draft-route.dto.js';
 import { RouteAssignmentResponseDto } from './dto/route-assignment-response.dto.js';
 import { RoutesService } from './routes.service.js';
+import { MAX_ROUTE_STOPS } from './vehicle-capacity.js';
 
 @ApiTags('Routes')
 @ApiBearerAuth('JWT-auth')
@@ -250,7 +251,7 @@ export class RoutesController {
   @ApiResponse({ status: 201, type: RouteAssignmentResponseDto })
   @ApiResponse({
     status: 400,
-    description: 'Invalid request or maximum four distinct orders exceeded',
+    description: `Invalid request or maximum ${MAX_ROUTE_STOPS} distinct orders exceeded`,
   })
   @ApiResponse({ status: 404, description: 'Driver, zone or order not found' })
   @ApiResponse({

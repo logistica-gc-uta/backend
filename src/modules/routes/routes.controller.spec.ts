@@ -178,7 +178,15 @@ describe('Route history serialized Swagger matches role-specific responses', () 
     const schema = doc.components!.schemas!.RouteHistoryResponseDto;
     if ('$ref' in schema) throw new Error('Expected an inline RouteHistoryResponseDto schema');
     expect(schema.properties!.status).toMatchObject({
-      enum: ['UNVERIFIED', 'DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED'],
+      enum: [
+        'UNVERIFIED',
+        'DRAFT',
+        'ASSIGNED',
+        'IN_PROGRESS',
+        'COMPLETED',
+        'INTERRUPTED',
+        'CANCELLED',
+      ],
     });
   });
   it('publishes complete ADMIN route/order/driver fields while DRIVER retains its restricted schema', () => {
@@ -204,6 +212,7 @@ describe('Route history serialized Swagger matches role-specific responses', () 
         'id',
         'date',
         'zone',
+        'depot',
         'status',
         'orders',
         'stops',
@@ -217,6 +226,9 @@ describe('Route history serialized Swagger matches role-specific responses', () 
         'completedById',
         'returnedAt',
         'returnedById',
+        'cancelledAt',
+        'cancelledById',
+        'cancelReason',
         'driver',
       ].sort(),
     );
@@ -252,6 +264,8 @@ describe('Route history serialized Swagger matches role-specific responses', () 
       [
         'id',
         'deliveryAddress',
+        'deliveryLat',
+        'deliveryLng',
         'status',
         'scheduledDeliveryDate',
         'stopOrder',

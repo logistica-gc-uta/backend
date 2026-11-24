@@ -42,6 +42,11 @@ export class DispatchEmergencyService {
     private readonly availability: RouteAvailabilityService,
   ) {}
 
+  /** 404 con código estable: el consumidor distingue «la ruta no existe» de «la ruta no tiene emergencia». */
+  private notFound(code: string, message: string): NotFoundException {
+    return new NotFoundException({ statusCode: 404, message, error: 'Not Found', code });
+  }
+
   private conflict(code: string, message: string): ConflictException {
     return new ConflictException({ statusCode: 409, message, error: 'Conflict', code });
   }
@@ -226,6 +231,7 @@ export class DispatchEmergencyService {
     changes.push({
       type: 'dispatch.incident.updated',
       routeId: route.id,
+      emergencyId: emergency.id,
       action: 'EMERGENCY_DECLARE',
     });
 
@@ -252,12 +258,19 @@ export class DispatchEmergencyService {
       throw this.conflict('UNIT_ALREADY_RECOVERED', 'Unit recovery already confirmed');
     }
 
-    const activeLoss = await db.OrderItemLoss.where({
+    const emergency = db.RouteEmergency
+      ? await db.RouteEmergency.where({ id: recovery.emergencyId }).first()
+      : null;
+    const activeLosses = await db.OrderItemLoss.where({
       orderItemId: recovery.orderItemId,
       unitNumber: recovery.unitNumber,
       cancelledAt: null,
-    }).first();
-    if (activeLoss) {
+    }).all();
+    if (
+      activeLosses.some((loss) =>
+        this.matchesEmergencyLoss(loss, emergency, recovery),
+      )
+    ) {
       throw this.conflict(
         'UNIT_HAS_ACTIVE_LOSS',
         'Unit already has an active declared loss and cannot be confirmed recovered',
@@ -277,7 +290,11 @@ export class DispatchEmergencyService {
       throw new ConflictException('Unit recovery changed concurrently');
     }
 
-    const orderAllUnitsResolved = await this.isOrderRecoveryResolved(tx, recovery.orderId);
+    const orderAllUnitsResolved = await this.isOrderRecoveryResolved(
+      tx,
+      recovery.orderId,
+      recovery.emergencyId,
+    );
     const audit = await createAudit(
       recovery.routeId,
       {
@@ -296,6 +313,8 @@ export class DispatchEmergencyService {
     changes.push({
       type: 'dispatch.incident.updated',
       orderId: recovery.orderId,
+      routeId: recovery.routeId,
+      emergencyId: recovery.emergencyId,
       action: 'UNIT_RECOVERY_CONFIRM',
       requiresAdministrativeReview: order.requiresAdministrativeReview,
     });
@@ -349,6 +368,7 @@ export class DispatchEmergencyService {
     changes.push({
       type: 'dispatch.incident.updated',
       routeId: route.id,
+      emergencyId: emergency.id,
       action: 'EMERGENCY_CLOSE',
     });
 
@@ -427,6 +447,7 @@ export class DispatchEmergencyService {
 
     const availability = await this.availability.recomputeProjection(driver.id, driver.userId, tx);
     const today = await this.availability.effective(driver.id, tx, businessDay(returnedAt));
+    const routeEmergency = await db.RouteEmergency.where({ routeId: route.id }).first();
 
     const audit = await createAudit(
       route.id,
@@ -454,6 +475,7 @@ export class DispatchEmergencyService {
       {
         type: 'dispatch.incident.updated',
         routeId: route.id,
+        emergencyId: routeEmergency?.id ?? null,
         action: 'EMERGENCY_DRIVER_RELEASE',
       },
     );
@@ -524,7 +546,7 @@ export class DispatchEmergencyService {
       }
     }
 
-    if (!(await this.isOrderRecoveryResolved(tx, order.id))) {
+    if (!(await this.isOrderRecoveryResolved(tx, order.id, emergency.id))) {
       throw this.conflict(
         'RECOVERY_PENDING',
         'Order has unrecovered units or pending replacements that must be resolved before requeue',
@@ -566,6 +588,8 @@ export class DispatchEmergencyService {
       {
         type: 'dispatch.incident.updated',
         orderId: order.id,
+        routeId: emergency.routeId,
+        emergencyId: emergency.id,
         action: 'EMERGENCY_REQUEUE',
         requiresAdministrativeReview: false,
       },
@@ -574,14 +598,40 @@ export class DispatchEmergencyService {
     return audit;
   }
 
+  private matchesEmergencyLoss(
+    loss: OrderItemLossRow,
+    emergency: Pick<RouteEmergencyRow, 'id' | 'declaredAt'> | null,
+    unit: Pick<RouteUnitRecoveryRow, 'orderItemId' | 'unitNumber'>,
+  ): boolean {
+    if (
+      loss.orderItemId !== unit.orderItemId ||
+      loss.unitNumber !== unit.unitNumber
+    ) {
+      return false;
+    }
+    if (loss.emergencyId != null) {
+      return emergency !== null && loss.emergencyId === emergency.id;
+    }
+    if (!emergency || !loss.declaredAt || !emergency.declaredAt) {
+      return true;
+    }
+    return Temporal.Instant.compare(loss.declaredAt, emergency.declaredAt) >= 0;
+  }
+
   async isOrderRecoveryResolved(
     tx: Pick<Transaction, 'orm'>,
     orderId: string,
+    emergencyId?: string,
   ): Promise<boolean> {
     const db = tx.orm.public;
-    const units = db.RouteUnitRecovery
-      ? await db.RouteUnitRecovery.where({ orderId }).all()
+    const allUnits = db.RouteUnitRecovery
+      ? await db.RouteUnitRecovery.where(
+          emergencyId ? { orderId, emergencyId } : { orderId },
+        ).all()
       : [];
+    const units = emergencyId
+      ? allUnits.filter((unit) => unit.emergencyId === emergencyId)
+      : allUnits;
     if (units.length === 0) return true;
     const activeLosses = db.OrderItemLoss
       ? await db.OrderItemLoss.where({
@@ -589,12 +639,18 @@ export class DispatchEmergencyService {
           cancelledAt: null,
         }).all()
       : [];
+    const emergencyById = new Map<string, RouteEmergencyRow | null>();
+    if (db.RouteEmergency) {
+      for (const id of new Set(units.map((u) => u.emergencyId))) {
+        emergencyById.set(id, await db.RouteEmergency.where({ id }).first());
+      }
+    }
     return units.every((unit) => {
       if (unit.recoveredAt !== null) return true;
+      const emergency = emergencyById.get(unit.emergencyId) ?? null;
       return activeLosses.some(
         (loss) =>
-          loss.orderItemId === unit.orderItemId &&
-          loss.unitNumber === unit.unitNumber &&
+          this.matchesEmergencyLoss(loss, emergency, unit) &&
           loss.replacementPreparedAt !== null,
       );
     });
@@ -631,9 +687,9 @@ export class DispatchEmergencyService {
   async emergencyDetail(routeId: string): Promise<RouteEmergencyDetailDto> {
     const db = this.prisma.client.orm.public;
     const route = await db.Route.where({ id: routeId }).first();
-    if (!route) throw new NotFoundException('Route not found');
+    if (!route) throw this.notFound('ROUTE_NOT_FOUND', 'Route not found');
     const emergency = await db.RouteEmergency.where({ routeId }).first();
-    if (!emergency) throw new NotFoundException('Route emergency not found');
+    if (!emergency) throw this.notFound('ROUTE_EMERGENCY_NOT_FOUND', 'Route emergency not found');
     return this.buildEmergencyDetail(emergency, route);
   }
 
@@ -660,8 +716,7 @@ export class DispatchEmergencyService {
 
     const units: RouteEmergencyUnitDto[] = sortedUnits.map((unit) => {
       const activeLoss = (activeLossesByOrder.get(unit.orderId) ?? []).find(
-        (loss) =>
-          loss.orderItemId === unit.orderItemId && loss.unitNumber === unit.unitNumber,
+        (loss) => this.matchesEmergencyLoss(loss, emergency, unit),
       );
       return this.projectUnit(unit, activeLoss);
     });

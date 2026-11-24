@@ -25,10 +25,12 @@ import { RoadMetricsService } from './road/road-metrics.service.js';
 import { RoadMetricsError, type RoadMatrix } from './road/road-metrics.types.js';
 import { independentTripsKm, savingsFigures } from './algorithms/route-metrics.js';
 import { RoutePlanner } from './route-planner.js';
+import { RouteAvailabilityService } from './route-availability.service.js';
 import { ExclusionReason, type PlanningExclusionReason } from './planning-exclusion-reason.js';
 import type { PlanRoutesQueryDto } from './dto/plan-routes-query.dto.js';
 import type {
   ExcludedOrderDto,
+  OverlappingWindowDeficitDto,
   RouteProposalDto,
   RouteProposalResponseDto,
 } from './dto/route-proposal-response.dto.js';
@@ -62,6 +64,7 @@ export class RoutePlanningService implements OnModuleDestroy {
     private readonly roads: RoadMetricsService = new RoadMetricsService(),
     @Optional() private readonly storeCoverage?: StoreCoverageService,
     @Optional() private readonly shopSettings?: ShopSettingsService,
+    @Optional() private readonly availability?: RouteAvailabilityService,
   ) {}
 
   /**
@@ -111,6 +114,133 @@ export class RoutePlanningService implements OnModuleDestroy {
     await this.planner.close();
   }
 
+  private async resolveAvailableFleetCapacities(dateStr: string): Promise<number[]> {
+    const ormPublic = this.prisma.client?.orm?.public;
+    const driverModel = ormPublic?.Driver;
+    if (!driverModel || typeof driverModel.all !== 'function') {
+      return [];
+    }
+    const dayPlain = Temporal.PlainDate.from(dateStr, { overflow: 'reject' });
+    const drivers = await driverModel.all();
+    const userModel = ormPublic.User;
+    const driverUserIds =
+      userModel && typeof userModel.where === 'function'
+        ? new Set((await userModel.where({ role: 'DRIVER' }).all()).map((u) => u.id))
+        : null;
+
+    const capacities: number[] = [];
+    for (const driver of drivers) {
+      if (driverUserIds && !driverUserIds.has(driver.userId)) {
+        continue;
+      }
+      let isAvailable: boolean;
+      if (this.availability) {
+        const eff = await this.availability.effective(
+          driver.id,
+          this.prisma.client,
+          dayPlain,
+        );
+        isAvailable = eff.isAvailable;
+      } else {
+        isAvailable = driver.isActive !== false && driver.isAvailable === true;
+      }
+      if (isAvailable) {
+        capacities.push(resolveVehicleCapacity(driver.vehicleCapacity));
+      }
+    }
+    return capacities.sort((a, b) => b - a);
+  }
+
+  private annotateFleetDeficits(
+    proposals: RouteProposalDto[],
+    availableDrivers: number,
+    marginMinutes: number,
+    nowMs: number | null,
+  ): OverlappingWindowDeficitDto[] {
+    if (proposals.length === 0) return [];
+    const marginMs = marginMinutes * 60_000;
+    const entries = proposals.map((proposal, index) => {
+      const minScheduledMs = Temporal.Instant.from(
+        proposal.scheduledInstants[0]!,
+      ).epochMilliseconds;
+      const maxScheduledMs = Temporal.Instant.from(
+        proposal.scheduledInstants[proposal.scheduledInstants.length - 1]!,
+      ).epochMilliseconds;
+      if (nowMs !== null && minScheduledMs < nowMs) {
+        proposal.hasOverdueStops = true;
+      }
+      // On today's planning, routes whose scheduled time already passed cannot depart in the past:
+      // anchor their effective departure to now so competing overdue routes detect real fleet deficits.
+      const effectiveStartMs =
+        nowMs !== null ? Math.max(minScheduledMs, nowMs) : minScheduledMs;
+      const effectiveMaxMs =
+        nowMs !== null ? Math.max(maxScheduledMs, nowMs) : maxScheduledMs;
+      const tripDurationMs =
+        proposal.totalDurationSeconds !== undefined
+          ? proposal.totalDurationSeconds * 1000
+          : 0;
+      return {
+        proposal,
+        index,
+        minScheduledMs,
+        startMs: effectiveStartMs,
+        endMs: effectiveMaxMs + Math.max(marginMs, tripDurationMs),
+      };
+    });
+
+    entries.sort(
+      (a, b) =>
+        a.startMs - b.startMs ||
+        a.endMs - b.endMs ||
+        a.index - b.index,
+    );
+
+    const clusters: Array<{
+      startMs: number;
+      endMs: number;
+      items: typeof entries;
+    }> = [];
+    for (const entry of entries) {
+      const current = clusters[clusters.length - 1];
+      if (!current || entry.startMs > current.endMs) {
+        clusters.push({
+          startMs: entry.startMs,
+          endMs: entry.endMs,
+          items: [entry],
+        });
+      } else {
+        current.items.push(entry);
+        if (entry.endMs > current.endMs) {
+          current.endMs = entry.endMs;
+        }
+      }
+    }
+
+    const overlappingWindows: OverlappingWindowDeficitDto[] = [];
+    for (const cluster of clusters) {
+      const routesRequired = cluster.items.length;
+      if (routesRequired <= availableDrivers) continue;
+      const deficit = routesRequired - availableDrivers;
+      overlappingWindows.push({
+        windowStart: Temporal.Instant.fromEpochMilliseconds(cluster.startMs).toString(),
+        windowEnd: Temporal.Instant.fromEpochMilliseconds(cluster.endMs).toString(),
+        routesRequired,
+        availableDrivers,
+        deficit,
+      });
+      const prioritized = [...cluster.items].sort(
+        (a, b) =>
+          a.minScheduledMs - b.minScheduledMs ||
+          b.proposal.loadUnits - a.proposal.loadUnits ||
+          a.index - b.index,
+      );
+      for (let i = availableDrivers; i < prioritized.length; i++) {
+        prioritized[i]!.proposal.exceedsAvailableFleet = true;
+      }
+    }
+    return overlappingWindows;
+  }
+
   async propose(query: PlanRoutesQueryDto): Promise<RouteProposalResponseDto> {
     const day = driverRouteDay(query.date)!;
 
@@ -119,12 +249,19 @@ export class RoutePlanningService implements OnModuleDestroy {
     }
 
     let capacity = DEFAULT_VEHICLE_CAPACITY;
+    let fleetCapacities: number[] = [];
     if (query.driverId) {
       const driver = await this.prisma.driver.where({ id: query.driverId }).first();
       if (!driver) {
         throw new NotFoundException(`Driver '${query.driverId}' not found`);
       }
       capacity = resolveVehicleCapacity(driver.vehicleCapacity);
+      fleetCapacities = [capacity];
+    } else {
+      fleetCapacities = await this.resolveAvailableFleetCapacities(query.date);
+      if (fleetCapacities.length > 0) {
+        capacity = fleetCapacities[0]!;
+      }
     }
 
     const marginMinutes = this.shopSettings
@@ -147,10 +284,23 @@ const STORE_ROUTE_GROUP_KEY = '__STORE__';
       .where((order) => order.scheduledDeliveryDate.gte(day.start))
       .where((order) => order.scheduledDeliveryDate.lt(day.end));
     if (query.zoneId) orderQuery = orderQuery.where({ zoneId: query.zoneId });
-    const candidates = await orderQuery
+    const rawCandidates = await orderQuery
       .include('zone')
       .include('items', (item) => item.select('quantity'))
       .all();
+
+    // Orders already agreed/confirmed for store pickup are fulfilled at the store, not routed.
+    const pickupOrderIds = new Set<string>();
+    const orderPickupModel = this.prisma.client?.orm?.public?.OrderPickup;
+    if (rawCandidates.length && orderPickupModel && typeof orderPickupModel.where === 'function') {
+      const pickups = await orderPickupModel
+        .where((pickup) => pickup.orderId.in(rawCandidates.map((order) => order.id)))
+        .all();
+      for (const pickup of pickups) pickupOrderIds.add(pickup.orderId);
+    }
+    const candidates = pickupOrderIds.size
+      ? rawCandidates.filter((order) => !pickupOrderIds.has(order.id))
+      : rawCandidates;
 
     const claimed = new Set<string>();
     if (candidates.length) {
@@ -232,6 +382,7 @@ const STORE_ROUTE_GROUP_KEY = '__STORE__';
     const planned = await this.planner.plan(routable, {
       depots,
       capacity,
+      ...(fleetCapacities.length > 0 ? { fleetCapacities } : {}),
       maxStops: MAX_ROUTE_STOPS,
       timeWindowMarginMinutes: marginMinutes,
       ...(road ? { matrix: road.km } : {}),
@@ -288,13 +439,21 @@ const STORE_ROUTE_GROUP_KEY = '__STORE__';
       }
     }
 
+    const now = nowInstant();
+    const isToday = query.date === businessDay(now).toString();
+    const overlappingWindows = this.annotateFleetDeficits(
+      proposals,
+      fleetCapacities.length,
+      marginMinutes,
+      isToday ? now.epochMilliseconds : null,
+    );
+
     excluded.sort((a, b) => a.orderId.localeCompare(b.orderId));
     // Daily totals add up the figures shown per proposal, so the sum on screen always matches.
     const daily = savingsFigures(
       proposals.reduce((sum, proposal) => sum + proposal.baselineKm, 0),
       proposals.reduce((sum, proposal) => sum + proposal.totalDistanceKm, 0),
     );
-    const isToday = query.date === businessDay(nowInstant()).toString();
     return {
       date: query.date,
       timeZone: PLANNING_TIME_ZONE,
@@ -328,6 +487,12 @@ const STORE_ROUTE_GROUP_KEY = '__STORE__';
         plannedKm: daily.plannedKm,
         savingsKm: daily.savingsKm,
         savingsPercent: daily.savingsPercent,
+      },
+      fleet: {
+        availableDrivers: fleetCapacities.length,
+        capacities: fleetCapacities,
+        maxCapacity: fleetCapacities[0] ?? 0,
+        overlappingWindows,
       },
     };
   }

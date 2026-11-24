@@ -36,6 +36,10 @@
       "model": "DriverReservation",
       "namespace": "public"
     },
+    "driverStatusChange": {
+      "model": "DriverStatusChange",
+      "namespace": "public"
+    },
     "externalPaymentDeclaration": {
       "model": "ExternalPaymentDeclaration",
       "namespace": "public"
@@ -240,6 +244,10 @@
               {
                 "name": "INTERRUPTED",
                 "value": "INTERRUPTED"
+              },
+              {
+                "name": "CANCELLED",
+                "value": "CANCELLED"
               }
             ]
           },
@@ -1146,10 +1154,38 @@
                   "kind": "scalar"
                 }
               },
+              "isActive": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
               "isAvailable": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "statusChangedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "statusChangedById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "statusReason": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
                   "kind": "scalar"
                 }
               },
@@ -1206,6 +1242,37 @@
                   "namespace": "public"
                 }
               },
+              "statusChangedBy": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "statusChangedById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "statusChanges": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "driverId"
+                  ]
+                },
+                "to": {
+                  "model": "DriverStatusChange",
+                  "namespace": "public"
+                }
+              },
               "user": {
                 "cardinality": "N:1",
                 "nullable": false,
@@ -1231,8 +1298,20 @@
                 "id": {
                   "column": "id"
                 },
+                "isActive": {
+                  "column": "isActive"
+                },
                 "isAvailable": {
                   "column": "isAvailable"
+                },
+                "statusChangedAt": {
+                  "column": "statusChangedAt"
+                },
+                "statusChangedById": {
+                  "column": "statusChangedById"
+                },
+                "statusReason": {
+                  "column": "statusReason"
                 },
                 "userId": {
                   "column": "userId"
@@ -1500,6 +1579,110 @@
               },
               "namespaceId": "public",
               "table": "driverReservation"
+            }
+          },
+          "DriverStatusChange": {
+            "fields": {
+              "active": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "actorId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "driverId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "reason": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "actor": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "actorId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "driver": {
+                "cardinality": "N:1",
+                "nullable": false,
+                "on": {
+                  "localFields": [
+                    "driverId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Driver",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "active": {
+                  "column": "active"
+                },
+                "actorId": {
+                  "column": "actorId"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "driverId": {
+                  "column": "driverId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "reason": {
+                  "column": "reason"
+                }
+              },
+              "namespaceId": "public",
+              "table": "driverStatusChange"
             }
           },
           "ExternalPaymentDeclaration": {
@@ -2630,6 +2813,13 @@
                   "kind": "scalar"
                 }
               },
+              "emergencyId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "id": {
                 "nullable": false,
                 "type": {
@@ -2745,6 +2935,22 @@
                 },
                 "to": {
                   "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "emergency": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "emergencyId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "RouteEmergency",
                   "namespace": "public"
                 }
               },
@@ -2872,6 +3078,9 @@
                 },
                 "declaredById": {
                   "column": "declaredById"
+                },
+                "emergencyId": {
+                  "column": "emergencyId"
                 },
                 "id": {
                   "column": "id"
@@ -4052,6 +4261,27 @@
           },
           "Route": {
             "fields": {
+              "cancelReason": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "cancelledAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "kind": "scalar"
+                }
+              },
+              "cancelledById": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "completedAt": {
                 "nullable": true,
                 "type": {
@@ -4144,6 +4374,22 @@
               }
             },
             "relations": {
+              "cancelledBy": {
+                "cardinality": "N:1",
+                "nullable": true,
+                "on": {
+                  "localFields": [
+                    "cancelledById"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "User",
+                  "namespace": "public"
+                }
+              },
               "completedBy": {
                 "cardinality": "N:1",
                 "nullable": true,
@@ -4273,6 +4519,15 @@
             },
             "storage": {
               "fields": {
+                "cancelReason": {
+                  "column": "cancelReason"
+                },
+                "cancelledAt": {
+                  "column": "cancelledAt"
+                },
+                "cancelledById": {
+                  "column": "cancelledById"
+                },
                 "completedAt": {
                   "column": "completedAt"
                 },
@@ -4424,6 +4679,21 @@
                 },
                 "to": {
                   "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "itemLosses": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "emergencyId"
+                  ]
+                },
+                "to": {
+                  "model": "OrderItemLoss",
                   "namespace": "public"
                 }
               },
@@ -4929,6 +5199,13 @@
                   "kind": "scalar"
                 }
               },
+              "maxUnitsPerOrder": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
               "maxUnitsPerSkuPerOrder": {
                 "nullable": false,
                 "type": {
@@ -5069,6 +5346,9 @@
                 },
                 "id": {
                   "column": "id"
+                },
+                "maxUnitsPerOrder": {
+                  "column": "maxUnitsPerOrder"
                 },
                 "maxUnitsPerSkuPerOrder": {
                   "column": "maxUnitsPerSkuPerOrder"
@@ -5789,6 +6069,36 @@
                 },
                 "to": {
                   "model": "DriverAbsence",
+                  "namespace": "public"
+                }
+              },
+              "driverStatusChanged": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "statusChangedById"
+                  ]
+                },
+                "to": {
+                  "model": "Driver",
+                  "namespace": "public"
+                }
+              },
+              "driverStatusChanges": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "actorId"
+                  ]
+                },
+                "to": {
+                  "model": "DriverStatusChange",
                   "namespace": "public"
                 }
               },
@@ -6828,8 +7138,8 @@
             "dispatchIntervention": {
               "checks": [
                 {
-                  "expression": "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'RELEASE_DRAFT', 'LOSS_DECLARE', 'REPLACEMENT_PREPARE', 'ORIGINAL_RECOVER', 'LOSS_CANCEL', 'EMERGENCY_DECLARE', 'UNIT_RECOVERY_CONFIRM', 'EMERGENCY_CLOSE', 'EMERGENCY_DRIVER_RELEASE', 'EMERGENCY_REQUEUE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500",
-                  "name": "dispatch_audit_valid_11fbfe53",
+                  "expression": "action IN ('CONFIRM', 'REJECT', 'REORDER', 'MOVE', 'REASSIGN_DRIVER', 'PRIORITIZE', 'CONTACT', 'RESCHEDULE', 'PICKUP_AGREE', 'PICKUP_DECLINE', 'PICKUP_CONFIRM', 'CONFIRM_INCIDENT_READY', 'RELEASE_DRAFT', 'CANCEL_ROUTE', 'LOSS_DECLARE', 'REPLACEMENT_PREPARE', 'ORIGINAL_RECOVER', 'LOSS_CANCEL', 'EMERGENCY_DECLARE', 'UNIT_RECOVERY_CONFIRM', 'EMERGENCY_CLOSE', 'EMERGENCY_DRIVER_RELEASE', 'EMERGENCY_REQUEUE') AND outcome IN ('APPLIED', 'REJECTED', 'FAILED') AND length(trim(reason)) BETWEEN 1 AND 500",
+                  "name": "dispatch_audit_valid_9d94133a",
                   "prefix": "dispatch_audit_valid"
                 }
               ],
@@ -6986,6 +7296,16 @@
             "driver": {
               "checks": [
                 {
+                  "expression": "\"isActive\" OR (\"statusChangedAt\" IS NOT NULL AND \"statusChangedById\" IS NOT NULL)",
+                  "name": "driver_inactive_has_actor_8cb6c091",
+                  "prefix": "driver_inactive_has_actor"
+                },
+                {
+                  "expression": "\"statusReason\" IS NULL OR length(trim(\"statusReason\")) BETWEEN 1 AND 500",
+                  "name": "driver_status_reason_valid_c6087cd6",
+                  "prefix": "driver_status_reason_valid"
+                },
+                {
                   "expression": "\"vehicleCapacity\" IS NULL OR \"vehicleCapacity\" >= 1",
                   "name": "driver_vehicle_capacity_positive_54f17fab",
                   "prefix": "driver_vehicle_capacity_positive"
@@ -7006,6 +7326,15 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "isActive": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
                 "isAvailable": {
                   "codecId": "pg/bool@1",
                   "default": {
@@ -7014,6 +7343,21 @@
                   },
                   "nativeType": "bool",
                   "nullable": false
+                },
+                "statusChangedAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "statusChangedById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "statusReason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
                 },
                 "userId": {
                   "codecId": "pg/text@1",
@@ -7047,9 +7391,34 @@
                     "namespaceId": "public",
                     "tableName": "user"
                   }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "statusChangedById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "driver"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
                 }
               ],
-              "indexes": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "statusChangedById"
+                  ],
+                  "name": "driver_statusChangedById_idx_e761b954",
+                  "prefix": "driver_statusChangedById_idx",
+                  "unique": false
+                }
+              ],
               "primaryKey": {
                 "columns": [
                   "id"
@@ -7313,6 +7682,118 @@
                   "prefix": "one_active_reservation_per_route",
                   "unique": true,
                   "where": "(\"releasedAt\" IS NULL)"
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
+            "driverStatusChange": {
+              "checks": [
+                {
+                  "expression": "\"reason\" IS NULL OR length(trim(\"reason\")) BETWEEN 1 AND 500",
+                  "name": "driver_status_change_reason_valid_6143bd85",
+                  "prefix": "driver_status_change_reason_valid"
+                }
+              ],
+              "columns": {
+                "active": {
+                  "codecId": "pg/bool@1",
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "actorId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "driverId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "reason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "driverId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "driverStatusChange"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "driver"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "actorId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "driverStatusChange"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "actorId"
+                  ],
+                  "name": "driverStatusChange_actorId_idx_a58f6b4b",
+                  "prefix": "driverStatusChange_actorId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "driverId",
+                    "createdAt"
+                  ],
+                  "name": "driverStatusChange_driverId_createdAt_idx_adf85faa",
+                  "prefix": "driverStatusChange_driverId_createdAt_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "driverId"
+                  ],
+                  "name": "driverStatusChange_driverId_idx_8eed3317",
+                  "prefix": "driverStatusChange_driverId_idx",
+                  "unique": false
                 }
               ],
               "primaryKey": {
@@ -8248,6 +8729,11 @@
                   "nativeType": "text",
                   "nullable": false
                 },
+                "emergencyId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "id": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -8361,6 +8847,22 @@
                 {
                   "source": {
                     "columns": [
+                      "emergencyId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "orderItemLoss"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "routeEmergency"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
                       "declaredById"
                     ],
                     "namespaceId": "public",
@@ -8426,13 +8928,24 @@
               "indexes": [
                 {
                   "columns": [
+                    "emergencyId",
                     "orderItemId",
                     "unitNumber"
                   ],
-                  "name": "active_order_item_loss_unit_2b134a02",
+                  "name": "active_order_item_loss_emergency_unit_5034e1e7",
+                  "prefix": "active_order_item_loss_emergency_unit",
+                  "unique": true,
+                  "where": "(\"cancelledAt\" IS NULL AND \"emergencyId\" IS NOT NULL)"
+                },
+                {
+                  "columns": [
+                    "orderItemId",
+                    "unitNumber"
+                  ],
+                  "name": "active_order_item_loss_unit_151ab58d",
                   "prefix": "active_order_item_loss_unit",
                   "unique": true,
-                  "where": "(\"cancelledAt\" IS NULL)"
+                  "where": "(\"cancelledAt\" IS NULL AND \"emergencyId\" IS NULL)"
                 },
                 {
                   "columns": [
@@ -8448,6 +8961,14 @@
                   ],
                   "name": "orderItemLoss_declaredById_idx_dd0c7dda",
                   "prefix": "orderItemLoss_declaredById_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "emergencyId"
+                  ],
+                  "name": "orderItemLoss_emergencyId_idx_ced4adec",
+                  "prefix": "orderItemLoss_emergencyId_idx",
                   "unique": false
                 },
                 {
@@ -9506,12 +10027,32 @@
             "route": {
               "checks": [
                 {
-                  "expression": "\"status\" IN ('DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'INTERRUPTED')",
-                  "name": "route_status_check_736c4cf9",
+                  "expression": "(status IS DISTINCT FROM 'CANCELLED' AND \"cancelledAt\" IS NULL AND \"cancelledById\" IS NULL AND \"cancelReason\" IS NULL) OR (status = 'CANCELLED' AND \"driverId\" IS NOT NULL AND \"cancelledAt\" IS NOT NULL AND \"cancelledById\" IS NOT NULL AND \"cancelReason\" IS NOT NULL AND length(trim(\"cancelReason\")) BETWEEN 1 AND 500 AND \"startedAt\" IS NULL AND \"startedById\" IS NULL AND \"completedAt\" IS NULL AND \"completedById\" IS NULL AND \"returnedAt\" IS NULL AND \"returnedById\" IS NULL)",
+                  "name": "route_cancellation_consistent_02c529e8",
+                  "prefix": "route_cancellation_consistent"
+                },
+                {
+                  "expression": "\"status\" IN ('DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'INTERRUPTED', 'CANCELLED')",
+                  "name": "route_status_check_2ae0f5f1",
                   "prefix": "route_status_check"
                 }
               ],
               "columns": {
+                "cancelReason": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "cancelledAt": {
+                  "codecId": "pg/timestamptz-temporal@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "cancelledById": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "completedAt": {
                   "codecId": "pg/timestamptz-temporal@1",
                   "nativeType": "timestamptz",
@@ -9667,6 +10208,22 @@
                     "namespaceId": "public",
                     "tableName": "user"
                   }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "cancelledById"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "route"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "user"
+                  }
                 }
               ],
               "indexes": [
@@ -9678,6 +10235,14 @@
                   "prefix": "one_in_progress_route_per_driver",
                   "unique": true,
                   "where": "(status = 'IN_PROGRESS')"
+                },
+                {
+                  "columns": [
+                    "cancelledById"
+                  ],
+                  "name": "route_cancelledById_idx_03ce7bea",
+                  "prefix": "route_cancelledById_idx",
+                  "unique": false
                 },
                 {
                   "columns": [
@@ -9898,6 +10463,11 @@
                   "expression": "\"outcome\" IN ('PENDING', 'SUCCESSFUL', 'FAILED')",
                   "name": "routeStop_outcome_check_a6b9dae5",
                   "prefix": "routeStop_outcome_check"
+                },
+                {
+                  "expression": "\"isLegacy\" OR \"sequence\" IS NULL OR \"sequence\" >= 1",
+                  "name": "route_stop_sequence_positive_592b3570",
+                  "prefix": "route_stop_sequence_positive"
                 }
               ],
               "columns": {
@@ -10302,8 +10872,8 @@
                   "prefix": "shop_settings_singleton"
                 },
                 {
-                  "expression": "version >= 1 AND currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"shippingIncludedInPrices\" = true AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"maxUnitsPerSkuPerOrder\" BETWEEN 1 AND 100 AND \"deliveryTimeZone\" = 'America/Guayaquil' AND \"deliveryBoundariesInclusive\" = true AND \"deliveryStartTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryEndTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryStartTime\" < \"deliveryEndTime\" AND \"routeTimeWindowMarginMinutes\" BETWEEN 5 AND 180",
-                  "name": "shop_settings_valid_a76e081c",
+                  "expression": "version >= 1 AND currency = 'USD' AND \"shippingStatus\" = 'FREE_INCLUDED' AND \"shippingAmountCents\" = 0 AND \"shippingIncludedInPrices\" = true AND \"taxMode\" = 'SIMULATED' AND \"taxRateBps\" BETWEEN 0 AND 10000 AND \"maxUnitsPerSkuPerOrder\" BETWEEN 1 AND 100 AND \"deliveryTimeZone\" = 'America/Guayaquil' AND \"deliveryBoundariesInclusive\" = true AND \"deliveryStartTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryEndTime\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND \"deliveryStartTime\" < \"deliveryEndTime\" AND \"routeTimeWindowMarginMinutes\" BETWEEN 5 AND 180 AND (\"maxUnitsPerOrder\" IS NULL OR \"maxUnitsPerOrder\" BETWEEN 1 AND 1000)",
+                  "name": "shop_settings_valid_eba44d0c",
                   "prefix": "shop_settings_valid"
                 }
               ],
@@ -10366,6 +10936,11 @@
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "maxUnitsPerOrder": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
                 },
                 "maxUnitsPerSkuPerOrder": {
                   "codecId": "pg/int4@1",
@@ -11146,7 +11721,8 @@
                 "ASSIGNED",
                 "IN_PROGRESS",
                 "COMPLETED",
-                "INTERRUPTED"
+                "INTERRUPTED",
+                "CANCELLED"
               ]
             },
             "VisitFailureReason": {
@@ -11170,10 +11746,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "4f1c811137748b11cce955f4802840d44e900a662cca49432139410ca3195b57"
+    "storageHash": "55eb8b3cd0f8ace944fb2e16f794a7bbdd3b6c39ed43431fa6154c8f800da189"
   },
   "execution": {
-    "executionHash": "197f1c374ba6fd8fc85f656c8567a0200cbdc7b2a6e63079ef2b9e5b94a20e6e",
+    "executionHash": "82584b87e80021070bb3a92b18bff87f033d048b2d78bebee192d108125bb417",
     "mutations": {
       "defaults": [
         {
@@ -11262,6 +11838,17 @@
             "column": "id",
             "namespace": "public",
             "table": "driverReservation"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "driverStatusChange"
           }
         },
         {

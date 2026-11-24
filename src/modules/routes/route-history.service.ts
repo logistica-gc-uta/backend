@@ -5,12 +5,22 @@ import { RouteHistoryEventDto } from './dto/route-history-response.dto.js';
 type RouteAudit = {
   id: string;
   status?: string | null;
+  zone?: {
+    id?: string;
+    name?: string;
+    code?: string;
+    depotLat?: number | null;
+    depotLng?: number | null;
+  } | null;
   startedAt?: { toString(): string } | null;
   startedById?: string | null;
   completedAt?: { toString(): string } | null;
   completedById?: string | null;
   returnedAt?: { toString(): string } | null;
   returnedById?: string | null;
+  cancelledAt?: { toString(): string } | null;
+  cancelledById?: string | null;
+  cancelReason?: string | null;
 };
 
 @Injectable()
@@ -72,6 +82,17 @@ export class RouteHistoryService {
       const { subtotalCents: _subtotalCents, ...legacyOrder } = order;
       return legacyOrder;
     };
+    const storeCoverageRow = this.prisma.client.orm.public.StoreCoverage
+      ? await this.prisma.client.orm.public.StoreCoverage.where({
+          singletonKey: 'GLOBAL',
+        }).first()
+      : null;
+    const storeDepot =
+      storeCoverageRow &&
+      typeof storeCoverageRow.lat === 'number' &&
+      typeof storeCoverageRow.lng === 'number'
+        ? { lat: storeCoverageRow.lat, lng: storeCoverageRow.lng }
+        : null;
     const directByRoute = new Map<string, typeof directOrders>();
     for (const order of directOrders) {
       const group = directByRoute.get(order.routeId!) ?? [];
@@ -90,6 +111,7 @@ export class RouteHistoryService {
         ['STARTED', route.startedAt, route.startedById],
         ['COMPLETED', route.completedAt, route.completedById],
         ['RETURNED', route.returnedAt, route.returnedById],
+        ['CANCELLED', route.cancelledAt, route.cancelledById],
       ] as const) {
         if (time && actor)
           events.push({ kind, actorId: actor, recordedAt: time.toString() });
@@ -103,6 +125,8 @@ export class RouteHistoryService {
             scheduledDeliveryDate:
               order.scheduledDeliveryDate?.toString() ?? null,
             stopOrder: sequence,
+            deliveryLat: order.deliveryLat ?? null,
+            deliveryLng: order.deliveryLng ?? null,
           }))
         : (directByRoute.get(route.id) ?? [])
             .sort(
@@ -118,7 +142,23 @@ export class RouteHistoryService {
               scheduledDeliveryDate:
                 order.scheduledDeliveryDate?.toString() ?? null,
               stopOrder: order.stopOrder,
+              deliveryLat: order.deliveryLat ?? null,
+              deliveryLng: order.deliveryLng ?? null,
             }));
+      const zoneDepot =
+        typeof route.zone?.depotLat === 'number' &&
+        typeof route.zone?.depotLng === 'number'
+          ? { lat: route.zone.depotLat, lng: route.zone.depotLng }
+          : null;
+      const depot = zoneDepot ?? storeDepot;
+      const projectedZone =
+        !fullCommercialFields && route.zone
+          ? {
+              id: route.zone.id,
+              name: route.zone.name,
+              code: route.zone.code,
+            }
+          : route.zone;
       const emergency = emergencyByRoute.get(route.id) ?? null;
       const routeUnits = unitsByRoute.get(route.id) ?? [];
       const isInterrupted = route.status === 'INTERRUPTED';
@@ -144,7 +184,9 @@ export class RouteHistoryService {
         : null;
       return {
         ...route,
+        ...(route.zone !== undefined ? { zone: projectedZone } : {}),
         status: route.status ?? 'UNVERIFIED',
+        depot,
         orders,
         stops: ordered.map(({ order: _order, ...stop }) => ({
           ...stop,

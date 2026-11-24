@@ -72,6 +72,9 @@ export class OrderCreatedResponseDto {
   @ApiPropertyOptional({ type: String, nullable: true, description: 'ADMIN or authorized own-route DRIVER only; omitted for CLIENT' })
   recipientPhone?: string | null;
 
+  @ApiPropertyOptional({ type: Boolean, description: 'True while order is held in administrative review (failed delivery or emergency custody); ADMIN/DRIVER only' })
+  requiresAdministrativeReview?: boolean;
+
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   deliveryWindowStart: string | null;
 

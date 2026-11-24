@@ -2274,7 +2274,7 @@
                   "pm.test('El mensaje de error es descriptivo', () => {",
                   "  const m = pm.response.json().message;",
                   "  const joined = Array.isArray(m) ? m.join(' ') : String(m);",
-                  "  pm.expect(joined).to.include(\"4\");",
+                  "  pm.expect(joined).to.include(\"50\");",
                   "});"
                 ]
               }

@@ -23,6 +23,13 @@ export class RouteHistoryOrderDto {
       'Stable RouteStop.sequence alias; raw legacy positions are preserved',
   })
   stopOrder!: number | null;
+  @ApiProperty({ type: Number, nullable: true }) deliveryLat!: number | null;
+  @ApiProperty({ type: Number, nullable: true }) deliveryLng!: number | null;
+}
+
+export class RouteHistoryDepotDto {
+  @ApiProperty({ type: Number }) lat!: number;
+  @ApiProperty({ type: Number }) lng!: number;
 }
 
 export class RouteHistoryAttemptDto {
@@ -55,7 +62,8 @@ export class RouteHistoryStopDto {
 }
 
 export class RouteHistoryEventDto {
-  @ApiProperty({ enum: ['STARTED', 'COMPLETED', 'RETURNED'] }) kind!: string;
+  @ApiProperty({ enum: ['STARTED', 'COMPLETED', 'RETURNED', 'CANCELLED'] })
+  kind!: string;
   @ApiProperty() actorId!: string;
   @ApiProperty({ format: 'date-time' }) recordedAt!: string;
 }
@@ -73,7 +81,22 @@ export class RouteHistoryResponseDto {
   @ApiProperty({ type: RouteHistoryZoneDto, nullable: true })
   zone!: RouteHistoryZoneDto | null;
   @ApiProperty({
-    enum: ['UNVERIFIED', 'DRAFT', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED'],
+    type: RouteHistoryDepotDto,
+    nullable: true,
+    required: false,
+    description: 'Origin/depot coordinates for return navigation, when configured',
+  })
+  depot?: RouteHistoryDepotDto | null;
+  @ApiProperty({
+    enum: [
+      'UNVERIFIED',
+      'DRAFT',
+      'ASSIGNED',
+      'IN_PROGRESS',
+      'COMPLETED',
+      'INTERRUPTED',
+      'CANCELLED',
+    ],
     description: 'UNVERIFIED projects NULL; it is not a persisted enum value',
   })
   status!: string;
@@ -115,8 +138,6 @@ export class AdminRouteHistoryOrderDto extends RouteHistoryOrderDto {
   @ApiProperty({ type: String, nullable: true }) zoneId!: string | null;
   @ApiProperty({ type: String, nullable: true }) routeId!: string | null;
   @ApiProperty() total!: number;
-  @ApiProperty({ type: Number, nullable: true }) deliveryLat!: number | null;
-  @ApiProperty({ type: Number, nullable: true }) deliveryLng!: number | null;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
   @ApiProperty() requiresAdministrativeReview!: boolean;
 }
@@ -135,6 +156,10 @@ export class AdminRouteHistoryDriverDto {
   @ApiProperty() vehicle!: string;
   @ApiProperty({ type: Number, nullable: true, minimum: 1 }) vehicleCapacity!: number | null;
   @ApiProperty() isAvailable!: boolean;
+  @ApiProperty({ description: 'Estado administrativo (#82): false si el repartidor está dado de baja.' }) isActive!: boolean;
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' }) statusChangedAt!: string | null;
+  @ApiProperty({ type: String, nullable: true }) statusChangedById!: string | null;
+  @ApiProperty({ type: String, nullable: true }) statusReason!: string | null;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
   @ApiProperty({ type: AdminRouteHistoryUserDto })
   user!: AdminRouteHistoryUserDto;
@@ -158,6 +183,10 @@ export class AdminRouteHistoryResponseDto extends RouteHistoryResponseDto {
   @ApiProperty({ type: String, nullable: true }) driverId!: string | null;
   @ApiProperty({ type: String, nullable: true }) zoneId!: string | null;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
+  @ApiProperty({ type: String, nullable: true, format: 'date-time' })
+  cancelledAt!: string | null;
+  @ApiProperty({ type: String, nullable: true }) cancelledById!: string | null;
+  @ApiProperty({ type: String, nullable: true }) cancelReason!: string | null;
   @ApiProperty({ type: AdminRouteHistoryDriverDto, nullable: true })
   driver!: AdminRouteHistoryDriverDto | null;
 }

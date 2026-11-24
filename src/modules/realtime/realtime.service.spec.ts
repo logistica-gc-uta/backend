@@ -99,6 +99,46 @@ describe('RealtimeService', () => {
     )).resolves.toBe(false);
   });
 
+  describe('baja operativa del repartidor (#82)', () => {
+    const prismaWithDriverState = (isActive: boolean | undefined) =>
+      ({
+        user: modelReader({ [USER_ID]: { id: USER_ID, role: Role.DRIVER } }),
+        order: modelReader({}),
+        route: modelReader({}),
+        driver: {
+          where: jest.fn((filter: { userId?: string }) => ({
+            select: jest.fn().mockReturnThis(),
+            first: jest.fn(async () => (filter.userId === USER_ID ? { id: DRIVER_ID, isActive } : null)),
+          })),
+        },
+      }) as unknown as PrismaService;
+
+    it('un repartidor activo (o sin la marca) abre su canal', async () => {
+      for (const isActive of [true, undefined]) {
+        const service = new RealtimeService(prismaWithDriverState(isActive));
+        await expect(service.authenticate(signedToken(USER_ID, Role.DRIVER))).resolves.toEqual({ userId: USER_ID, role: Role.DRIVER });
+      }
+    });
+
+    it('un repartidor dado de baja no abre canal aunque su JWT siga vigente', async () => {
+      const service = new RealtimeService(prismaWithDriverState(false));
+      await expect(service.authenticate(signedToken(USER_ID, Role.DRIVER))).resolves.toBeNull();
+    });
+
+    it('una conexión abierta antes de la baja ya no puede suscribirse', async () => {
+      const service = new RealtimeService(prismaWithDriverState(false));
+      await expect(service.canSubscribe({ userId: USER_ID, role: Role.DRIVER }, { resource: 'routes', id: ROUTE_ID } as never)).resolves.toBe(false);
+    });
+
+    it('si no se puede consultar el estado, no se abre canal', async () => {
+      const prisma = {
+        user: modelReader({ [USER_ID]: { id: USER_ID, role: Role.DRIVER } }),
+        driver: { where: jest.fn(() => { throw new Error('base de datos no disponible'); }) },
+      } as unknown as PrismaService;
+      await expect(new RealtimeService(prisma).authenticate(signedToken(USER_ID, Role.DRIVER))).resolves.toBeNull();
+    });
+  });
+
   it('authorizes only the order owner, current assigned driver, or ADMIN', async () => {
     const prisma = createPrisma({
       orders: { [ORDER_ID]: { id: ORDER_ID, userId: USER_ID, routeId: ROUTE_ID } },
@@ -329,6 +369,83 @@ describe('RealtimeService', () => {
         data: {
           orderId: ORDER_ID,
           action: 'LOSS_CANCEL',
+          requiresAdministrativeReview: true,
+        },
+      }),
+    );
+  });
+
+  it('preserves CANCELLED status on route.updated envelopes without allowing CANCEL_ROUTE as a delivery incident action', async () => {
+    const service = new RealtimeService(createPrisma({
+      users: {
+        [USER_ID]: { id: USER_ID, role: Role.DRIVER },
+        [OTHER_USER_ID]: { id: OTHER_USER_ID, role: Role.ADMIN },
+      },
+      routes: { [ROUTE_ID]: { id: ROUTE_ID, driverId: DRIVER_ID } },
+      drivers: { [DRIVER_ID]: { id: DRIVER_ID, userId: USER_ID } },
+    }));
+    const routeDriver = createSocket(signedToken(USER_ID, Role.DRIVER), [`route:${ROUTE_ID}`]);
+    const adminRoute = createSocket(signedToken(OTHER_USER_ID, Role.ADMIN), [`route:${ROUTE_ID}`]);
+    service.attach({
+      sockets: new Map([
+        ['route-driver', routeDriver],
+        ['admin-route', adminRoute],
+      ]),
+    } as never);
+
+    await service.publish([
+      { type: 'route.updated', routeId: ROUTE_ID, status: 'CANCELLED' },
+    ]);
+
+    expect(routeDriver.emit).toHaveBeenCalledWith(
+      'route.updated',
+      expect.objectContaining({
+        data: { routeId: ROUTE_ID, status: 'CANCELLED' },
+      }),
+    );
+    expect(adminRoute.emit).toHaveBeenCalledWith(
+      'route.updated',
+      expect.objectContaining({
+        data: { routeId: ROUTE_ID, status: 'CANCELLED' },
+      }),
+    );
+  });
+
+  it('publishes CONFIRM_INCIDENT_READY only to ADMIN incidents subscribers without leaking to order owner', async () => {
+    const service = new RealtimeService(createPrisma({
+      users: {
+        [USER_ID]: { id: USER_ID, role: Role.CLIENT },
+        [OTHER_USER_ID]: { id: OTHER_USER_ID, role: Role.ADMIN },
+      },
+      orders: { [ORDER_ID]: { id: ORDER_ID, userId: USER_ID, routeId: ROUTE_ID } },
+    }));
+    const clientOrder = createSocket(signedToken(USER_ID, Role.CLIENT), [`order:${ORDER_ID}`]);
+    const adminIncidents = createSocket(signedToken(OTHER_USER_ID, Role.ADMIN), ['incidents:admin']);
+    service.attach({
+      sockets: new Map([
+        ['client-order', clientOrder],
+        ['admin-incidents', adminIncidents],
+      ]),
+    } as never);
+
+    await service.publish([
+      {
+        type: 'dispatch.incident.updated',
+        orderId: ORDER_ID,
+        routeId: ROUTE_ID,
+        action: 'CONFIRM_INCIDENT_READY',
+        requiresAdministrativeReview: true,
+      },
+    ]);
+
+    expect(clientOrder.emit).not.toHaveBeenCalled();
+    expect(adminIncidents.emit).toHaveBeenCalledWith(
+      'dispatch.incident.updated',
+      expect.objectContaining({
+        data: {
+          orderId: ORDER_ID,
+          routeId: ROUTE_ID,
+          action: 'CONFIRM_INCIDENT_READY',
           requiresAdministrativeReview: true,
         },
       }),

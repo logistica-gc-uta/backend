@@ -1,6 +1,6 @@
 import { RouteHistoryService } from '../routes/route-history.service.js';
 import { randomBytes } from 'node:crypto';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { emailAlreadyExists, isEmailUniqueViolation, normalizedEmail } from '../auth/email-identity.util.js';
 import { hashNewPassword } from '../auth/password-hash.util.js';
 import type { CreateDriverDto } from './dto/create-driver.dto.js';
@@ -9,6 +9,8 @@ import { RouteAvailabilityService } from '../routes/route-availability.service.j
 import { DriverAvailabilityResponseDto } from '../routes/dto/driver-availability-response.dto.js';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { driverRouteDay } from './driver-route-date.util.js';
+import { nowInstant } from '../../common/temporal.util.js';
+import type { ChangeDriverStatusDto } from './dto/driver-status.dto.js';
 import { PrismaService } from '../../database/prisma.service.js';
 
 @Injectable()
@@ -45,9 +47,12 @@ export class DriversService {
       )
       .orderBy((route) => route.date.asc())
       .orderBy((route) => route.id.asc())
-      .include('zone', (zone) => zone.select('id', 'name', 'code'))
+      .include('zone', (zone) =>
+        zone.select('id', 'name', 'code', 'depotLat', 'depotLng'),
+      )
       .all();
-    return this.history.project(routes);
+    const activeRoutes = routes.filter((route) => route.status !== 'CANCELLED');
+    return this.history.project(activeRoutes);
   }
 
   async findMyAvailability(
@@ -168,6 +173,104 @@ export class DriversService {
       throw error;
     }
     return this.profile(driverId);
+  }
+
+  /**
+   * Baja operativa reversible (#82). Dentro de UNA transacción y con la fila del repartidor bloqueada (el mismo bloqueo que la
+   * asignación de rutas): si tiene una ruta asignada, en curso o terminada/interrumpida sin regreso confirmado, o una reserva
+   * viva, responde 409 `DRIVER_HAS_OPEN_ROUTE` y no cambia nada. No borra usuarios, rutas ni historial, y no toca las ausencias.
+   */
+  async deactivate(driverId: string, dto: ChangeDriverStatusDto, actorId: string) {
+    await this.prisma.client.transaction(async (tx) => {
+      const driver = await this.lockDriver(tx, driverId);
+      if (driver.isActive === false) {
+        throw new ConflictException({
+          statusCode: 409,
+          message: 'El repartidor ya está dado de baja',
+          error: 'Conflict',
+          code: 'DRIVER_ALREADY_INACTIVE',
+        });
+      }
+      const holds = await this.availability.effective(driverId, tx);
+      if (holds.hasPersistedHolds) {
+        const blocking = [];
+        for (const routeId of holds.blockingRouteIds) {
+          const route = await tx.orm.public.Route.where({ id: routeId }).first();
+          blocking.push({ routeId, status: route?.status ?? null, returnConfirmed: Boolean(route?.returnedAt) });
+        }
+        throw new ConflictException({
+          statusCode: 409,
+          message:
+            'El repartidor tiene una ruta asignada, en curso o terminada sin regreso al depósito confirmado: resuélvela antes de darlo de baja',
+          error: 'Conflict',
+          code: 'DRIVER_HAS_OPEN_ROUTE',
+          blockingRoutes: blocking,
+        });
+      }
+      await this.recordStatus(tx, driver, false, dto.reason ?? null, actorId);
+    });
+    return this.profile(driverId);
+  }
+
+  /** Reactivación (#82): restablece el acceso y nada más; ausencias, reservas y bandera de disponibilidad no se tocan. */
+  async activate(driverId: string, dto: ChangeDriverStatusDto, actorId: string) {
+    await this.prisma.client.transaction(async (tx) => {
+      const driver = await this.lockDriver(tx, driverId);
+      if (driver.isActive !== false) {
+        throw new ConflictException({
+          statusCode: 409,
+          message: 'El repartidor ya está activo',
+          error: 'Conflict',
+          code: 'DRIVER_ALREADY_ACTIVE',
+        });
+      }
+      await this.recordStatus(tx, driver, true, dto.reason ?? null, actorId);
+    });
+    return this.profile(driverId);
+  }
+
+  /** Historial append-only de bajas y reactivaciones, del más reciente al más antiguo. */
+  async statusHistory(driverId: string) {
+    if (!(await this.prisma.driver.where({ id: driverId }).first())) throw new NotFoundException('Driver profile not found');
+    const rows = await this.prisma.client.orm.public.DriverStatusChange.where({ driverId }).all();
+    return rows
+      .sort((a, b) => Temporal.Instant.compare(b.createdAt, a.createdAt) || b.id.localeCompare(a.id))
+      .map((row) => ({
+        id: row.id,
+        active: row.active,
+        reason: row.reason ?? null,
+        actorId: row.actorId,
+        createdAt: row.createdAt.toString(),
+      }));
+  }
+
+  private async recordStatus(
+    tx: Parameters<Parameters<PrismaService['client']['transaction']>[0]>[0],
+    driver: { id: string; userId: string },
+    active: boolean,
+    reason: string | null,
+    actorId: string,
+  ) {
+    const at = nowInstant();
+    await tx.orm.public.DriverStatusChange.create({ driverId: driver.id, active, reason, actorId, createdAt: at });
+    await tx.orm.public.Driver.where({ id: driver.id, userId: driver.userId }).update({
+      isActive: active,
+      statusChangedAt: at,
+      statusChangedById: actorId,
+      statusReason: reason,
+    });
+  }
+
+  /** Mismo bloqueo que la asignación de rutas y las ausencias: serializa la baja contra una asignación simultánea. */
+  private async lockDriver(
+    tx: Parameters<Parameters<PrismaService['client']['transaction']>[0]>[0],
+    driverId: string,
+  ) {
+    const driver = await tx.orm.public.Driver.where({ id: driverId }).first();
+    if (!driver) throw new NotFoundException('Driver profile not found');
+    const locked = await tx.orm.public.Driver.where({ id: driverId, userId: driver.userId }).update({ userId: driver.userId });
+    if (!locked) throw new ConflictException('Driver profile changed during the status change');
+    return locked;
   }
 
   private async emailTaken(

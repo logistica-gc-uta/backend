@@ -140,8 +140,9 @@ describe('Retiro en tienda acordado (#50): PostgreSQL + JWT HTTP', () => {
       expect(await pickupsOf(orderId)).toHaveLength(0);
       expect(await count('Route')).toBe(routes); // el rechazo no crea una ruta
       expect(await tracking(orderId)).toMatchObject({ pendingManagement: true, pickup: null, status: 'ASSIGNED' });
-      // Otra alternativa acordada después: con la ruta ya terminada, ahora sí acepta el retiro.
+      // Otra alternativa acordada después: al confirmar disponibilidad en tienda, ahora sí acepta el retiro.
       await asDriver(`/routes/${route.id}/complete`).expect(200);
+      await intervene({ action: 'CONFIRM_INCIDENT_READY', orderId, attemptId }).expect(200);
       await intervene({ action: 'PICKUP_AGREE', orderId, attemptId }).expect(200);
       expect(await pickupsOf(orderId)).toHaveLength(1);
     });
@@ -149,6 +150,7 @@ describe('Retiro en tienda acordado (#50): PostgreSQL + JWT HTTP', () => {
     it('acordar el retiro deja el pedido pendiente de retiro sin otra ruta y sin entregarlo; el planificador lo ignora', async () => {
       const { route, orderId, attemptId } = await failedDelivery();
       await asDriver(`/routes/${route.id}/complete`).expect(200);
+      await intervene({ action: 'CONFIRM_INCIDENT_READY', orderId, attemptId }).expect(200);
       const routes = await count('Route');
 
       const agreed = (await intervene({ action: 'PICKUP_AGREE', orderId, attemptId }).expect(200)).body;
@@ -168,9 +170,9 @@ describe('Retiro en tienda acordado (#50): PostgreSQL + JWT HTTP', () => {
       expect(view.timeline.find((t: any) => t.code === 'PICKUP_AGREED').label).toBe('Pendiente de retiro en tienda');
       expect(view.timeline.map((t: any) => t.code)).not.toContain('PICKED_UP');
       expect((await inboxIncident(orderId)).pickup).toMatchObject({ state: 'PENDING_PICKUP', pickedUpAt: null });
-      // No se vuelve a planificar ni a reservar: sigue excluido de las propuestas de ruta y no se puede armar una ruta con él.
+      // No se vuelve a planificar ni a reservar: los pedidos con retiro acordado salen de planificación y no se puede armar una ruta con ellos.
       const proposals = (await api('get', `/route-proposals?date=${today().toZonedDateTimeISO('America/Guayaquil').toPlainDate()}`).expect(200)).body;
-      expect(proposals.excluded.find((e: any) => e.orderId === orderId)?.reasons).toContain('ADMINISTRATIVE_REVIEW_REQUIRED');
+      expect(proposals.excluded.find((e: any) => e.orderId === orderId)).toBeUndefined();
       expect(proposals.proposals.flatMap((p: any) => p.orderIds)).not.toContain(orderId);
       const attempt = await api('post', '/routes', { zoneId: ids.zone, routeDate: today().toString(), orderIds: [orderId] });
       expect(attempt.status).not.toBe(201);
@@ -180,6 +182,7 @@ describe('Retiro en tienda acordado (#50): PostgreSQL + JWT HTTP', () => {
     it('el acuerdo y el retiro son dos eventos: solo la confirmación entrega el pedido, con actor y momento, y queda indicado el retiro', async () => {
       const { route, orderId, attemptId } = await failedDelivery();
       await asDriver(`/routes/${route.id}/complete`).expect(200);
+      await intervene({ action: 'CONFIRM_INCIDENT_READY', orderId, attemptId }).expect(200);
       await intervene({ action: 'PICKUP_AGREE', orderId, attemptId }).expect(200);
       expect((await api('get', `/orders/${orderId}`).expect(200)).body.status).not.toBe('DELIVERED');
 
@@ -215,6 +218,9 @@ describe('Retiro en tienda acordado (#50): PostgreSQL + JWT HTTP', () => {
       await intervene({ action: 'PICKUP_AGREE', orderId }).expect(409); // falta el último intento fallido
       await intervene({ action: 'PICKUP_AGREE', orderId, attemptId: randomUUID() }).expect(409);
       await asDriver(`/routes/${route.id}/complete`).expect(200);
+      const missingReady = await intervene({ action: 'PICKUP_AGREE', orderId, attemptId }).expect(409);
+      expect(missingReady.body.code).toBe('INCIDENT_NOT_READY_AT_STORE');
+      await intervene({ action: 'CONFIRM_INCIDENT_READY', orderId, attemptId }).expect(200);
       await intervene({ action: 'PICKUP_AGREE', orderId, attemptId }).expect(200);
       await intervene({ action: 'PICKUP_AGREE', orderId, attemptId }).expect(409);
       await intervene({ action: 'PICKUP_DECLINE', orderId, attemptId }).expect(409);
@@ -225,17 +231,23 @@ describe('Retiro en tienda acordado (#50): PostgreSQL + JWT HTTP', () => {
       expect(await pickupsOf(fresh.id)).toHaveLength(0);
     });
 
-    it('una ruta ya iniciada no pierde paradas: con la entrega fallida pero la ruta aún en curso el acuerdo se rechaza sin cambios', async () => {
+    it('una ruta ya iniciada no pierde paradas: sin confirmación de disponibilidad se rechaza sin cambios y tras confirmarla conserva la parada histórica', async () => {
       const { route, orderId, attemptId } = await failedDelivery(); // la ruta sigue en curso
       const stopsBefore = (await api('get', `/routes/${route.id}`).expect(200)).body.stops;
       const audits = (await api('get', '/dispatch/audit').expect(200)).body.length;
 
-      await intervene({ action: 'PICKUP_AGREE', orderId, attemptId }).expect(409);
+      const blocked = await intervene({ action: 'PICKUP_AGREE', orderId, attemptId }).expect(409);
+      expect(blocked.body.code).toBe('INCIDENT_NOT_READY_AT_STORE');
 
       expect(await pickupsOf(orderId)).toHaveLength(0);
       expect((await api('get', `/routes/${route.id}`).expect(200)).body.stops).toEqual(stopsBefore);
       expect((await api('get', '/dispatch/audit').expect(200)).body).toHaveLength(audits);
       expect((await db.orm.public.Order.where({ id: orderId }).first())!.requiresAdministrativeReview).toBe(true);
+
+      await intervene({ action: 'CONFIRM_INCIDENT_READY', orderId, attemptId }).expect(200);
+      await intervene({ action: 'PICKUP_AGREE', orderId, attemptId }).expect(200);
+      expect(await pickupsOf(orderId)).toHaveLength(1);
+      expect((await api('get', `/routes/${route.id}`).expect(200)).body.stops).toEqual(stopsBefore);
     });
   });
 

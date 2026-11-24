@@ -14,6 +14,7 @@ import {
   MaxLength,
   ValidateIf,
 } from 'class-validator';
+import { MAX_ROUTE_STOPS } from '../vehicle-capacity.js';
 export const DISPATCH_ACTIONS = [
   'CONFIRM',
   'REJECT',
@@ -26,7 +27,9 @@ export const DISPATCH_ACTIONS = [
   'PICKUP_AGREE',
   'PICKUP_DECLINE',
   'PICKUP_CONFIRM',
+  'CONFIRM_INCIDENT_READY',
   'RELEASE_DRAFT',
+  'CANCEL_ROUTE',
   'LOSS_DECLARE',
   'REPLACEMENT_PREPARE',
   'ORIGINAL_RECOVER',
@@ -77,11 +80,11 @@ export class DispatchInterventionDto {
   @ValidateIf((o) => o.fingerprint !== undefined)
   @Matches(/^[a-f0-9]{64}$/)
   fingerprint?: string;
-  @ApiPropertyOptional({ type: [String], minItems: 1, maxItems: 4 })
+  @ApiPropertyOptional({ type: [String], minItems: 1, maxItems: MAX_ROUTE_STOPS })
   @ValidateIf((o) => o.orderIds !== undefined)
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(4)
+  @ArrayMaxSize(MAX_ROUTE_STOPS)
   @ArrayUnique()
   @IsUUID(undefined, { each: true })
   orderIds?: string[];

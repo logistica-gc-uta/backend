@@ -34,6 +34,7 @@ describe('CheckoutService (unit)', () => {
     },
     limits: {
       maxUnitsPerSkuPerOrder: 10,
+      maxUnitsPerOrder: null,
     },
     deliverySchedule: {
       timeZone: 'America/Guayaquil',

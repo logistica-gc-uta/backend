@@ -10,7 +10,7 @@ Every envelope is `{ version: 1, eventId, occurredAt, data }`. `data` is an allo
 |---|---|---|
 | `order.status.updated` | orderId, optional status/requiresAdministrativeReview | ADMIN, owning CLIENT, current assigned DRIVER |
 | `route.updated` | routeId, optional status | ADMIN, current assigned DRIVER |
-| `dispatch.incident.updated` | orderId, optional action/requiresAdministrativeReview | ADMIN only |
+| `dispatch.incident.updated` | orderId and/or routeId, optional emergencyId, action, requiresAdministrativeReview | ADMIN only |
 | `driver.availability.updated` | driverId, available | ADMIN and that DRIVER, after confirmed depot return only |
 
 Shared internal interface: `RealtimeService.publish(readonly RealtimeChange[]): Promise<void>`; callers await it only AFTER the outer successful PostgreSQL transaction. Rejections/rollbacks publish nothing. Publisher delivery errors are logged generically and do not turn committed REST operations into failures. Roles and resource ownership are revalidated before publication to prevent stale memberships after reassignment/revocation. Missing JWT_SECRET fails closed for socket authentication; existing REST behavior is not refactored here.

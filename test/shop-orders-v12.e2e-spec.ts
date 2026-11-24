@@ -436,12 +436,12 @@ describe('Shop Orders v1.2 History, Detail & Immutable Receipt E2E (owned Postgr
         expect(curr).toBeGreaterThanOrEqual(prev);
       }
 
-      // Verify order1 timeline has PENDING, ASSIGNED, IN_TRANSIT, ATTEMPT_FAILED in chronological order
+      // A failed attempt releases the claim in the same transaction.
       const finalDetail1 = await http()
         .get(`/api/v1/shop/orders/${order1.orderId}`)
         .set(auth(users.clientToken));
       const codes1 = finalDetail1.body.timeline.map((t: any) => t.code);
-      expect(codes1).toEqual(['PENDING', 'ASSIGNED', 'IN_TRANSIT', 'ATTEMPT_FAILED']);
+      expect(codes1).toEqual(['PENDING', 'ASSIGNED', 'IN_TRANSIT', 'ATTEMPT_FAILED', 'CLAIM_RELEASED']);
       for (let i = 1; i < finalDetail1.body.timeline.length; i++) {
         const prev = new Date(finalDetail1.body.timeline[i - 1].at).getTime();
         const curr = new Date(finalDetail1.body.timeline[i].at).getTime();

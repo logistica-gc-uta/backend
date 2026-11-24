@@ -502,4 +502,63 @@ describe('planRoutes (Clarke & Wright)', () => {
       ).toThrow();
     });
   });
+
+  describe('capacidades heterogéneas de flota (fleetCapacities)', () => {
+    it('empaqueta 6 pedidos de 1 unidad en 1 ruta de 6 paradas con fleetCapacities [6, 4] sin tope de 4 paradas', () => {
+      const orders = ['o1', 'o2', 'o3', 'o4', 'o5', 'o6'].map((id, i) =>
+        order(id, 10, i * 0.1),
+      );
+
+      const routes = planRoutes(orders, {
+        depots,
+        distance: euclid,
+        fleetCapacities: [6, 4],
+      });
+
+      expect(routes).toHaveLength(1);
+      expect(routes[0]!.orderIds).toHaveLength(6);
+    });
+
+    it('empaqueta 10 pedidos de 1 unidad en 2 rutas de 6 y 4 paradas con fleetCapacities [6, 4]', () => {
+      const orders = Array.from({ length: 10 }, (_, i) =>
+        order(`o${String(i + 1).padStart(2, '0')}`, 10, i * 0.1),
+      );
+
+      const routes = planRoutes(orders, {
+        depots,
+        distance: euclid,
+        fleetCapacities: [6, 4],
+      });
+
+      expect(routes).toHaveLength(2);
+      expect(routes.map((r) => r.orderIds.length).sort((a, b) => b - a)).toEqual([6, 4]);
+    });
+
+    it('impide crear dos rutas de 6 unidades cuando la flota heterogénea es [6, 4]', () => {
+      const orders = ['a', 'b', 'c', 'd'].map((id, i) => ({
+        ...order(id, 10, i * 0.1),
+        demandUnits: 3,
+      }));
+
+      const routes = planRoutes(orders, {
+        depots,
+        distance: euclid,
+        fleetCapacities: [6, 4],
+      });
+
+      const loads = routes
+        .map((r) => r.orderIds.length * 3)
+        .sort((a, b) => b - a);
+      expect(loads).toEqual([6, 3, 3]);
+    });
+
+    it('rechaza valores inválidos en fleetCapacities', () => {
+      expect(() =>
+        planRoutes([order('a', 10, 0)], { depots, distance: euclid, fleetCapacities: [0] }),
+      ).toThrow();
+      expect(() =>
+        planRoutes([order('a', 10, 0)], { depots, distance: euclid, fleetCapacities: [3.5] }),
+      ).toThrow();
+    });
+  });
 });

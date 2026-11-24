@@ -19,20 +19,21 @@ const release = {
 const returnedAt = new Date('2026-10-09T12:00:00Z');
 
 describe('Route lifecycle policy', () => {
-  it('defines exactly five verified states', () => {
+  it('defines exactly six verified states including terminal CANCELLED', () => {
     expect(states).toEqual([
       'DRAFT',
       'ASSIGNED',
       'IN_PROGRESS',
       'COMPLETED',
       'INTERRUPTED',
+      'CANCELLED',
     ]);
   });
 
   it.each(states)('allows only valid forward transitions from %s', (from) => {
     const allowed: Partial<Record<RouteStatus, readonly RouteStatus[]>> = {
       [RouteStatus.DRAFT]: [RouteStatus.ASSIGNED],
-      [RouteStatus.ASSIGNED]: [RouteStatus.IN_PROGRESS],
+      [RouteStatus.ASSIGNED]: [RouteStatus.IN_PROGRESS, RouteStatus.CANCELLED],
       [RouteStatus.IN_PROGRESS]: [
         RouteStatus.COMPLETED,
         RouteStatus.INTERRUPTED,
@@ -83,14 +84,14 @@ describe('Route lifecycle policy', () => {
   });
 
   it.each([null, ...states])(
-    'requires IN_PROGRESS and one to four resolved visits for %s',
+    'requires IN_PROGRESS and at least one resolved visit for %s',
     (status) => {
-      for (const length of [0, 1, 2, 3, 4, 5]) {
+      for (const length of [0, 1, 2, 3, 4, 5, 6]) {
         const outcomes = Array.from({ length }, (_, index) =>
           index % 2 ? VisitOutcome.FAILED : VisitOutcome.SUCCESSFUL,
         );
         expect(canCompleteRoute(status, outcomes)).toBe(
-          status === RouteStatus.IN_PROGRESS && length >= 1 && length <= 4,
+          status === RouteStatus.IN_PROGRESS && length >= 1,
         );
       }
       for (const unresolved of [null, VisitOutcome.PENDING]) {
@@ -130,6 +131,53 @@ describe('Route lifecycle policy', () => {
       ).toBe(status !== RouteStatus.DRAFT);
     },
   );
+
+  it('releases driver hold for CANCELLED only with paired cancellation evidence and never via return', () => {
+    const cancelledAt = new Date('2026-10-09T11:30:00Z');
+    expect(
+      holdsDriverReservation({
+        status: RouteStatus.CANCELLED,
+        returnedAt: null,
+        cancelledAt,
+        cancelledById: 'admin-1',
+        cancelReason: 'Vehicle unavailable',
+      }),
+    ).toBe(false);
+    expect(
+      holdsDriverReservation({
+        status: RouteStatus.CANCELLED,
+        returnedAt: null,
+        cancelledAt,
+        cancelledById: 'admin-1',
+        cancelReason: '   ',
+      }),
+    ).toBe(true);
+    expect(
+      holdsDriverReservation({
+        status: RouteStatus.CANCELLED,
+        returnedAt: null,
+        cancelledAt: new Date('invalid'),
+        cancelledById: 'admin-1',
+        cancelReason: 'Vehicle unavailable',
+      }),
+    ).toBe(true);
+    expect(
+      holdsDriverReservation({
+        status: RouteStatus.CANCELLED,
+        returnedAt,
+        returnedById: 'actor-1',
+      }),
+    ).toBe(true);
+    expect(
+      holdsDriverReservation({
+        status: RouteStatus.ASSIGNED,
+        returnedAt: null,
+        cancelledAt,
+        cancelledById: 'admin-1',
+        cancelReason: 'Vehicle unavailable',
+      }),
+    ).toBe(true);
+  });
 
   it('releases a legacy hold only with explicit administrative evidence, not return time', () => {
     const context = { status: null, returnedAt: null, legacyRelease: release };

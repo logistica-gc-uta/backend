@@ -195,6 +195,16 @@ describe('Route progress: owned PostgreSQL, JWT and actual HTTP', () => {
           }).first()
         )?.recordedAt.toString(),
       ).toBe(result.body.recordedAt);
+      const failedClaim = await db.orm.public.OrderClaim.where({
+        routeId: START_ROUTE,
+        orderId: 'order',
+      }).first();
+      expect(failedClaim?.releasedAt?.toString()).toBe(result.body.recordedAt);
+      const pendingClaim = await db.orm.public.OrderClaim.where({
+        routeId: START_ROUTE,
+        orderId: 'success-order',
+      }).first();
+      expect(pendingClaim?.releasedAt).toBeNull();
     },
   );
   it('serializes two equal requests and rejects changed payload or actor', async () => {
@@ -317,6 +327,14 @@ describe('Route progress: owned PostgreSQL, JWT and actual HTTP', () => {
       (await db.orm.public.Order.where({ id: 'order' }).first())
         ?.requiresAdministrativeReview,
     ).toBe(false);
+    expect(
+      (
+        await db.orm.public.OrderClaim.where({
+          routeId: START_ROUTE,
+          orderId: 'order',
+        }).first()
+      )?.releasedAt,
+    ).toBeNull();
     await status('IN_TRANSIT').expect(200);
     await expect(
       failing.updateOrder('success-order', 'owner', 'DELIVERED'),
@@ -331,7 +349,7 @@ describe('Route progress: owned PostgreSQL, JWT and actual HTTP', () => {
     ).toBe('PENDING');
     expect(await db.orm.public.DeliveryAttempt.all()).toHaveLength(0);
     await status('DELIVERED').expect(200);
-    await fail().expect(200);
+    const failed = await fail().expect(200);
     await expect(failing.complete(START_ROUTE, 'owner')).rejects.toThrow(
       'injected rollback',
     );
@@ -343,7 +361,15 @@ describe('Route progress: owned PostgreSQL, JWT and actual HTTP', () => {
         routeId: START_ROUTE,
         releasedAt: null,
       }).all(),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
+    expect(
+      (
+        await db.orm.public.OrderClaim.where({
+          routeId: START_ROUTE,
+          orderId: 'order',
+        }).first()
+      )?.releasedAt?.toString(),
+    ).toBe(failed.body.recordedAt);
   });
   it('publishes typed success Swagger for failure and completion HTTP paths', () => {
     const doc = SwaggerModule.createDocument(

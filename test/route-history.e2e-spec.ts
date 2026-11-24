@@ -111,6 +111,8 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
     expect(owned[0].stops).toEqual(route.stops);
     expect(Object.keys(owned[0].orders[0]).sort()).toEqual([
       'deliveryAddress',
+      'deliveryLat',
+      'deliveryLng',
       'id',
       'scheduledDeliveryDate',
       'status',
@@ -173,6 +175,12 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
       scheduledDeliveryDate: scheduled.toString(),
       deliveryWindowStart: scheduled.subtract({ minutes: 10 }).toString(),
       deliveryWindowEnd: scheduled.add({ minutes: 10 }).toString(),
+    }).expect(200);
+    await dispatch({
+      action: 'CONFIRM_INCIDENT_READY',
+      orderId,
+      attemptId: failure.body.id,
+      reason: 'Returned order verified at the store',
     }).expect(200);
     await dispatch({
       action: 'RESCHEDULE',
@@ -454,6 +462,8 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
       'ASSIGNED',
       'IN_PROGRESS',
       'COMPLETED',
+      'INTERRUPTED',
+      'CANCELLED',
     ]);
   });
 });
