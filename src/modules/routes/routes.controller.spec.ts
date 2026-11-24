@@ -212,6 +212,7 @@ describe('Route history serialized Swagger matches role-specific responses', () 
         'id',
         'date',
         'zone',
+        'depot',
         'status',
         'orders',
         'stops',
@@ -263,6 +264,8 @@ describe('Route history serialized Swagger matches role-specific responses', () 
       [
         'id',
         'deliveryAddress',
+        'deliveryLat',
+        'deliveryLng',
         'status',
         'scheduledDeliveryDate',
         'stopOrder',

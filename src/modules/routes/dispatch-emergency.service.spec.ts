@@ -727,5 +727,99 @@ describe('DispatchEmergencyService (#51)', () => {
         h.rows.OrderClaim!.find((c) => c.id === 'claim-newer-route')!.releasedAt,
       ).toBeNull();
     });
+
+    it('keeps a second emergency on the same order independent from an earlier emergency loss and allows confirm/requeue', async () => {
+      const h = createHarness();
+      const earlier = baseInstant.subtract({ hours: 48 });
+      h.rows.Order!.push({
+        id: 'order-1',
+        status: 'PENDING',
+        requiresAdministrativeReview: true,
+        routeId: null,
+      });
+      h.rows.Route!.push(
+        { id: 'route-1', status: 'INTERRUPTED', driverId: 'driver-1', returnedAt: earlier, returnedById: 'admin-1' },
+        { id: 'route-2', status: 'INTERRUPTED', driverId: 'driver-1', returnedAt: null, returnedById: null },
+      );
+      h.rows.RouteEmergency!.push(
+        {
+          id: 'em-1',
+          routeId: 'route-1',
+          reason: 'First emergency',
+          declaredAt: earlier,
+          declaredById: 'admin-1',
+          closedAt: null,
+          closedById: null,
+          closeReason: null,
+        },
+        {
+          id: 'em-2',
+          routeId: 'route-2',
+          reason: 'Second emergency',
+          declaredAt: baseInstant,
+          declaredById: 'admin-1',
+          closedAt: null,
+          closedById: null,
+          closeReason: null,
+        },
+      );
+      h.rows.RouteUnitRecovery!.push(
+        {
+          id: 'rec-1',
+          emergencyId: 'em-1',
+          routeId: 'route-1',
+          stopId: 'stop-1',
+          orderId: 'order-1',
+          orderItemId: 'item-1',
+          unitNumber: 1,
+          productId: 'prod-1',
+          recoveredAt: null,
+          recoveredById: null,
+        },
+        {
+          id: 'rec-2',
+          emergencyId: 'em-2',
+          routeId: 'route-2',
+          stopId: 'stop-2',
+          orderId: 'order-1',
+          orderItemId: 'item-1',
+          unitNumber: 1,
+          productId: 'prod-1',
+          recoveredAt: null,
+          recoveredById: null,
+        },
+      );
+      // Legacy active loss from em-1 (no emergencyId, declared before em-2).
+      h.rows.OrderItemLoss!.push({
+        id: 'loss-em-1',
+        orderId: 'order-1',
+        orderItemId: 'item-1',
+        unitNumber: 1,
+        emergencyId: null,
+        declaredAt: earlier.add({ minutes: 5 }),
+        replacementPreparedAt: earlier.add({ minutes: 5 }),
+        recoveredAt: null,
+        cancelledAt: null,
+      });
+
+      const detail2 = await h.service.emergencyDetail('route-2');
+      expect(detail2.units).toHaveLength(1);
+      expect(detail2.units[0]!.status).toBe('PENDING');
+      expect(detail2.units[0]!.lossId).toBeNull();
+
+      // Confirming recovery in em-2 must NOT be blocked by em-1's loss.
+      await h.run({ action: 'UNIT_RECOVERY_CONFIRM', recoveryId: 'rec-2', reason: 'Returned intact' });
+      expect(h.rows.RouteUnitRecovery!.find((u) => u.id === 'rec-2')!.recoveredAt).not.toBeNull();
+
+      // Even if em-1's loss is cancelled later, requeueOrder for em-2 succeeds independently.
+      h.rows.OrderItemLoss![0]!.cancelledAt = baseInstant;
+      await h.run({
+        action: 'EMERGENCY_REQUEUE',
+        orderId: 'order-1',
+        emergencyId: 'em-2',
+        reason: 'Requeue from second emergency',
+      });
+      expect(h.rows.Order![0]!.requiresAdministrativeReview).toBe(false);
+    });
   });
 });

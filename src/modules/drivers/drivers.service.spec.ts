@@ -135,7 +135,13 @@ describe('DriversService route projection and ordering', () => {
     expect(query.include).toHaveBeenCalledTimes(1);
     const zone = { select: jest.fn() };
     query.include.mock.calls[0][1](zone);
-    expect(zone.select).toHaveBeenCalledWith('id', 'name', 'code');
+    expect(zone.select).toHaveBeenCalledWith(
+      'id',
+      'name',
+      'code',
+      'depotLat',
+      'depotLng',
+    );
   });
   it('adds inclusive/exclusive Route.date predicates without dropping ownership', async () => {
     const { service, query } = setup([]);

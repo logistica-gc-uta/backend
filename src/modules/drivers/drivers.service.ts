@@ -47,7 +47,9 @@ export class DriversService {
       )
       .orderBy((route) => route.date.asc())
       .orderBy((route) => route.id.asc())
-      .include('zone', (zone) => zone.select('id', 'name', 'code'))
+      .include('zone', (zone) =>
+        zone.select('id', 'name', 'code', 'depotLat', 'depotLng'),
+      )
       .all();
     const activeRoutes = routes.filter((route) => route.status !== 'CANCELLED');
     return this.history.project(activeRoutes);

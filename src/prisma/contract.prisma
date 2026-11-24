@@ -519,8 +519,10 @@ model OrderItemLoss {
   orderItem              OrderItem @relation(fields: [orderItemId], references: [id])
   unitNumber             Int
   productId              String
-  product                Product   @relation(fields: [productId], references: [id])
+  product                Product         @relation(fields: [productId], references: [id])
   attemptId              String?
+  emergencyId            String?
+  emergency              RouteEmergency? @relation(fields: [emergencyId], references: [id])
   declaredAt             DateTime
   declaredById           String
   declaredBy             User      @relation("LossDeclaredBy", fields: [declaredById], references: [id])
@@ -543,7 +545,9 @@ model OrderItemLoss {
 
   movements              ProductStockMovement[]
 
-  @@index([orderItemId, unitNumber], unique: true, where: "(\"cancelledAt\" IS NULL)", name: "active_order_item_loss_unit")
+  @@index([emergencyId, orderItemId, unitNumber], unique: true, where: "(\"cancelledAt\" IS NULL AND \"emergencyId\" IS NOT NULL)", name: "active_order_item_loss_emergency_unit")
+  @@index([orderItemId, unitNumber], unique: true, where: "(\"cancelledAt\" IS NULL AND \"emergencyId\" IS NULL)", name: "active_order_item_loss_unit")
+  @@index([emergencyId])
   @@index([orderId])
   @@index([productId])
   @@index([declaredById])
@@ -597,6 +601,7 @@ model RouteEmergency {
   createdAt            DateTime  @default(now())
 
   unitRecoveries       RouteUnitRecovery[]
+  itemLosses           OrderItemLoss[]
 
   @@index([declaredById])
   @@index([closedById])

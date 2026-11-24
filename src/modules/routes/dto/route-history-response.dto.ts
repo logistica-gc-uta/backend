@@ -23,6 +23,13 @@ export class RouteHistoryOrderDto {
       'Stable RouteStop.sequence alias; raw legacy positions are preserved',
   })
   stopOrder!: number | null;
+  @ApiProperty({ type: Number, nullable: true }) deliveryLat!: number | null;
+  @ApiProperty({ type: Number, nullable: true }) deliveryLng!: number | null;
+}
+
+export class RouteHistoryDepotDto {
+  @ApiProperty({ type: Number }) lat!: number;
+  @ApiProperty({ type: Number }) lng!: number;
 }
 
 export class RouteHistoryAttemptDto {
@@ -74,6 +81,13 @@ export class RouteHistoryResponseDto {
   @ApiProperty({ type: RouteHistoryZoneDto, nullable: true })
   zone!: RouteHistoryZoneDto | null;
   @ApiProperty({
+    type: RouteHistoryDepotDto,
+    nullable: true,
+    required: false,
+    description: 'Origin/depot coordinates for return navigation, when configured',
+  })
+  depot?: RouteHistoryDepotDto | null;
+  @ApiProperty({
     enum: [
       'UNVERIFIED',
       'DRAFT',
@@ -124,8 +138,6 @@ export class AdminRouteHistoryOrderDto extends RouteHistoryOrderDto {
   @ApiProperty({ type: String, nullable: true }) zoneId!: string | null;
   @ApiProperty({ type: String, nullable: true }) routeId!: string | null;
   @ApiProperty() total!: number;
-  @ApiProperty({ type: Number, nullable: true }) deliveryLat!: number | null;
-  @ApiProperty({ type: Number, nullable: true }) deliveryLng!: number | null;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
   @ApiProperty() requiresAdministrativeReview!: boolean;
 }

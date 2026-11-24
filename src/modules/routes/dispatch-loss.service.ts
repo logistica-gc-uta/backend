@@ -4,6 +4,7 @@ import { nowInstant } from '../../common/temporal.util.js';
 import { lockInventoryProduct, MAX_INVENTORY_QUANTITY } from '../orders/order-inventory.util.js';
 import type { DispatchInterventionDto } from './dto/dispatch-intervention.dto.js';
 import { OrderItemLossDto } from './dto/order-item-loss.dto.js';
+import { matchesEmergencyUnitLoss } from './incident-inbox-projection.js';
 import type { RealtimeChange } from '../realtime/realtime.contract.js';
 
 type Transaction = Parameters<Parameters<PrismaService['client']['transaction']>[0]>[0];
@@ -142,7 +143,7 @@ export class DispatchLossService {
           'Unit was already confirmed as recovered in the route emergency',
         );
     }
-    if (db.RouteUnitRecovery) {
+    if (!dto.emergencyId && db.RouteUnitRecovery) {
       const unitRecoveries = await db.RouteUnitRecovery.where({
         orderItemId: item.id,
         unitNumber,
@@ -153,7 +154,17 @@ export class DispatchLossService {
           'Unit was already confirmed as recovered in the route emergency',
         );
     }
-    if (await db.OrderItemLoss.where({ orderItemId: item.id, unitNumber, cancelledAt: null }).first())
+    const existingActiveLosses = await db.OrderItemLoss.where({
+      orderItemId: item.id,
+      unitNumber,
+      cancelledAt: null,
+    }).all();
+    const targetEmergencyId = dto.emergencyId ?? null;
+    if (
+      existingActiveLosses.some(
+        (loss) => (loss.emergencyId ?? null) === targetEmergencyId,
+      )
+    )
       throw this.conflict('LOSS_ALREADY_DECLARED', 'Esa unidad ya tiene una pérdida declarada');
 
     // Lock Product FOR UPDATE before inserting OrderItemLoss (whose FK takes FOR KEY SHARE on Product)
@@ -167,6 +178,7 @@ export class DispatchLossService {
       unitNumber,
       productId: item.productId,
       attemptId: dto.attemptId ?? null,
+      emergencyId: targetEmergencyId,
       declaredAt: nowInstant(),
       declaredById: actorId,
       declarationRequestId: dto.requestId,
@@ -323,13 +335,25 @@ export class DispatchLossService {
       orderId: order.id,
       cancelledAt: null,
     }).all();
+    const emergenciesById = new Map<
+      string,
+      { id: string; declaredAt: Temporal.Instant }
+    >();
+    if (db.RouteEmergency && unitRecoveries.length > 0) {
+      for (const id of new Set(unitRecoveries.map((u) => u.emergencyId))) {
+        const em = await db.RouteEmergency.where({ id }).first();
+        if (em) emergenciesById.set(id, em);
+      }
+    }
     const hasUnresolvedRecovery = unitRecoveries.some((unit) => {
       if (unit.recoveredAt != null) return false;
       return !activeLosses.some(
         (active) =>
-          active.orderItemId === unit.orderItemId &&
-          active.unitNumber === unit.unitNumber &&
-          active.replacementPreparedAt != null,
+          matchesEmergencyUnitLoss(
+            active,
+            unit,
+            emergenciesById.get(unit.emergencyId) ?? null,
+          ) && active.replacementPreparedAt != null,
       );
     });
     const hadClearedAttempt =

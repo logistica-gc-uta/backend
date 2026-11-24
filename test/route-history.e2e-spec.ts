@@ -111,6 +111,8 @@ describe('Historical route reads: owned PostgreSQL16, production modules and JWT
     expect(owned[0].stops).toEqual(route.stops);
     expect(Object.keys(owned[0].orders[0]).sort()).toEqual([
       'deliveryAddress',
+      'deliveryLat',
+      'deliveryLng',
       'id',
       'scheduledDeliveryDate',
       'status',
